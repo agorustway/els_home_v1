@@ -19,9 +19,10 @@
 - 기본 파일 경로: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
 - NAS 경로 탐색 기준: 배차판/선적관리와 동일하게 `/app/data/아산지점/...`
 - 기존 `/B_총무/...` 저장값은 백엔드와 웹에서 `/아산지점/B_총무/...`로 자동 보정한다.
-- 기본 시트: `합계`
+  - 기본 시트: `합계`
   - 제목행: 자동 감지, 웹 설정에서 수동 지정 가능
   - 파일 안정화 게이트: 저장 후 quiet time 경과 시 파싱
+  - 자동 감지 기본 주기: 300초 (`ASAN_PERFORMANCE_SYNC_POLL_SECONDS`로 조정 가능)
 - Supabase SQL: `web/supabase_sql/20260517_asan_annual_performance.sql`
   - `branch_performance_files`: 파일/헤더/요약 메타
   - `branch_performance_rows`: 누적 원장 행

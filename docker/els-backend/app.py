@@ -71,12 +71,13 @@ def _env_int(name, default, minimum=0):
     except (TypeError, ValueError):
         return default
 
-ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 15, 5)
+ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 60, 15)
 ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
-ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 30, 10)
+ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
+ASAN_DISPATCH_SETTINGS_CACHE_SECONDS = _env_int("ASAN_DISPATCH_SETTINGS_CACHE_SECONDS", 300, 30)
 
 dispatch_sync_gate = StableFileSyncGate(
     quiet_seconds=ASAN_DISPATCH_SYNC_QUIET_SECONDS,
@@ -157,16 +158,40 @@ def post_debug_log():
 
 # --- [v4.4.40] 아산지점 배차판 자동 동기화 로직 ---
 last_mtime_cache = {}
+dispatch_settings_cache = {"data": None, "loaded_at": 0.0}
+
+
+def get_asan_dispatch_settings(force=False):
+    now_ts = time.time()
+    cached = dispatch_settings_cache.get("data")
+    if (
+        not force
+        and cached
+        and now_ts - float(dispatch_settings_cache.get("loaded_at") or 0) < ASAN_DISPATCH_SETTINGS_CACHE_SECONDS
+    ):
+        return cached
+
+    try:
+        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
+        settings = res.data
+        if settings:
+            dispatch_settings_cache["data"] = settings
+            dispatch_settings_cache["loaded_at"] = now_ts
+        return settings
+    except Exception as exc:
+        if cached:
+            app.logger.warning(f"[자동동기화] 배차 설정 조회 실패, 캐시 사용: {exc}")
+            return cached
+        raise
 
 def sync_asan_dispatch_python(force=False):
     """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
     global last_mtime_cache
     if not supabase: return
     try:
-        app.logger.info("[자동동기화] 아산 배차판 동기화 시작...")
-        # 1. 설정 가져오기
-        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
-        settings = res.data
+        if force:
+            app.logger.info("[자동동기화] 아산 배차판 수동 동기화 시작...")
+        settings = get_asan_dispatch_settings(force=force)
         if not settings:
             app.logger.error("[자동동기화] 설정을 찾을 수 없습니다.")
             return
@@ -176,7 +201,6 @@ def sync_asan_dispatch_python(force=False):
             if not rel_path: continue
             
             full_path = Path("/app/data") / rel_path.lstrip("/")
-            app.logger.info(f"[자동동기화] 대상 파일 체크: {full_path}")
             
             if not full_path.exists():
                 app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path} (rel_path: {rel_path})")
@@ -189,12 +213,14 @@ def sync_asan_dispatch_python(force=False):
             cached_mtime = last_mtime_cache.get(dtype)
             file_signature = (mtime_ts, file_stat.st_size)
             
-            app.logger.info(f"[자동동기화] {dtype} 체크: 현재={mtime}, 캐시={cached_mtime}")
-            
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
             if not force and cached_mtime == mtime:
-                app.logger.info(f"[자동동기화] {dtype} 변경 없음 (스킵)")
                 continue
+
+            if cached_mtime:
+                app.logger.info(f"[자동동기화] {dtype} 파일 변경 감지: 이전={cached_mtime}, 현재={mtime}")
+            else:
+                app.logger.info(f"[자동동기화] {dtype} 최초 동기화 확인: 파일수정일={mtime}")
 
             decision = dispatch_sync_gate.check(f"dispatch:{dtype}", file_signature, force=force)
             if not decision.ready:

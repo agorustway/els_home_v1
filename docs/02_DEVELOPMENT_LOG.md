@@ -1,4 +1,20 @@
 
+## [2026-05-17] NAS Core 자동 파일 감지 부하 완화 (v5.13.51)
+### 핵심
+- 아산 배차판 자동 체크 기본 주기를 15초에서 60초로, 선적관리 기본 주기를 30초에서 60초로 조정했습니다.
+- 연간실적 자동 감지 기본 주기를 120초에서 300초로 조정해 원장형 Excel 감지 부하를 더 낮췄습니다.
+- 배차 설정(`branch_dispatch_settings`) 조회는 5분 캐시로 묶어 매 루프 Supabase 호출을 줄이고, 조회 실패 시 기존 캐시가 있으면 사용하도록 했습니다.
+- 변경 없음/대상 파일 체크 반복 로그를 제거하고, 파일 변경 감지·최초 동기화·동기화 완료·오류 로그만 남기도록 정리했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs` 통과 (39개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py docker/els-backend/app.py docker/els-backend/asan_performance.py` 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `docker/els-backend/app.py`
+- `docker/els-backend/asan_performance.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 최초 적재 타임아웃 회피 (v5.13.50)
 ### 핵심
 - 운영 확인 결과 연간실적 GET은 `supabase-empty`로 응답해 DB 미적재 상태였고, 동기화 POST는 nginx 기본 60초 제한에 걸려 504 HTML 응답을 반환했습니다.

@@ -1,22 +1,22 @@
-# ELS MISSION CONTROL (v5.13.50 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.51 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 최초 적재가 60초 게이트웨이 타임아웃에 끊기지 않도록 백그라운드 동기화와 상태 폴링으로 전환합니다.
+> 최신 업데이트: NAS Core의 아산 배차/선적/연간실적 자동 파일 감지 주기와 로그를 저부하 운영 기준으로 조정합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.50
+- **웹 버전**: v5.13.51
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 연간실적 `NAS 동기화`를 백그라운드 작업으로 시작하고 화면은 5초 주기로 Supabase 상태를 폴링.
-  - `/api/branches` gateway timeout을 900초로 보강.
-  - 운영 확인 결과 현재 DB는 `supabase-empty`, 기존 동기화 POST는 nginx 60초 504로 확인.
+  - 배차판 자동 체크 기본 주기 15초 → 60초, 선적관리 30초 → 60초, 연간실적 120초 → 300초.
+  - 배차 설정 Supabase 조회를 5분 캐시로 묶어 반복 호출을 축소.
+  - 변경 없음/파일 체크 반복 로그를 제거하고 변경 감지·동기화·오류 로그만 유지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 연간실적 비동기 동기화/상태 폴링 테스트 통과 |
-| Supabase 인증/DB | 정상 | 연간실적 SQL 추가, 운영 DB 적용 필요 |
-| NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 유지 |
+| Supabase 인증/DB | 정상 | 연간실적 SQL 적용 완료, 최초 데이터 적재 대기 |
+| NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 주기 적용 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
 | Android 드라이버 앱 | 정상 | APK v5.11.12 유지 |
 
@@ -35,6 +35,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.51**: 아산 배차/선적/연간실적 자동 파일 감지 주기를 완화하고 배차 설정 조회 5분 캐시, 반복 체크 로그 제거를 적용.
 - **v5.13.50**: 아산 연간실적 최초 적재가 게이트웨이 타임아웃에 끊기지 않도록 백그라운드 동기화, 상태 폴링, `/api/branches` 900초 timeout을 추가.
 - **v5.13.49**: 아산 연간실적 기본 조회를 Supabase 원장 전용으로 정리하고, HTML 에러 응답이 JSON 파싱 오류로 보이지 않도록 보강.
 - **v5.13.48**: 아산 연간실적 rel_path를 배차판/선적관리와 같은 `/아산지점/...` 규칙으로 통일하고 legacy `/B_총무/...` 자동 보정을 추가.
@@ -59,10 +60,10 @@
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 29개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 30개 통과
 - `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 38개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
-- `node --test web/tests/asanAnnualPerformance.test.mjs`: 9개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 39개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (샌드박스 외부 fetch EACCES 로그는 기존 외부 네트워크 제한)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
@@ -73,7 +74,7 @@
 - `/employees/news` 송미관: 뉴스 페이지 하단의 숨은 트리거로 열리는 모달.
 
 ## IN-PROGRESS
-- 아산 연간실적: 운영 DB SQL 적용 완료. v5.13.50 재배포 후 `NAS 동기화`를 누르면 백그라운드로 최초 적재되고 완료 시 Supabase 원장이 표시되어야 함.
+- 아산 연간실적: 운영 DB SQL 적용 완료. v5.13.51 재배포 후 `NAS 동기화`를 누르면 백그라운드로 최초 적재되고 완료 시 Supabase 원장이 표시되어야 함.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

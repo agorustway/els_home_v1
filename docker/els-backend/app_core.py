@@ -61,6 +61,7 @@ last_mtime_cache = {}
 last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
 asan_sync_start_time = 0
+dispatch_settings_cache = {"data": None, "loaded_at": 0.0}
 
 def _env_int(name, default, minimum=0):
     try:
@@ -68,12 +69,13 @@ def _env_int(name, default, minimum=0):
     except (TypeError, ValueError):
         return default
 
-ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 15, 5)
+ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 60, 15)
 ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
-ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 30, 10)
+ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
+ASAN_DISPATCH_SETTINGS_CACHE_SECONDS = _env_int("ASAN_DISPATCH_SETTINGS_CACHE_SECONDS", 300, 30)
 
 dispatch_sync_gate = StableFileSyncGate(
     quiet_seconds=ASAN_DISPATCH_SYNC_QUIET_SECONDS,
@@ -86,11 +88,35 @@ shipping_sync_gate = StableFileSyncGate(
 
 register_asan_performance_routes(app, supabase, KST)
 
+
+def get_asan_dispatch_settings(force=False):
+    now_ts = time.time()
+    cached = dispatch_settings_cache.get("data")
+    if (
+        not force
+        and cached
+        and now_ts - float(dispatch_settings_cache.get("loaded_at") or 0) < ASAN_DISPATCH_SETTINGS_CACHE_SECONDS
+    ):
+        return cached
+
+    try:
+        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
+        settings = res.data
+        if settings:
+            dispatch_settings_cache["data"] = settings
+            dispatch_settings_cache["loaded_at"] = now_ts
+        return settings
+    except Exception as exc:
+        if cached:
+            app.logger.warning(f"[자동동기화] 배차 설정 조회 실패, 캐시 사용: {exc}")
+            return cached
+        raise
+
+
 def sync_asan_dispatch_python(force=False):
     global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
     if not supabase: return
     
-    import time
     # 중복 실행 방지 및 좀비 락 해제 (30분 초과 시)
     if asan_sync_lock.locked():
         if time.time() - asan_sync_start_time > 1800:
@@ -105,9 +131,9 @@ def sync_asan_dispatch_python(force=False):
     asan_sync_start_time = time.time()
 
     try:
-        app.logger.info("[자동동기화] 아산 배차판 동기화 프로세스 시작 (Force=%s)...", force)
-        res = supabase.from_("branch_dispatch_settings").select("*").eq("branch_id", "asan").single().execute()
-        settings = res.data
+        if force:
+            app.logger.info("[자동동기화] 아산 배차판 수동 동기화 시작...")
+        settings = get_asan_dispatch_settings(force=force)
         if not settings: 
             app.logger.error("[자동동기화] 아산 배차 설정을 찾을 수 없습니다.")
             return
@@ -128,12 +154,14 @@ def sync_asan_dispatch_python(force=False):
             mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
             cache_mtime = last_mtime_cache.get(dtype)
             file_signature = (mtime_ts, file_stat.st_size)
-            
-            app.logger.info(f"[자동동기화] {dtype} 체크 - 경로: {full_path}, 파일수정일: {mtime}, 캐시: {cache_mtime}")
-            
+
             if not force and cache_mtime == mtime:
-                # app.logger.info(f"[자동동기화] {dtype} 변경 없음.")
                 continue
+
+            if cache_mtime:
+                app.logger.info(f"[자동동기화] {dtype} 파일 변경 감지: 이전={cache_mtime}, 현재={mtime}")
+            else:
+                app.logger.info(f"[자동동기화] {dtype} 최초 동기화 확인: 파일수정일={mtime}")
 
             decision = dispatch_sync_gate.check(f"dispatch:{dtype}", file_signature, force=force)
             if not decision.ready:

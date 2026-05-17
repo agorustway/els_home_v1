@@ -525,7 +525,7 @@ def _search_filter_value(term):
 def register_asan_performance_routes(app, supabase, kst):
     cache = {}
     state = {"db_available": True, "last_sync_error": None}
-    poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 120, 30)
+    poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
