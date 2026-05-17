@@ -1362,7 +1362,7 @@ async function run() {
 
   if (!args['dry-run']) {
     supabase = createSupabaseClient();
-    if (!args.force) {
+    if (!args.force && !args['summary-only']) {
       currentMeta = await readPerformanceMeta(supabase, requestedKey);
       if (currentMeta?.file_modified_at && timestampsClose(currentMeta.file_modified_at, fileModifiedAt)) {
         console.log(JSON.stringify({
