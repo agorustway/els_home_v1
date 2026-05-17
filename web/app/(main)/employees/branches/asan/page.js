@@ -330,6 +330,7 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
+    const topBarRef = useRef(null);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
 
     useEffect(() => {
@@ -712,7 +713,8 @@ function AsanDispatchContent() {
         setMainView('grid');
         setDisplayLimit(100);
         requestAnimationFrame(() => {
-            containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (containerRef.current) containerRef.current.scrollTop = 0;
+            (topBarRef.current || containerRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }, []);
 
@@ -778,7 +780,7 @@ function AsanDispatchContent() {
     return (
         <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
             {/* 상단 바: 뷰전환 + 검색 + 기존 헤더 기능 병합 */}
-            <div className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div ref={topBarRef} className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div className={styles.topBarLeft}>
                         <div className={styles.viewSwitch}>
@@ -853,6 +855,7 @@ function AsanDispatchContent() {
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
                     dateControlsSlot={dateControls}
                     onOpenDailyGrid={handleOpenDailyGrid}
+                    onViewTypeChange={setViewType}
                     onIssueSelect={handleDashboardIssueSelect}
                 />
             ) : (

@@ -420,7 +420,13 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   );
 
   assert.match(dashboardSource, /onOpenDailyGrid = null/);
+  assert.match(dashboardSource, /onViewTypeChange = null/);
+  assert.match(dashboardSource, /className=\{styles\.mobileScopeActionBar\}/);
   assert.match(dashboardSource, /className=\{styles\.mobileDateActionBar\}/);
+  assert.match(dashboardSource, /통합현황/);
+  assert.match(dashboardSource, /글로비스 KD 외/);
+  assert.match(dashboardSource, /모비스 AS/);
+  assert.match(dashboardSource, /onClick=\{\(\) => onViewTypeChange\(type\)\}/);
   assert.match(dashboardSource, /고객사 기준/);
   assert.match(dashboardSource, /실행사 기준/);
   assert.match(dashboardSource, /배차판 검색/);
@@ -428,14 +434,19 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   assert.match(dashboardSource, /title="실행사\(협력업체\) 기준"/);
   assert.match(dashboardSource, /handleViewModeChange\('customer'\)/);
   assert.match(dashboardSource, /handleViewModeChange\('dispatcher'\)/);
-  assert.match(dashboardSource, /mobileDateActionPrimary/);
+  assert.doesNotMatch(dashboardSource, /mobileDateActionPrimary/);
   assert.match(pageSource, /const handleOpenDailyGrid = useCallback/);
+  assert.match(pageSource, /const topBarRef = useRef\(null\);/);
   assert.match(pageSource, /onOpenDailyGrid=\{handleOpenDailyGrid\}/);
+  assert.match(pageSource, /onViewTypeChange=\{setViewType\}/);
   assert.match(pageSource, /setMainView\('grid'\)/);
-  assert.match(css, /\.mobileDateActionBar\s*{[\s\S]*display: none;/);
-  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileDateActionBar\s*{[\s\S]*display: grid;/);
+  assert.match(pageSource, /containerRef\.current\.scrollTop = 0/);
+  assert.match(pageSource, /\(topBarRef\.current \|\| containerRef\.current\)\?\.scrollIntoView/);
+  assert.match(css, /\.mobileDateActionBar,[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*display: none;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileDateActionBar,[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*display: grid;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*background: #f8fafc;/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
-  assert.match(css, /\.mobileDateActionBar \.mobileDateActionPrimary\s*{[\s\S]*background: #1d4ed8;/);
+  assert.doesNotMatch(css, /mobileDateActionPrimary/);
 });
 
 test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를 제외한다', () => {

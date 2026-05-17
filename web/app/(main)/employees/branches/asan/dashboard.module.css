@@ -520,11 +520,13 @@
     padding: 2px 0 0;
 }
 
-.mobileDateActionBar {
+.mobileDateActionBar,
+.mobileScopeActionBar {
     display: none;
 }
 
-.mobileDateActionBar button {
+.mobileDateActionBar button,
+.mobileScopeActionBar button {
     border: 1px solid #2563eb;
     border-radius: 7px;
     background: #fff;
@@ -536,17 +538,11 @@
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
 }
 
-.mobileDateActionBar .mobileDateActionActive {
+.mobileDateActionBar .mobileDateActionActive,
+.mobileScopeActionBar .mobileDateActionActive {
     background: #2563eb;
     color: #fff;
     box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
-}
-
-.mobileDateActionBar .mobileDateActionPrimary {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
-    color: #fff;
-    box-shadow: 0 4px 10px rgba(29, 78, 216, 0.18);
 }
 
 .analysisRow {
@@ -1956,7 +1952,8 @@
         gap: 4px;
     }
 
-    .mobileDateActionBar {
+    .mobileDateActionBar,
+    .mobileScopeActionBar {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
@@ -1966,11 +1963,22 @@
         background: #eff6ff;
     }
 
-    .mobileDateActionBar button {
+    .mobileScopeActionBar {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+    .mobileDateActionBar button,
+    .mobileScopeActionBar button {
         min-height: 34px;
         padding: 6px 4px;
         font-size: 0.68rem;
         white-space: nowrap;
+    }
+
+    .mobileScopeActionBar button {
+        font-size: 0.64rem;
+        letter-spacing: 0;
     }
 
     .trendPanel {

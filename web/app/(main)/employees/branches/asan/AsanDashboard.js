@@ -58,6 +58,7 @@ export default function AsanDashboard({
     selectedMonth = '',
     dateControlsSlot = null,
     onOpenDailyGrid = null,
+    onViewTypeChange = null,
     onIssueSelect = null,
 }) {
     const [viewMode, setViewMode] = useState('customer');
@@ -198,6 +199,24 @@ export default function AsanDashboard({
 
             {dateControlsSlot && (
                 <div className={styles.dateBridge}>
+                    {onViewTypeChange && (
+                        <div className={styles.mobileScopeActionBar} aria-label="모바일 현황 범위 선택">
+                            {[
+                                ['integrated', '통합현황'],
+                                ['glovis', '글로비스 KD 외'],
+                                ['mobis', '모비스 AS'],
+                            ].map(([type, label]) => (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    className={viewType === type ? styles.mobileDateActionActive : ''}
+                                    onClick={() => onViewTypeChange(type)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     {onOpenDailyGrid && (
                         <div className={styles.mobileDateActionBar} aria-label="모바일 현황판 빠른 전환">
                             <button
@@ -221,7 +240,6 @@ export default function AsanDashboard({
                             <button
                                 type="button"
                                 title="선택일 배차판 검색"
-                                className={styles.mobileDateActionPrimary}
                                 onClick={onOpenDailyGrid}
                             >
                                 배차판 검색

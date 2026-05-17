@@ -1,4 +1,19 @@
 
+## [2026-05-18] 아산 배차 모바일 중간 액션 버튼 정리 (v5.13.96)
+### 핵심
+- 현황판 중간 모바일 액션에 `통합현황`, `글로비스 KD 외`, `모비스 AS` 범위 선택 버튼을 추가했습니다.
+- `배차판 검색`은 고객사/실행사 기준 선택처럼 보이지 않도록 파란 배경을 제거하고 흰색 보조 버튼 톤으로 낮췄습니다.
+- 모바일에서 `배차판 검색`으로 전환할 때 컨테이너 내부 스크롤을 초기화하고 상단 카드 기준으로 이동해 중간 위치에 걸리지 않도록 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] AI 어시스턴트 삭제 후 유령 목록 재표시 차단 (v5.13.95)
 ### 핵심
 - 전체 삭제를 누르는 즉시 `els_ai_sessions_cleared_at` 로컬 삭제 마커를 저장하고, UI/로컬 캐시를 먼저 빈 대화로 전환하도록 변경했습니다.

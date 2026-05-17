@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.95 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.96 / APK v5.11.12)
 
-> 최신 업데이트: AI 어시스턴트 전체 대화 삭제 후 브라우저 로컬 캐시나 늦은 DB 응답이 예전 대화목록을 다시 표시하지 못하도록 로컬 삭제 마커를 추가했습니다.
+> 최신 업데이트: 아산 배차 현황판 모바일 중간 액션에 현황 범위 선택을 추가하고, 배차판 검색 진입 시 상단 카드부터 보이도록 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.95
+- **웹 버전**: v5.13.96
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -14,6 +14,7 @@
   - `운송사(명의)=ELS솔루션`과 `ELS솔루션+직계약`을 외부 운송사와 분리해 별도 분석.
   - 상세 원장 AND 검색은 정확 count 생략 경로일 때 `301+`처럼 추정 총건수로 표시.
   - AI 어시스턴트 전체 삭제 후 늦은 자동저장 POST와 브라우저 로컬 캐시가 예전 대화목록을 되살리지 못하도록 서버/로컬 양쪽에서 방어.
+  - 모바일 배차 현황판 중간 액션은 `통합현황/글로비스 KD 외/모비스 AS`와 `고객사/실행사/배차판 검색` 2줄로 제공.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
 
 ## ACTIVE SYSTEMS
@@ -41,6 +42,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.96**: 아산 배차 모바일 중간 액션에 현황 범위 선택 3버튼을 추가하고, 배차판 검색 버튼은 흰색 보조 톤으로 낮춤. 배차판 진입 스크롤은 상단 카드 기준으로 보정.
 - **v5.13.95**: AI 어시스턴트 삭제 시 `els_ai_sessions_cleared_at` 로컬 삭제 마커를 저장하고, 해당 시점보다 오래된 로컬/DB 대화 스냅샷은 화면에 표시하지 않도록 보강.
 - **v5.13.94**: 아산 연간실적 상단에 주식형 매출·매입 장기 흐름과 평균선을 추가. 전체/최근 12개월/36개월/5년/최근 연도/직접 선택 조사범위로 KPI·월별·연도별·직계약·주차 분석을 재계산하고, `영업넘버` 기준 차량별 손익 summary를 추가.
 - **v5.13.93**: AI 어시스턴트 대화 전체 삭제 시 예약/진행 중 자동저장을 차단하고, `/api/chat/memory`가 삭제 마커보다 오래된 저장 스냅샷을 무시하도록 보강. 삭제 후 빈 마커는 지연 purge로 정리.
@@ -60,10 +62,11 @@
 ## VERIFICATION
 - `node --test web/tests/chatMemory.test.mjs`: 7개 통과
 - `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - 운영 Supabase 검증: `vehiclePerformance` 80개 차량, 최상위 `부산98사1786` 손익률 15.74%
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
-- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
 - 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
