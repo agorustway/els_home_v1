@@ -1,4 +1,17 @@
 
+## [2026-05-17] 아산 선적관리 모바일 빠른 필터 폭 고정 (v5.13.84)
+### 핵심
+- 모바일 날짜 필터 영역에서 미선적/자체보관 버튼을 `quickFilterGroup`으로 묶었습니다.
+- 모바일에서는 해당 그룹을 `repeat(2, minmax(0, 1fr))` 그리드로 렌더링해 `필터해제`/`자체보관`처럼 글자 수가 달라도 두 버튼 가로폭이 동일하게 유지됩니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 문자 오더 제외 및 기준차이 칩 색상 보정 (v5.13.83)
 ### 핵심
 - `오더(계)`/`오더`/`계`/`수량`이 순수 숫자가 아닌 행은 필터 합계, 기간 카드, 기준차이, 실행사 기준 분석에서 제외했습니다.

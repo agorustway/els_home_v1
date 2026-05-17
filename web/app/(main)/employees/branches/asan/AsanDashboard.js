@@ -539,6 +539,7 @@ function TrendPanel({ items, title }) {
         if (value < 0) return styles.trendLensDown;
         return '';
     };
+    const getPointToneClass = (point) => getToneClass(point?.delta || 0);
     const getLensTransform = (point) => {
         const x = point.x < 150 ? '0' : point.x > width - 150 ? '-100%' : '-50%';
         const y = point.y < 105 ? '14px' : 'calc(-100% - 16px)';
@@ -578,6 +579,7 @@ function TrendPanel({ items, title }) {
                     viewBox={`0 0 ${width} ${height}`}
                     role="img"
                     aria-label={title}
+                    onPointerDown={handlePointerMove}
                     onPointerMove={handlePointerMove}
                     onPointerLeave={() => setHoverPoint(null)}
                 >
@@ -653,15 +655,18 @@ function TrendPanel({ items, title }) {
                         }}
                     >
                         <strong>{hoverPoint.label}</strong>
-                        <span>총량 <b>{formatDecimal(hoverPoint.total)}</b></span>
-                        <span>
-                            전영업일
+                        <span className={styles.trendLensMetric}>
+                            <em>총량</em>
+                            <b className={getPointToneClass(hoverPoint)}>{formatDecimal(hoverPoint.total)}</b>
+                        </span>
+                        <span className={styles.trendLensMetric}>
+                            <em>전영업일</em>
                             <b className={getToneClass(hoverPoint.delta)}>
                                 {hoverPoint.delta >= 0 ? '+' : ''}{formatDecimal(hoverPoint.delta)}
                             </b>
                         </span>
-                        <span>
-                            평균 대비
+                        <span className={styles.trendLensMetric}>
+                            <em>평균 대비</em>
                             <b className={getToneClass(hoverPoint.total - average)}>
                                 {hoverPoint.total - average >= 0 ? '+' : ''}{formatDecimal(hoverPoint.total - average)}
                             </b>
@@ -884,7 +889,10 @@ function MiniSplitCard({ data, title }) {
                     <div key={name} className={styles.splitRow}>
                         <div className={styles.splitMeta}>
                             <span title={name}>{name}</span>
-                            <b>{formatQty(value)}</b>
+                            <b>
+                                {formatQty(value)}
+                                <small>{getPct(value, total)}%</small>
+                            </b>
                         </div>
                         <div className={styles.splitTrack}>
                             <span

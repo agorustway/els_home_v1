@@ -1255,22 +1255,24 @@ export default function AsanShipping() {
                             </button>
                         ))}
                     </div>
-                    <button
-                        type="button"
-                        className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
-                        onClick={() => setUnshippedOnly(prev => !prev)}
-                        title={unshippedOnly ? '미선적 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '미선적 행만 표시합니다.'}
-                    >
-                        {unshippedOnly ? '필터해제' : '미선적'}
-                    </button>
-                    <button
-                        type="button"
-                        className={`${styles.quickFilterBtn} ${storageOnly ? styles.quickFilterBtnActive : ''}`}
-                        onClick={() => setStorageOnly(prev => !prev)}
-                        title={storageOnly ? '자체보관 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '자체보관 행만 표시합니다.'}
-                    >
-                        {storageOnly ? '필터해제' : '자체보관'}
-                    </button>
+                    <div className={styles.quickFilterGroup}>
+                        <button
+                            type="button"
+                            className={`${styles.quickFilterBtn} ${unshippedOnly ? styles.quickFilterBtnActive : ''}`}
+                            onClick={() => setUnshippedOnly(prev => !prev)}
+                            title={unshippedOnly ? '미선적 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '미선적 행만 표시합니다.'}
+                        >
+                            {unshippedOnly ? '필터해제' : '미선적'}
+                        </button>
+                        <button
+                            type="button"
+                            className={`${styles.quickFilterBtn} ${storageOnly ? styles.quickFilterBtnActive : ''}`}
+                            onClick={() => setStorageOnly(prev => !prev)}
+                            title={storageOnly ? '자체보관 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '자체보관 행만 표시합니다.'}
+                        >
+                            {storageOnly ? '필터해제' : '자체보관'}
+                        </button>
+                    </div>
                     <span className={styles.resultCountText} title="현재 검색/필터 적용 후 화면 조회 건수">
                         전체 {serverTotalRows.toLocaleString()}건 / 조회 {totalRows.toLocaleString()}건
                     </span>

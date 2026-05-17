@@ -786,21 +786,36 @@
     font-size: 0.74rem;
 }
 
-.trendLens span {
+.trendLensMetric {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 86px;
+}
+
+.trendLensMetric em {
+    font-style: normal;
     color: #475569;
 }
 
 .trendLens b {
     color: #0f172a;
     font-size: 0.74rem;
+    min-width: 32px;
+    padding: 1px 4px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
 }
 
 .trendLens b.trendLensUp {
     color: #dc2626;
+    background: #fee2e2;
 }
 
 .trendLens b.trendLensDown {
     color: #2563eb;
+    background: #dbeafe;
 }
 
 .trendFooter {
@@ -1187,8 +1202,17 @@
 }
 
 .splitMeta b {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
     color: #0f172a;
     font-variant-numeric: tabular-nums;
+}
+
+.splitMeta b small {
+    color: #94a3b8;
+    font-size: 0.66rem;
+    font-weight: 900;
 }
 
 .splitTrack {
