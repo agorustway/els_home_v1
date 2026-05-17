@@ -1,4 +1,29 @@
 
+## [2026-05-17] 아산 연간실적 직접 주입 NAS 경로 정정 (v5.13.56)
+### 핵심
+- 직접 주입 스크립트의 기본 파일 후보 1순위를 NAS 실제 경로 `/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 정정했습니다.
+- DB에 저장되는 논리 경로는 웹 조회 기준과 동일한 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`를 유지합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+## [2026-05-17] 아산 연간실적 Supabase 직접 주입 스크립트 추가 (v5.13.55)
+### 핵심
+- NAS 동기화 중 Supabase statement timeout이 발생할 때 우회할 수 있도록 로컬 Excel 파일을 `branch_performance_files/rows`에 직접 적재하는 운영 스크립트를 추가했습니다.
+- 기존 원장 행은 삭제하지 않고 `is_current=false`와 `superseded_by_excel`/`removed_from_excel`/`duplicate_current_retired` 상태로 전환한 뒤 신규 스냅샷을 삽입합니다.
+- 기본 파일 경로는 `A:\B_총무\C_마감\합계연간실적\합계연간실적.xlsx`, DB 논리 경로는 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`입니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 DB 조회 NAS 재기동 내성 보강 (v5.13.54)
 ### 핵심
 - 원인 확인: 배차판은 Next API가 Supabase를 직접 읽고, 선적관리/실적관리는 NAS Core 프록시로 GET 조회해 도커 빌드/재기동 중 조회가 끊겼습니다.
