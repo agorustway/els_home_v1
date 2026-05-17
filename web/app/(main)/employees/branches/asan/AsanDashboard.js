@@ -7,6 +7,7 @@ import {
     buildAsanDashboardScope,
     buildAsanDashboardWeekdayComparison,
     buildSelectableAsanDashboardPeriods,
+    toChartTotalMap,
     toSortedChartEntries,
     toSortedMapEntries,
 } from '@/utils/asanDashboardView.mjs';
@@ -112,6 +113,9 @@ export default function AsanDashboard({
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);
     }, [dashboardData, activeChartMode]);
+    const workplaceShareMap = useMemo(() => {
+        return toChartTotalMap(dashboardData.activeScope.chartAggs['작업지']);
+    }, [dashboardData]);
     const summaryPeriods = useMemo(
         () => dashboardData.periods.filter((period) => period.key !== 'total'),
         [dashboardData.periods],
@@ -181,6 +185,7 @@ export default function AsanDashboard({
 
             <div className={styles.mixModules}>
                 <ShareDonut data={dashboardData.activeScope.pieAggs.shipper} title="화주 점유율" />
+                <ShareDonut data={workplaceShareMap} title="상차지별 비율" />
                 <MiniSplitCard data={dashboardData.activeScope.pieAggs.direction} title="수출입 구분" />
                 <MiniSplitCard data={dashboardData.activeScope.pieAggs.container} title="컨테이너 TYPE" />
             </div>
@@ -371,7 +376,7 @@ function PeriodCard({ period, chartMode, onSelect }) {
                 )}
                 {focusPct > 0 && (
                     <span title="현재 카드 기준에서 1위 항목 수량을 전체 수량으로 나눈 비율입니다.">
-                        TOP1 점유: {focusPct}%
+                        톱1점유: {focusPct}%
                     </span>
                 )}
             </div>
@@ -685,7 +690,10 @@ function ShareDonut({ data, title }) {
                     className={styles.donutCircle}
                     style={{ background: `conic-gradient(${gradientParts.join(', ')})` }}
                 >
-                    <span>{getPct(top[0]?.[1] || 0, total)}%</span>
+                    <div className={styles.donutCenter}>
+                        <span>{getPct(top[0]?.[1] || 0, total)}%</span>
+                        <small>톱1점유</small>
+                    </div>
                 </div>
                 <div className={styles.pieLegend}>
                     {top.map(([name, value], idx) => (

@@ -682,6 +682,12 @@ export function toSortedChartEntries(chartAgg = {}, limit = 0) {
   return limit > 0 ? entries.slice(0, limit) : entries;
 }
 
+export function toChartTotalMap(chartAgg = {}, limit = 0) {
+  return Object.fromEntries(
+    toSortedChartEntries(chartAgg, limit).map((entry) => [entry.name, entry.total]),
+  );
+}
+
 export function toSortedMapEntries(map = {}, limit = 0) {
   const entries = Object.entries(map || {})
     .filter(([, value]) => value > 0)

@@ -6,6 +6,7 @@ import {
   buildAsanDashboardTimeline,
   buildAsanDashboardWeekdayComparison,
   buildSelectableAsanDashboardPeriods,
+  toChartTotalMap,
   toSortedChartEntries,
 } from '../utils/asanDashboardView.mjs';
 
@@ -82,6 +83,21 @@ test('아산 현황판 FEU는 20FT 기준으로 TYPE별 환산한다', () => {
 
   assert.equal(scope.total, 4);
   assert.equal(scope.feuTotal, 7.25);
+});
+
+test('아산 현황판 작업지별 비율용 차트 집계를 맵으로 변환한다', () => {
+  const scope = buildAsanDashboardScope({
+    rows: sourceItems.flatMap((item) => item.data),
+    headers,
+    viewType: 'integrated',
+    viewMode: 'customer',
+  });
+
+  const workplaceMap = toChartTotalMap(scope.chartAggs['작업지']);
+
+  assert.equal(workplaceMap['글로비스1공장'], 17);
+  assert.equal(workplaceMap['모비스천안'], 3);
+  assert.equal(workplaceMap['KCC글라스'], 5);
 });
 
 test('아산 현황판 실행사 기준은 지역 칸의 업체명과 대수를 읽는다', () => {

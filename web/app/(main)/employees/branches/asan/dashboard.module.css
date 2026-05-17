@@ -335,7 +335,7 @@
 
 .mixModules {
     display: grid;
-    grid-template-columns: minmax(320px, 1.2fr) minmax(190px, 0.7fr) minmax(190px, 0.7fr);
+    grid-template-columns: minmax(290px, 1.05fr) minmax(290px, 1.05fr) minmax(170px, 0.6fr) minmax(170px, 0.6fr);
     gap: 12px;
 }
 
@@ -925,12 +925,26 @@
     box-shadow: inset 0 0 0 1px #e2e8f0;
 }
 
-.donutCircle span {
+.donutCenter {
     position: relative;
     z-index: 1;
+    display: grid;
+    place-items: center;
+    gap: 1px;
+    line-height: 1.05;
+}
+
+.donutCenter span {
     font-size: 1rem;
     color: #0f172a;
     font-weight: 950;
+}
+
+.donutCenter small {
+    font-size: 0.55rem;
+    color: #94a3b8;
+    font-weight: 900;
+    letter-spacing: 0;
 }
 
 .splitStack {

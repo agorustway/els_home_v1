@@ -1,4 +1,18 @@
 
+## [2026-05-17] 아산 배차 점유율 카드 상차지 비율 추가 (v5.13.70)
+### 핵심
+- 화주 점유율 오른쪽에 `상차지별 비율` 도넛 카드를 추가해 작업지/상차지 관점의 톱 항목 점유를 바로 볼 수 있게 했습니다.
+- 화주/상차지 도넛 중앙의 큰 퍼센트는 유지하고, 아래 작은 회색 라벨을 `톱1점유`로 통일했습니다.
+- 기간 카드 하단 칩도 `톱1점유: N%` 형식으로 맞춰 같은 의미를 같은 말로 읽히게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "utils/asanDashboardView.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 선적관리 날짜 필터 컬럼 후보 정리 (v5.13.69)
 ### 핵심
 - 선적관리 날짜 필터 드롭다운이 헤더명 키워드만 보고 후보를 만들면서 `KD선적확정모선`, `AS선적확정모선`처럼 월 기준 필터에 맞지 않는 컬럼까지 섞이던 문제를 정리했습니다.
@@ -14,7 +28,7 @@
 
 ## [2026-05-17] 아산 배차 분석 카드·추세·요일 작업지 비중 보강 (v5.13.68)
 ### 핵심
-- 기간 카드 하단 칩을 `수출: N van`, `FEU: N`, `TOP1 점유: N%`로 통일해 카드 기준 수량 해석을 명확히 했습니다.
+- 기간 카드 하단 칩을 `수출: N van`, `FEU: N`, `톱1점유: N%`로 통일해 카드 기준 수량 해석을 명확히 했습니다.
 - 주간 선택 라벨과 전체 탭 주간 버튼에 `5/11~5/17 (05월 3주차)` 형태의 주차 정보를 함께 표시합니다.
 - 일자별 추세는 KST 오늘 이후 사전기입 데이터를 제외하고, 마우스/터치 이동 위치에 맞춰 돋보기형 포커스 수치를 표시합니다.
 - 요일별 비교 패널은 주간을 기본값으로 바꾸고, 요일별 총량 안에서 작업지별 비중을 stacked bar와 hover 설명으로 보여줍니다.
@@ -35,7 +49,7 @@
 - 전체 탭의 월간 필터 아래에 주간 버튼을 추가해 특정 주차만 바로 합산 조회할 수 있게 했습니다.
 - 전체 탭 Excel export도 `weekStart/weekEnd` 범위를 받아 주간 필터 결과와 맞게 내려가도록 보강했습니다.
 - 추세 그래프 높이를 줄이고 옆에 `요일별 오더 비교` 패널을 배치했습니다. 월간은 요일별 일평균, 주간은 선택 주 실제 오더를 보여줍니다.
-- 기간 카드의 컨테이너 TYPE 칩은 20FT 기준 환산 `FEU`로 변경했고, `집중`은 의미가 분명한 `TOP1 점유`로 바꿨습니다.
+- 기간 카드의 컨테이너 TYPE 칩은 20FT 기준 환산 `FEU`로 변경했고, `집중`은 의미가 분명한 `톱1점유`로 바꿨습니다.
 ### 검증
 - `node --test web/tests/asanDashboardView.test.mjs`: 8개 통과
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
@@ -134,7 +148,7 @@
 ## [2026-05-17] 아산 배차 현황판 선택형 분석 대시보드 개편 (v5.13.60)
 ### 핵심
 - 거의 쓰지 않던 데이터 요약 트리 패널을 제거하고, 일별/주별/월별/전체 선택 카드로 총량 확인 흐름을 바꿨습니다.
-- 각 기간 카드는 총계, 전기간 대비 증감, 오더/배차/언매치, 상위 항목, 수출입/TYPE, TOP1 점유를 압축 표시합니다.
+- 각 기간 카드는 총계, 전기간 대비 증감, 오더/배차/언매치, 상위 항목, 수출입/TYPE, 톱1점유를 압축 표시합니다.
 - 화주 점유율은 도넛 차트로 유지하고, 수출입/TYPE은 단일 원형 차트 대신 작은 막대 지표로 전환했습니다.
 - 기존 비중 차트는 유지하면서 `고객사별` 탭을 추가했고, 실행사 기준에서도 고객사/작업지/업체명 TOP 구분표를 제공합니다.
 - 집계 규칙을 `web/utils/asanDashboardView.mjs`로 분리해 선택 기간 계산과 실행사 지역칸 파싱을 테스트 가능하게 했습니다.
