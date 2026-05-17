@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.92 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.93 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 원장 상세 검색의 추정 총건수 표기를 보강하고, 웹 디버그에서 운영 summary·직계약 세그먼트·원장 드릴다운을 재검증했습니다.
+> 최신 업데이트: AI 어시스턴트 전체 대화 삭제가 DB 저장 레이스에 다시 살아나지 않도록 삭제 마커·stale POST 차단·최종 purge 흐름을 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.92
+- **웹 버전**: v5.13.93
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -12,6 +12,7 @@
   - 검증값: current snapshot 368,617행, 월별 summary 불일치 0건, 매출/매입/손익 raw 재집계 차이 0원.
   - `운송사(명의)=ELS솔루션`과 `ELS솔루션+직계약`을 외부 운송사와 분리해 별도 분석.
   - 상세 원장 AND 검색은 정확 count 생략 경로일 때 `301+`처럼 추정 총건수로 표시.
+  - AI 어시스턴트 전체 삭제 후 늦은 자동저장 POST가 `ai_chat_memory`를 되살리지 못하도록 삭제 판정을 서버에서 방어.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
 
 ## ACTIVE SYSTEMS
@@ -39,6 +40,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.93**: AI 어시스턴트 대화 전체 삭제 시 예약/진행 중 자동저장을 차단하고, `/api/chat/memory`가 삭제 마커보다 오래된 저장 스냅샷을 무시하도록 보강. 삭제 후 빈 마커는 지연 purge로 정리.
 - **v5.13.92**: 아산 연간실적/선적관리 DB 페이징에서 정확 count를 생략한 검색 결과는 `+` 표기로 추정 총건수를 표시. 웹 디버그에서 368,617행 summary, ELS솔루션 직계약 드릴다운, 2024-01/2025-01 검증값을 재확인.
 - **v5.13.91**: 아산 연간실적 10년 원장 분석 워크벤치 확장. 월/주차/요일/ELS솔루션 직계약 세그먼트와 검증·근거 탭 추가, Supabase summary 고급 재집계 SQL 반영.
 - **v5.13.90**: 아산 배차 요일별 월간 지표명을 `월기준 주간평균합`으로 정정하고 모바일 날짜탭 시작점 버튼과 짧은 주차 라벨 추가.
@@ -52,9 +54,10 @@
 - **v5.13.82**: 아산 선적관리 미선적/자체보관 빠른 필터가 `필터해제` 상태일 때 hover 설명에 원래 필터명을 표시.
 - **v5.13.81**: 아산 배차 지역칸 `자차3.이지5` 형태의 점 구분자 파싱을 보강하고 기준차이 원인 목록을 일/주/月 선택식으로 정리.
 - **v5.13.80**: 아산 선적관리 월 필터 기본값을 해제해 첫 진입은 100건 페이징만 유지하고, 필터 동작 시에만 전체 기준 로드를 수행.
-- **v5.13.79**: 연간실적 current 스냅샷 고정으로 중복 표시를 막고 월별/구분별 분석 패널을 확장.
 
 ## VERIFICATION
+- `node --test web/tests/chatMemory.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과

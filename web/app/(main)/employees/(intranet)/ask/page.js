@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { hasUserConversation, optimizeSessionsForStorage } from '@/utils/chatMemory.mjs';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
@@ -15,22 +16,6 @@ const QUICK_PROMPTS = [
 ];
 
 const LS_KEY = 'els_ai_sessions';
-
-function optimizeSessionsForStorage(data) {
-    return data.map(s => ({
-        ...s,
-        messages: s.messages.map(m => {
-            if (m.attachments && m.attachments.length > 0) {
-                return { ...m, attachments: m.attachments.map(att => ({ ...att, data: undefined })) };
-            }
-            return m;
-        })
-    }));
-}
-
-function hasUserConversation(data) {
-    return data.some(s => s.messages?.some(m => m.role === 'user'));
-}
 
 function TypingIndicator() {
     return (
@@ -225,6 +210,8 @@ export default function AskPage() {
     const fileInputRef = useRef(null);
     const abortRef = useRef(null);
     const saveTimerRef = useRef(null);
+    const memorySaveControllerRef = useRef(null);
+    const memoryDeleteLockRef = useRef(false);
     const sessionsRef = useRef(sessions);
 
     const DEFAULT_INIT_MSG = {
@@ -266,14 +253,12 @@ export default function AskPage() {
 
     const clearAllHistory = async () => {
         if (!window.confirm('모든 대화 기록을 일괄 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+        memoryDeleteLockRef.current = true;
         clearPendingMemorySave();
         try {
-            const res = await fetch('/api/chat/memory', { method: 'DELETE', cache: 'no-store' });
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || `삭제 실패 (${res.status})`);
-            }
+            await deleteRemoteMemory();
         } catch(e) {
+            memoryDeleteLockRef.current = false;
             alert(`DB 대화 기록 삭제에 실패했습니다.\n${e.message}`);
             return;
         }
@@ -283,6 +268,7 @@ export default function AskPage() {
         setSessions(nextSessions);
         setActiveId(nextSessions[0].id);
         saveToLocal(nextSessions);
+        scheduleDeleteVerification();
     };
 
     // ─── localStorage 헬퍼 (동기적 · 즉시 · 확실) ────────────────────
@@ -309,19 +295,49 @@ export default function AskPage() {
             clearTimeout(saveTimerRef.current);
             saveTimerRef.current = null;
         }
+        if (memorySaveControllerRef.current) {
+            memorySaveControllerRef.current.abort();
+            memorySaveControllerRef.current = null;
+        }
     }, []);
+
+    const deleteRemoteMemory = useCallback(async ({ purge = false } = {}) => {
+        const res = await fetch(purge ? '/api/chat/memory?purge=1' : '/api/chat/memory', {
+            method: 'DELETE',
+            cache: 'no-store'
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `삭제 실패 (${res.status})`);
+        }
+        return res.json().catch(() => ({}));
+    }, []);
+
+    const scheduleDeleteVerification = useCallback(() => {
+        [
+            { delay: 600, purge: false },
+            { delay: 2000, purge: false },
+            { delay: 10000, purge: true }
+        ].forEach(({ delay, purge }) => {
+            window.setTimeout(() => {
+                if (!memoryDeleteLockRef.current) return;
+                if (hasUserConversation(sessionsRef.current)) return;
+                deleteRemoteMemory({ purge }).catch((e) => {
+                    console.warn('[ELS-AI] 삭제 후 검증 삭제 실패:', e.message);
+                });
+            }, delay);
+        });
+    }, [deleteRemoteMemory]);
 
     const replaceMemoryWithSessions = useCallback(async (nextSessions) => {
         const optimized = optimizeSessionsForStorage(nextSessions);
 
         if (!hasUserConversation(optimized)) {
-            const res = await fetch('/api/chat/memory', { method: 'DELETE', cache: 'no-store' });
-            if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || `삭제 실패 (${res.status})`);
-            }
+            await deleteRemoteMemory();
             return;
         }
+
+        if (memoryDeleteLockRef.current) return;
 
         const res = await fetch('/api/chat/memory', {
             method: 'POST',
@@ -333,7 +349,7 @@ export default function AskPage() {
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || `저장 실패 (${res.status})`);
         }
-    }, []);
+    }, [deleteRemoteMemory]);
 
     // ─── 세션 로드: DB 우선 → localStorage 폴백 → 빈 세션 ──────────
     useEffect(() => {
@@ -412,16 +428,29 @@ export default function AskPage() {
         if (!hasUserConversation(sessions)) {
             return;
         }
+        if (memoryDeleteLockRef.current) {
+            return;
+        }
         
         // DB는 디바운스 저장 (네트워크 의존적 + 데이터 다이어트)
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
+            if (memoryDeleteLockRef.current) return;
             const optimized = optimizeSessionsForStorage(sessions);
+            const controller = new AbortController();
+            memorySaveControllerRef.current = controller;
             fetch('/api/chat/memory', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: optimized })
-            }).catch((e) => console.warn('[ELS-AI] DB 저장 실패:', e.message));
+                body: JSON.stringify({ messages: optimized }),
+                signal: controller.signal
+            }).catch((e) => {
+                if (e.name !== 'AbortError') console.warn('[ELS-AI] DB 저장 실패:', e.message);
+            }).finally(() => {
+                if (memorySaveControllerRef.current === controller) {
+                    memorySaveControllerRef.current = null;
+                }
+            });
         }, 2000); // 2초 디바운스
 
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
@@ -430,6 +459,7 @@ export default function AskPage() {
     // 페이지 이탈 시 DB에도 최종 저장 시도
     useEffect(() => {
         const saveBeforeLeave = () => {
+            if (memoryDeleteLockRef.current) return;
             if (!isLoaded || sessionsRef.current.length === 0) return;
             const optimized = optimizeSessionsForStorage(sessionsRef.current);
             saveToLocal(optimized); // localStorage 확실히
@@ -534,6 +564,7 @@ export default function AskPage() {
     const sendMessage = useCallback(async (text) => {
         const trimmed = (text ?? input).trim();
         if ((!trimmed && selectedFiles.length === 0) || isLoading) return;
+        memoryDeleteLockRef.current = false;
 
         setInput('');
         const attachmentsToSend = selectedFiles.map(f => ({ mime_type: f.mime_type, data: f.data, name: f.name }));

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/server';
+import { hasUserConversation, shouldIgnoreIncomingMemory } from '@/utils/chatMemory.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,12 +21,22 @@ export async function GET(request) {
         const admin = await createAdminClient();
         const { data, error } = await admin
             .from('ai_chat_memory')
-            .select('messages')
+            .select('messages, updated_at')
             .eq('email', user.email)
             .single();
 
         if (error && error.code !== 'PGRST116') {
             throw error;
+        }
+
+        if (data && !hasUserConversation(data.messages || [])) {
+            const updatedAtTime = data.updated_at ? Date.parse(data.updated_at) : NaN;
+            if (Number.isFinite(updatedAtTime) && Date.now() - updatedAtTime > 30000) {
+                await admin
+                    .from('ai_chat_memory')
+                    .delete()
+                    .eq('email', user.email);
+            }
         }
 
         return NextResponse.json({ messages: data?.messages || [] });
@@ -53,6 +64,37 @@ export async function POST(request) {
 
         // admin 클라이언트로 upsert (RLS 우회)
         const admin = await createAdminClient();
+        const { data: existing, error: existingError } = await admin
+            .from('ai_chat_memory')
+            .select('messages, updated_at')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (existingError && existingError.code !== 'PGRST116') {
+            throw existingError;
+        }
+
+        if (!hasUserConversation(messages)) {
+            const { error: clearError } = await admin
+                .from('ai_chat_memory')
+                .upsert({
+                    email: user.email,
+                    messages: [],
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'email' });
+
+            if (clearError) throw clearError;
+            return NextResponse.json({ success: true, cleared: true });
+        }
+
+        if (shouldIgnoreIncomingMemory({
+            existingMessages: existing?.messages || [],
+            existingUpdatedAt: existing?.updated_at,
+            incomingMessages: messages
+        })) {
+            return NextResponse.json({ success: true, ignored: true, reason: 'stale_after_delete' });
+        }
+
         const { error } = await admin
             .from('ai_chat_memory')
             .upsert({ 
@@ -81,6 +123,7 @@ export async function DELETE(request) {
         }
 
         const admin = await createAdminClient();
+        const purgeOnly = new URL(request.url).searchParams.get('purge') === '1';
         const { data, error } = await admin
             .from('ai_chat_memory')
             .delete()
@@ -89,7 +132,22 @@ export async function DELETE(request) {
 
         if (error) throw error;
 
-        return NextResponse.json({ success: true, deleted: data?.length || 0 });
+        if (purgeOnly) {
+            return NextResponse.json({ success: true, deleted: data?.length || 0, purged: true });
+        }
+
+        const deletedAt = new Date().toISOString();
+        const { error: markerError } = await admin
+            .from('ai_chat_memory')
+            .upsert({
+                email: user.email,
+                messages: [],
+                updated_at: deletedAt
+            }, { onConflict: 'email' });
+
+        if (markerError) throw markerError;
+
+        return NextResponse.json({ success: true, deleted: data?.length || 0, cleared: true, deletedAt });
     } catch (e) {
         console.error('[/api/chat/memory] DELETE 에러:', e);
         return NextResponse.json({ error: '데이터 삭제 실패', detail: e.message || String(e) }, { status: 500 });

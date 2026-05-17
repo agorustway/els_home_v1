@@ -1,4 +1,20 @@
 
+## [2026-05-18] AI 어시스턴트 전체 대화 삭제 DB 레이스 차단 (v5.13.93)
+### 핵심
+- 전체 기록 삭제 시 예약된 자동저장뿐 아니라 이미 진행 중인 저장 fetch도 abort하고, 삭제 중에는 visibility/beforeunload 저장이 예전 대화를 다시 보내지 못하게 막았습니다.
+- `/api/chat/memory`는 삭제 직후 빈 마커를 남겨 늦게 도착한 이전 스냅샷을 `stale_after_delete`로 무시하고, 지연 purge로 빈 마커까지 정리합니다.
+- 대화 저장 공통 판정(`hasUserConversation`, 첨부 data 제거, 최신 사용자 활동 시각 비교)을 `web/utils/chatMemory.mjs`로 분리해 프론트와 API가 같은 기준을 쓰게 했습니다.
+### 검증
+- `node --test web/tests/chatMemory.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/api/chat/memory/route.js`
+- `web/utils/chatMemory.mjs`
+- `web/tests/chatMemory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 원장 상세 검색 총건수 표기 보정 (v5.13.92)
 ### 핵심
 - 연간실적 상세 원장 검색은 운영 DB 타임아웃을 피하려고 정확 count를 생략하는 경로가 있어, 더 불러올 행이 남아 있을 때 `301+`처럼 추정 총건수로 표시하도록 보강했습니다.
