@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.87 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.88 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 직접 주입의 마지막 대량 UPDATE timeout을 피하도록 스냅샷 공개 방식을 보강했습니다.
+> 최신 업데이트: 아산 연간실적 분석 화면의 첫 화면 밀도를 높이고 월별 흐름/연도별/공헌도 구성을 압축했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.87
+- **웹 버전**: v5.13.88
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -11,6 +11,7 @@
   - 웹 조회는 `currentSnapshotId`가 있으면 `snapshot_id` 기준으로 읽고, snapshot 메타가 없을 때만 legacy `is_current=true` 조회로 fallback.
   - `snapshot_id,row_index` 조회 인덱스 SQL을 추가해 페이지 조회/정렬이 current 대량 UPDATE에 의존하지 않게 준비.
   - 연간실적 분석 화면을 성과 리포트, 손익 구조, 성과 경보, 연도/월 흐름, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오로 재구성.
+  - 연간실적 첫 화면은 손익 구조 옆에 최근 12개월 흐름을 배치하고, 연도별 차트는 한 줄 3지표 레인으로 압축.
   - 회계 분석 기준은 매출·매입·손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도를 중심으로 정리.
   - 화면 분석은 Supabase summary/breakdown을 사용하고 브라우저에서 36만 행 전체를 재집계하지 않도록 유지.
   - 요일별 작업지 비중 탭명을 `주간 실적`, `월간 평균`으로 변경.
@@ -51,6 +52,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.88**: 아산 연간실적 첫 화면에 최근 12개월 흐름을 올리고 연도별 차트를 압축해 공헌도 매트릭스 진입을 앞당김.
 - **v5.13.87**: 아산 연간실적 직접 주입의 마지막 `is_current` 대량 UPDATE를 기본 경로에서 제거하고 `currentSnapshotId` 기준 스냅샷 공개/조회로 전환.
 - **v5.13.86**: 아산 연간실적 분석 탭을 회계 성과 보고서형 화면으로 재구성하고 손익 구조, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오를 추가.
 - **v5.13.85**: 아산 배차 요일별 작업지 비중 탭을 `주간 실적`/`월간 평균`으로 바꾸고, 추세 돋보기는 마우스 좌표를 따라가게 보정.
@@ -66,31 +68,18 @@
 - **v5.13.75**: 연간실적 웹 조회에서 Supabase exact count를 제거하고 파일 메타 행 수를 사용해 화면 진입 timeout을 완화.
 - **v5.13.74**: 아산 배차 도넛 범례에 항목별 점유율을 붙이고, 데이터 없는 날짜 탭 비활성화와 모비스 국가명 고객사 집계를 적용.
 - **v5.13.73**: 아산 선적관리 모바일 날짜 필터에서 `미선적`/`자체보관` 빠른 버튼 폭을 동일하게 정렬.
-- **v5.13.72**: 아산 배차 상차지별 비율을 지역 배차 칸 기준으로 고치고 추세 돋보기 위치·양수/음수 색상, 주간 실데이터 표기를 보정.
-- **v5.13.71**: 아산 배차 모바일 기간 카드를 1열로 정리하고 요일별 패널 안에서 주/월을 바로 선택하게 하며 전체 탭 미래 주차 선택지를 제외.
-- **v5.13.70**: 아산 배차 점유율 영역에 상차지별 비율 도넛을 추가하고 도넛/카드 표기를 `톱1점유`로 통일.
-- **v5.13.69**: 아산 선적관리 날짜 필터 컬럼 후보를 실제 날짜값이 있는 컬럼으로 제한해 모선/텍스트 컬럼 오탐을 제거.
-- **v5.13.68**: 아산 배차 기간 카드 수량/FEU/톱1점유 표기를 다듬고, 추세 그래프 오늘 기준 제한·돋보기 포커스·요일별 작업지 비중 패널을 추가.
-- **v5.13.67**: 아산 배차 전체 탭에 주간 필터 버튼, 주간 export, 요일별 오더 비교 패널을 추가하고 카드 FEU/톱1점유 표시로 변경.
-- **v5.13.66**: 아산 배차 추세 그래프를 영업일 기준으로 재구성하고 평균선/축/고저점/hover 지표를 추가, 날짜 탭은 그래프 아래로 이동.
-- **v5.13.65**: 연간실적 직접 주입 기본값을 current 전체 조회 없는 snapshot 반영으로 바꾸고 `--diff-current`와 조회 보조 인덱스를 분리.
-- **v5.13.64**: 아산 배차 주별/월별 카드 기본값을 선택일 기준 지난주/지난달로 바꿔 진행 중 기간 비교 왜곡을 완화.
-- **v5.13.63**: 아산 배차 종합 카드에서 전체를 빼고 날짜 탭을 분석 영역 앞으로 내렸으며, 일자별 추세 그래프와 카드 색상 범례/툴팁을 보강.
-- **v5.13.62**: 연간실적 실제 주입도 Excel 스트리밍 파싱 중 변경/신규 행을 100행 단위로 바로 반영해 NAS 메모리 점유를 완화.
-- **v5.13.60**: 아산 배차 현황판을 일/주/月 선택 카드, 고객사별 비중 탭, 압축 지표형 분석 패널로 리팩토링.
-- **v5.13.59**: 연간실적 직접 주입에 `file_modified_at` 미변경 스킵, `--force`, 낮은 우선순위 NAS cron 래퍼를 추가.
-- **v5.13.58**: 연간실적 36만 행 dry-run 결과를 기준으로 직접 주입 대용량 보호, 배치 insert 메모리 완화, 숫자 컬럼 샘플 판정 보정을 추가.
-- **v5.13.57**: 연간실적 직접 주입 dry-run이 NAS 메모리를 크게 쓰지 않도록 Excel 통째 로딩을 제거하고 ExcelJS 스트리밍 파서와 진행 로그를 적용.
 
 ## VERIFICATION
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs`: 22개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js"`: 0 errors
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 56개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/AsanShipping.js"`: 0 errors
-- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
-- Browser: standalone 서버와 `?debug=true` 접근 확인, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨
+- `npm.cmd run build`: 통과 (외부 WebDAV/API sandbox EACCES 경고만 표시)
+- Browser: 로컬 dev 서버 기동은 PowerShell `Path/PATH` 중복 환경변수로 제한됨. 빌드 검증으로 대체.
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 
 ## EASTER EGGS

@@ -319,7 +319,7 @@ export default function AsanAnnualPerformance() {
     }, [colOrder, headers, hiddenCols]);
     const yearly = Array.isArray(summary.yearly) ? summary.yearly : EMPTY_LIST;
     const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
-    const monthlyTrend = monthly.slice(-18);
+    const monthlyTrend = monthly.slice(-12);
     const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
     const chartMax = getPerformanceChartMax(yearly, ['revenue', 'purchase', 'profit']);
@@ -602,7 +602,50 @@ export default function AsanAnnualPerformance() {
                             </div>
                         </section>
 
+                        <section className={`${styles.panel} ${styles.monthPanel}`}>
+                            <div className={styles.panelHeader}>
+                                <h3>월별 성과 흐름</h3>
+                                <span>최근 {monthlyTrend.length.toLocaleString()}개월</span>
+                            </div>
+                            <div className={styles.monthChart}>
+                                {monthlyTrend.length === 0 ? (
+                                    <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
+                                ) : monthlyTrend.map(item => (
+                                    <div className={styles.monthRow} key={item.period}>
+                                        <span>{item.period}</span>
+                                        <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
+                                        <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
+                                        <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                        <em>{formatPercent(profitRateOf(item))}</em>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className={styles.analysisGrid}>
                         <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>연도별 매출·매입·손익</h3>
+                                <span>{yearly.length.toLocaleString()}개 연도</span>
+                            </div>
+                            <div className={styles.yearChart}>
+                                {yearly.length === 0 ? (
+                                    <div className={styles.emptyPanel}>분석 가능한 금액/연도 컬럼이 아직 없습니다.</div>
+                                ) : yearly.map(item => (
+                                    <div className={styles.yearRow} key={getPerformanceYearLabel(item)}>
+                                        <div className={styles.yearLabel}>{getPerformanceYearLabel(item)}</div>
+                                        <div className={styles.barStack}>
+                                            <div><DataBar value={item.revenue} max={chartMax} tone="revenue" /><span>{formatPerformanceAmount(item.revenue)}</span></div>
+                                            <div><DataBar value={item.purchase} max={chartMax} tone="purchase" /><span>{formatPerformanceAmount(item.purchase)}</span></div>
+                                            <div><DataBar value={item.profit} max={chartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} /><span>{formatPerformanceAmount(item.profit)}</span></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className={`${styles.panel} ${styles.signalPanel}`}>
                             <div className={styles.panelHeader}>
                                 <h3>성과 경보</h3>
                                 <span>월/집중도 기준</span>
@@ -632,53 +675,10 @@ export default function AsanAnnualPerformance() {
                         </section>
                     </div>
 
-                    <div className={styles.analysisGrid}>
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <h3>연도별 매출·매입·손익</h3>
-                                <span>{yearly.length.toLocaleString()}개 연도</span>
-                            </div>
-                            <div className={styles.yearChart}>
-                                {yearly.length === 0 ? (
-                                    <div className={styles.emptyPanel}>분석 가능한 금액/연도 컬럼이 아직 없습니다.</div>
-                                ) : yearly.map(item => (
-                                    <div className={styles.yearRow} key={getPerformanceYearLabel(item)}>
-                                        <div className={styles.yearLabel}>{getPerformanceYearLabel(item)}</div>
-                                        <div className={styles.barStack}>
-                                            <div><DataBar value={item.revenue} max={chartMax} tone="revenue" /><span>{formatPerformanceAmount(item.revenue)}</span></div>
-                                            <div><DataBar value={item.purchase} max={chartMax} tone="purchase" /><span>{formatPerformanceAmount(item.purchase)}</span></div>
-                                            <div><DataBar value={item.profit} max={chartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} /><span>{formatPerformanceAmount(item.profit)}</span></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <h3>월별 성과 흐름</h3>
-                                <span>최근 {monthlyTrend.length.toLocaleString()}개월</span>
-                            </div>
-                            <div className={styles.monthChart}>
-                                {monthlyTrend.length === 0 ? (
-                                    <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
-                                ) : monthlyTrend.map(item => (
-                                    <div className={styles.monthRow} key={item.period}>
-                                        <span>{item.period}</span>
-                                        <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
-                                        <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
-                                        <strong>{formatPerformanceAmount(item.profit)}</strong>
-                                        <em>{formatPercent(profitRateOf(item))}</em>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-
                     <section className={`${styles.panel} ${styles.matrixPanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>공헌도 매트릭스</h3>
-                            <span>{activeBreakdown?.column || '그룹'} 기준</span>
+                            <span>{activeBreakdown?.column || '그룹'} 기준 상위 10</span>
                         </div>
                         <div className={styles.dimensionTabs}>
                             {dimensionOptions.map(section => (
@@ -705,7 +705,7 @@ export default function AsanAnnualPerformance() {
                                     <span>비중</span>
                                     <span>건수</span>
                                 </div>
-                                {activeItems.slice(0, 12).map((item, idx) => (
+                                {activeItems.slice(0, 10).map((item, idx) => (
                                     <div className={styles.matrixRow} key={`${activeBreakdown?.column}-${item.name}-${idx}`}>
                                         <span className={styles.rankNo}>{idx + 1}</span>
                                         <span className={styles.rankName}>{item.name || '미분류'}</span>

@@ -1,4 +1,21 @@
 
+## [2026-05-17] 아산 연간실적 첫 화면 구성 압축 (v5.13.88)
+### 핵심
+- 연간실적 분석 탭의 첫 화면에서 손익 구조 옆에 최근 12개월 성과 흐름을 배치해 현재 흐름을 바로 보게 했습니다.
+- 연도별 매출·매입·손익 차트는 3줄 누적형에서 한 줄 3지표 레인으로 압축해 전체 연도를 유지하면서 세로 점유를 줄였습니다.
+- 공헌도 매트릭스는 상위 10 기준으로 표시 범위를 명확히 하고, 하단 포트폴리오 진입이 더 빨라지도록 행 높이와 패널 간격을 조정했습니다.
+- 로컬 dev 서버 브라우저 확인은 PowerShell `Path/PATH` 중복 환경변수로 기동이 제한되어 빌드 검증으로 대체했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors
+- `git diff --check`: 통과
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 스냅샷 공개 방식 timeout 회피 (v5.13.87)
 ### 핵심
 - 직접 주입이 36만 행 insert 후 마지막 previous current 정리 UPDATE에서 statement timeout 나는 문제를 분리했습니다.
