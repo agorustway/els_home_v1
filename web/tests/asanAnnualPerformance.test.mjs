@@ -5,8 +5,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_ANNUAL_PERFORMANCE_PATH,
+  formatPerformanceCellValue,
   formatPerformanceAmount,
   getPerformanceChartMax,
+  normalizeAnnualPerformanceRow,
   normalizePerformancePath,
   normalizePerformanceColumnOrder,
   reconcilePerformanceLayoutPrefs,
@@ -180,4 +182,14 @@ test('연간실적 표시 유틸은 금액 축약과 차트 최대값을 안정�
   assert.equal(formatPerformanceAmount(-5400000), '-540만원');
   assert.equal(getPerformanceChartMax([{ revenue: 100, purchase: 220, profit: -30 }]), 220);
   assert.deepEqual(normalizePerformanceColumnOrder(['B'], ['A', 'B', 'C']), ['B', 'A', 'C']);
+});
+
+test('연간실적 표시 유틸은 엑셀 날짜 시리얼과 금액 표시를 정규화한다', () => {
+  assert.equal(formatPerformanceCellValue('마감월', '2015-01-01T00:00:00'), '2015-01');
+  assert.equal(formatPerformanceCellValue('작업일자', '42006'), '2015-01-02');
+  assert.equal(formatPerformanceCellValue('청구', '440000'), '440,000');
+  assert.deepEqual(
+    normalizeAnnualPerformanceRow(['마감월', '작업일자', '청구', '하불'], ['42005', '2015-01-02T00:00:00', '440000', '420000']),
+    ['2015-01', '2015-01-02', '440,000', '420,000'],
+  );
 });

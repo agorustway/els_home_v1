@@ -5,6 +5,7 @@ import {
     DEFAULT_ANNUAL_PERFORMANCE_PATH,
     DEFAULT_ANNUAL_PERFORMANCE_SHEET,
     formatPerformanceAmount,
+    formatPerformanceCellValue,
     getPerformanceChartMax,
     normalizePerformancePath,
     getPerformanceYearLabel,
@@ -503,7 +504,7 @@ export default function AsanAnnualPerformance() {
                                     <tr key={`${payload?.page || 1}-${rowIdx}`}>
                                         {visibleColumns.map(col => {
                                             const idx = headers.indexOf(col);
-                                            return <td key={col}>{idx >= 0 ? row[idx] : ''}</td>;
+                                            return <td key={col}>{idx >= 0 ? formatPerformanceCellValue(col, row[idx]) : ''}</td>;
                                         })}
                                     </tr>
                                 ))}

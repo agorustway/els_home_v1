@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 연간실적 날짜·금액 표시 정규화 (v5.13.78)
+### 핵심
+- 연간실적 importer가 `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하도록 정규화했습니다.
+- Excel 날짜 시리얼 값(`42006` 등)과 ISO 시간 문자열을 날짜 표시값으로 변환하고, `청구`/`하불` 같은 금액 컬럼은 천단위 구분을 적용했습니다.
+- 화면 테이블도 같은 표시 유틸을 사용해 기존 적재분이 남아 있어도 날짜/금액을 방어적으로 표시합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs" "utils/asanPerformanceView.mjs" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/utils/asanPerformanceView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 배차 검색/필터 합계와 실행사 파싱 보정 (v5.13.77)
 ### 핵심
 - 통합현황 정렬 후 검색 결과가 정렬 인덱스와 원본 행 인덱스를 섞어 다른 행을 표시할 수 있던 문제를 원본 행 번호 기준으로 보정했습니다.

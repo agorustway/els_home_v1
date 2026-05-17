@@ -78,6 +78,123 @@ export function formatPerformanceAmount(value, options = {}) {
   return `${num.toLocaleString('ko-KR')}${unit}`;
 }
 
+function compactHeader(header) {
+  return String(header || '').replace(/\s+/g, '').toLocaleLowerCase('ko-KR');
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+export function excelSerialToDateParts(value) {
+  const serial = Number(value);
+  if (!Number.isFinite(serial) || serial < 30000 || serial > 80000) return null;
+  const date = new Date(Math.round((serial - 25569) * 86400000));
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+export function parsePerformanceDateParts(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return {
+      year: value.getFullYear(),
+      month: value.getMonth() + 1,
+      day: value.getDate(),
+    };
+  }
+
+  const text = normalizePerformanceFilterValue(value);
+  if (!text) return null;
+  if (/^\d{4,5}(?:\.0+)?$/.test(text)) {
+    return excelSerialToDateParts(Number(text));
+  }
+
+  let match = text.match(/^(\d{4})[-/.년\s]*(0?[1-9]|1[0-2])(?:[-/.월\s]*(0?[1-9]|[12]\d|3[01]))?/);
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: match[3] ? Number(match[3]) : 1,
+    };
+  }
+
+  match = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+    };
+  }
+
+  match = text.match(/^(\d{4})(\d{2})$/);
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: 1,
+    };
+  }
+
+  return null;
+}
+
+export function isPerformanceMonthHeader(header) {
+  const compact = compactHeader(header);
+  return compact.includes('마감월') || compact.includes('년월') || compact === '마감';
+}
+
+export function isPerformanceDateHeader(header) {
+  const compact = compactHeader(header);
+  return isPerformanceMonthHeader(header)
+    || compact.includes('작업일자')
+    || compact.includes('일자')
+    || compact.includes('날짜')
+    || compact.includes('마감일');
+}
+
+export function isPerformanceAmountHeader(header) {
+  const compact = compactHeader(header);
+  if (!compact) return false;
+  const includes = ['청구', '하불', '금액', '운임', '매입액', '매출액', '비용', '원가', '손익', '이익'];
+  const excludes = ['청구처', '지급처', '거래처', '업체', '번호', '코드', '전화', '영업', 'booking', 'seal', 'type', 'c/tn', 'ctn', '비고'];
+  return includes.some(word => compact.includes(word)) && !excludes.some(word => compact.includes(word));
+}
+
+export function formatPerformanceCellValue(header, value) {
+  if (value == null || value === '') return '';
+  if (isPerformanceDateHeader(header)) {
+    const parts = parsePerformanceDateParts(value);
+    if (parts) {
+      const monthText = `${parts.year}-${pad2(parts.month)}`;
+      if (isPerformanceMonthHeader(header)) return monthText;
+      return `${monthText}-${pad2(parts.day || 1)}`;
+    }
+  }
+
+  if (isPerformanceAmountHeader(header)) {
+    const raw = normalizePerformanceFilterValue(value);
+    const numeric = Number(raw.replace(/,/g, ''));
+    if (Number.isFinite(numeric) && /^-?\d+(?:,\d{3})*(?:\.\d+)?$|^-?\d+(?:\.\d+)?$/.test(raw)) {
+      return numeric.toLocaleString('ko-KR', {
+        maximumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+      });
+    }
+  }
+
+  return normalizePerformanceFilterValue(value);
+}
+
+export function normalizeAnnualPerformanceRow(headers = [], row = []) {
+  return row.map((value, idx) => formatPerformanceCellValue(headers[idx], value));
+}
+
 export function getPerformanceChartMax(items = [], keys = ['revenue', 'purchase', 'profit']) {
   return Math.max(
     1,

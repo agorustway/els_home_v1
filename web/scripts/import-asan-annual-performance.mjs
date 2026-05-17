@@ -7,6 +7,11 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
+import {
+  isPerformanceDateHeader,
+  normalizeAnnualPerformanceRow,
+  parsePerformanceDateParts,
+} from '../utils/asanPerformanceView.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, '..');
@@ -92,7 +97,10 @@ function normalizeDbPath(value) {
 
 function cleanCell(value) {
   if (value == null) return '';
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : value.toISOString();
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return '';
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  }
   if (typeof value === 'number' && Number.isFinite(value)) {
     return Number.isInteger(value) ? String(value) : String(value);
   }
@@ -254,8 +262,9 @@ async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerR
   const emitDataRow = async rawRow => {
     const parsedRow = [];
     for (let colIdx = 0; colIdx <= lastCol; colIdx += 1) parsedRow.push(cleanCell(rawRow[colIdx]));
-    if (!parsedRow.some(Boolean)) return;
-    await handlers.onRow?.(parsedRow, emittedRows);
+    const normalizedRow = normalizeAnnualPerformanceRow(headers, parsedRow);
+    if (!normalizedRow.some(Boolean)) return;
+    await handlers.onRow?.(normalizedRow, emittedRows);
     emittedRows += 1;
     if (emittedRows > 0 && emittedRows % 1000 === 0) {
       console.error(`[annual-performance-import] parsed rows=${emittedRows}`);
@@ -369,6 +378,13 @@ function inferYearMonth(headers, row) {
 
   headers.forEach((header, idx) => {
     const text = String(row[idx] || '');
+    if (isPerformanceDateHeader(header)) {
+      const parts = parsePerformanceDateParts(text);
+      if (parts) {
+        if (year == null) year = parts.year;
+        if (month == null) month = parts.month;
+      }
+    }
     if (year == null && hasKeyword(header, yearKeywords)) {
       const match = text.match(/(20\d{2}|19\d{2})/);
       if (match) year = Number(match[1]);
