@@ -1,4 +1,20 @@
 
+## [2026-05-17] 아산 배차 상차지 비율·돋보기 표시 보정 (v5.13.72)
+### 핵심
+- `상차지별 비율` 도넛을 작업지 기준이 아니라 `아산/부산/광양/평택/중부/부곡/인천` 등 배차 지역 칸의 업체 수량 기준으로 집계하도록 바로잡았습니다.
+- 추세 그래프 돋보기는 고점처럼 위쪽 공간이 부족한 포인트에서는 아래쪽으로 열리게 해 카드 경계에 걸리지 않도록 했습니다.
+- 돋보기 안의 전영업일/평균 대비 값은 공통 규칙대로 양수 빨강, 음수 파랑으로 표시합니다.
+- 요일별 작업지 비중의 주간 실데이터는 정수 수량이면 소수점 없이 표시하고, 소수 입력값은 1자리까지 유지합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 15개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 모바일 기간 선택 UX 정리 (v5.13.71)
 ### 핵심
 - 모바일에서 일별/주별/월별 기간 카드가 2열로 찌그러지지 않도록 1열 세로 배치로 바꿨습니다.

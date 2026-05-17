@@ -607,14 +607,6 @@
     transform: rotate(42deg);
 }
 
-.trendLensLeft {
-    transform: translate(0, calc(-100% - 16px));
-}
-
-.trendLensRight {
-    transform: translate(-100%, calc(-100% - 16px));
-}
-
 .trendLens strong {
     color: #1d4ed8;
     font-size: 0.74rem;
@@ -627,6 +619,14 @@
 .trendLens b {
     color: #0f172a;
     font-size: 0.74rem;
+}
+
+.trendLens b.trendLensUp {
+    color: #dc2626;
+}
+
+.trendLens b.trendLensDown {
+    color: #2563eb;
 }
 
 .trendFooter {

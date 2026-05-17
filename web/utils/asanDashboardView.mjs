@@ -45,6 +45,7 @@ function createScope() {
       shipper: {},
       direction: {},
       container: {},
+      region: {},
     },
     chartAggs: {
       작업지: {},
@@ -127,13 +128,18 @@ function addBaseRowMetrics(scope, row, cols, viewType) {
   scope.mismatchTotal = scope.orderTotal - scope.sheetDispatchTotal;
 }
 
-function addCustomerRow(scope, row, cols, viewType) {
+function addRegionAggs(scope, records = []) {
+  records.forEach((record) => addMap(scope.pieAggs.region, record.region, record.count));
+}
+
+function addCustomerRow(scope, row, headers, cols, viewType) {
   const amount = getCustomerWeight(row, cols, viewType);
   if (amount <= 0) return;
 
   const meta = getRowMeta(row, cols);
   scope.total += amount;
   addPieAggs(scope, meta, amount);
+  addRegionAggs(scope, parseDispatchRecords(row, headers));
   addFeu(scope, meta.container, amount);
 
   addChart(scope.chartAggs, '작업지', meta.workplace, amount, meta.line);
@@ -163,7 +169,9 @@ function parseDispatchRecords(row = [], headers = []) {
 
 function addDispatcherRow(scope, row, headers, cols) {
   const meta = getRowMeta(row, cols);
-  parseDispatchRecords(row, headers).forEach((record) => {
+  const records = parseDispatchRecords(row, headers);
+  addRegionAggs(scope, records);
+  records.forEach((record) => {
     scope.total += record.count;
     scope.dispatchCount += 1;
     addPieAggs(scope, meta, record.count);
@@ -183,7 +191,7 @@ function accumulateRows(scope, rows = [], headers = [], viewType = 'integrated',
     if (viewMode === 'dispatcher') {
       addDispatcherRow(scope, row, headers, cols);
     } else {
-      addCustomerRow(scope, row, cols, viewType);
+      addCustomerRow(scope, row, headers, cols, viewType);
     }
   });
   return scope;
@@ -675,12 +683,6 @@ export function toSortedChartEntries(chartAgg = {}, limit = 0) {
     .filter((item) => item.total > 0)
     .sort((a, b) => b.total - a.total);
   return limit > 0 ? entries.slice(0, limit) : entries;
-}
-
-export function toChartTotalMap(chartAgg = {}, limit = 0) {
-  return Object.fromEntries(
-    toSortedChartEntries(chartAgg, limit).map((entry) => [entry.name, entry.total]),
-  );
 }
 
 export function toSortedMapEntries(map = {}, limit = 0) {

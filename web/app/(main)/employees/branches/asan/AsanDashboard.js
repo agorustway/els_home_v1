@@ -7,7 +7,6 @@ import {
     buildAsanDashboardScope,
     buildAsanDashboardWeekdayComparison,
     buildSelectableAsanDashboardPeriods,
-    toChartTotalMap,
     toSortedChartEntries,
     toSortedMapEntries,
 } from '@/utils/asanDashboardView.mjs';
@@ -118,9 +117,6 @@ export default function AsanDashboard({
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);
     }, [dashboardData, activeChartMode]);
-    const workplaceShareMap = useMemo(() => {
-        return toChartTotalMap(dashboardData.activeScope.chartAggs['작업지']);
-    }, [dashboardData]);
     const summaryPeriods = useMemo(
         () => dashboardData.periods.filter((period) => period.key !== 'total'),
         [dashboardData.periods],
@@ -194,7 +190,7 @@ export default function AsanDashboard({
 
             <div className={styles.mixModules}>
                 <ShareDonut data={dashboardData.activeScope.pieAggs.shipper} title="화주 점유율" />
-                <ShareDonut data={workplaceShareMap} title="상차지별 비율" />
+                <ShareDonut data={dashboardData.activeScope.pieAggs.region} title="상차지별 비율" />
                 <MiniSplitCard data={dashboardData.activeScope.pieAggs.direction} title="수출입 구분" />
                 <MiniSplitCard data={dashboardData.activeScope.pieAggs.container} title="컨테이너 TYPE" />
             </div>
@@ -444,6 +440,16 @@ function TrendPanel({ items, title }) {
         .filter((point, idx, arr) => point && arr.findIndex((item) => item.date === point.date) === idx);
     const peakPoint = points.find((point) => point.date === peak.date);
     const lowPoint = points.find((point) => point.date === low.date);
+    const getToneClass = (value) => {
+        if (value > 0) return styles.trendLensUp;
+        if (value < 0) return styles.trendLensDown;
+        return '';
+    };
+    const getLensTransform = (point) => {
+        const x = point.x < 150 ? '0' : point.x > width - 150 ? '-100%' : '-50%';
+        const y = point.y < 105 ? '14px' : 'calc(-100% - 16px)';
+        return `translate(${x}, ${y})`;
+    };
     const handlePointerMove = (event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
@@ -545,13 +551,27 @@ function TrendPanel({ items, title }) {
                 </svg>
                 {hoverPoint && (
                     <div
-                        className={`${styles.trendLens} ${hoverPoint.x < 150 ? styles.trendLensLeft : ''} ${hoverPoint.x > width - 150 ? styles.trendLensRight : ''}`}
-                        style={{ left: `${(hoverPoint.x / width) * 100}%`, top: `${(hoverPoint.y / height) * 100}%` }}
+                        className={styles.trendLens}
+                        style={{
+                            left: `${(hoverPoint.x / width) * 100}%`,
+                            top: `${(hoverPoint.y / height) * 100}%`,
+                            transform: getLensTransform(hoverPoint),
+                        }}
                     >
                         <strong>{hoverPoint.label}</strong>
                         <span>총량 <b>{formatDecimal(hoverPoint.total)}</b></span>
-                        <span>전영업일 <b>{hoverPoint.delta >= 0 ? '+' : ''}{formatDecimal(hoverPoint.delta)}</b></span>
-                        <span>평균 대비 <b>{hoverPoint.total - average >= 0 ? '+' : ''}{formatDecimal(hoverPoint.total - average)}</b></span>
+                        <span>
+                            전영업일
+                            <b className={getToneClass(hoverPoint.delta)}>
+                                {hoverPoint.delta >= 0 ? '+' : ''}{formatDecimal(hoverPoint.delta)}
+                            </b>
+                        </span>
+                        <span>
+                            평균 대비
+                            <b className={getToneClass(hoverPoint.total - average)}>
+                                {hoverPoint.total - average >= 0 ? '+' : ''}{formatDecimal(hoverPoint.total - average)}
+                            </b>
+                        </span>
                     </div>
                 )}
             </div>
@@ -577,6 +597,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
     const monthOptions = (monthlyPeriod?.options || []).filter((option) => !option.key || option.key <= todayKey.slice(0, 7));
     const active = mode === 'week' ? data.week : data.month;
     const metricKey = mode === 'week' ? 'total' : 'average';
+    const valueFormatter = mode === 'week' ? formatQty : formatDecimal;
     const maxValue = Math.max(1, ...active.buckets.map((bucket) => bucket[metricKey] || 0));
     const monthTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
     const weekTotal = data.week.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
@@ -617,7 +638,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
 
             <div className={styles.weekdaySummary}>
                 <label className={`${styles.weekdayChooser} ${mode === 'week' ? styles.weekdayChooserActive : ''}`}>
-                    <span><b>{selectedWeekLabel}</b>주간 누적 {formatDecimal(weekTotal)}</span>
+                    <span><b>{selectedWeekLabel}</b>주간 누적 {formatQty(weekTotal)}</span>
                     {weekOptions.length > 0 && (
                         <select
                             aria-label="요일별 작업지 비중 주간 선택"
@@ -669,7 +690,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
                                     {breakdown.length > 0 ? breakdown.map(([name, count]) => {
                                         const pct = bucket.total ? (count / bucket.total) * 100 : 0;
                                         const tooltip = mode === 'week'
-                                            ? `${selectedWeekLabel} ${bucket.label}요일 · ${name} ${formatDecimal(count)}대 · 요일 내 ${formatDecimal(pct)}%`
+                                            ? `${selectedWeekLabel} ${bucket.label}요일 · ${name} ${formatQty(count)}대 · 요일 내 ${formatDecimal(pct)}%`
                                             : `${active.label} ${bucket.label}요일 · ${name} 누적 ${formatDecimal(count)}대 · 요일 내 ${formatDecimal(pct)}% · 관측 ${bucket.count}일`;
                                         return (
                                             <i
@@ -685,7 +706,7 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
                                     }) : <i className={styles.weekdaySegmentEmpty} />}
                                 </span>
                             </div>
-                            <b>{formatDecimal(value)}</b>
+                            <b>{valueFormatter(value)}</b>
                         </div>
                     );
                 })}
