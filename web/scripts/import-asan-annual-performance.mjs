@@ -38,7 +38,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current' || key === 'retire-previous-current') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current' || key === 'retire-previous-current' || key === 'summary-only') {
       args[key] = true;
       continue;
     }
@@ -64,6 +64,8 @@ function usage() {
   '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
   '  --diff-current      Compare current rows by hash before insert. Slower; requires DB index health',
   '  --retire-previous-current  After publishing the new snapshot, best-effort retire previous current rows. Optional.',
+  '  --summary-only      Recalculate Excel summary and update branch_performance_files only. No row insert/update.',
+  '  --snapshot-id <id>  Snapshot id to keep as currentSnapshotId during --summary-only.',
   ].join('\n');
 }
 
@@ -588,6 +590,41 @@ function buildSummary(headers, rows) {
       profitColumns: profitCols.map(idx => headers[idx]),
       groupColumns: groupCandidates.map(idx => headers[idx]),
     },
+  };
+}
+
+async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow) {
+  const sampleRows = [];
+  let accumulator = null;
+  let ready = null;
+
+  const ensureAccumulator = () => {
+    if (accumulator) return;
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    for (const sampleRow of sampleRows) accumulator.add(sampleRow);
+  };
+
+  const parsed = await streamExcelRows(filePath, preferredSheetName, headerRow, {
+    async onReady(meta) {
+      ready = meta;
+    },
+    async onRow(row) {
+      if (sampleRows.length < 2000) {
+        sampleRows.push(row);
+      } else {
+        ensureAccumulator();
+        accumulator.add(row);
+      }
+    },
+  });
+
+  ensureAccumulator();
+  return {
+    headers: parsed.headers,
+    sheetName: parsed.sheetName,
+    headerRow: parsed.headerRow,
+    rowCount: parsed.rowCount,
+    summary: accumulator.finish(),
   };
 }
 
@@ -1365,6 +1402,59 @@ async function run() {
         detected: summary.detected,
       },
       headersPreview: parsed.headers,
+    }, null, 2));
+    return;
+  }
+
+  if (args['summary-only']) {
+    supabase = supabase || createSupabaseClient();
+    currentMeta = currentMeta || await readPerformanceMeta(supabase, requestedKey);
+    const refreshed = await summarizeExcelStreaming(filePath, preferredSheetName, args['header-row'] || currentMeta?.header_row);
+    const currentSnapshotId = args['snapshot-id']
+      || currentMeta?.summary?.currentSnapshotId
+      || currentMeta?.summary?.snapshotId
+      || '';
+    if (!currentSnapshotId) {
+      throw new Error('--summary-only에는 currentSnapshotId가 필요합니다. --snapshot-id 옵션을 지정하세요.');
+    }
+    refreshed.summary.currentSnapshotId = currentSnapshotId;
+    refreshed.summary.currentSelectionMode = 'summary.currentSnapshotId';
+    refreshed.summary.importMode = currentMeta?.summary?.importMode === 'snapshot-replace-recovered'
+      ? 'snapshot-replace-recovered'
+      : 'summary-refresh';
+    if (currentMeta?.summary?.recoveredSnapshotId) {
+      refreshed.summary.recoveredSnapshotId = currentMeta.summary.recoveredSnapshotId;
+    }
+
+    const { error: summaryError } = await supabase.from('branch_performance_files').upsert({
+      branch_id: requestedKey.branchId,
+      dataset_type: requestedKey.datasetType,
+      file_path: requestedKey.filePath,
+      sheet_name: refreshed.sheetName,
+      header_row: refreshed.headerRow,
+      headers: refreshed.headers,
+      row_count: refreshed.rowCount,
+      current_row_count: refreshed.rowCount,
+      summary: refreshed.summary,
+      file_modified_at: fileModifiedAt,
+      synced_at: nowIso,
+    }, {
+      onConflict: 'branch_id,dataset_type,file_path,sheet_name',
+    });
+    if (summaryError) throw new Error(summaryError.message);
+
+    console.log(JSON.stringify({
+      ok: true,
+      mode: 'summary-only',
+      filePath,
+      dbPath,
+      sheetName: refreshed.sheetName,
+      headerRow: refreshed.headerRow,
+      rowCount: refreshed.rowCount,
+      currentSnapshotId,
+      yearly: refreshed.summary.yearly?.length || 0,
+      monthly: refreshed.summary.monthly?.length || 0,
+      breakdowns: refreshed.summary.breakdowns?.length || 0,
     }, null, 2));
     return;
   }

@@ -24,6 +24,7 @@
   - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 웹 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막는다.
   - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged 방식으로 insert한 뒤 메타 `currentSnapshotId`를 새 스냅샷으로 바꿔 공개한다. 이전 current 행 정리는 기본 성공 경로에서 제외해 statement timeout을 피한다.
   - 이전 current 행 정리가 필요할 때만 `--retire-previous-current`를 붙여 별도 수행한다.
+  - staged 스냅샷을 복구 SQL로 공개한 뒤 분석 summary만 최신화하려면 `--summary-only`를 사용한다. 이 모드는 행 insert/update 없이 Excel을 스트리밍으로 읽고 `branch_performance_files.summary`만 갱신한다.
   - `file_modified_at`이 같으면 스킵하므로 일 1회 자동 실행 부담을 낮춘다.
   - 행별 hash 비교가 필요할 때만 `--diff-current`를 사용한다. 이 모드는 current 원장 조회 인덱스 상태에 민감하다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`

@@ -6,6 +6,7 @@
 - 웹 조회는 `currentSnapshotId`가 있으면 `snapshot_id` 기준으로 읽고, 없을 때만 legacy `is_current=true`로 fallback합니다.
 - `--retire-previous-current` 옵션을 추가해 이전 current 행 정리는 필요할 때만 별도 수행할 수 있게 했습니다.
 - 이미 실패한 staged 스냅샷을 36만 행 재파싱 없이 공개하는 복구 SQL을 추가했습니다.
+- 복구 SQL로 스냅샷을 공개한 뒤 분석 summary만 다시 계산하는 `--summary-only` 모드를 추가했습니다.
 ### 검증
 - `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
