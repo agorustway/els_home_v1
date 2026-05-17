@@ -38,7 +38,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current' || key === 'retire-previous-current') {
       args[key] = true;
       continue;
     }
@@ -61,8 +61,9 @@ function usage() {
     '  --chunk-size <n>     Insert/update chunk size. Default: 200',
     '  --dry-run           Parse only; do not write Supabase',
     '  --confirm-large-import  Required when importing more than 100,000 rows',
-    '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
-    '  --diff-current      Compare current rows by hash before insert. Slower; requires DB index health',
+  '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
+  '  --diff-current      Compare current rows by hash before insert. Slower; requires DB index health',
+  '  --retire-previous-current  After publishing the new snapshot, best-effort retire previous current rows. Optional.',
   ].join('\n');
 }
 
@@ -780,7 +781,7 @@ function timestampsClose(leftValue, rightValue) {
 async function readPerformanceMeta(supabase, key) {
   const { data, error } = await supabase
     .from('branch_performance_files')
-    .select('file_modified_at,synced_at,row_count,current_row_count,header_row')
+    .select('file_modified_at,synced_at,row_count,current_row_count,header_row,summary')
     .eq('branch_id', key.branchId)
     .eq('dataset_type', key.datasetType)
     .eq('file_path', key.filePath)
@@ -929,6 +930,46 @@ async function updateRowsByRowIndexRange({
   return affected;
 }
 
+async function retirePreviousCurrentSnapshot({
+  supabase,
+  key,
+  previousSnapshotId,
+  previousCurrentCount,
+  currentSnapshotId,
+  nowIso,
+  chunkSize,
+}) {
+  if (!previousSnapshotId || previousSnapshotId === currentSnapshotId || previousCurrentCount <= 0) {
+    return {
+      status: 'skipped',
+      supersededCount: 0,
+      reason: 'no_previous_snapshot',
+    };
+  }
+
+  const supersededCount = await updateRowsByRowIndexRange({
+    supabase,
+    table: 'branch_performance_rows',
+    patch: {
+      is_current: false,
+      change_status: 'superseded_by_excel',
+      replaced_at: nowIso,
+      last_seen_at: nowIso,
+    },
+    filter: query => keyFilter(query, key)
+      .eq('snapshot_id', previousSnapshotId)
+      .eq('is_current', true),
+    rowCount: previousCurrentCount,
+    chunkSize,
+  });
+
+  return {
+    status: 'done',
+    supersededCount,
+    previousSnapshotId,
+  };
+}
+
 async function insertRowsWithRetry({ supabase, rows, chunkSize, minChunkSize = 20 }) {
   let inserted = 0;
   for (let start = 0; start < rows.length; start += chunkSize) {
@@ -1014,6 +1055,7 @@ async function importExcelSnapshotStreaming({
   const snapshotId = uuidV4();
   const previousCurrentCount = Math.max(0, Number(currentMeta?.current_row_count || currentMeta?.row_count || 0) || 0);
   const stageBeforeActivation = previousCurrentCount > 0;
+  const previousSnapshotId = currentMeta?.summary?.currentSnapshotId || currentMeta?.summary?.snapshotId || '';
   const sampleRows = [];
   let accumulator = null;
   let ready = null;
@@ -1070,40 +1112,12 @@ async function importExcelSnapshotStreaming({
 
   let activatedCount = 0;
   let supersededCount = 0;
-  if (stageBeforeActivation) {
-    activatedCount = await updateRowsByRowIndexRange({
-      supabase,
-      table: 'branch_performance_rows',
-      patch: {
-        is_current: true,
-        change_status: 'current',
-        last_seen_at: nowIso,
-      },
-      filter: query => keyFilter(query, key)
-        .eq('snapshot_id', snapshotId)
-        .eq('is_current', false),
-      rowCount: parsed.rowCount,
-      chunkSize,
-    });
-
-    supersededCount = await updateRowsByRowIndexRange({
-      supabase,
-      table: 'branch_performance_rows',
-      patch: {
-        is_current: false,
-        change_status: 'superseded_by_excel',
-        replaced_at: nowIso,
-        last_seen_at: nowIso,
-      },
-      filter: query => rowIndexFilter(query, key).neq('snapshot_id', snapshotId),
-      rowCount: Math.max(previousCurrentCount, parsed.rowCount),
-      chunkSize,
-    });
-  }
 
   const summary = accumulator.finish();
   summary.currentSnapshotId = snapshotId;
+  summary.previousSnapshotId = previousSnapshotId || null;
   summary.importMode = stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot';
+  summary.currentSelectionMode = 'summary.currentSnapshotId';
   return {
     mode: stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot',
     headers: parsed.headers,
@@ -1118,6 +1132,8 @@ async function importExcelSnapshotStreaming({
     removedCount: 0,
     duplicateCount: 0,
     snapshotId,
+    previousSnapshotId,
+    previousCurrentCount,
   };
 }
 
@@ -1371,6 +1387,11 @@ async function run() {
     currentMeta,
   });
 
+  let retirePreviousResult = {
+    status: 'not_requested',
+    supersededCount: result.supersededCount || 0,
+  };
+
   const { error: metaError } = await supabase.from('branch_performance_files').upsert({
     branch_id: requestedKey.branchId,
     dataset_type: requestedKey.datasetType,
@@ -1388,13 +1409,26 @@ async function run() {
   });
   if (metaError) throw new Error(metaError.message);
 
+  if (args['retire-previous-current'] && result.previousSnapshotId && result.previousCurrentCount) {
+    retirePreviousResult = await retirePreviousCurrentSnapshot({
+      supabase,
+      key: requestedKey,
+      previousSnapshotId: result.previousSnapshotId,
+      previousCurrentCount: result.previousCurrentCount,
+      currentSnapshotId: result.snapshotId,
+      nowIso,
+      chunkSize,
+    });
+  }
+
   console.log(JSON.stringify({
     ok: true,
     mode: result.mode,
     insertedCount: result.insertedCount,
     activatedCount: result.activatedCount || 0,
     unchangedCount: result.unchangedCount,
-    supersededCount: result.supersededCount,
+    supersededCount: retirePreviousResult.supersededCount || result.supersededCount,
+    retirePreviousStatus: retirePreviousResult.status,
     removedCount: result.removedCount,
     duplicateCount: result.duplicateCount,
     totalRows: result.rowCount,

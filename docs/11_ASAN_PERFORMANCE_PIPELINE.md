@@ -22,7 +22,9 @@
   - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
   - `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하고 Excel 날짜 시리얼/ISO 시간 문자열을 정규화한다. `청구`/`하불` 등 금액 컬럼은 천단위 구분 표시값으로 저장한다.
   - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 웹 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막는다.
-  - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged/current 방식으로 반영한다. `file_modified_at`이 같으면 스킵하므로 일 1회 자동 실행 부담을 낮춘다.
+  - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged 방식으로 insert한 뒤 메타 `currentSnapshotId`를 새 스냅샷으로 바꿔 공개한다. 이전 current 행 정리는 기본 성공 경로에서 제외해 statement timeout을 피한다.
+  - 이전 current 행 정리가 필요할 때만 `--retire-previous-current`를 붙여 별도 수행한다.
+  - `file_modified_at`이 같으면 스킵하므로 일 1회 자동 실행 부담을 낮춘다.
   - 행별 hash 비교가 필요할 때만 `--diff-current`를 사용한다. 이 모드는 current 원장 조회 인덱스 상태에 민감하다.
   - 기본 실행: `node web/scripts/import-asan-annual-performance.mjs --file "/volume2/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"`
   - 10만 행 초과 실제 주입은 dry-run 확인 후 `--confirm-large-import`를 붙여 실행한다.
@@ -49,6 +51,8 @@
   - `branch_performance_rows`: 누적 원장 행
   - `is_current=true`만 웹 현재 조회에 사용
   - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
+  - snapshot 조회 보조 인덱스: `web/supabase_sql/20260517_asan_performance_snapshot_row_index.sql`
+  - 실패한 staged 스냅샷 빠른 공개 SQL: `web/supabase_sql/20260517_asan_performance_recover_staged_snapshot.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
   - 분석 탭: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오
@@ -68,6 +72,7 @@
 - 화면 조회는 기본 300행 단위로 제한해 브라우저 메모리 부담을 낮춘다.
 - Supabase에 아직 적재 데이터가 없으면 `supabase-empty`와 `needs_sync=true`로 응답하며, 기본 조회가 Excel 파일을 직접 읽지 않는다.
 - 최초 적재처럼 60초를 넘길 수 있는 작업은 화면 요청을 붙잡지 않고 백그라운드 작업으로 돌린 뒤 폴링한다.
+- 직접 주입이 마지막 previous current 정리 단계에서 timeout 나면 이미 insert된 `staged_current` snapshot을 `20260517_asan_performance_recover_staged_snapshot.sql`로 공개한 뒤, 최신 웹 코드가 `currentSnapshotId` 기준으로 조회하게 한다.
 
 ## 4. 월별실적 확장 계획
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.

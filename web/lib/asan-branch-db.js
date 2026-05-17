@@ -269,9 +269,12 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         .eq('branch_id', 'asan')
         .eq('dataset_type', 'annual')
         .eq('file_path', normalizedPath)
-        .eq('sheet_name', meta.sheet_name || sheetName)
-        .eq('is_current', true);
-    if (currentSnapshotId) query = query.eq('snapshot_id', currentSnapshotId);
+        .eq('sheet_name', meta.sheet_name || sheetName);
+    if (currentSnapshotId) {
+        query = query.eq('snapshot_id', currentSnapshotId);
+    } else {
+        query = query.eq('is_current', true);
+    }
     query = applySearch(query, search);
 
     const paged = await getPagedRows({

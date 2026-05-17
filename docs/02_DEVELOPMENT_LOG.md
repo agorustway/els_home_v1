@@ -1,4 +1,23 @@
 
+## [2026-05-17] 아산 연간실적 스냅샷 공개 방식 timeout 회피 (v5.13.87)
+### 핵심
+- 직접 주입이 36만 행 insert 후 마지막 previous current 정리 UPDATE에서 statement timeout 나는 문제를 분리했습니다.
+- 기본 주입은 새 스냅샷을 `staged_current`로 insert하고, 성공 공개는 `branch_performance_files.summary.currentSnapshotId` 갱신으로 처리합니다.
+- 웹 조회는 `currentSnapshotId`가 있으면 `snapshot_id` 기준으로 읽고, 없을 때만 legacy `is_current=true`로 fallback합니다.
+- `--retire-previous-current` 옵션을 추가해 이전 current 행 정리는 필요할 때만 별도 수행할 수 있게 했습니다.
+- 이미 실패한 staged 스냅샷을 36만 행 재파싱 없이 공개하는 복구 SQL을 추가했습니다.
+### 검증
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs" "lib/asan-branch-db.js"`: 0 errors
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260517_asan_performance_snapshot_row_index.sql`
+- `web/supabase_sql/20260517_asan_performance_recover_staged_snapshot.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 성과 리포트 화면 재구성 (v5.13.86)
 ### 핵심
 - 연간실적 분석 탭을 단순 그래프/상위 목록에서 성과 리포트형 대시보드로 재구성했습니다.
