@@ -64,9 +64,328 @@
     margin-left: 6px;
 }
 
+.periodGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.periodCard {
+    min-height: 188px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.period_daily {
+    border-top: 3px solid #2563eb;
+}
+
+.period_weekly {
+    border-top: 3px solid #14b8a6;
+}
+
+.period_monthly {
+    border-top: 3px solid #f97316;
+}
+
+.period_total {
+    border-top: 3px solid #d946ef;
+}
+
+.periodHead {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.periodHead > div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.periodLabel {
+    font-size: 0.72rem;
+    font-weight: 900;
+    color: #64748b;
+}
+
+.periodHead strong {
+    font-size: 0.86rem;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.periodSelect {
+    width: 100%;
+    min-width: 104px;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 850;
+    padding: 0 8px;
+    outline: none;
+}
+
+.periodSelect:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.periodTotalWrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.periodTotal {
+    font-size: 1.32rem;
+    font-weight: 950;
+    color: #0f172a;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.periodTrend {
+    font-style: normal;
+    font-size: 0.68rem;
+    font-weight: 950;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.trend_up {
+    color: #dc2626;
+}
+
+.trend_down {
+    color: #2563eb;
+}
+
+.trend_flat {
+    color: #64748b;
+}
+
+.periodMetrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+}
+
+.periodMetrics span {
+    min-width: 0;
+    padding: 5px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #334155;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.72rem;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+}
+
+.periodMetrics b {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 900;
+}
+
+.metricWarn {
+    border-color: #fecaca;
+    background: #fff5f5;
+    color: #dc2626;
+}
+
+.periodMeter {
+    width: 100%;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    display: flex;
+    overflow: hidden;
+}
+
+.periodMeter span {
+    height: 100%;
+    min-width: 4px;
+}
+
+.periodRanks {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 44px;
+}
+
+.periodRankRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.74rem;
+    color: #475569;
+}
+
+.periodRankRow span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.periodRankRow b {
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.periodChips {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.periodChips span {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.7rem;
+    font-weight: 850;
+}
+
+.mixModules {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.2fr) minmax(190px, 0.7fr) minmax(190px, 0.7fr);
+    gap: 12px;
+}
+
+.shareCard,
+.splitCard {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 13px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.shareTitleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.shareTitleRow .pieTitle {
+    margin: 0;
+}
+
+.shareTitleRow span {
+    font-size: 0.82rem;
+    color: #0f172a;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+}
+
+.shareBody {
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr);
+    align-items: center;
+    gap: 18px;
+}
+
+.donutCircle {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.donutCircle::after {
+    content: '';
+    position: absolute;
+    inset: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+.donutCircle span {
+    position: relative;
+    z-index: 1;
+    font-size: 1rem;
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.splitStack {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.splitRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.splitMeta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.76rem;
+    color: #475569;
+    font-weight: 800;
+}
+
+.splitMeta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.splitMeta b {
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.splitTrack {
+    height: 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.splitTrack span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+}
+
 .dashContent {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
     gap: 16px;
     align-items: start;
 }
@@ -78,7 +397,8 @@
 }
 
 .chartPanel,
-.tablePanel {
+.tablePanel,
+.insightPanel {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -90,6 +410,13 @@
     font-weight: 800;
     color: #334155;
     margin: 0;
+}
+
+.panelSub {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #94a3b8;
+    white-space: nowrap;
 }
 
 .panelHeaderWrap {
@@ -221,6 +548,14 @@
     color: #94a3b8;
 }
 
+.barHint {
+    font-size: 0.72rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .barTrack {
     width: 100%;
     height: 10px;
@@ -277,6 +612,84 @@
 .barFill:last-child {
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
+}
+
+.insightGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.insightBlock {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.insightBlock h4 {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.insightRows {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.insightRow {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto 38px;
+    gap: 7px;
+    align-items: center;
+    font-size: 0.76rem;
+    color: #475569;
+}
+
+.insightRank {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.68rem;
+    font-weight: 950;
+}
+
+.insightName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 800;
+}
+
+.insightRow strong {
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.insightRow em {
+    font-style: normal;
+    color: #94a3b8;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.emptyInline {
+    padding: 16px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #94a3b8;
+    background: #f8fafc;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-align: center;
 }
 
 /* 트리 피벗 */
@@ -552,6 +965,73 @@
         margin-top: 8px;
     }
 
+    .periodGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .periodCard {
+        min-height: 174px;
+        padding: 9px;
+    }
+
+    .periodTotal {
+        font-size: 1.12rem;
+    }
+
+    .periodHead strong {
+        font-size: 0.78rem;
+    }
+
+    .periodSelect {
+        min-width: 86px;
+        height: 27px;
+        font-size: 0.7rem;
+        padding: 0 5px;
+    }
+
+    .periodMetrics {
+        gap: 4px;
+    }
+
+    .periodMetrics span {
+        padding: 4px;
+        font-size: 0.65rem;
+    }
+
+    .periodRankRow {
+        font-size: 0.68rem;
+    }
+
+    .periodChips span {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+
+    .mixModules {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .shareCard,
+    .splitCard {
+        padding: 10px;
+    }
+
+    .shareBody {
+        grid-template-columns: 92px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .donutCircle {
+        width: 92px;
+        height: 92px;
+    }
+
+    .donutCircle::after {
+        inset: 17px;
+    }
+
     .pieCard {
         padding: 10px 8px;
         border-radius: 8px;
@@ -578,6 +1058,7 @@
 
     .dashContent {
         gap: 12px;
+        grid-template-columns: 1fr;
     }
 
     .panelHeaderWrap {
@@ -646,5 +1127,15 @@
     .bName,
     .bVal {
         font-size: 0.72rem;
+    }
+
+    .barHint {
+        font-size: 0.66rem;
+    }
+
+    .insightRow {
+        grid-template-columns: 20px minmax(0, 1fr) auto 34px;
+        gap: 5px;
+        font-size: 0.7rem;
     }
 }

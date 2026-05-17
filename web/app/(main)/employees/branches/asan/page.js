@@ -695,7 +695,14 @@ function AsanDispatchContent() {
             ) : !currentView ? (
                 <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;🔄 NAS 동기화&apos; 버튼을 누르세요.</div>
             ) : mainView === 'dashboard' ? (
-                <AsanDashboard data={allData} headers={headers} viewType={viewType} />
+                <AsanDashboard
+                    data={allData}
+                    headers={headers}
+                    viewType={viewType}
+                    sourceItems={data}
+                    activeDate={isAllTab ? '' : activeItem?.target_date || ''}
+                    selectedMonth={isAllTab ? allTabMonth || '' : ''}
+                />
             ) : (
                 <>
                     {/* 합계 바 */}

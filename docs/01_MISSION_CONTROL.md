@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL (v5.13.59 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.60 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 일 1회 자동동기화 래퍼와 파일 미변경 스킵 로직을 추가했습니다.
+> 최신 업데이트: 아산 배차 현황판을 선택형 일/주/月/전체 분석 카드와 고객사/실행사 비중 대시보드로 개편했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.59
+- **웹 버전**: v5.13.60
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 배차판처럼 선적관리/연간실적 GET도 Next 서버에서 Supabase 원장을 직접 조회.
-  - NAS Core가 도커 빌드/재기동 중이어도 이미 DB에 적재된 조회 화면은 유지.
-  - 연간실적 직접 주입은 파일 mtime이 같으면 스킵하고, NAS cron 래퍼로 일 1회 실행 가능.
-  - POST 동기화와 Excel 프리뷰(`source=excel`)는 계속 NAS Core 경유.
+  - 배차 현황판의 미사용 트리 요약을 제거하고 선택형 일별/주별/월별/전체 분석 카드로 대체.
+  - 카드별 총계·오더·배차·언매치·전기간 대비 증감·상위 집중도를 압축 표시.
+  - 화주 점유율은 도넛 차트 유지, 수출입/TYPE은 압축 막대 지표로 전환.
+  - 비중 차트에 고객사별 탭을 추가하고 모바일 2열 카드 흐름까지 검증.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -37,6 +37,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.60**: 아산 배차 현황판을 일/주/月 선택 카드, 고객사별 비중 탭, 압축 지표형 분석 패널로 리팩토링.
 - **v5.13.59**: 연간실적 직접 주입에 `file_modified_at` 미변경 스킵, `--force`, 낮은 우선순위 NAS cron 래퍼를 추가.
 - **v5.13.58**: 연간실적 36만 행 dry-run 결과를 기준으로 직접 주입 대용량 보호, 배치 insert 메모리 완화, 숫자 컬럼 샘플 판정 보정을 추가.
 - **v5.13.57**: 연간실적 직접 주입 dry-run이 NAS 메모리를 크게 쓰지 않도록 Excel 통째 로딩을 제거하고 ExcelJS 스트리밍 파서와 진행 로그를 적용.
@@ -65,7 +66,6 @@
 - **v5.13.34**: 선적관리 날짜 필터 바에 `미선적`, `자체보관` 빠른 필터를 추가.
 - **v5.13.33**: 선적관리 컬럼 필터 후보를 전체 로드 기준으로 만들고 빈값 정규화, 자동 더보기를 보강.
 - **v5.13.32**: 컨테이너 조회 완료 행을 전체 행 회색 음영/회색 글씨로 표시.
-- **v5.13.31**: 배차판/선적관리 NAS 엑셀 동기화를 mtime+size 안정화 게이트로 보강.
 
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
@@ -75,8 +75,11 @@
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 39개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
-- `npm.cmd run build`: 통과 (샌드박스 외부 fetch EACCES 로그는 기존 외부 네트워크 제한)
+- `npm.cmd run build`: 통과 (1차 sandbox Google Fonts EACCES 후 승인 실행)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 46개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- Browser: 아산 배차 현황판 데스크톱/360px 모바일 카드·차트 노출 확인
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 
 ## EASTER EGGS
@@ -84,7 +87,7 @@
 - `/employees/news` 송미관: 뉴스 페이지 하단의 숨은 트리거로 열리는 모달.
 
 ## IN-PROGRESS
-- 아산 연간실적: 운영 DB SQL 적용 완료. v5.13.51 재배포 후 `NAS 동기화`를 누르면 백그라운드로 최초 적재되고 완료 시 Supabase 원장이 표시되어야 함.
+- 현재 이어받을 미완료 작업 없음.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

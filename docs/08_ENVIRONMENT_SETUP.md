@@ -143,7 +143,7 @@ Remove-Item "docker\els-backend\.pytest_cache" -Recurse -Force
 - 예: `git push origin main`, `npm.cmd run build`, 실제 NAS 데이터를 붙이는 로컬 dev server 실행/브라우저 검증.
 
 #### PowerShell `PATH/Path` 중복 키
-- 증상: `Start-Process`에서 `항목이 이미 추가되었습니다. 사전에 있는 키: 'Path' 추가되는 키: 'PATH'`.
+- 증상: `Start-Process` 또는 `Get-ChildItem Env:`에서 `항목이 이미 추가되었습니다. 사전에 있는 키: 'Path' 추가되는 키: 'PATH'`.
 - 표준 대응: 백그라운드 프로세스를 띄우기 전 현재 세션의 중복 환경 키를 정리합니다.
 ```powershell
 $pathValue = $env:Path
@@ -151,6 +151,7 @@ Remove-Item Env:PATH -ErrorAction SilentlyContinue
 $env:Path = $pathValue
 ```
 - 이후 `Start-Process -WindowStyle Hidden ...` 또는 직접 `node.exe node_modules/next/dist/bin/next dev -p 3000`을 사용합니다.
+- 주의: `Get-ChildItem Env:` 자체가 실패할 수 있으므로 환경변수 전체 나열로 확인하려 하지 말고 위 정리 명령을 먼저 실행합니다. 그래도 `Start-Process`가 계속 실패하면 우회 실행을 반복하지 말고 형에게 현재 셸 재시작 또는 `cd web; npm run dev -- -p 3000` 수동 실행을 요청합니다.
 
 #### PowerShell `Start-Job`/ScheduledJobs 권한
 - 증상: `Get-Job`/`Receive-Job`에서 `ScheduledJobs` 경로 접근 거부.
@@ -191,4 +192,4 @@ Remove-Item -LiteralPath commit_msg.txt -Force
 ```
 
 ---
-*최종 갱신일: 2026-05-16 (by Codex — 반복 권한/배포 이슈 표준 대응 추가)*
+*최종 갱신일: 2026-05-17 (by Codex — PowerShell PATH/Path 중복 대응 보강)*

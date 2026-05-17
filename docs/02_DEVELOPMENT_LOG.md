@@ -1,4 +1,24 @@
 
+## [2026-05-17] 아산 배차 현황판 선택형 분석 대시보드 개편 (v5.13.60)
+### 핵심
+- 거의 쓰지 않던 데이터 요약 트리 패널을 제거하고, 일별/주별/월별/전체 선택 카드로 총량 확인 흐름을 바꿨습니다.
+- 각 기간 카드는 총계, 전기간 대비 증감, 오더/배차/언매치, 상위 항목, 수출입/TYPE, 집중도를 압축 표시합니다.
+- 화주 점유율은 도넛 차트로 유지하고, 수출입/TYPE은 단일 원형 차트 대신 작은 막대 지표로 전환했습니다.
+- 기존 비중 차트는 유지하면서 `고객사별` 탭을 추가했고, 실행사 기준에서도 고객사/작업지/업체명 TOP 구분표를 제공합니다.
+- 집계 규칙을 `web/utils/asanDashboardView.mjs`로 분리해 선택 기간 계산과 실행사 지역칸 파싱을 테스트 가능하게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 46개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (1차 sandbox Google Fonts EACCES 후 승인 실행)
+- Browser: `http://localhost:3000/employees/branches/asan`에서 데스크톱과 360px 모바일 뷰의 카드/차트 노출 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/08_ENVIRONMENT_SETUP.md`
+
 ## [2026-05-17] 아산 연간실적 일 1회 자동동기화 안전장치 (v5.13.59)
 ### 핵심
 - 직접 주입 스크립트가 Supabase `file_modified_at`과 Excel mtime이 같으면 파싱 전에 스킵하도록 보강했습니다.
