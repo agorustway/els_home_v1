@@ -213,6 +213,17 @@ function formatDateLabel(dateStr = '') {
   return `${date.getMonth() + 1}/${date.getDate()}(${WEEKDAYS[date.getDay()]})`;
 }
 
+function formatShortDate(dateStr = '') {
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function getKoreaTodayKey(now = new Date()) {
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
 function getDashboardHolidays(year) {
   const holidays = new Set(['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'].map((day) => `${year}-${day}`));
   (LUNAR_HOLIDAYS[year] || []).forEach((day) => holidays.add(day));
@@ -270,11 +281,36 @@ function getWeekRange(dateStr = '') {
     return `${year}-${month}-${dayOfMonth}`;
   };
 
+  const weekLabel = getWeekOfMonthLabel(toKey(sunday));
+
   return {
     start: toKey(monday),
     end: toKey(sunday),
-    label: `${monday.getMonth() + 1}/${monday.getDate()}-${sunday.getMonth() + 1}/${sunday.getDate()}`,
+    label: `${monday.getMonth() + 1}/${monday.getDate()}~${sunday.getMonth() + 1}/${sunday.getDate()}`,
+    weekLabel,
+    fullLabel: `${monday.getMonth() + 1}/${monday.getDate()}~${sunday.getMonth() + 1}/${sunday.getDate()} (${weekLabel})`,
   };
+}
+
+function getWeekOfMonthLabel(dateStr = '') {
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const first = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDay = first.getDay();
+  const firstMondayOffset = firstDay === 0 ? -6 : 1 - firstDay;
+  const firstWeekMonday = new Date(first);
+  firstWeekMonday.setDate(first.getDate() + firstMondayOffset);
+
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const weekMonday = new Date(date);
+  weekMonday.setDate(date.getDate() + mondayOffset);
+
+  const diffDays = Math.round((weekMonday - firstWeekMonday) / 86400000);
+  const weekNo = Math.floor(diffDays / 7) + 1;
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${month}월 ${weekNo}주차`;
 }
 
 function normalizeSourceItems(sourceItems = []) {
@@ -346,7 +382,7 @@ export function buildAsanDashboardPeriods({
     {
       key: 'weekly',
       label: '주간',
-      title: weekRange?.label || '해당주',
+      title: weekRange?.fullLabel || '해당주',
       scope: buildScopeFromItems(weekItems, viewType, viewMode),
     },
     {
@@ -395,7 +431,9 @@ export function buildAsanDashboardPeriodOptions(sourceItems = []) {
       if (!weekMap.has(key)) {
         weekMap.set(key, {
           key,
-          label: weekRange.label,
+          label: weekRange.fullLabel,
+          shortLabel: weekRange.label,
+          weekLabel: weekRange.weekLabel,
           start: weekRange.start,
           end: weekRange.end,
         });
@@ -535,8 +573,11 @@ export function buildAsanDashboardTimeline({
   sourceItems = [],
   viewType = 'integrated',
   viewMode = 'customer',
+  todayKey = getKoreaTodayKey(),
 } = {}) {
-  const items = normalizeSourceItems(sourceItems).filter((item) => isDashboardBusinessDay(item.target_date));
+  const items = normalizeSourceItems(sourceItems)
+    .filter((item) => item.target_date <= todayKey)
+    .filter((item) => isDashboardBusinessDay(item.target_date));
   let prevTotal = null;
 
   return items.map((item) => {
@@ -570,6 +611,7 @@ function createWeekdayBuckets() {
     total: 0,
     count: 0,
     average: 0,
+    breakdown: {},
   }));
 }
 
@@ -585,6 +627,9 @@ function summarizeWeekdayItems(items = [], viewType = 'integrated') {
     const scope = buildScopeFromItems([item], viewType, 'customer');
     bucket.total += scope.total;
     bucket.count += 1;
+    toSortedChartEntries(scope.chartAggs['작업지']).forEach((entry) => {
+      bucket.breakdown[entry.name] = (bucket.breakdown[entry.name] || 0) + entry.total;
+    });
   });
 
   buckets.forEach((bucket) => {
@@ -612,7 +657,9 @@ export function buildAsanDashboardWeekdayComparison({
   return {
     week: {
       key: weekKey,
-      label: weekRange ? `${formatDateLabel(weekRange.start)}-${formatDateLabel(weekRange.end).replace(/\(.+\)/, '')}` : '선택 주',
+      label: weekRange ? `${formatShortDate(weekRange.start)}~${formatShortDate(weekRange.end)}` : '선택 주',
+      weekLabel: weekRange ? getWeekOfMonthLabel(weekRange.end) : '',
+      fullLabel: weekRange ? `${formatShortDate(weekRange.start)}~${formatShortDate(weekRange.end)}(${getWeekOfMonthLabel(weekRange.end)})` : '선택 주',
       buckets: summarizeWeekdayItems(weekItems, viewType),
     },
     month: {

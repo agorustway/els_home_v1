@@ -1,4 +1,35 @@
 
+## [2026-05-17] 아산 선적관리 날짜 필터 컬럼 후보 정리 (v5.13.69)
+### 핵심
+- 선적관리 날짜 필터 드롭다운이 헤더명 키워드만 보고 후보를 만들면서 `KD선적확정모선`, `AS선적확정모선`처럼 월 기준 필터에 맞지 않는 컬럼까지 섞이던 문제를 정리했습니다.
+- 날짜 컬럼 후보는 헤더 키워드에 더해 실제 셀 샘플에서 날짜로 파싱되는 값이 있는 경우에만 표시합니다.
+- `선적` 키워드는 후보 키워드에서 제거해 모선/텍스트 컬럼 오탐을 막았습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (32개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 배차 분석 카드·추세·요일 작업지 비중 보강 (v5.13.68)
+### 핵심
+- 기간 카드 하단 칩을 `수출: N van`, `FEU: N`, `TOP1 점유: N%`로 통일해 카드 기준 수량 해석을 명확히 했습니다.
+- 주간 선택 라벨과 전체 탭 주간 버튼에 `5/11~5/17 (05월 3주차)` 형태의 주차 정보를 함께 표시합니다.
+- 일자별 추세는 KST 오늘 이후 사전기입 데이터를 제외하고, 마우스/터치 이동 위치에 맞춰 돋보기형 포커스 수치를 표시합니다.
+- 요일별 비교 패널은 주간을 기본값으로 바꾸고, 요일별 총량 안에서 작업지별 비중을 stacked bar와 hover 설명으로 보여줍니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 10개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
+- 로컬 standalone 서버 `/employees/branches/asan?debug=true` 200 응답 확인. Playwright 패키지가 없어 화면 자동 스크린샷은 생략.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 주간 필터 및 요일별 오더 비교 추가 (v5.13.67)
 ### 핵심
 - 전체 탭의 월간 필터 아래에 주간 버튼을 추가해 특정 주차만 바로 합산 조회할 수 있게 했습니다.

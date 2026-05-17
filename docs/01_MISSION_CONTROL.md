@@ -1,16 +1,15 @@
-# ELS MISSION CONTROL (v5.13.67 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.69 / APK v5.11.12)
 
-> 최신 업데이트: 아산 배차 전체 탭에 주간 버튼과 요일별 오더 비교 패널을 추가하고 카드 FEU/TOP1 점유 표시를 정리했습니다.
+> 최신 업데이트: 아산 선적관리 날짜 필터 컬럼 후보를 실제 날짜값이 있는 컬럼으로 제한했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.67
+- **웹 버전**: v5.13.69
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 전체 탭 월간 필터 아래 주간 버튼을 추가하고 Excel export도 주간 범위를 반영.
-  - 추세 그래프 높이를 줄이고 요일별 오더 비교 패널을 병렬 배치.
-  - 요일별 비교는 월간 요일별 일평균과 선택 주 실제 오더를 hover 설명과 함께 제공.
-  - 기간 카드의 TYPE 칩을 20FT 기준 환산 `FEU`로 바꾸고 `집중`은 `TOP1 점유`로 명확화.
+  - 선적관리 날짜 필터 드롭다운에서 모선/텍스트 컬럼이 섞이지 않도록 실제 날짜값 샘플 검증을 추가.
+  - `선적` 키워드 기반 후보 포함을 제거해 `KD/AS 선적확정모선` 계열 컬럼 오탐을 방지.
+  - 날짜 컬럼 후보 회귀 테스트를 추가.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -37,6 +36,8 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.69**: 아산 선적관리 날짜 필터 컬럼 후보를 실제 날짜값이 있는 컬럼으로 제한해 모선/텍스트 컬럼 오탐을 제거.
+- **v5.13.68**: 아산 배차 기간 카드 수량/FEU/TOP1 표기를 다듬고, 추세 그래프 오늘 기준 제한·돋보기 포커스·요일별 작업지 비중 패널을 추가.
 - **v5.13.67**: 아산 배차 전체 탭에 주간 필터 버튼, 주간 export, 요일별 오더 비교 패널을 추가하고 카드 FEU/TOP1 점유 표시로 변경.
 - **v5.13.66**: 아산 배차 추세 그래프를 영업일 기준으로 재구성하고 평균선/축/고저점/hover 지표를 추가, 날짜 탭은 그래프 아래로 이동.
 - **v5.13.65**: 연간실적 직접 주입 기본값을 current 전체 조회 없는 snapshot 반영으로 바꾸고 `--diff-current`와 조회 보조 인덱스를 분리.
@@ -70,7 +71,7 @@
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 30개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 32개 통과
 - `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 38개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 39개 통과

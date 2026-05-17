@@ -19,6 +19,14 @@ function formatQty(value) {
     return num.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
+function formatDecimal(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString(undefined, {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+    });
+}
+
 function getPct(value, total) {
     if (!total) return 0;
     return Math.round((value / total) * 100);
@@ -351,7 +359,11 @@ function PeriodCard({ period, chartMode, onSelect }) {
             </div>
 
             <div className={styles.periodChips}>
-                {direction && <span>{direction[0]} {formatQty(direction[1])}</span>}
+                {direction && (
+                    <span title="현재 카드 기준 수출입 구분별 최상위 수량입니다.">
+                        {direction[0]}: {formatQty(direction[1])} van
+                    </span>
+                )}
                 {period.scope.feuTotal > 0 && (
                     <span title="20FT 기준 환산값입니다. 20FT=1, 40FT/40HC=2, 45FT=2.25로 계산합니다.">
                         FEU: {formatQty(period.scope.feuTotal)}
@@ -359,7 +371,7 @@ function PeriodCard({ period, chartMode, onSelect }) {
                 )}
                 {focusPct > 0 && (
                     <span title="현재 카드 기준에서 1위 항목 수량을 전체 수량으로 나눈 비율입니다.">
-                        TOP1 점유 {focusPct}%
+                        TOP1 점유: {focusPct}%
                     </span>
                 )}
             </div>
@@ -418,6 +430,14 @@ function TrendPanel({ items, title }) {
         .filter((point, idx, arr) => point && arr.findIndex((item) => item.date === point.date) === idx);
     const peakPoint = points.find((point) => point.date === peak.date);
     const lowPoint = points.find((point) => point.date === low.date);
+    const handlePointerMove = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+        const nearest = points.reduce((best, point) => (
+            Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best
+        ), points[0]);
+        setHoverPoint(nearest);
+    };
 
     return (
         <div className={styles.trendPanel}>
@@ -427,19 +447,26 @@ function TrendPanel({ items, title }) {
                     <span className={styles.panelSub}>배차판 기입 시작일부터 현재까지 영업일 기준 변동</span>
                 </div>
                 <div className={styles.trendStats}>
-                    <span><b>최신 영업일</b>{formatQty(last.total)}</span>
+                    <span><b>최신 영업일</b>{formatDecimal(last.total)}</span>
                     <span className={startDelta >= 0 ? styles.trendStatUp : styles.trendStatDown}>
-                        <b>시작 대비</b>{startDelta >= 0 ? '+' : ''}{formatQty(startDelta)} ({startDeltaPct >= 0 ? '+' : ''}{startDeltaPct}%)
+                        <b>시작 대비</b>{startDelta >= 0 ? '+' : ''}{formatDecimal(startDelta)} ({startDeltaPct >= 0 ? '+' : ''}{formatDecimal(startDeltaPct)}%)
                     </span>
-                    <span><b>영업일 평균</b>{formatQty(average)}</span>
+                    <span><b>영업일 평균</b>{formatDecimal(average)}</span>
                     <span className={averageGap >= 0 ? styles.trendStatUp : styles.trendStatDown}>
-                        <b>평균 대비</b>{averageGap >= 0 ? '+' : ''}{formatQty(averageGap)} ({averageGapPct >= 0 ? '+' : ''}{averageGapPct}%)
+                        <b>평균 대비</b>{averageGap >= 0 ? '+' : ''}{formatDecimal(averageGap)} ({averageGapPct >= 0 ? '+' : ''}{formatDecimal(averageGapPct)}%)
                     </span>
                 </div>
             </div>
 
             <div className={styles.trendChartWrap}>
-                <svg className={styles.trendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+                <svg
+                    className={styles.trendSvg}
+                    viewBox={`0 0 ${width} ${height}`}
+                    role="img"
+                    aria-label={title}
+                    onPointerMove={handlePointerMove}
+                    onPointerLeave={() => setHoverPoint(null)}
+                >
                     <defs>
                         <linearGradient id="asanTrendFill" x1="0" x2="0" y1="0" y2="1">
                             <stop offset="0%" stopColor="#2563eb" stopOpacity="0.28" />
@@ -451,7 +478,7 @@ function TrendPanel({ items, title }) {
                         return (
                             <g key={value}>
                                 <line x1={padLeft} y1={y} x2={width - padRight} y2={y} className={styles.trendGrid} />
-                                <text x={padLeft - 10} y={y + 4} className={styles.trendTick} textAnchor="end">{formatQty(value)}</text>
+                                <text x={padLeft - 10} y={y + 4} className={styles.trendTick} textAnchor="end">{formatDecimal(value)}</text>
                             </g>
                         );
                     })}
@@ -459,34 +486,37 @@ function TrendPanel({ items, title }) {
                     <line x1={padLeft} y1={padTop} x2={padLeft} y2={baselineY} className={styles.trendAxis} />
                     <line x1={padLeft} y1={averageY} x2={width - padRight} y2={averageY} className={styles.trendAverageLine} />
                     <text x={width - padRight - 2} y={averageY - 6} className={styles.trendAverageLabel} textAnchor="end">
-                        평균 {formatQty(average)}
+                        평균 {formatDecimal(average)}
                     </text>
                     <path d={areaPath} className={styles.trendArea} />
                     <path d={linePath} className={styles.trendLine} />
                     {peakPoint && (
                         <text x={Math.min(width - 92, peakPoint.x + 8)} y={Math.max(14, peakPoint.y - 10)} className={styles.trendMarkerLabel}>
-                            고점 {peak.label} · {formatQty(peak.total)}
+                            고점 {peak.label} · {formatDecimal(peak.total)}
                         </text>
                     )}
                     {lowPoint && (
                         <text x={Math.min(width - 92, lowPoint.x + 8)} y={Math.min(baselineY - 8, lowPoint.y + 18)} className={styles.trendMarkerLabel}>
-                            저점 {low.label} · {formatQty(low.total)}
+                            저점 {low.label} · {formatDecimal(low.total)}
                         </text>
                     )}
                     {points.map((point, idx) => (
-                        <g
-                            key={point.date}
-                            onMouseEnter={() => setHoverPoint(point)}
-                            onMouseLeave={() => setHoverPoint(null)}
-                        >
+                        <g key={point.date}>
                             <circle
                                 cx={point.x}
                                 cy={point.y}
-                                r={idx === points.length - 1 ? 4.8 : 3.3}
+                                r={hoverPoint?.date === point.date ? 5.8 : idx === points.length - 1 ? 4.8 : 3.3}
                                 className={point.delta >= 0 ? styles.trendPointUp : styles.trendPointDown}
                             />
                         </g>
                     ))}
+                    {hoverPoint && (
+                        <>
+                            <line x1={hoverPoint.x} y1={padTop} x2={hoverPoint.x} y2={baselineY} className={styles.trendFocusLine} />
+                            <circle cx={hoverPoint.x} cy={hoverPoint.y} r="16" className={styles.trendFocusHalo} />
+                            <circle cx={hoverPoint.x} cy={hoverPoint.y} r="6.5" className={styles.trendFocusPoint} />
+                        </>
+                    )}
                     {xTicks.map((point) => (
                         <text key={point.date} x={point.x} y={height - 11} className={styles.trendTick} textAnchor="middle">
                             {point.label}
@@ -501,29 +531,29 @@ function TrendPanel({ items, title }) {
                 </svg>
                 {hoverPoint && (
                     <div
-                        className={`${styles.trendTooltip} ${hoverPoint.x < 150 ? styles.trendTooltipLeft : ''} ${hoverPoint.x > width - 150 ? styles.trendTooltipRight : ''}`}
+                        className={`${styles.trendLens} ${hoverPoint.x < 150 ? styles.trendLensLeft : ''} ${hoverPoint.x > width - 150 ? styles.trendLensRight : ''}`}
                         style={{ left: `${(hoverPoint.x / width) * 100}%`, top: `${(hoverPoint.y / height) * 100}%` }}
                     >
                         <strong>{hoverPoint.label}</strong>
-                        <span>총량 <b>{formatQty(hoverPoint.total)}</b></span>
-                        <span>전영업일 대비 <b>{hoverPoint.delta >= 0 ? '+' : ''}{formatQty(hoverPoint.delta)} ({hoverPoint.deltaPct >= 0 ? '+' : ''}{hoverPoint.deltaPct}%)</b></span>
-                        <span>평균 대비 <b>{hoverPoint.total - average >= 0 ? '+' : ''}{formatQty(hoverPoint.total - average)}</b></span>
+                        <span>총량 <b>{formatDecimal(hoverPoint.total)}</b></span>
+                        <span>전영업일 <b>{hoverPoint.delta >= 0 ? '+' : ''}{formatDecimal(hoverPoint.delta)}</b></span>
+                        <span>평균 대비 <b>{hoverPoint.total - average >= 0 ? '+' : ''}{formatDecimal(hoverPoint.total - average)}</b></span>
                     </div>
                 )}
             </div>
 
             <div className={styles.trendFooter}>
                 <span><b>분석 범위</b>{first.label} - {last.label} · 영업일 {visibleItems.length}일</span>
-                <span><b>고점</b>{peak.label} · {formatQty(peak.total)}</span>
-                <span><b>저점</b>{low.label} · {formatQty(low.total)}</span>
-                <span><b>평균 변동폭</b>{formatQty(avgAbsDelta)}</span>
+                <span><b>고점</b>{peak.label} · {formatDecimal(peak.total)}</span>
+                <span><b>저점</b>{low.label} · {formatDecimal(low.total)}</span>
+                <span><b>평균 변동폭</b>{formatDecimal(avgAbsDelta)}</span>
             </div>
         </div>
     );
 }
 
 function WeekdayOrderPanel({ data }) {
-    const [mode, setMode] = useState('month');
+    const [mode, setMode] = useState('week');
     if (!data?.month?.buckets && !data?.week?.buckets) return null;
 
     const active = mode === 'week' ? data.week : data.month;
@@ -531,57 +561,97 @@ function WeekdayOrderPanel({ data }) {
     const maxValue = Math.max(1, ...active.buckets.map((bucket) => bucket[metricKey] || 0));
     const monthTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
     const weekTotal = data.week.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
+    const selectedWeekLabel = data.week.fullLabel || data.week.label;
+    const legendItems = toSortedMapEntries(
+        active.buckets.reduce((acc, bucket) => {
+            Object.entries(bucket.breakdown || {}).forEach(([name, value]) => {
+                acc[name] = (acc[name] || 0) + value;
+            });
+            return acc;
+        }, {}),
+        4,
+    );
 
     return (
         <div className={styles.weekdayPanel}>
             <div className={styles.weekdayHead}>
                 <div>
-                    <h3 className={styles.panelTitle}>요일별 오더 비교</h3>
-                    <span className={styles.panelSub}>영업일 기준 월평균과 선택 주 실적</span>
+                    <h3 className={styles.panelTitle}>요일별 작업지 비중</h3>
+                    <span className={styles.panelSub}>요일별 오더 안에서 작업지 점유를 비교</span>
                 </div>
                 <div className={styles.weekdayTabs}>
-                    <button
-                        className={`${styles.weekdayTab} ${mode === 'month' ? styles.weekdayTabActive : ''}`}
-                        onClick={() => setMode('month')}
-                    >
-                        월간
-                    </button>
                     <button
                         className={`${styles.weekdayTab} ${mode === 'week' ? styles.weekdayTabActive : ''}`}
                         onClick={() => setMode('week')}
                     >
                         주간
                     </button>
+                    <button
+                        className={`${styles.weekdayTab} ${mode === 'month' ? styles.weekdayTabActive : ''}`}
+                        onClick={() => setMode('month')}
+                    >
+                        월간
+                    </button>
                 </div>
             </div>
 
+            <div className={styles.weekdaySelected}>
+                <b>선택 주간</b>{selectedWeekLabel}
+            </div>
+
             <div className={styles.weekdaySummary}>
-                <span><b>{data.month.label}</b>월 누적 {formatQty(monthTotal)}</span>
-                <span><b>{data.week.label}</b>주 누적 {formatQty(weekTotal)}</span>
+                <span><b>주간 누적</b>{formatDecimal(weekTotal)}</span>
+                <span><b>{data.month.label} 누적</b>{formatDecimal(monthTotal)}</span>
             </div>
 
             <div className={styles.weekdayBars}>
                 {active.buckets.map((bucket) => {
                     const value = bucket[metricKey] || 0;
                     const width = `${Math.max(value > 0 ? 8 : 0, (value / maxValue) * 100)}%`;
-                    const tooltip = mode === 'week'
-                        ? `${active.label} ${bucket.label}요일 · 오더 ${formatQty(bucket.total)}대`
-                        : `${active.label} ${bucket.label}요일 · 일평균 ${formatQty(bucket.average)}대 · 누적 ${formatQty(bucket.total)}대 · 관측 ${bucket.count}일`;
+                    const rawBreakdown = toSortedMapEntries(bucket.breakdown);
+                    const otherTotal = rawBreakdown.slice(6).reduce((sum, [, count]) => sum + count, 0);
+                    const breakdown = otherTotal > 0
+                        ? [...rawBreakdown.slice(0, 6), ['기타', otherTotal]]
+                        : rawBreakdown;
                     return (
                         <div key={bucket.dayIndex} className={styles.weekdayRow}>
                             <span className={styles.weekdayName}>{bucket.label}</span>
                             <div className={styles.weekdayTrack}>
-                                <span
-                                    className={styles.weekdayFill}
-                                    data-tooltip={tooltip}
-                                    style={{ width }}
-                                />
+                                <span className={styles.weekdayFill} style={{ width }}>
+                                    {breakdown.length > 0 ? breakdown.map(([name, count]) => {
+                                        const pct = bucket.total ? (count / bucket.total) * 100 : 0;
+                                        const tooltip = mode === 'week'
+                                            ? `${selectedWeekLabel} ${bucket.label}요일 · ${name} ${formatDecimal(count)}대 · 요일 내 ${formatDecimal(pct)}%`
+                                            : `${active.label} ${bucket.label}요일 · ${name} 누적 ${formatDecimal(count)}대 · 요일 내 ${formatDecimal(pct)}% · 관측 ${bucket.count}일`;
+                                        return (
+                                            <i
+                                                key={name}
+                                                className={styles.weekdaySegment}
+                                                data-tooltip={tooltip}
+                                                style={{
+                                                    width: `${Math.max(3, pct)}%`,
+                                                    background: getHashColor(name),
+                                                }}
+                                            />
+                                        );
+                                    }) : <i className={styles.weekdaySegmentEmpty} />}
+                                </span>
                             </div>
-                            <b>{formatQty(value)}</b>
+                            <b>{formatDecimal(value)}</b>
                         </div>
                     );
                 })}
             </div>
+            {legendItems.length > 0 && (
+                <div className={styles.weekdayLegend}>
+                    {legendItems.map(([name]) => (
+                        <span key={name} title={name}>
+                            <i style={{ background: getHashColor(name) }} />
+                            {name}
+                        </span>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

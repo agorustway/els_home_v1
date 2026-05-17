@@ -110,11 +110,26 @@ function getWeekFilterRange(dateStr) {
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     const toKey = (value) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+    const weekOfMonthLabel = (value) => {
+        const first = new Date(value.getFullYear(), value.getMonth(), 1);
+        const firstDay = first.getDay();
+        const firstMondayOffset = firstDay === 0 ? -6 : 1 - firstDay;
+        const firstWeekMonday = new Date(first);
+        firstWeekMonday.setDate(first.getDate() + firstMondayOffset);
+        const valueDay = value.getDay();
+        const mondayOffset = valueDay === 0 ? -6 : 1 - valueDay;
+        const weekMonday = new Date(value);
+        weekMonday.setDate(value.getDate() + mondayOffset);
+        const weekNo = Math.floor(Math.round((weekMonday - firstWeekMonday) / 86400000) / 7) + 1;
+        return `${String(value.getMonth() + 1).padStart(2, '0')}월 ${weekNo}주차`;
+    };
+    const weekLabel = weekOfMonthLabel(end);
     return {
         key: `${toKey(start)}_${toKey(end)}`,
         start: toKey(start),
         end: toKey(end),
-        label: `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`,
+        label: `${start.getMonth() + 1}/${start.getDate()}~${end.getMonth() + 1}/${end.getDate()}`,
+        fullLabel: `${start.getMonth() + 1}/${start.getDate()}~${end.getMonth() + 1}/${end.getDate()} (${weekLabel})`,
     };
 }
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
@@ -657,7 +672,7 @@ function AsanDispatchContent() {
                         <span className={styles.periodFilterLabel}>주간</span>
                         {mergedView.weeks.map(week => (
                             <button key={week.key} className={`${styles.monthBtn} ${allTabWeek?.key === week.key ? styles.monthBtnActive : ''}`}
-                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}>{week.label}</button>
+                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}>{week.fullLabel || week.label}</button>
                         ))}
                     </div>
                 </div>
