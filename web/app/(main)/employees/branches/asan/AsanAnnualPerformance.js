@@ -39,6 +39,32 @@ function writePrefs(prefs) {
     } catch { /* ignore */ }
 }
 
+async function readPerformanceJson(res, fallbackMessage) {
+    const text = await res.text();
+    let json = null;
+
+    if (text) {
+        try {
+            json = JSON.parse(text);
+        } catch {
+            const preview = text.replace(/\s+/g, ' ').trim().slice(0, 180);
+            const htmlHint = preview.startsWith('<')
+                ? 'HTML 에러 응답이 내려왔습니다. NAS Core 라우트 배포 또는 게이트웨이 연결을 확인해 주세요.'
+                : 'JSON이 아닌 응답이 내려왔습니다.';
+            throw new Error(`${fallbackMessage}: HTTP ${res.status} ${htmlHint}${preview ? ` (${preview})` : ''}`);
+        }
+    }
+
+    if (!res.ok) {
+        const checked = Array.isArray(json?.checked_paths) && json.checked_paths.length > 0
+            ? ` 확인 경로: ${json.checked_paths.slice(0, 3).join(' / ')}`
+            : '';
+        throw new Error(`${json?.error || fallbackMessage}${checked}`);
+    }
+
+    return json || {};
+}
+
 function DataBar({ value, max, tone }) {
     const width = Math.max(2, Math.min(100, (Math.abs(Number(value) || 0) / max) * 100));
     return (
@@ -139,6 +165,7 @@ export default function AsanAnnualPerformance() {
                 sheet_name: options.sheetName || sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
                 page: String(page),
                 page_size: String(PAGE_SIZE),
+                source: 'supabase',
             });
             const effectiveHeaderRow = options.headerRow ?? headerRow;
             if (effectiveHeaderRow) params.set('header_row', String(effectiveHeaderRow));
@@ -152,8 +179,7 @@ export default function AsanAnnualPerformance() {
             }
 
             const res = await fetch(`/api/branches/asan/performance/annual?${params.toString()}`);
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || '연간실적 조회 실패');
+            const json = await readPerformanceJson(res, '연간실적 조회 실패');
             if (!append && requestId !== requestIdRef.current) return;
             applyPayload(json.data, { append });
         } catch (err) {
@@ -231,8 +257,7 @@ export default function AsanAnnualPerformance() {
                     sort_dir: sortConfig.direction,
                 }),
             });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || '연간실적 동기화 실패');
+            const json = await readPerformanceJson(res, '연간실적 동기화 실패');
             applyPayload(json.data);
             persistPrefs({ sourceHeaders: json.data?.headers || [] });
         } catch (err) {
@@ -277,7 +302,7 @@ export default function AsanAnnualPerformance() {
         setBrowserLoading(true);
         try {
             const res = await fetch(`/api/nas/files?path=${encodeURIComponent(path)}`);
-            const json = await res.json();
+            const json = await readPerformanceJson(res, 'NAS 폴더 조회 실패');
             if (json.files) setBrowserFiles(json.files);
             setBrowserPath(path);
         } catch (err) {

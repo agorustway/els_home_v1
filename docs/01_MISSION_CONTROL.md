@@ -1,20 +1,20 @@
-# ELS MISSION CONTROL (v5.13.48 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.49 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 파일 경로 키를 배차판/선적관리와 같은 `/아산지점/...` 루트로 통일합니다.
+> 최신 업데이트: 아산 연간실적 조회는 Supabase 원장만 읽고, NAS Excel은 동기화 버튼 또는 명시적 프리뷰에서만 읽도록 분리합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.48
+- **웹 버전**: v5.13.49
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 연간실적 기본 경로를 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 변경.
-  - 기존 `/B_총무/...` 저장값은 웹/백엔드 양쪽에서 `/아산지점/B_총무/...`로 자동 보정.
-  - 파일 브라우저 시작 위치도 아산지점 루트 기준으로 통일.
+  - 연간실적 기본 조회를 Supabase 전용으로 고정하고, 빈 DB는 `supabase-empty` 동기화 대기 상태로 응답.
+  - NAS/게이트웨이 HTML 에러 응답을 JSON 파싱 오류 대신 배포·라우트 확인 메시지로 표시.
+  - `NAS 동기화`는 NAS Excel → Supabase 적재 후 Supabase 조회 데이터를 반환.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 연간실적 아산지점 루트 경로 보정 테스트 통과 |
+| Next.js 웹 | 정상 | 연간실적 HTML 응답 방어 및 Supabase 전용 조회 테스트 통과 |
 | Supabase 인증/DB | 정상 | 연간실적 SQL 추가, 운영 DB 적용 필요 |
 | NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 유지 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
@@ -35,6 +35,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.49**: 아산 연간실적 기본 조회를 Supabase 원장 전용으로 정리하고, HTML 에러 응답이 JSON 파싱 오류로 보이지 않도록 보강.
 - **v5.13.48**: 아산 연간실적 rel_path를 배차판/선적관리와 같은 `/아산지점/...` 규칙으로 통일하고 legacy `/B_총무/...` 자동 보정을 추가.
 - **v5.13.47**: 아산 연간실적 파일 탐색 후보에 `아산지점` 공유 루트를 추가하고, 404 응답에 확인 경로 목록을 포함.
 - **v5.13.46**: 아산 연간실적 페이지, 누적 원장형 `branch_performance_*` SQL, NAS Core 동기화 모듈, 파이프라인 문서를 추가.
@@ -60,7 +61,7 @@
 - `node --test web/tests/asanShippingFlow.test.mjs`: 29개 통과
 - `node --test web/tests/containerInput.test.mjs web/tests/vehicleTrackingExport.test.mjs web/tests/vehicleLocation.test.mjs web/tests/asanShippingFlow.test.mjs`: 38개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 46개 통과
-- `node --test web/tests/asanAnnualPerformance.test.mjs`: 7개 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 8개 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (샌드박스 외부 fetch EACCES 로그는 기존 외부 네트워크 제한)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
@@ -71,7 +72,7 @@
 - `/employees/news` 송미관: 뉴스 페이지 하단의 숨은 트리거로 열리는 모달.
 
 ## IN-PROGRESS
-- 아산 연간실적: 운영 DB SQL 적용 완료. NAS Core 재배포 후 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 기준 최초 동기화 필요.
+- 아산 연간실적: 운영 DB SQL 적용 완료. NAS Core 재배포 후 `NAS 동기화`로 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`를 Supabase 원장에 최초 적재 필요.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

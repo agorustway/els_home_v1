@@ -467,6 +467,35 @@ def _build_performance_summary(headers, rows):
     }
 
 
+def _empty_supabase_data(rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, page=1, page_size=500):
+    try:
+        page = max(1, int(page or 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = max(1, min(5000, int(page_size or 500)))
+    except (TypeError, ValueError):
+        page_size = 500
+
+    return {
+        "headers": [],
+        "data": [],
+        "summary": _build_performance_summary([], []),
+        "file_path": _normalize_performance_path(rel_path),
+        "sheet_name": sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET,
+        "header_row": None,
+        "file_modified_at": None,
+        "synced_at": None,
+        "total": 0,
+        "page": page,
+        "page_size": page_size,
+        "sort_key": "",
+        "sort_dir": "asc",
+        "source": "supabase-empty",
+        "needs_sync": True,
+    }
+
+
 def _row_hash(headers, row):
     payload = {"headers": headers, "row": row}
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
@@ -787,7 +816,7 @@ def register_asan_performance_routes(app, supabase, kst):
 
             rel_path = request.args.get("path") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH
             sheet_name = request.args.get("sheet_name") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET
-            source = request.args.get("source", "auto")
+            source = (request.args.get("source", "supabase") or "supabase").lower()
             if source != "excel":
                 db_data = _query(
                     rel_path=rel_path,
@@ -800,6 +829,19 @@ def register_asan_performance_routes(app, supabase, kst):
                 )
                 if db_data:
                     return jsonify({"data": db_data})
+                if not supabase or not state["db_available"]:
+                    return jsonify({
+                        "error": "연간실적 Supabase 연결 또는 테이블 상태를 확인할 수 없습니다.",
+                        "source": "supabase-unavailable",
+                    }), 503
+                return jsonify({
+                    "data": _empty_supabase_data(
+                        rel_path=rel_path,
+                        sheet_name=sheet_name,
+                        page=request.args.get("page", 1),
+                        page_size=request.args.get("page_size", 500),
+                    )
+                })
 
             file_path, normalized_path = _resolve_performance_file(rel_path)
             if not file_path.exists():

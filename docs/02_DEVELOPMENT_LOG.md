@@ -1,4 +1,18 @@
 
+## [2026-05-17] 아산 연간실적 Supabase 조회 흐름 정리 (v5.13.49)
+### 핵심
+- 화면 기본 조회를 `source=supabase`로 고정해 Supabase 원장만 읽도록 정리했습니다. NAS Excel 읽기는 `NAS 동기화` POST 또는 명시적 `source=excel` 프리뷰에서만 수행합니다.
+- Supabase에 아직 적재된 행이 없으면 404/Excel 미리보기 대신 `supabase-empty`와 `needs_sync=true`로 응답해 “동기화 전” 상태를 명확히 했습니다.
+- NAS Core 또는 게이트웨이가 HTML 에러 페이지를 반환해도 프론트가 `Unexpected token '<'`로 터지지 않고, 배포/라우트 확인이 필요한 응답이라는 메시지를 보여주도록 보강했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과 (8개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py` 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 rel_path 루트 통일 (v5.13.48)
 ### 핵심
 - 형이 확인해준 기준대로 연간실적 기본 경로를 배차판/선적관리와 동일한 `/아산지점/...` 루트 규칙으로 통일했습니다.
