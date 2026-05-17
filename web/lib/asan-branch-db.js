@@ -208,9 +208,11 @@ async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, 
     const hasMore = rows.length > pageSize;
     const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
     const loadedThrough = start + pageRows.length;
+    const fallbackCount = Math.max(Number(fallbackTotal) || 0, loadedThrough + (hasMore ? 1 : 0));
     return {
         rows: pageRows,
-        total: count ?? Math.max(Number(fallbackTotal) || 0, loadedThrough + (hasMore ? 1 : 0)),
+        total: count ?? fallbackCount,
+        totalEstimated: count == null && hasMore && !(Number(fallbackTotal) || 0),
         sortKey: '',
         sortDir: sortDesc ? 'desc' : 'asc',
     };
@@ -268,6 +270,7 @@ export async function queryAsanShippingFromSupabase(searchParams) {
         file_modified_at: meta.file_modified_at,
         synced_at: meta.synced_at,
         total: paged.total || meta.row_count || 0,
+        total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,
         sort_key: paged.sortKey,
@@ -386,6 +389,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         file_modified_at: meta.file_modified_at,
         synced_at: meta.synced_at,
         total: paged.total || meta.current_row_count || 0,
+        total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,
         sort_key: paged.sortKey,

@@ -199,10 +199,32 @@ export default function AsanDashboard({
             {dateControlsSlot && (
                 <div className={styles.dateBridge}>
                     {onOpenDailyGrid && (
-                        <div className={styles.mobileDateActionBar}>
-                            <span>선택한 날짜의 상세 배차 자료를 바로 확인합니다.</span>
-                            <button type="button" onClick={onOpenDailyGrid}>
-                                선택일 배차판 검색
+                        <div className={styles.mobileDateActionBar} aria-label="모바일 현황판 빠른 전환">
+                            <button
+                                type="button"
+                                title="고객사(화주) 기준"
+                                aria-label="고객사(화주) 기준으로 보기"
+                                className={viewMode === 'customer' ? styles.mobileDateActionActive : ''}
+                                onClick={() => handleViewModeChange('customer')}
+                            >
+                                고객사 기준
+                            </button>
+                            <button
+                                type="button"
+                                title="실행사(협력업체) 기준"
+                                aria-label="실행사(협력업체) 기준으로 보기"
+                                className={viewMode === 'dispatcher' ? styles.mobileDateActionActive : ''}
+                                onClick={() => handleViewModeChange('dispatcher')}
+                            >
+                                실행사 기준
+                            </button>
+                            <button
+                                type="button"
+                                title="선택일 배차판 검색"
+                                className={styles.mobileDateActionPrimary}
+                                onClick={onOpenDailyGrid}
+                            >
+                                배차판 검색
                             </button>
                         </div>
                     )}

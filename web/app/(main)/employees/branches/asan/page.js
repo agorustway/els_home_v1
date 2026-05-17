@@ -4,6 +4,7 @@ import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 import AsanShipping from './AsanShipping';
 import AsanAnnualPerformance from './AsanAnnualPerformance';
+import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
@@ -204,6 +205,38 @@ function calcSummary(headers, data, viewType) {
         return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     }
 }
+function hasValidOrderRows(item, viewType) {
+    if (!Array.isArray(item?.data) || item.data.length === 0) return false;
+    const summaryOrder = calcSummary(item.headers || [], item.data || [], viewType)?.order || 0;
+    if (summaryOrder <= 0) return false;
+    const dashboardScope = buildAsanDashboardScope({
+        rows: item.data || [],
+        headers: item.headers || [],
+        viewType,
+        viewMode: 'customer',
+    });
+    return (dashboardScope?.total || 0) > 0;
+}
+function findDefaultValidTabIndex(items = [], viewType, today = getTodayKey()) {
+    const hasRows = (item) => hasValidOrderRows(item, viewType);
+    let ti = items.findIndex(item => item.target_date === today && hasRows(item));
+
+    if (ti === -1) {
+        const nextDataIdx = items.findIndex(item => item.target_date >= today && hasRows(item));
+        if (nextDataIdx !== -1) ti = nextDataIdx;
+    }
+
+    if (ti === -1) {
+        for (let i = items.length - 1; i >= 0; i -= 1) {
+            if (hasRows(items[i])) {
+                ti = i;
+                break;
+            }
+        }
+    }
+
+    return ti;
+}
 function doSearch(data, headers, term) {
     if (!term || !data) return { indices: null, summary: '' };
     const terms = term.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -330,30 +363,9 @@ function AsanDispatchContent() {
             const r = await fetch(`/api/branches/asan/dispatch?type=${type}&t=${Date.now()}`, { cache: 'no-store' }); 
             const j = await r.json();
             const items = j.data || []; setData(items);
-            const hasRows = (item) => Array.isArray(item?.data) && item.data.length > 0;
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-            // 1. 오늘 날짜 중 실제 데이터가 있는 탭 찾기
-            let ti = items.findIndex(d => d.target_date === today && hasRows(d));
-
-            // 2. 오늘 데이터가 없으면(또는 아예 오늘 탭이 없으면) 미래의 데이터가 있는 첫 번째 탭 찾기
-            if (ti === -1) {
-                const nextDataIdx = items.findIndex(d => d.target_date >= today && hasRows(d));
-                if (nextDataIdx !== -1) ti = nextDataIdx;
-            }
-
-            // 3. 그래도 못찾으면 마지막 데이터 보유 탭
-            if (ti === -1) {
-                for (let i = items.length - 1; i >= 0; i -= 1) {
-                    if (hasRows(items[i])) {
-                        ti = i;
-                        break;
-                    }
-                }
-            }
-
-            setActiveTab(ti >= 0 ? ti : items.length - 1);
+            setActiveTab(findDefaultValidTabIndex(items, type, today));
         } catch { setData([]); } finally { setLoading(false); }
     };
     const handleSync = async () => {
@@ -422,6 +434,13 @@ function AsanDispatchContent() {
     // ===== "전체" 탭 데이터 (모든 날짜 합산, 내림차순) =====
     const isAllTab = activeTab === data.length;
     const todayKey = useMemo(() => getTodayKey(), []);
+
+    useEffect(() => {
+        if (isAllTab || data.length === 0 || activeTab < 0) return;
+        if (hasValidOrderRows(data[activeTab], viewType)) return;
+        const fallbackIdx = findDefaultValidTabIndex(data, viewType, todayKey);
+        if (fallbackIdx !== activeTab) setActiveTab(fallbackIdx);
+    }, [activeTab, data, isAllTab, todayKey, viewType]);
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
@@ -672,7 +691,7 @@ function AsanDispatchContent() {
     const showTooltip = (e, text) => { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ text, x: r.right + 4, y: r.top }); };
 
     const handleDashboardIssueSelect = useCallback((issue) => {
-        const targetIdx = data.findIndex((item) => item.target_date === issue.date && Array.isArray(item?.data) && item.data.length > 0);
+        const targetIdx = data.findIndex((item) => item.target_date === issue.date && hasValidOrderRows(item, viewType));
         if (targetIdx >= 0) setActiveTab(targetIdx);
         setAllTabMonth(null);
         setAllTabWeek(null);
@@ -687,7 +706,7 @@ function AsanDispatchContent() {
         requestAnimationFrame(() => {
             containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-    }, [data]);
+    }, [data, viewType]);
 
     const handleOpenDailyGrid = useCallback(() => {
         setMainView('grid');
@@ -703,14 +722,14 @@ function AsanDispatchContent() {
                 {data.map((item, idx) => {
                     const { mm, dd, day } = formatTabLabel(item.target_date);
                     const tabType = getTabType(item.target_date);
-                    const hasRows = Array.isArray(item?.data) && item.data.length > 0;
+                    const hasRows = hasValidOrderRows(item, viewType);
                     return (
                         <button
                             key={item.id}
                             className={`${styles.dateTab} ${styles[`tab_${tabType}`]} ${!hasRows ? styles.dateTabDisabled : ''} ${activeTab === idx ? styles.dateTabActive : ''}`}
                             disabled={!hasRows}
-                            title={!hasRows ? '데이터 없음' : undefined}
-                            onClick={() => { setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}
+                            title={!hasRows ? '유효 오더 없음' : undefined}
+                            onClick={() => { if (!hasRows) return; setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}
                         >
                             <span className={styles.tabMonth}>{mm}/{dd}</span>
                             <span className={styles.tabDay}>({day})</span>

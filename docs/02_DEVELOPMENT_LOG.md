@@ -1,4 +1,28 @@
 
+## [2026-05-17] 아산 연간실적 원장 상세 검색 총건수 표기 보정 (v5.13.92)
+### 핵심
+- 연간실적 상세 원장 검색은 운영 DB 타임아웃을 피하려고 정확 count를 생략하는 경로가 있어, 더 불러올 행이 남아 있을 때 `301+`처럼 추정 총건수로 표시하도록 보강했습니다.
+- 같은 페이징 유틸을 쓰는 선적관리도 추정 총건수 응답값을 받을 수 있게 맞췄습니다.
+- 아산 배차 모바일 현황판의 날짜 시작점은 고객사/실행사 기준 전환과 배차판 검색 버튼을 함께 제공하고, 유효 오더가 없는 날짜 탭은 자동으로 제외하도록 정리했습니다.
+### 웹 검증
+- 운영 API에서 `analysisVersion=ledger-workbench-20260517`, current snapshot 368,617행, 월별 132개월, 주차 575개, 요일 7개, 세그먼트 4개를 확인했습니다.
+- `ELS솔루션+직계약` 드릴다운은 AND 검색으로 진입하며, 원장 상세 총건수는 정확 count 생략 경로에서 `301+`처럼 표시됩니다.
+- 검증 월 `2024-01` 매출 1,775,915,940 / 매입 1,543,857,480, `2025-01` 매출 1,701,698,800 / 매입 1,501,277,000을 재확인했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanShippingFlow.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 10년 원장 분석 워크벤치 확장 (v5.13.91)
 ### 핵심
 - 연간실적 분석 탭을 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 하위 탭으로 확장했습니다.

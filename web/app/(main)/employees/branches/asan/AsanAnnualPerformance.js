@@ -436,6 +436,7 @@ export default function AsanAnnualPerformance() {
     const totalRows = Number(payload?.total ?? rows.length) || 0;
     const loadedRows = rows.length;
     const canLoadMore = payload?.source === 'supabase' && loadedRows < totalRows;
+    const totalRowsLabel = `${totalRows.toLocaleString()}${payload?.total_is_estimated ? '+' : ''}`;
     const visibleColumns = useMemo(() => {
         const hidden = hiddenCols instanceof Set ? hiddenCols : new Set(hiddenCols || []);
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
@@ -648,7 +649,7 @@ export default function AsanAnnualPerformance() {
                         <span>파일 {fmtTs(payload?.file_modified_at)}</span>
                         {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
                         <span>{payload?.source || '대기'}</span>
-                        <span>{totalRows.toLocaleString()}행</span>
+                        <span>{totalRowsLabel}행</span>
                         {syncStatus?.running && <span className={styles.syncBadge}>동기화 진행중</span>}
                         {syncStatus?.finished_at && !syncStatus.running && <span>동기화 {fmtTs(syncStatus.finished_at)}</span>}
                     </div>
@@ -1192,7 +1193,7 @@ export default function AsanAnnualPerformance() {
                             {searchMode === 'and' ? 'AND 검색' : 'OR 검색'}
                         </button>
                         <button className={styles.ghostBtn} onClick={() => setShowColPanel(prev => !prev)}>컬럼</button>
-                        <span className={styles.rowCount}>조회 {loadedRows.toLocaleString()} / 전체 {totalRows.toLocaleString()}</span>
+                        <span className={styles.rowCount}>조회 {loadedRows.toLocaleString()} / 전체 {totalRowsLabel}</span>
                     </div>
 
                     {showColPanel && (

@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.91 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.92 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적을 10년 원장 분석 워크벤치로 확장하고, 운영 Supabase summary에 월/주차/요일/직계약 세그먼트와 1원 단위 검증 메타를 반영했습니다.
+> 최신 업데이트: 아산 연간실적 원장 상세 검색의 추정 총건수 표기를 보강하고, 웹 디버그에서 운영 summary·직계약 세그먼트·원장 드릴다운을 재검증했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.91
+- **웹 버전**: v5.13.92
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -11,6 +11,7 @@
   - 운영 Supabase summary에 `weekly`, `weekday`, `strategicSegments`, `ledgerValidation`, `amountQuality`, `dateQuality`를 추가.
   - 검증값: current snapshot 368,617행, 월별 summary 불일치 0건, 매출/매입/손익 raw 재집계 차이 0원.
   - `운송사(명의)=ELS솔루션`과 `ELS솔루션+직계약`을 외부 운송사와 분리해 별도 분석.
+  - 상세 원장 AND 검색은 정확 count 생략 경로일 때 `301+`처럼 추정 총건수로 표시.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
 
 ## ACTIVE SYSTEMS
@@ -38,6 +39,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.92**: 아산 연간실적/선적관리 DB 페이징에서 정확 count를 생략한 검색 결과는 `+` 표기로 추정 총건수를 표시. 웹 디버그에서 368,617행 summary, ELS솔루션 직계약 드릴다운, 2024-01/2025-01 검증값을 재확인.
 - **v5.13.91**: 아산 연간실적 10년 원장 분석 워크벤치 확장. 월/주차/요일/ELS솔루션 직계약 세그먼트와 검증·근거 탭 추가, Supabase summary 고급 재집계 SQL 반영.
 - **v5.13.90**: 아산 배차 요일별 월간 지표명을 `월기준 주간평균합`으로 정정하고 모바일 날짜탭 시작점 버튼과 짧은 주차 라벨 추가.
 - **v5.13.89**: 아산 연간실적 월 파싱을 보정하고 Supabase 월별 summary를 `마감월` 기준으로 복구. 월별 차트 금액 표시도 보강.
@@ -56,6 +58,7 @@
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/API sandbox EACCES 경고만 표시)

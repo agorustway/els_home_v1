@@ -1042,6 +1042,7 @@ export default function AsanShipping() {
     const serverTotalRows = data?.source === 'supabase' ? Number(data.total || data.data?.length || 0) : totalRows;
     const loadedRows = data?.source === 'supabase' ? (data.data?.length || 0) : totalRows;
     const canLoadMore = data?.source === 'supabase' && loadedRows < serverTotalRows;
+    const serverTotalRowsLabel = `${serverTotalRows.toLocaleString()}${data?.total_is_estimated ? '+' : ''}`;
     const isMobileTableMode = dynamicHeight === 'auto';
     const selectedMonthSet = new Set(dateFilter.months || []);
 
@@ -1188,7 +1189,7 @@ export default function AsanShipping() {
                                 저장: {fileTimeStr} <span className={styles.elapsedBadge}>{elapsed}</span>
                                 {data.source === 'supabase' && (
                                     <span className={styles.dataMeta}>
-                                        DB {loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행
+                                        DB {loadedRows.toLocaleString()} / {serverTotalRowsLabel}행
                                     </span>
                                 )}
                                 {dbSyncedTimeStr && (
@@ -1340,7 +1341,7 @@ export default function AsanShipping() {
                         </button>
                     </div>
                     <span className={styles.resultCountText} title="현재 검색/필터 적용 후 화면 조회 건수">
-                        전체 {serverTotalRows.toLocaleString()}건 / 조회 {totalRows.toLocaleString()}건
+                        전체 {serverTotalRowsLabel}건 / 조회 {totalRows.toLocaleString()}건
                     </span>
                 </div>
             )}
@@ -1463,7 +1464,7 @@ export default function AsanShipping() {
 
             {data.source === 'supabase' && (
                 <div className={styles.pageBar}>
-                    <span>{loadedRows.toLocaleString()} / {serverTotalRows.toLocaleString()}행</span>
+                    <span>{loadedRows.toLocaleString()} / {serverTotalRowsLabel}행</span>
                     <button
                         className={styles.loadMoreBtn}
                         onClick={loadNextPage}
