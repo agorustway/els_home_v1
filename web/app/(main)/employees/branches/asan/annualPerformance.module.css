@@ -1,0 +1,619 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: calc(100vh - 250px);
+    min-height: 520px;
+    overflow: hidden;
+}
+
+.topBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.titleBlock {
+    min-width: 0;
+}
+
+.title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.metaLine {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.elapsed {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #334155;
+    font-variant-numeric: tabular-nums;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.segmented {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.segmented button,
+.ghostBtn,
+.primaryBtn,
+.smallBtn,
+.loadMoreBtn,
+.browseBtn,
+.saveBtn,
+.cancelBtn {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    font-size: 0.74rem;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.segmented button {
+    border: 0;
+    background: transparent;
+}
+
+.segmentActive {
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.primaryBtn {
+    border-color: #99f6e4;
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.primaryBtn:disabled,
+.loadMoreBtn:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.errorBox {
+    padding: 8px 10px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.emptyState,
+.emptyPanel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.analytics {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow: auto;
+    padding-bottom: 4px;
+}
+
+.kpiGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.kpi {
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.kpiLabel {
+    display: block;
+    margin-bottom: 4px;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.kpi strong {
+    display: block;
+    color: #0f172a;
+    font-size: 1.18rem;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.positive {
+    color: #047857 !important;
+}
+
+.negative {
+    color: #b91c1c !important;
+}
+
+.analysisGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+    gap: 8px;
+}
+
+.panel,
+.detectPanel {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.panelHeader h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+.panelHeader span {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.yearChart {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px;
+}
+
+.yearRow {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.yearLabel {
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.barStack {
+    display: grid;
+    gap: 4px;
+}
+
+.barStack > div {
+    display: grid;
+    grid-template-columns: minmax(80px, 1fr) 92px;
+    align-items: center;
+    gap: 8px;
+}
+
+.barStack span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-align: right;
+}
+
+.dataBarTrack {
+    position: relative;
+    height: 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    overflow: hidden;
+}
+
+.dataBarFill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+}
+
+.revenue {
+    background: #0f766e;
+}
+
+.purchase {
+    background: #d97706;
+}
+
+.profit {
+    background: #2563eb;
+}
+
+.loss {
+    background: #dc2626;
+}
+
+.rankList {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px 10px;
+}
+
+.rankRow {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    min-height: 30px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.rankRow:last-child {
+    border-bottom: 0;
+}
+
+.rankNo {
+    color: #94a3b8;
+    font-size: 0.74rem;
+    font-weight: 900;
+}
+
+.rankName {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rankRow strong {
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.detectPanel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+}
+
+.detectPanel span {
+    padding: 4px 7px;
+    border-radius: 5px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.tableArea {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+    flex: 1;
+}
+
+.tableToolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.searchInput {
+    width: min(360px, 100%);
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.rowCount {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.columnPanel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    max-height: 110px;
+    overflow: auto;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.columnPanel label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #334155;
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.tableScroll {
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.dataTable {
+    width: 100%;
+    min-width: 960px;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+.dataTable th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 7px 9px;
+    border-bottom: 1px solid #1e3a8a;
+    background: #1e3a8a;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.dataTable td {
+    padding: 6px 9px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+    font-size: 0.74rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.dataTable tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.tableMessageCell {
+    height: 120px;
+    text-align: center !important;
+    color: #64748b !important;
+    font-weight: 900 !important;
+}
+
+.pageBar {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+}
+
+.loadMoreBtn {
+    min-width: 110px;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.modal {
+    width: min(620px, 100%);
+    max-height: 86vh;
+    overflow: auto;
+    padding: 18px;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.24);
+}
+
+.modal h2 {
+    margin: 0 0 14px;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.formGroup label {
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.pathRow {
+    display: flex;
+    gap: 6px;
+}
+
+.pathInput {
+    width: 100%;
+    height: 32px;
+    padding: 0 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: 10px;
+}
+
+.browseBtn {
+    min-width: 58px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.saveBtn {
+    border-color: #99f6e4;
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.cancelBtn {
+    background: #f8fafc;
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.browserPath {
+    margin: 0 0 8px;
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 800;
+    word-break: break-all;
+}
+
+.browserList {
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+}
+
+.browserItem,
+.browserLoading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 7px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.browserItem:hover {
+    background: #f8fafc;
+}
+
+.browserLoading {
+    justify-content: center;
+    color: #64748b;
+    cursor: default;
+}
+
+@media (max-width: 900px) {
+    .container {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .topBar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .actions {
+        justify-content: stretch;
+    }
+
+    .segmented,
+    .ghostBtn,
+    .primaryBtn {
+        flex: 1;
+    }
+
+    .kpiGrid,
+    .analysisGrid,
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .rowCount {
+        margin-left: 0;
+    }
+
+    .tableScroll {
+        max-height: 62vh;
+    }
+}

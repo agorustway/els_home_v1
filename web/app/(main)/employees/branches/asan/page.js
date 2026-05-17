@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 import AsanShipping from './AsanShipping';
+import AsanAnnualPerformance from './AsanAnnualPerformance';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
@@ -894,7 +895,7 @@ export default function AsanBranchPage() {
     useEffect(() => {
         try {
             const saved = localStorage.getItem(ASAN_MAIN_TAB_KEY);
-            setActiveMainTab(saved === 'shipping' ? 'shipping' : 'dispatch');
+            setActiveMainTab(['dispatch', 'shipping', 'annual-performance'].includes(saved) ? saved : 'dispatch');
         } catch {
             setActiveMainTab('dispatch');
         }
@@ -928,6 +929,12 @@ export default function AsanBranchPage() {
                     >
                         선적관리
                     </button>
+                    <button
+                        className={`${styles.mainTabBtn} ${activeMainTab === 'annual-performance' ? styles.mainTabBtnActive : ''}`}
+                        onClick={() => switchMainTab('annual-performance')}
+                    >
+                        연간실적
+                    </button>
                 </div>
             </div>
             
@@ -935,6 +942,7 @@ export default function AsanBranchPage() {
             <div className={styles.contentArea}>
                 {activeMainTab === 'dispatch' && <AsanDispatchContent />}
                 {activeMainTab === 'shipping' && <AsanShipping />}
+                {activeMainTab === 'annual-performance' && <AsanAnnualPerformance />}
             </div>
         </div>
     );

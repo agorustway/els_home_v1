@@ -43,6 +43,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY elsbot/ /app/elsbot/
 COPY docker/els-backend/dns_fix.py /app/dns_fix.py
 COPY docker/els-backend/file_sync_gate.py /app/file_sync_gate.py
+COPY docker/els-backend/asan_performance.py /app/asan_performance.py
 COPY docker/els-backend/app.py /app/app.py
 
 # 4. 환경 설정

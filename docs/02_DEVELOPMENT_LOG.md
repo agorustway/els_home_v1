@@ -1,4 +1,25 @@
 
+## [2026-05-17] 아산 연간실적 페이지 및 누적 원장 파이프라인 구축 (v5.13.46)
+### 핵심
+- 아산지점 화면에 `연간실적` 메인 탭을 추가하고, 분석 탭(매출/매입/손익 KPI, 연도별 그래프, 상위 거래처/구분)과 테이블 탭(검색/정렬/컬럼 숨김/더보기)을 구성했습니다.
+- NAS Core에 `합계연간실적.xlsx`의 `합계` 탭을 읽는 연간실적 동기화 모듈을 추가했습니다. 제목행은 자동 감지하며 웹 설정에서 수동 지정할 수 있습니다.
+- Supabase는 `branch_performance_files`, `branch_performance_rows` 구조로 설계했습니다. 원장 행은 삭제하지 않고 `is_current`와 `change_status`로 현재/종료 상태를 추적합니다.
+- 월별실적 확장과 연간+월별 합산 계획을 `docs/11_ASAN_PERFORMANCE_PIPELINE.md`에 남겼습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/containerInput.test.mjs web/tests/vehicleLocation.test.mjs web/tests/vehicleTrackingExport.test.mjs` 통과 (46개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py` 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js"` 0 errors
+- `npm.cmd run build` 통과 (외부 WebDAV/fetch는 샌드박스 네트워크 `EACCES` 로그만 발생)
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`, `docker/els-backend/Dockerfile`, `docker/els-backend/Dockerfile.core`, `docker/docker-compose.yml`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `annualPerformance.module.css`, `page.js`
+- `web/app/api/branches/asan/performance/annual/route.js`
+- `web/utils/asanPerformanceView.mjs`
+- `web/supabase_sql/20260517_asan_annual_performance.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 선적관리 모바일 상단 정렬 정돈 (v5.13.45)
 ### 핵심
 - 모바일 선적관리 화면에서 상단 제목/저장정보/검색/액션 영역이 데스크톱 flex 기준 폭을 끌고 와 밀릴 수 있던 부분을 100% 폭 기준으로 정리했습니다.

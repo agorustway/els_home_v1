@@ -26,6 +26,7 @@ from urllib.parse import quote
 import requests
 import urllib3
 from file_sync_gate import StableFileSyncGate
+from asan_performance import register_asan_performance_routes
 urllib3.disable_warnings()
 
 # --- KST 설정 ---
@@ -82,6 +83,8 @@ shipping_sync_gate = StableFileSyncGate(
     quiet_seconds=ASAN_SHIPPING_SYNC_QUIET_SECONDS,
     retry_seconds=ASAN_SHIPPING_SYNC_RETRY_SECONDS,
 )
+
+register_asan_performance_routes(app, supabase, KST)
 
 def sync_asan_dispatch_python(force=False):
     global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
