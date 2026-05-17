@@ -17,6 +17,8 @@ import styles from './annualPerformance.module.css';
 const PREFS_KEY = 'asan_annual_performance_prefs';
 const PAGE_SIZE = 300;
 const SEARCH_DEBOUNCE_MS = 700;
+const DIMENSION_PRIORITY = ['청구처', '작업지', '운송사', '노선', '구분', '지급처', '포트', '하차', '계약', '픽업', '지역'];
+const EMPTY_LIST = Object.freeze([]);
 
 function fmtTs(value) {
     if (!value) return '-';
@@ -81,6 +83,69 @@ function rate(numerator, denominator) {
     return bottom ? Math.round((top / bottom) * 10000) / 100 : 0;
 }
 
+function safeNumber(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function formatPercent(value, digits = 1) {
+    return `${safeNumber(value).toLocaleString('ko-KR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: digits,
+    })}%`;
+}
+
+function formatSignedAmount(value) {
+    const num = safeNumber(value);
+    if (!num) return '0원';
+    return `${num > 0 ? '+' : ''}${formatPerformanceAmount(num)}`;
+}
+
+function profitRateOf(item) {
+    return rate(item?.profit, item?.revenue);
+}
+
+function getDimensionScore(column = '') {
+    const idx = DIMENSION_PRIORITY.findIndex(word => String(column).includes(word));
+    return idx >= 0 ? idx : DIMENSION_PRIORITY.length;
+}
+
+function sumField(items = [], field) {
+    return items.reduce((sum, item) => sum + safeNumber(item?.[field]), 0);
+}
+
+function getPerformanceGrade(profitRate) {
+    if (profitRate >= 10) return { label: '수익성 양호', tone: 'good' };
+    if (profitRate >= 5) return { label: '마진 관리', tone: 'watch' };
+    if (profitRate > 0) return { label: '저마진 주의', tone: 'warn' };
+    return { label: '손익 위험', tone: 'danger' };
+}
+
+function getPeriodRange(monthly = []) {
+    if (!monthly.length) return '-';
+    const first = monthly[0]?.period || '-';
+    const last = monthly[monthly.length - 1]?.period || '-';
+    return first === last ? first : `${first} ~ ${last}`;
+}
+
+function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMonth, topSegment, top3Share, lowMarginItems }) {
+    const notes = [];
+    if (latestMonth && previousMonth) {
+        notes.push(`최근월 매출은 전월 대비 ${formatSignedAmount(safeNumber(latestMonth.revenue) - safeNumber(previousMonth.revenue))}, 손익은 ${formatSignedAmount(safeNumber(latestMonth.profit) - safeNumber(previousMonth.profit))}입니다.`);
+    }
+    notes.push(`전체 손익률은 ${formatPercent(profitRate)}이고 매입률은 ${formatPercent(purchaseRate)}입니다.`);
+    if (topSegment) {
+        notes.push(`최대 기여 항목은 ${topSegment.name || '미분류'}이며 매출 비중 ${formatPercent(topSegment.revenueShare)}입니다.`);
+    }
+    if (top3Share) {
+        notes.push(`상위 3개 집중도는 ${formatPercent(top3Share)}입니다.`);
+    }
+    if (lowMarginItems.length) {
+        notes.push(`매출 상위권 중 손익률이 낮은 항목 ${lowMarginItems.length.toLocaleString('ko-KR')}개를 우선 점검 대상으로 표시했습니다.`);
+    }
+    return notes.slice(0, 5);
+}
+
 export default function AsanAnnualPerformance() {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
@@ -96,6 +161,7 @@ export default function AsanAnnualPerformance() {
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: '', direction: 'asc' });
+    const [activeDimension, setActiveDimension] = useState('');
     const [colOrder, setColOrder] = useState([]);
     const [hiddenCols, setHiddenCols] = useState(new Set());
     const [showColPanel, setShowColPanel] = useState(false);
@@ -251,18 +317,66 @@ export default function AsanAnnualPerformance() {
         const hidden = hiddenCols instanceof Set ? hiddenCols : new Set(hiddenCols || []);
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
     }, [colOrder, headers, hiddenCols]);
-    const yearly = Array.isArray(summary.yearly) ? summary.yearly : [];
-    const monthly = Array.isArray(summary.monthly) ? summary.monthly : [];
+    const yearly = Array.isArray(summary.yearly) ? summary.yearly : EMPTY_LIST;
+    const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
     const monthlyTrend = monthly.slice(-18);
-    const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : [];
-    const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : [];
+    const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
+    const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
     const chartMax = getPerformanceChartMax(yearly, ['revenue', 'purchase', 'profit']);
     const monthChartMax = getPerformanceChartMax(monthlyTrend, ['revenue', 'purchase', 'profit']);
     const analysisRows = Number(summary.analysisRows || totalRows || 0) || 0;
     const avgRevenue = analysisRows ? (Number(summary.totalRevenue) || 0) / analysisRows : 0;
     const avgProfit = analysisRows ? (Number(summary.totalProfit) || 0) / analysisRows : 0;
     const purchaseRate = rate(summary.totalPurchase, summary.totalRevenue);
+    const profitRate = Number(summary.profitRate || rate(summary.totalProfit, summary.totalRevenue)) || 0;
+    const performanceGrade = getPerformanceGrade(profitRate);
     const bestProfitMonth = monthly.reduce((best, item) => (Number(item.profit) || 0) > (Number(best?.profit) || -Infinity) ? item : best, null);
+    const worstProfitMonth = monthly.reduce((worst, item) => (Number(item.profit) || 0) < (Number(worst?.profit) || Infinity) ? item : worst, null);
+    const bestRevenueMonth = monthly.reduce((best, item) => (Number(item.revenue) || 0) > (Number(best?.revenue) || -Infinity) ? item : best, null);
+    const latestMonth = monthly[monthly.length - 1] || null;
+    const previousMonth = monthly[monthly.length - 2] || null;
+    const dimensionOptions = useMemo(() => {
+        return breakdowns
+            .filter(section => Array.isArray(section.items) && section.items.length)
+            .slice()
+            .sort((a, b) => getDimensionScore(a.column) - getDimensionScore(b.column));
+    }, [breakdowns]);
+    const activeBreakdown = useMemo(() => (
+        dimensionOptions.find(section => section.column === activeDimension) || dimensionOptions[0] || null
+    ), [dimensionOptions, activeDimension]);
+    const activeItems = useMemo(() => (activeBreakdown?.items || []).filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)), [activeBreakdown]);
+    const topSegment = activeItems[0] || topGroups[0] || null;
+    const top3Share = sumField(activeItems.slice(0, 3), 'revenueShare');
+    const top10Share = sumField(activeItems.slice(0, 10), 'revenueShare');
+    const lowMarginItems = activeItems
+        .filter(item => safeNumber(item.revenue) > 0 && profitRateOf(item) < Math.max(3, profitRate - 2))
+        .slice(0, 5);
+    const lossItems = activeItems
+        .filter(item => safeNumber(item.profit) < 0)
+        .sort((a, b) => safeNumber(a.profit) - safeNumber(b.profit))
+        .slice(0, 5);
+    const marginLeaders = activeItems
+        .filter(item => safeNumber(item.revenue) > 0)
+        .slice()
+        .sort((a, b) => profitRateOf(b) - profitRateOf(a))
+        .slice(0, 5);
+    const bridgeMax = Math.max(1, Math.abs(safeNumber(summary.totalRevenue)), Math.abs(safeNumber(summary.totalPurchase)), Math.abs(safeNumber(summary.totalProfit)));
+    const executiveNotes = buildExecutiveNotes({
+        profitRate,
+        purchaseRate,
+        latestMonth,
+        previousMonth,
+        topSegment,
+        top3Share,
+        lowMarginItems,
+    });
+
+    useEffect(() => {
+        if (!dimensionOptions.length) return;
+        if (!activeDimension || !dimensionOptions.some(section => section.column === activeDimension)) {
+            setActiveDimension(dimensionOptions[0].column);
+        }
+    }, [activeDimension, dimensionOptions]);
 
     const syncNow = async () => {
         setSyncing(true);
@@ -408,48 +522,114 @@ export default function AsanAnnualPerformance() {
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
                 <div className={styles.analytics}>
+                    <section className={styles.commandPanel}>
+                        <div className={styles.commandMain}>
+                            <div className={styles.commandTitleRow}>
+                                <h3>연간 성과 리포트</h3>
+                                <span className={`${styles.gradeBadge} ${styles[`grade_${performanceGrade.tone}`]}`}>
+                                    {performanceGrade.label}
+                                </span>
+                            </div>
+                            <div className={styles.commandMeta}>
+                                <span>기간 {getPeriodRange(monthly)}</span>
+                                <span>분석 {analysisRows.toLocaleString('ko-KR')}행</span>
+                                <span>현재 스냅샷 {summary.currentSnapshotId ? '고정' : '미확인'}</span>
+                                <span>{summary.importMode || 'supabase'}</span>
+                            </div>
+                        </div>
+                        <div className={styles.commandNotes}>
+                            {executiveNotes.map((item, idx) => (
+                                <div className={styles.noteLine} key={`${item}-${idx}`}>{item}</div>
+                            ))}
+                        </div>
+                    </section>
+
                     <div className={styles.kpiGrid}>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>연간 매출</span>
                             <strong>{formatPerformanceAmount(summary.totalRevenue)}</strong>
+                            <em>건당 매출 {formatPerformanceAmount(avgRevenue)}</em>
                         </div>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>연간 매입</span>
                             <strong>{formatPerformanceAmount(summary.totalPurchase)}</strong>
+                            <em>매입률 {formatPercent(purchaseRate)}</em>
                         </div>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>손익</span>
                             <strong className={(Number(summary.totalProfit) || 0) < 0 ? styles.negative : styles.positive}>
                                 {formatPerformanceAmount(summary.totalProfit)}
                             </strong>
+                            <em>건당 {formatPerformanceAmount(avgProfit)}</em>
                         </div>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>손익률</span>
-                            <strong>{Number(summary.profitRate || 0).toLocaleString('ko-KR')}%</strong>
+                            <strong>{formatPercent(profitRate, 2)}</strong>
+                            <em>{topSegment ? `최대 비중 ${formatPercent(topSegment.revenueShare)}` : '비중 자료 없음'}</em>
                         </div>
                     </div>
 
-                    <div className={styles.insightGrid}>
-                        <div className={styles.insightItem}>
-                            <span>분석 행수</span>
-                            <strong>{analysisRows.toLocaleString('ko-KR')}행</strong>
-                        </div>
-                        <div className={styles.insightItem}>
-                            <span>건당 매출</span>
-                            <strong>{formatPerformanceAmount(avgRevenue)}</strong>
-                        </div>
-                        <div className={styles.insightItem}>
-                            <span>건당 손익</span>
-                            <strong className={avgProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(avgProfit)}</strong>
-                        </div>
-                        <div className={styles.insightItem}>
-                            <span>매입률</span>
-                            <strong>{purchaseRate.toLocaleString('ko-KR')}%</strong>
-                        </div>
-                        <div className={styles.insightItem}>
-                            <span>최고 손익월</span>
-                            <strong>{bestProfitMonth?.period || '-'}</strong>
-                        </div>
+                    <div className={styles.reportGrid}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>손익 구조</h3>
+                                <span>매출 → 매입 → 손익</span>
+                            </div>
+                            <div className={styles.bridgeList}>
+                                {[
+                                    { label: '매출', value: summary.totalRevenue, tone: 'revenue', sub: '총 청구 기준' },
+                                    { label: '매입', value: summary.totalPurchase, tone: 'purchase', sub: `${formatPercent(purchaseRate)} 사용` },
+                                    { label: '손익', value: summary.totalProfit, tone: safeNumber(summary.totalProfit) < 0 ? 'loss' : 'profit', sub: `${formatPercent(profitRate, 2)} 잔여` },
+                                ].map(item => (
+                                    <div className={styles.bridgeRow} key={item.label}>
+                                        <div>
+                                            <strong>{item.label}</strong>
+                                            <span>{item.sub}</span>
+                                        </div>
+                                        <div className={styles.bridgeBar}>
+                                            <span
+                                                className={`${styles.bridgeFill} ${styles[item.tone]}`}
+                                                style={{ width: `${Math.max(2, Math.min(100, Math.abs(safeNumber(item.value)) / bridgeMax * 100))}%` }}
+                                            />
+                                        </div>
+                                        <b>{formatPerformanceAmount(item.value)}</b>
+                                    </div>
+                                ))}
+                                <div className={styles.bridgeFormula}>
+                                    <span>손익 = 매출 - 매입</span>
+                                    <strong>{formatPerformanceAmount(summary.totalRevenue)} - {formatPerformanceAmount(summary.totalPurchase)} = {formatPerformanceAmount(summary.totalProfit)}</strong>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>성과 경보</h3>
+                                <span>월/집중도 기준</span>
+                            </div>
+                            <div className={styles.signalGrid}>
+                                <div className={styles.signalItem}>
+                                    <span>최고 매출월</span>
+                                    <strong>{bestRevenueMonth?.period || '-'}</strong>
+                                    <em>{bestRevenueMonth ? formatPerformanceAmount(bestRevenueMonth.revenue) : '-'}</em>
+                                </div>
+                                <div className={styles.signalItem}>
+                                    <span>최고 손익월</span>
+                                    <strong>{bestProfitMonth?.period || '-'}</strong>
+                                    <em>{bestProfitMonth ? formatPerformanceAmount(bestProfitMonth.profit) : '-'}</em>
+                                </div>
+                                <div className={styles.signalItem}>
+                                    <span>최저 손익월</span>
+                                    <strong>{worstProfitMonth?.period || '-'}</strong>
+                                    <em className={safeNumber(worstProfitMonth?.profit) < 0 ? styles.negative : ''}>{worstProfitMonth ? formatPerformanceAmount(worstProfitMonth.profit) : '-'}</em>
+                                </div>
+                                <div className={styles.signalItem}>
+                                    <span>상위 10 집중도</span>
+                                    <strong>{formatPercent(top10Share)}</strong>
+                                    <em>{activeBreakdown?.column || '그룹'} 기준</em>
+                                </div>
+                            </div>
+                        </section>
                     </div>
 
                     <div className={styles.analysisGrid}>
@@ -476,27 +656,7 @@ export default function AsanAnnualPerformance() {
 
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
-                                <h3>상위 거래처/구분</h3>
-                                <span>매출 기준</span>
-                            </div>
-                            <div className={styles.rankList}>
-                                {topGroups.length === 0 ? (
-                                    <div className={styles.emptyPanel}>그룹 기준 컬럼이 없으면 상위 집계가 비어 있습니다.</div>
-                                ) : topGroups.slice(0, 10).map((item, idx) => (
-                                    <div className={styles.rankRow} key={`${item.name}-${idx}`}>
-                                        <span className={styles.rankNo}>{idx + 1}</span>
-                                        <span className={styles.rankName}>{item.name || '미분류'}</span>
-                                        <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </div>
-
-                    <div className={styles.detailGrid}>
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <h3>월별 추세</h3>
+                                <h3>월별 성과 흐름</h3>
                                 <span>최근 {monthlyTrend.length.toLocaleString()}개월</span>
                             </div>
                             <div className={styles.monthChart}>
@@ -508,29 +668,132 @@ export default function AsanAnnualPerformance() {
                                         <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
                                         <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
                                         <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                        <em>{formatPercent(profitRateOf(item))}</em>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+
+                    <section className={`${styles.panel} ${styles.matrixPanel}`}>
+                        <div className={styles.panelHeader}>
+                            <h3>공헌도 매트릭스</h3>
+                            <span>{activeBreakdown?.column || '그룹'} 기준</span>
+                        </div>
+                        <div className={styles.dimensionTabs}>
+                            {dimensionOptions.map(section => (
+                                <button
+                                    key={section.column}
+                                    className={activeBreakdown?.column === section.column ? styles.dimensionActive : ''}
+                                    onClick={() => setActiveDimension(section.column)}
+                                >
+                                    {section.column}
+                                </button>
+                            ))}
+                        </div>
+                        {activeItems.length === 0 ? (
+                            <div className={styles.emptyPanel}>세그먼트 분석 데이터가 아직 없습니다.</div>
+                        ) : (
+                            <div className={styles.matrixTable}>
+                                <div className={styles.matrixHead}>
+                                    <span>순위</span>
+                                    <span>항목</span>
+                                    <span>매출</span>
+                                    <span>매입</span>
+                                    <span>손익</span>
+                                    <span>손익률</span>
+                                    <span>비중</span>
+                                    <span>건수</span>
+                                </div>
+                                {activeItems.slice(0, 12).map((item, idx) => (
+                                    <div className={styles.matrixRow} key={`${activeBreakdown?.column}-${item.name}-${idx}`}>
+                                        <span className={styles.rankNo}>{idx + 1}</span>
+                                        <span className={styles.rankName}>{item.name || '미분류'}</span>
+                                        <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                        <span>{formatPerformanceAmount(item.purchase)}</span>
+                                        <strong className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</strong>
+                                        <span className={profitRateOf(item) < profitRate ? styles.warningText : ''}>{formatPercent(profitRateOf(item))}</span>
+                                        <span>{formatPercent(item.revenueShare)}</span>
+                                        <span>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <div className={styles.portfolioGrid}>
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>저마진 주의</h3>
+                                <span>매출 상위 내 손익률 낮음</span>
+                            </div>
+                            <div className={styles.compactList}>
+                                {lowMarginItems.length === 0 ? (
+                                    <div className={styles.emptyMini}>주요 저마진 항목 없음</div>
+                                ) : lowMarginItems.map((item, idx) => (
+                                    <div className={styles.compactRow} key={`low-${item.name}-${idx}`}>
+                                        <span>{item.name || '미분류'}</span>
+                                        <b>{formatPercent(profitRateOf(item))}</b>
+                                        <em>{formatPerformanceAmount(item.revenue)}</em>
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        {breakdowns.slice(0, 4).map(section => (
-                            <section className={styles.panel} key={section.column}>
-                                <div className={styles.panelHeader}>
-                                    <h3>{section.column}별 매출</h3>
-                                    <span>상위 {Math.min(10, section.items?.length || 0).toLocaleString()}개</span>
-                                </div>
-                                <div className={styles.breakdownList}>
-                                    {(section.items || []).slice(0, 8).map((item, idx) => (
-                                        <div className={styles.breakdownRow} key={`${section.column}-${item.name}-${idx}`}>
-                                            <span className={styles.rankNo}>{idx + 1}</span>
-                                            <span className={styles.rankName}>{item.name || '미분류'}</span>
-                                            <span>{Number(item.revenueShare || 0).toLocaleString('ko-KR')}%</span>
-                                            <strong>{formatPerformanceAmount(item.profit)}</strong>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>손실 항목</h3>
+                                <span>손익 음수</span>
+                            </div>
+                            <div className={styles.compactList}>
+                                {lossItems.length === 0 ? (
+                                    <div className={styles.emptyMini}>손실 항목 없음</div>
+                                ) : lossItems.map((item, idx) => (
+                                    <div className={styles.compactRow} key={`loss-${item.name}-${idx}`}>
+                                        <span>{item.name || '미분류'}</span>
+                                        <b className={styles.negative}>{formatPerformanceAmount(item.profit)}</b>
+                                        <em>{formatPercent(profitRateOf(item))}</em>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>고마진 항목</h3>
+                                <span>손익률 기준</span>
+                            </div>
+                            <div className={styles.compactList}>
+                                {marginLeaders.length === 0 ? (
+                                    <div className={styles.emptyMini}>고마진 항목 없음</div>
+                                ) : marginLeaders.map((item, idx) => (
+                                    <div className={styles.compactRow} key={`margin-${item.name}-${idx}`}>
+                                        <span>{item.name || '미분류'}</span>
+                                        <b className={styles.positive}>{formatPercent(profitRateOf(item))}</b>
+                                        <em>{formatPerformanceAmount(item.profit)}</em>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className={styles.dimensionSummaryGrid}>
+                        {dimensionOptions.slice(0, 6).map(section => {
+                            const item = section.items?.[0];
+                            return (
+                                <section className={styles.dimensionCard} key={section.column}>
+                                    <div>
+                                        <span>{section.column}</span>
+                                        <strong>{item?.name || '미분류'}</strong>
+                                    </div>
+                                    <div className={styles.dimensionStats}>
+                                        <b>{item ? formatPerformanceAmount(item.revenue) : '-'}</b>
+                                        <em>비중 {item ? formatPercent(item.revenueShare) : '-'}</em>
+                                        <em>손익률 {item ? formatPercent(profitRateOf(item)) : '-'}</em>
+                                    </div>
+                                </section>
+                            );
+                        })}
                     </div>
 
                     <section className={styles.detectPanel}>
@@ -538,6 +801,8 @@ export default function AsanAnnualPerformance() {
                         <span>매입: {(summary.detected?.purchaseColumns || []).join(', ') || '자동 후보 없음'}</span>
                         <span>손익: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
                         <span>그룹: {(summary.detected?.groupColumns || []).join(', ') || '자동 후보 없음'}</span>
+                        <span>조회: {summary.currentSnapshotId ? '현재 스냅샷 고정' : 'current 행 기준'}</span>
+                        <span>원장: 삭제 없이 누적</span>
                     </section>
                 </div>
             ) : (

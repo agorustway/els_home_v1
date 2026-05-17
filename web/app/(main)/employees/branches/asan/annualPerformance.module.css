@@ -156,6 +156,109 @@
     padding-bottom: 4px;
 }
 
+.commandPanel {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.6fr);
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #eff6ff 0%, #ffffff 52%, #f8fafc 100%);
+}
+
+.commandMain {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.commandTitleRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.commandTitleRow h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.gradeBadge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    font-size: 0.7rem;
+    font-weight: 950;
+}
+
+.grade_good {
+    border-color: #99f6e4;
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+.grade_watch {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.grade_warn {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.grade_danger {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.commandMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.commandMeta span {
+    padding: 3px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.84);
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.commandNotes {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.noteLine {
+    min-height: 28px;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
 .kpiGrid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -183,6 +286,15 @@
     font-size: 1.18rem;
     font-weight: 900;
     letter-spacing: 0;
+}
+
+.kpi em {
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 850;
 }
 
 .insightGrid {
@@ -226,9 +338,15 @@
     color: #b91c1c !important;
 }
 
+.reportGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    gap: 8px;
+}
+
 .analysisGrid {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
     gap: 8px;
 }
 
@@ -243,6 +361,114 @@
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background: #fff;
+}
+
+.bridgeList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+}
+
+.bridgeRow {
+    display: grid;
+    grid-template-columns: 86px minmax(120px, 1fr) 112px;
+    align-items: center;
+    gap: 10px;
+}
+
+.bridgeRow > div:first-child {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bridgeRow strong,
+.bridgeRow b {
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 950;
+}
+
+.bridgeRow span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.bridgeRow b {
+    text-align: right;
+}
+
+.bridgeBar {
+    position: relative;
+    height: 13px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #f1f5f9;
+}
+
+.bridgeFill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+}
+
+.bridgeFormula {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.bridgeFormula span,
+.bridgeFormula strong {
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.bridgeFormula strong {
+    text-align: right;
+}
+
+.signalGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+}
+
+.signalItem {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.signalItem span,
+.signalItem em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.signalItem strong {
+    display: block;
+    margin: 3px 0;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .panelHeader {
@@ -386,7 +612,7 @@
 
 .monthRow {
     display: grid;
-    grid-template-columns: 74px minmax(80px, 1fr) minmax(80px, 1fr) 86px;
+    grid-template-columns: 74px minmax(80px, 1fr) minmax(80px, 1fr) 86px 54px;
     align-items: center;
     gap: 8px;
     min-height: 28px;
@@ -399,14 +625,210 @@
 }
 
 .monthRow span,
-.monthRow strong {
+.monthRow strong,
+.monthRow em {
     color: #334155;
     font-size: 0.72rem;
+    font-style: normal;
     font-weight: 850;
 }
 
-.monthRow strong {
+.monthRow strong,
+.monthRow em {
     text-align: right;
+}
+
+.matrixPanel {
+    overflow: hidden;
+}
+
+.dimensionTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.dimensionTabs button {
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.dimensionTabs button:hover {
+    background: #f1f5f9;
+}
+
+.dimensionActive {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.matrixTable {
+    overflow-x: auto;
+}
+
+.matrixHead,
+.matrixRow {
+    display: grid;
+    grid-template-columns: 44px minmax(180px, 1.6fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) 68px 58px 56px;
+    align-items: center;
+    gap: 8px;
+    min-width: 900px;
+    padding: 0 10px;
+}
+
+.matrixHead {
+    min-height: 30px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.matrixHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+}
+
+.matrixRow {
+    min-height: 34px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.matrixRow:last-child {
+    border-bottom: 0;
+}
+
+.matrixRow span,
+.matrixRow strong {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.matrixRow strong,
+.matrixRow span:nth-child(n+3) {
+    text-align: right;
+}
+
+.warningText {
+    color: #c2410c !important;
+}
+
+.portfolioGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.compactList {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 10px 10px;
+}
+
+.compactRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px 88px;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.compactRow:last-child {
+    border-bottom: 0;
+}
+
+.compactRow span,
+.compactRow b,
+.compactRow em {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compactRow b,
+.compactRow em {
+    text-align: right;
+}
+
+.emptyMini {
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 850;
+}
+
+.dimensionSummaryGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.dimensionCard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.dimensionCard span,
+.dimensionCard em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.dimensionCard strong {
+    display: block;
+    margin-top: 3px;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dimensionStats {
+    text-align: right;
+}
+
+.dimensionStats b {
+    display: block;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 950;
 }
 
 .breakdownRow {
@@ -715,11 +1137,24 @@
         flex: 1;
     }
 
+    .commandPanel,
+    .commandNotes,
     .kpiGrid,
+    .reportGrid,
     .analysisGrid,
     .detailGrid,
     .insightGrid,
+    .portfolioGrid,
+    .dimensionSummaryGrid,
     .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .bridgeRow {
+        grid-template-columns: 72px minmax(0, 1fr) 96px;
+    }
+
+    .signalGrid {
         grid-template-columns: 1fr;
     }
 

@@ -1,4 +1,21 @@
 
+## [2026-05-17] 아산 연간실적 성과 리포트 화면 재구성 (v5.13.86)
+### 핵심
+- 연간실적 분석 탭을 단순 그래프/상위 목록에서 성과 리포트형 대시보드로 재구성했습니다.
+- 상단에 연간 성과 리포트, 손익률 등급, 기간/분석 행수/현재 스냅샷 상태, 자동 인사이트 문장을 배치했습니다.
+- 매출→매입→손익 흐름을 손익 구조 패널로 보여주고, 최고 매출월/최고·최저 손익월/상위 10 집중도 성과 경보를 추가했습니다.
+- 고객/작업지/운송사/노선/구분 등 summary breakdown을 선택하는 공헌도 매트릭스와 저마진/손실/고마진 포트폴리오를 추가했습니다.
+- 화면 집계는 기존 Supabase summary를 사용해 브라우저에서 36만 행 전체를 재계산하지 않도록 유지했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 배차 요일별 실적/평균 라벨 및 돋보기 위치 보정 (v5.13.85)
 ### 핵심
 - 요일별 작업지 비중의 탭명을 `주간 실적`, `월간 평균`으로 바꿔 기준 차이를 바로 알 수 있게 했습니다.

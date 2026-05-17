@@ -51,7 +51,9 @@
   - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
-  - 분석 탭: 매출(`청구`), 매입(`하불`), 손익, 손익률, 건당 매출/손익, 매입률, 최고 손익월, 연도별·월별 그래프, 구분별 breakdown
+  - 분석 탭: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오
+  - 회계 분석 축: 매출(`청구`), 매입(`하불`), 손익, 손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도
+  - 화면 분석은 Supabase summary/breakdown을 사용하며, 브라우저에서 36만 행 전체를 재집계하지 않는다.
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
   - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count timeout을 피한다.
