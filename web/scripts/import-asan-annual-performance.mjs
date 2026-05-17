@@ -501,6 +501,16 @@ function createAdvancedAccumulator(headers) {
   const weekday = new Map();
   const segments = new Map();
   const vehicles = new Map();
+  const vehicleQuality = {
+    missingVehicle: {
+      revenue: 0,
+      purchase: 0,
+      profit: 0,
+      rowCount: 0,
+      blankRows: 0,
+      dashRows: 0,
+    },
+  };
   const segmentDefs = [
     {
       key: 'own_direct',
@@ -554,7 +564,7 @@ function createAdvancedAccumulator(headers) {
   };
 
   const ensureVehicle = (vehicleNo) => {
-    if (!vehicleNo) return null;
+    if (!vehicleNo || vehicleNo === '-') return null;
     if (!vehicles.has(vehicleNo)) {
       vehicles.set(vehicleNo, {
         name: vehicleNo,
@@ -590,6 +600,15 @@ function createAdvancedAccumulator(headers) {
     const values = { carrier, contract };
     const yearKey = year ? String(year) : '미지정';
     const monthKey = year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
+
+    if (!vehicleNo || vehicleNo === '-') {
+      vehicleQuality.missingVehicle.revenue += revenue;
+      vehicleQuality.missingVehicle.purchase += purchase;
+      vehicleQuality.missingVehicle.profit += profit;
+      vehicleQuality.missingVehicle.rowCount += 1;
+      if (!vehicleNo) vehicleQuality.missingVehicle.blankRows += 1;
+      if (vehicleNo === '-') vehicleQuality.missingVehicle.dashRows += 1;
+    }
 
     const vehicle = ensureVehicle(vehicleNo);
     if (vehicle) {
@@ -684,6 +703,9 @@ function createAdvancedAccumulator(headers) {
         rounded.monthly = finalizeSeries(vehicle.monthly, 240, (a, b) => a.period.localeCompare(b.period));
         return rounded;
       }).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue)).slice(0, 80),
+      vehicleDataQuality: {
+        missingVehicle: roundItem({ ...vehicleQuality.missingVehicle }),
+      },
     };
   }
 

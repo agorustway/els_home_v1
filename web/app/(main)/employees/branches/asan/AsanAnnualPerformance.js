@@ -104,6 +104,20 @@ function safeNumber(value) {
     return Number.isFinite(num) ? num : 0;
 }
 
+function isMissingToken(value) {
+    const text = String(value ?? '').trim();
+    return !text || text === '-';
+}
+
+function displayVehicleName(item = {}) {
+    const raw = item.vehicleNo || item.name || item.label || '';
+    return isMissingToken(raw) ? '차량번호 미기재' : raw;
+}
+
+function displayDriverName(value) {
+    return isMissingToken(value) ? '기사 미기재' : value;
+}
+
 function formatPercent(value, digits = 1) {
     return `${safeNumber(value).toLocaleString('ko-KR', {
         minimumFractionDigits: 0,
@@ -326,9 +340,9 @@ function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, b
 
 function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-' }) {
     const series = normalizeSeries(items);
-    const width = 1100;
+    const width = 1800;
     const height = 260;
-    const pad = { left: 44, right: 28, top: 28, bottom: 42 };
+    const pad = { left: 62, right: 38, top: 28, bottom: 42 };
     const chartW = width - pad.left - pad.right;
     const chartH = height - pad.top - pad.bottom;
     const maxValue = Math.max(1, ...series.flatMap(item => [safeNumber(item.revenue), safeNumber(item.purchase)]));
@@ -391,7 +405,7 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
                         <text x={pad.left + chartW - 4} y={avgRevenueY - 6} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
                         <text x={pad.left + chartW - 4} y={avgPurchaseY + 14} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
                         {series.map((item, idx) => {
-                            const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 8)) === 0;
+                            const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 10)) === 0;
                             return showTick ? (
                                 <text key={item.period} x={xAt(idx)} y={height - 16} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
                             ) : null;
@@ -687,6 +701,8 @@ export default function AsanAnnualPerformance() {
     const headers = useMemo(() => (Array.isArray(payload?.headers) ? payload.headers : []), [payload]);
     const rows = useMemo(() => (Array.isArray(payload?.data) ? payload.data : []), [payload]);
     const summary = payload?.summary || {};
+    const vehicleDataQuality = summary.vehicleDataQuality || {};
+    const missingVehicle = vehicleDataQuality.missingVehicle || {};
     const totalRows = Number(payload?.total ?? rows.length) || 0;
     const loadedRows = rows.length;
     const canLoadMore = payload?.source === 'supabase' && loadedRows < totalRows;
@@ -1031,7 +1047,7 @@ export default function AsanAnnualPerformance() {
                         </div>
                     </div>
 
-                    <div className={styles.analysisTabs}>
+                    <div className={styles.analysisTabs} aria-label="연간실적 분석 섹션">
                         {ANALYSIS_VIEWS.map(view => (
                             <button
                                 key={view.key}
@@ -1303,7 +1319,6 @@ export default function AsanAnnualPerformance() {
 
                     {analysisView === 'flow' && (
                         <div className={styles.deepGrid}>
-                            <LedgerFlowChart items={scopedMonthly} title="조사범위 월별 흐름" scopeLabel={scopeBounds.label} />
                             <MiniTrendChart items={scopedYearly} title="연도별 장기 흐름" basis="연도" />
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
@@ -1420,6 +1435,29 @@ export default function AsanAnnualPerformance() {
                                     <h3>차량별 손익</h3>
                                     <span>{scopeBounds.label} · 영업넘버 기준</span>
                                 </div>
+                                {safeNumber(missingVehicle.rowCount) > 0 && (
+                                    <div className={styles.vehicleQualityStrip}>
+                                        <div>
+                                            <span>차량번호 미기재</span>
+                                            <strong>{safeNumber(missingVehicle.rowCount).toLocaleString('ko-KR')}건</strong>
+                                        </div>
+                                        <div>
+                                            <span>매출</span>
+                                            <strong>{formatPerformanceAmount(missingVehicle.revenue)}</strong>
+                                        </div>
+                                        <div>
+                                            <span>매입</span>
+                                            <strong>{formatPerformanceAmount(missingVehicle.purchase)}</strong>
+                                        </div>
+                                        <div>
+                                            <span>손익</span>
+                                            <strong className={safeNumber(missingVehicle.profit) < 0 ? styles.negative : styles.positive}>
+                                                {formatPerformanceAmount(missingVehicle.profit)}
+                                            </strong>
+                                        </div>
+                                        <em>영업넘버가 빈칸이거나 &apos;-&apos;로 입력된 원장입니다. 실제 차량 손익 순위에서는 분리했습니다.</em>
+                                    </div>
+                                )}
                                 {scopedVehiclePerformance.length === 0 ? (
                                     <div className={styles.emptyPanel}>차량별 손익 summary가 아직 없습니다.</div>
                                 ) : (
@@ -1434,16 +1472,21 @@ export default function AsanAnnualPerformance() {
                                             <span>건수</span>
                                         </div>
                                         {scopedVehiclePerformance.slice(0, 30).map((item, idx) => {
-                                            const vehicleName = item.vehicleNo || item.name || item.label || '미분류';
+                                            const rawVehicleName = item.vehicleNo || item.name || item.label || '';
+                                            const vehicleName = displayVehicleName(item);
+                                            const missingVehicleRow = isMissingToken(rawVehicleName);
                                             return (
                                                 <button
                                                     key={`${vehicleName}-${idx}`}
                                                     className={styles.vehicleProfitRow}
-                                                    onClick={() => openDetailSearch([vehicleName], 'and')}
+                                                    onClick={() => {
+                                                        if (!missingVehicleRow) openDetailSearch([vehicleName], 'and');
+                                                    }}
+                                                    disabled={missingVehicleRow}
                                                     title={`${vehicleName} 원장 상세`}
                                                 >
                                                     <strong>{vehicleName}</strong>
-                                                    <span>{item.drivers || item.driver || '-'}</span>
+                                                    <span>{displayDriverName(item.drivers || item.driver)}</span>
                                                     <span>{formatPerformanceAmount(item.revenue)}</span>
                                                     <span>{formatPerformanceAmount(item.purchase)}</span>
                                                     <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>

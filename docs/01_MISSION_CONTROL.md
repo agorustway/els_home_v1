@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.96 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.97 / APK v5.11.12)
 
-> 최신 업데이트: 아산 배차 현황판 모바일 중간 액션에 현황 범위 선택을 추가하고, 배차판 검색 진입 시 상단 카드부터 보이도록 보정했습니다.
+> 최신 업데이트: 아산 연간실적 차량별 손익에서 영업넘버 미기재 행을 차량 랭킹과 분리하고, 장기 흐름 차트와 조사범위/섹션 네비게이션 레이아웃을 정리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.96
+- **웹 버전**: v5.13.97
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -15,6 +15,7 @@
   - 상세 원장 AND 검색은 정확 count 생략 경로일 때 `301+`처럼 추정 총건수로 표시.
   - AI 어시스턴트 전체 삭제 후 늦은 자동저장 POST와 브라우저 로컬 캐시가 예전 대화목록을 되살리지 못하도록 서버/로컬 양쪽에서 방어.
   - 모바일 배차 현황판 중간 액션은 `통합현황/글로비스 KD 외/모비스 AS`와 `고객사/실행사/배차판 검색` 2줄로 제공.
+  - 연간실적 차량별 손익은 실제 차량번호만 랭킹화하고, 빈칸/`-` 영업넘버 55,473건은 별도 품질 지표로 표시.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
 
 ## ACTIVE SYSTEMS
@@ -42,6 +43,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.97**: 아산 연간실적 차량별 손익에서 원장 `영업넘버` 빈칸/`-` 행을 차량 랭킹에서 분리하고 `차량번호 미기재` 품질 지표로 표시. 장기 흐름 SVG 비율, 조사범위 바, 분석 섹션 탭 톤을 정리해 넓은 화면에서 그래프가 가운데만 쓰이지 않게 보정.
 - **v5.13.96**: 아산 배차 모바일 중간 액션에 현황 범위 선택 3버튼을 추가하고, 배차판 검색 버튼은 흰색 보조 톤으로 낮춤. 배차판 진입 스크롤은 상단 카드 기준으로 보정.
 - **v5.13.95**: AI 어시스턴트 삭제 시 `els_ai_sessions_cleared_at` 로컬 삭제 마커를 저장하고, 해당 시점보다 오래된 로컬/DB 대화 스냅샷은 화면에 표시하지 않도록 보강.
 - **v5.13.94**: 아산 연간실적 상단에 주식형 매출·매입 장기 흐름과 평균선을 추가. 전체/최근 12개월/36개월/5년/최근 연도/직접 선택 조사범위로 KPI·월별·연도별·직계약·주차 분석을 재계산하고, `영업넘버` 기준 차량별 손익 summary를 추가.
@@ -65,7 +67,7 @@
 - `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
-- 운영 Supabase 검증: `vehiclePerformance` 80개 차량, 최상위 `부산98사1786` 손익률 15.74%
+- 운영 Supabase 검증: `vehiclePerformance` 80개 실제 차량, 최상위 `부산98사1786` 손익률 15.74%, 차량번호 미기재 55,473건 별도 분리
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors

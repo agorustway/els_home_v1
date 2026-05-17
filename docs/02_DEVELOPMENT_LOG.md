@@ -1,4 +1,26 @@
 
+## [2026-05-18] 아산 연간실적 차량 미기재 분리와 보고서 레이아웃 보정 (v5.13.97)
+### 핵심
+- 차량별 손익에서 원장 `영업넘버`가 빈칸이거나 `-`인 행을 실제 차량 랭킹과 분리하고, `차량번호 미기재` 품질 지표로 따로 표시했습니다.
+- 운영 Supabase summary를 재집계해 차량 랭킹에는 실제 영업넘버만 남기고, 미기재 55,473건은 매출/매입/손익 합계와 함께 별도 보관하도록 했습니다.
+- 상단 장기 흐름 차트의 SVG 비율을 넓은 화면 기준으로 재조정해 그래프가 가운데에만 몰리는 현상을 줄였습니다.
+- 조사범위 선택 바와 분석 섹션 탭의 높이, 색상, 간격을 맞춰 같은 보고서 컨트롤처럼 보이도록 정리했습니다.
+### 검증
+- 운영 Supabase `analysisVersion=ledger-workbench-20260518-scope-vehicle-quality`, `vehiclePerformance` 80개, `-` 차량 랭킹 제외, 미기재 55,473건 분리 확인.
+- `node --check "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
+- `web/supabase_sql/20260518_asan_performance_vehicle_scope_summary.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 배차 모바일 중간 액션 버튼 정리 (v5.13.96)
 ### 핵심
 - 현황판 중간 모바일 액션에 `통합현황`, `글로비스 KD 외`, `모비스 AS` 범위 선택 버튼을 추가했습니다.

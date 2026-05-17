@@ -306,42 +306,51 @@
 
 .analysisTabs {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 7px;
+    gap: 5px;
+    padding: 7px 9px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    background: #fff;
+    background: #f8fafc;
+}
+
+.analysisTabs::before {
+    content: "분석섹션";
+    margin-right: 3px;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 900;
 }
 
 .analysisTabs button {
-    height: 28px;
-    padding: 0 11px;
+    height: 26px;
+    padding: 0 10px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    background: #f8fafc;
+    background: #fff;
     color: #475569;
     font-family: inherit;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 900;
     cursor: pointer;
 }
 
 .analysisTabActive {
-    border-color: #1d4ed8 !important;
-    background: #eff6ff !important;
-    color: #1d4ed8 !important;
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+    color: #fff !important;
 }
 
 .scopePanel {
-    display: grid;
-    grid-template-columns: minmax(180px, 0.42fr) minmax(360px, 1fr) minmax(220px, 0.45fr);
+    display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 7px 9px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    background: #fff;
+    background: #f8fafc;
 }
 
 .scopeTitle {
@@ -400,6 +409,8 @@
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: 5px;
+    width: min(100%, 390px);
+    margin-left: auto;
 }
 
 .scopeSelects select {
@@ -479,7 +490,10 @@
 
 .marketFlowSvg {
     width: 100%;
-    height: 270px;
+    height: auto;
+    min-height: 180px;
+    max-height: 300px;
+    aspect-ratio: 1800 / 260;
     display: block;
     background: linear-gradient(#ffffff, #f8fafc);
 }
@@ -892,6 +906,44 @@
     overflow-x: auto;
 }
 
+.vehicleQualityStrip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(110px, 1fr)) minmax(220px, 1.3fr);
+    gap: 7px;
+    margin: 8px 9px 0;
+    padding: 8px;
+    border: 1px solid #fed7aa;
+    border-radius: 6px;
+    background: #fff7ed;
+}
+
+.vehicleQualityStrip div {
+    min-width: 0;
+}
+
+.vehicleQualityStrip span,
+.vehicleQualityStrip em {
+    display: block;
+    color: #9a3412;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.vehicleQualityStrip strong {
+    display: block;
+    margin-top: 2px;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 950;
+}
+
+.vehicleQualityStrip em {
+    align-self: center;
+    color: #7c2d12;
+    line-height: 1.35;
+}
+
 .vehicleProfitHead,
 .vehicleProfitRow {
     display: grid;
@@ -930,6 +982,15 @@
 
 .vehicleProfitRow:hover {
     background: #f8fafc;
+}
+
+.vehicleProfitRow:disabled {
+    cursor: default;
+    opacity: 0.78;
+}
+
+.vehicleProfitRow:disabled:hover {
+    background: transparent;
 }
 
 .vehicleProfitRow strong,
@@ -1967,7 +2028,11 @@
     }
 
     .marketFlowSvg {
-        height: 220px;
+        min-height: 190px;
+    }
+
+    .vehicleQualityStrip {
+        grid-template-columns: 1fr;
     }
 
     .bridgeRow {

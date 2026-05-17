@@ -43,7 +43,7 @@ ledger as (
 ),
 vehicle_totals as (
   select
-    coalesce(nullif(vehicle_no, ''), '미분류') as vehicle_no,
+    btrim(vehicle_no) as vehicle_no,
     string_agg(distinct nullif(driver, ''), ', ') filter (where nullif(driver, '') is not null) as drivers,
     count(*)::int as row_count,
     round(sum(revenue)::numeric, 2) as revenue,
@@ -52,11 +52,12 @@ vehicle_totals as (
     row_number() over (order by abs(sum(revenue)) desc) as rn
   from profit_rows
   where btrim(vehicle_no) <> ''
-  group by coalesce(nullif(vehicle_no, ''), '미분류')
+    and btrim(vehicle_no) <> '-'
+  group by btrim(vehicle_no)
 ),
 vehicle_monthly as (
   select
-    coalesce(nullif(vehicle_no, ''), '미분류') as vehicle_no,
+    btrim(vehicle_no) as vehicle_no,
     period,
     period_year,
     period_month,
@@ -66,9 +67,25 @@ vehicle_monthly as (
     round(sum(profit)::numeric, 2) as profit
   from profit_rows
   where btrim(vehicle_no) <> ''
+    and btrim(vehicle_no) <> '-'
     and period_year is not null
     and period_month is not null
-  group by coalesce(nullif(vehicle_no, ''), '미분류'), period, period_year, period_month
+  group by btrim(vehicle_no), period, period_year, period_month
+),
+vehicle_quality as (
+  select jsonb_build_object(
+    'missingVehicle', jsonb_build_object(
+      'rowCount', count(*)::int,
+      'blankRows', count(*) filter (where btrim(vehicle_no) = '')::int,
+      'dashRows', count(*) filter (where btrim(vehicle_no) = '-')::int,
+      'revenue', round(sum(revenue)::numeric, 2),
+      'purchase', round(sum(purchase)::numeric, 2),
+      'profit', round(sum(profit)::numeric, 2)
+    )
+  ) as value
+  from profit_rows
+  where btrim(vehicle_no) = ''
+     or btrim(vehicle_no) = '-'
 ),
 vehicle_json as (
   select coalesce(jsonb_agg(jsonb_build_object(
@@ -114,8 +131,9 @@ update public.branch_performance_files f
 set summary = coalesce(f.summary, '{}'::jsonb)
   || jsonb_build_object(
     'vehiclePerformance', (select value from vehicle_json),
+    'vehicleDataQuality', (select value from vehicle_quality),
     'strategicSegments', (select value from segments_fixed),
-    'analysisVersion', 'ledger-workbench-20260518-scope-vehicle',
+    'analysisVersion', 'ledger-workbench-20260518-scope-vehicle-quality',
     'analysisGeneratedAt', now()::text
   ),
   synced_at = now()
