@@ -1625,3 +1625,81 @@
     display: flex;
     flex-direction: column;
 }
+
+.performanceShell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+
+.performanceTabBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.performanceTabBtn {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 850;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.performanceTabBtnActive {
+    border-color: #0f766e;
+    background: #0f766e;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(15, 118, 110, 0.18);
+}
+
+.performanceContent {
+    min-height: 0;
+}
+
+.performancePlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 240px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.performancePlaceholder strong {
+    color: #0f172a;
+}
+
+@media (max-width: 768px) {
+    .performanceTabBar {
+        flex-wrap: wrap;
+        padding: 6px;
+    }
+
+    .performanceTabBtn {
+        flex: 1;
+        min-width: 90px;
+        padding: 0 8px;
+        font-size: 0.76rem;
+    }
+
+    .performancePlaceholder {
+        min-height: 180px;
+    }
+}

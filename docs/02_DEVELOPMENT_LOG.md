@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 실적관리 탭 구조 선반영 (v5.13.52)
+### 핵심
+- 아산지점 메인 탭의 `연간실적` 자리를 `실적관리`로 변경했습니다.
+- `실적관리` 안에 `종합실적`, `월간실적`, `연간실적` 하위 탭을 추가했습니다.
+- 현재 구축한 연간실적 화면은 하위 `연간실적` 탭에 연결하고, 기존 브라우저 저장값 `annual-performance`는 `performance`로 자동 보정합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs` 통과 (39개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] NAS Core 자동 파일 감지 부하 완화 (v5.13.51)
 ### 핵심
 - 아산 배차판 자동 체크 기본 주기를 15초에서 60초로, 선적관리 기본 주기를 30초에서 60초로 조정했습니다.

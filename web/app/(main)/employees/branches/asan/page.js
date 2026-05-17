@@ -7,6 +7,9 @@ import AsanAnnualPerformance from './AsanAnnualPerformance';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
+const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
+const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
+const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
 
 // ===== 공휴일 계산기 (v4.4.40) =====
 // 동적으로 공휴일/대체공휴일을 계산합니다. (하드코딩 지양)
@@ -889,13 +892,74 @@ function AsanDispatchContent() {
     );
 }
 
+function PerformancePlaceholder({ title }) {
+    return (
+        <div className={styles.performancePlaceholder}>
+            <strong>{title}</strong>
+            <span>준비중</span>
+        </div>
+    );
+}
+
+function AsanPerformanceManagement() {
+    const [activePerformanceTab, setActivePerformanceTab] = useState('annual-performance');
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(ASAN_PERFORMANCE_TAB_KEY);
+            setActivePerformanceTab(PERFORMANCE_TABS.includes(saved) ? saved : 'annual-performance');
+        } catch {
+            setActivePerformanceTab('annual-performance');
+        }
+    }, []);
+
+    const switchPerformanceTab = (tab) => {
+        setActivePerformanceTab(tab);
+        try {
+            localStorage.setItem(ASAN_PERFORMANCE_TAB_KEY, tab);
+        } catch { /* ignore */ }
+    };
+
+    return (
+        <div className={styles.performanceShell}>
+            <div className={styles.performanceTabBar}>
+                <button
+                    className={`${styles.performanceTabBtn} ${activePerformanceTab === 'summary-performance' ? styles.performanceTabBtnActive : ''}`}
+                    onClick={() => switchPerformanceTab('summary-performance')}
+                >
+                    종합실적
+                </button>
+                <button
+                    className={`${styles.performanceTabBtn} ${activePerformanceTab === 'monthly-performance' ? styles.performanceTabBtnActive : ''}`}
+                    onClick={() => switchPerformanceTab('monthly-performance')}
+                >
+                    월간실적
+                </button>
+                <button
+                    className={`${styles.performanceTabBtn} ${activePerformanceTab === 'annual-performance' ? styles.performanceTabBtnActive : ''}`}
+                    onClick={() => switchPerformanceTab('annual-performance')}
+                >
+                    연간실적
+                </button>
+            </div>
+
+            <div className={styles.performanceContent}>
+                {activePerformanceTab === 'summary-performance' && <PerformancePlaceholder title="종합실적" />}
+                {activePerformanceTab === 'monthly-performance' && <PerformancePlaceholder title="월간실적" />}
+                {activePerformanceTab === 'annual-performance' && <AsanAnnualPerformance />}
+            </div>
+        </div>
+    );
+}
+
 export default function AsanBranchPage() {
     const [activeMainTab, setActiveMainTab] = useState(null);
 
     useEffect(() => {
         try {
             const saved = localStorage.getItem(ASAN_MAIN_TAB_KEY);
-            setActiveMainTab(['dispatch', 'shipping', 'annual-performance'].includes(saved) ? saved : 'dispatch');
+            const nextTab = saved === 'annual-performance' ? 'performance' : saved;
+            setActiveMainTab(MAIN_TABS.includes(nextTab) ? nextTab : 'dispatch');
         } catch {
             setActiveMainTab('dispatch');
         }
@@ -930,10 +994,10 @@ export default function AsanBranchPage() {
                         선적관리
                     </button>
                     <button
-                        className={`${styles.mainTabBtn} ${activeMainTab === 'annual-performance' ? styles.mainTabBtnActive : ''}`}
-                        onClick={() => switchMainTab('annual-performance')}
+                        className={`${styles.mainTabBtn} ${activeMainTab === 'performance' ? styles.mainTabBtnActive : ''}`}
+                        onClick={() => switchMainTab('performance')}
                     >
-                        연간실적
+                        실적관리
                     </button>
                 </div>
             </div>
@@ -942,7 +1006,7 @@ export default function AsanBranchPage() {
             <div className={styles.contentArea}>
                 {activeMainTab === 'dispatch' && <AsanDispatchContent />}
                 {activeMainTab === 'shipping' && <AsanShipping />}
-                {activeMainTab === 'annual-performance' && <AsanAnnualPerformance />}
+                {activeMainTab === 'performance' && <AsanPerformanceManagement />}
             </div>
         </div>
     );

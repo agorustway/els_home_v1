@@ -129,8 +129,11 @@ test('아산 페이지는 마지막 메인 탭을 기억해 불필요한 기본 
   );
 
   assert.match(source, /const ASAN_MAIN_TAB_KEY = 'asan_main_tab';/);
+  assert.match(source, /const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';/);
+  assert.match(source, /const MAIN_TABS = \['dispatch', 'shipping', 'performance'\];/);
   assert.match(source, /localStorage\.getItem\(ASAN_MAIN_TAB_KEY\)/);
   assert.match(source, /localStorage\.setItem\(ASAN_MAIN_TAB_KEY, tab\)/);
+  assert.match(source, /saved === 'annual-performance' \? 'performance' : saved/);
   assert.match(source, /const \[activeMainTab, setActiveMainTab\] = useState\(null\);/);
 });
 
