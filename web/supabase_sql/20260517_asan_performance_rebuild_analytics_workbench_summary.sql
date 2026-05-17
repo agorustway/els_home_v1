@@ -1,7 +1,7 @@
 -- 2026-05-17
 -- 아산 연간실적 분석 워크벤치 summary 재생성 쿼리.
 -- 목적:
---   1) current snapshot 원장 기준으로 월/주차/요일/주체별 분석 summary를 재생성한다.
+--   1) current snapshot 원장 기준으로 월/주차/요일/계약/명의/차량별 분석 summary를 재생성한다.
 --   2) ELS솔루션 명의 및 ELS솔루션+직계약 세그먼트를 외부 운송사와 분리한다.
 --   3) 원장 행수, 월별 불일치, 날짜/금액 품질 메타를 summary에 보관한다.
 -- 주의:
@@ -32,7 +32,9 @@ raw as (
     coalesce(r.row_data->>'청구처', '') as client,
     coalesce(r.row_data->>'노선', '') as route_name,
     coalesce(r.row_data->>'구분', '') as category,
-    coalesce(r.row_data->>'픽업', '') as pickup
+    coalesce(r.row_data->>'픽업', '') as pickup,
+    coalesce(r.row_data->>'영업넘버', '') as vehicle_no,
+    coalesce(r.row_data->>'기사', '') as driver
   from public.branch_performance_rows r
   join meta m on r.snapshot_id = m.snapshot_id
 ),
@@ -51,6 +53,8 @@ parsed as (
     route_name,
     category,
     pickup,
+    vehicle_no,
+    driver,
     regexp_replace(revenue_raw, '[^0-9.-]', '', 'g') as revenue_text,
     regexp_replace(purchase_raw, '[^0-9.-]', '', 'g') as purchase_text,
     case when regexp_replace(revenue_raw, '[^0-9.-]', '', 'g') ~ '^-?[0-9]+(\.[0-9]+)?$' then regexp_replace(revenue_raw, '[^0-9.-]', '', 'g')::numeric else 0 end as revenue,
@@ -161,7 +165,7 @@ weekday_json as (
 segment_defs as (
   select * from (values
     ('own_direct', '우리 직계약차량', '운송사(명의)가 ELS솔루션이고 계약이 직계약인 원장 행만 별도 집계합니다.', array['ELS솔루션','직계약']::text[], 1),
-    ('own_total', 'ELS솔루션 명의 전체', '운송사(명의)가 ELS솔루션인 전체 물량입니다. 주체 항목이라 외부 운송사 비교와 분리합니다.', array['ELS솔루션']::text[], 2),
+    ('own_total', 'ELS솔루션 명의 전체', '운송사(명의)가 ELS솔루션인 전체 물량입니다. 외부 운송사 비교와 분리합니다.', array['ELS솔루션']::text[], 2),
     ('direct_total', '직계약 전체', '계약 컬럼에 직계약이 포함된 전체 행입니다. ELS솔루션 명의와 외부 명의를 함께 포함합니다.', array['직계약']::text[], 3),
     ('external_carrier', '외부/타 운송사', '운송사(명의)가 비어 있지 않고 ELS솔루션이 아닌 행입니다.', array[]::text[], 4)
   ) as d(segment_key, label, description, filter_terms, order_no)
@@ -252,6 +256,63 @@ segment_dimension_json as (
   where rn <= 12
   group by segment_key, bucket
 ),
+vehicle_totals as (
+  select
+    coalesce(nullif(vehicle_no, ''), '미분류') as vehicle_no,
+    string_agg(distinct nullif(driver, ''), ', ') filter (where nullif(driver, '') is not null) as drivers,
+    count(*)::int as row_count,
+    round(sum(revenue)::numeric, 2) as revenue,
+    round(sum(purchase)::numeric, 2) as purchase,
+    round(sum(profit)::numeric, 2) as profit,
+    row_number() over (order by abs(sum(revenue)) desc) as rn
+  from amounts
+  where btrim(vehicle_no) <> ''
+  group by coalesce(nullif(vehicle_no, ''), '미분류')
+),
+vehicle_monthly as (
+  select
+    coalesce(nullif(vehicle_no, ''), '미분류') as vehicle_no,
+    period,
+    period_year,
+    period_month,
+    count(*)::int as row_count,
+    round(sum(revenue)::numeric, 2) as revenue,
+    round(sum(purchase)::numeric, 2) as purchase,
+    round(sum(profit)::numeric, 2) as profit
+  from amounts
+  where btrim(vehicle_no) <> ''
+    and period_year is not null
+    and period_month is not null
+  group by coalesce(nullif(vehicle_no, ''), '미분류'), period, period_year, period_month
+),
+vehicle_performance_json as (
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'name', vt.vehicle_no,
+    'vehicleNo', vt.vehicle_no,
+    'drivers', coalesce(vt.drivers, ''),
+    'revenue', vt.revenue,
+    'purchase', vt.purchase,
+    'profit', vt.profit,
+    'rowCount', vt.row_count,
+    'profitRate', case when vt.revenue <> 0 then round((vt.profit / vt.revenue) * 100, 2) else 0 end,
+    'revenueShare', case when (select total_revenue from ledger_totals) <> 0 then round((vt.revenue / (select total_revenue from ledger_totals)) * 100, 2) else 0 end,
+    'monthly', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'year', vm.period_year,
+        'month', vm.period_month,
+        'period', vm.period,
+        'revenue', vm.revenue,
+        'purchase', vm.purchase,
+        'profit', vm.profit,
+        'rowCount', vm.row_count
+      ) order by vm.period)
+      from vehicle_monthly vm
+      where vm.vehicle_no = vt.vehicle_no
+    ), '[]'::jsonb)
+  ) order by abs(vt.revenue) desc), '[]'::jsonb) as value
+  from vehicle_totals vt
+  where vt.rn <= 80
+),
 strategic_segments_json as (
   select coalesce(jsonb_agg(jsonb_build_object(
     'key', st.segment_key,
@@ -282,7 +343,8 @@ summary_patch as (
     'weekly', (select value from weekly_json),
     'weekday', (select value from weekday_json),
     'strategicSegments', (select value from strategic_segments_json),
-    'analysisVersion', 'ledger-workbench-20260517',
+    'vehiclePerformance', (select value from vehicle_performance_json),
+    'analysisVersion', 'ledger-workbench-20260518-scope-vehicle',
     'analysisGeneratedAt', now()::text,
     'ledgerValidation', jsonb_build_object(
       'rowCountActual', lt.row_count_actual,
@@ -340,6 +402,7 @@ where f.id = m.id;
 --   jsonb_array_length(coalesce(summary->'weekly', '[]'::jsonb)) as weekly_count,
 --   jsonb_array_length(coalesce(summary->'weekday', '[]'::jsonb)) as weekday_count,
 --   jsonb_array_length(coalesce(summary->'strategicSegments', '[]'::jsonb)) as segment_count,
+--   jsonb_array_length(coalesce(summary->'vehiclePerformance', '[]'::jsonb)) as vehicle_count,
 --   summary->'ledgerValidation' as ledger_validation
 -- from public.branch_performance_files
 -- where branch_id='asan'

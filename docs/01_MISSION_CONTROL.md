@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.13.93 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.94 / APK v5.11.12)
 
-> 최신 업데이트: AI 어시스턴트 전체 대화 삭제가 DB 저장 레이스에 다시 살아나지 않도록 삭제 마커·stale POST 차단·최종 purge 흐름을 보강했습니다.
+> 최신 업데이트: 아산 연간실적 상단에 주식형 장기 흐름 차트와 조사범위 선택을 추가하고, 차량별 손익 summary를 붙였습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.93
+- **웹 버전**: v5.13.94
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 연간실적 분석을 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 탭으로 확장.
+  - 연간실적 분석을 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 탭으로 확장.
+  - 상단 장기 흐름 차트는 매출/매입 선과 월평균선을 함께 표시하고, 조사범위 선택값을 KPI/흐름/세그먼트에 반영.
   - 운영 Supabase summary에 `weekly`, `weekday`, `strategicSegments`, `ledgerValidation`, `amountQuality`, `dateQuality`를 추가.
   - 검증값: current snapshot 368,617행, 월별 summary 불일치 0건, 매출/매입/손익 raw 재집계 차이 0원.
   - `운송사(명의)=ELS솔루션`과 `ELS솔루션+직계약`을 외부 운송사와 분리해 별도 분석.
@@ -40,6 +41,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.94**: 아산 연간실적 상단에 주식형 매출·매입 장기 흐름과 평균선을 추가. 전체/최근 12개월/36개월/5년/최근 연도/직접 선택 조사범위로 KPI·월별·연도별·직계약·주차 분석을 재계산하고, `영업넘버` 기준 차량별 손익 summary를 추가.
 - **v5.13.93**: AI 어시스턴트 대화 전체 삭제 시 예약/진행 중 자동저장을 차단하고, `/api/chat/memory`가 삭제 마커보다 오래된 저장 스냅샷을 무시하도록 보강. 삭제 후 빈 마커는 지연 purge로 정리.
 - **v5.13.92**: 아산 연간실적/선적관리 DB 페이징에서 정확 count를 생략한 검색 결과는 `+` 표기로 추정 총건수를 표시. 웹 디버그에서 368,617행 summary, ELS솔루션 직계약 드릴다운, 2024-01/2025-01 검증값을 재확인.
 - **v5.13.91**: 아산 연간실적 10년 원장 분석 워크벤치 확장. 월/주차/요일/ELS솔루션 직계약 세그먼트와 검증·근거 탭 추가, Supabase summary 고급 재집계 SQL 반영.
@@ -59,9 +61,10 @@
 - `node --test web/tests/chatMemory.test.mjs`: 6개 통과
 - `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- 운영 Supabase 검증: `vehiclePerformance` 80개 차량, 최상위 `부산98사1786` 손익률 15.74%
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
-- 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
+- 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/API sandbox EACCES 경고만 표시)

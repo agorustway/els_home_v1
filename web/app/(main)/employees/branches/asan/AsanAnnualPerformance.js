@@ -23,9 +23,17 @@ const ANALYSIS_VIEWS = [
     { key: 'overview', label: '개요' },
     { key: 'flow', label: '10년 흐름' },
     { key: 'matrix', label: '연도×월' },
-    { key: 'segments', label: '직계약/주체' },
+    { key: 'segments', label: '직계약/차량' },
     { key: 'calendar', label: '주차·요일' },
     { key: 'evidence', label: '검증·근거' },
+];
+const SCOPE_PRESETS = [
+    { key: 'all', label: '전체' },
+    { key: 'recent12', label: '최근 12개월' },
+    { key: 'recent36', label: '최근 36개월' },
+    { key: 'recent60', label: '최근 5년' },
+    { key: 'currentYear', label: '최근 연도' },
+    { key: 'custom', label: '직접' },
 ];
 
 function fmtTs(value) {
@@ -136,6 +144,120 @@ function getPeriodRange(monthly = []) {
     return first === last ? first : `${first} ~ ${last}`;
 }
 
+function normalizePeriodKey(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})[-./]?(0[1-9]|1[0-2])(?:[-./]\d{1,2})?/);
+    return match ? `${match[1]}-${match[2]}` : '';
+}
+
+function getSeriesPeriod(item = {}) {
+    return normalizePeriodKey(item.period || item.weekStart || item.monthKey || item.label || '');
+}
+
+function getPeriodOptions(monthly = []) {
+    return Array.from(new Set(monthly.map(item => normalizePeriodKey(item.period)).filter(Boolean))).sort();
+}
+
+function getScopeBounds({ mode, periods, start, end }) {
+    if (!periods.length) return { start: '', end: '', label: '-' };
+    const first = periods[0];
+    const last = periods[periods.length - 1];
+    const normalizedStart = normalizePeriodKey(start);
+    const normalizedEnd = normalizePeriodKey(end);
+    let nextStart = first;
+    let nextEnd = last;
+
+    if (mode === 'recent12') {
+        nextStart = periods[Math.max(0, periods.length - 12)];
+    } else if (mode === 'recent36') {
+        nextStart = periods[Math.max(0, periods.length - 36)];
+    } else if (mode === 'recent60') {
+        nextStart = periods[Math.max(0, periods.length - 60)];
+    } else if (mode === 'currentYear') {
+        const year = last.slice(0, 4);
+        const yearPeriods = periods.filter(period => period.startsWith(year));
+        nextStart = yearPeriods[0] || last;
+        nextEnd = yearPeriods[yearPeriods.length - 1] || last;
+    } else if (mode === 'custom') {
+        nextStart = normalizedStart || first;
+        nextEnd = normalizedEnd || last;
+        if (nextStart > nextEnd) [nextStart, nextEnd] = [nextEnd, nextStart];
+    }
+
+    return {
+        start: nextStart,
+        end: nextEnd,
+        label: nextStart === nextEnd ? nextStart : `${nextStart} ~ ${nextEnd}`,
+    };
+}
+
+function filterSeriesByScope(items = [], scopeBounds = {}) {
+    if (!scopeBounds.start || !scopeBounds.end) return Array.isArray(items) ? items : [];
+    return (Array.isArray(items) ? items : []).filter(item => {
+        const period = getSeriesPeriod(item);
+        return period && period >= scopeBounds.start && period <= scopeBounds.end;
+    });
+}
+
+function sumSeriesMetrics(items = []) {
+    return items.reduce((acc, item) => {
+        acc.revenue += safeNumber(item.revenue);
+        acc.purchase += safeNumber(item.purchase);
+        acc.profit += safeNumber(item.profit);
+        acc.rowCount += safeNumber(item.rowCount);
+        return acc;
+    }, { revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+}
+
+function aggregateYearlyFromMonthly(monthly = []) {
+    const map = new Map();
+    monthly.forEach(item => {
+        const period = normalizePeriodKey(item.period);
+        const year = String(item.year || period.slice(0, 4) || '');
+        if (!year) return;
+        const prev = map.get(year) || { year: Number(year), revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+        prev.revenue += safeNumber(item.revenue);
+        prev.purchase += safeNumber(item.purchase);
+        prev.profit += safeNumber(item.profit);
+        prev.rowCount += safeNumber(item.rowCount);
+        map.set(year, prev);
+    });
+    return Array.from(map.values()).sort((a, b) => String(a.year).localeCompare(String(b.year)));
+}
+
+function scopeStrategicSegment(segment = {}, scopeBounds = {}, scopedRevenue = 0) {
+    const scopedMonthly = filterSeriesByScope(segment.monthly || [], scopeBounds);
+    if (!scopedMonthly.length) return { ...segment, monthly: [], revenue: 0, purchase: 0, profit: 0, rowCount: 0, revenueShare: 0, profitRate: 0 };
+    const totals = sumSeriesMetrics(scopedMonthly);
+    return {
+        ...segment,
+        monthly: scopedMonthly,
+        revenue: totals.revenue,
+        purchase: totals.purchase,
+        profit: totals.profit,
+        rowCount: totals.rowCount,
+        revenueShare: rate(totals.revenue, scopedRevenue),
+        profitRate: rate(totals.profit, totals.revenue),
+    };
+}
+
+function scopePerformanceItem(item = {}, scopeBounds = {}, scopedRevenue = 0) {
+    if (!Array.isArray(item.monthly)) return item;
+    const scopedMonthly = filterSeriesByScope(item.monthly, scopeBounds);
+    if (!scopedMonthly.length) return { ...item, monthly: [], revenue: 0, purchase: 0, profit: 0, rowCount: 0, revenueShare: 0, profitRate: 0 };
+    const totals = sumSeriesMetrics(scopedMonthly);
+    return {
+        ...item,
+        monthly: scopedMonthly,
+        revenue: totals.revenue,
+        purchase: totals.purchase,
+        profit: totals.profit,
+        rowCount: totals.rowCount,
+        revenueShare: rate(totals.revenue, scopedRevenue),
+        profitRate: rate(totals.profit, totals.revenue),
+    };
+}
+
 function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMonth, topSegment, top3Share, lowMarginItems }) {
     const notes = [];
     if (latestMonth && previousMonth) {
@@ -156,6 +278,135 @@ function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMo
 
 function normalizeSeries(items = []) {
     return (Array.isArray(items) ? items : []).filter(item => item && (safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)));
+}
+
+function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, bounds, rowCount }) {
+    return (
+        <section className={styles.scopePanel}>
+            <div className={styles.scopeTitle}>
+                <span>조사범위</span>
+                <strong>{bounds.label}</strong>
+                <em>{safeNumber(rowCount).toLocaleString('ko-KR')}건 기준</em>
+            </div>
+            <div className={styles.scopePresets}>
+                {SCOPE_PRESETS.map(preset => (
+                    <button
+                        key={preset.key}
+                        className={mode === preset.key ? styles.scopeActive : ''}
+                        onClick={() => setMode(preset.key)}
+                    >
+                        {preset.label}
+                    </button>
+                ))}
+            </div>
+            <div className={styles.scopeSelects}>
+                <select
+                    value={start || periods[0] || ''}
+                    onChange={e => {
+                        setStart(e.target.value);
+                        setMode('custom');
+                    }}
+                >
+                    {periods.map(period => <option key={period} value={period}>{period}</option>)}
+                </select>
+                <span>~</span>
+                <select
+                    value={end || periods[periods.length - 1] || ''}
+                    onChange={e => {
+                        setEnd(e.target.value);
+                        setMode('custom');
+                    }}
+                >
+                    {periods.map(period => <option key={period} value={period}>{period}</option>)}
+                </select>
+            </div>
+        </section>
+    );
+}
+
+function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-' }) {
+    const series = normalizeSeries(items);
+    const width = 1100;
+    const height = 260;
+    const pad = { left: 44, right: 28, top: 28, bottom: 42 };
+    const chartW = width - pad.left - pad.right;
+    const chartH = height - pad.top - pad.bottom;
+    const maxValue = Math.max(1, ...series.flatMap(item => [safeNumber(item.revenue), safeNumber(item.purchase)]));
+    const avgRevenue = series.length ? sumField(series, 'revenue') / series.length : 0;
+    const avgPurchase = series.length ? sumField(series, 'purchase') / series.length : 0;
+    const xAt = idx => pad.left + (series.length <= 1 ? 0 : (idx / (series.length - 1)) * chartW);
+    const yAt = value => pad.top + chartH - (safeNumber(value) / maxValue) * chartH;
+    const toPoints = field => series.map((item, idx) => `${xAt(idx).toFixed(1)},${yAt(item[field]).toFixed(1)}`).join(' ');
+    const revenuePoints = toPoints('revenue');
+    const purchasePoints = toPoints('purchase');
+    const revenueArea = series.length ? `${pad.left},${pad.top + chartH} ${revenuePoints} ${pad.left + chartW},${pad.top + chartH}` : '';
+    const start = series[0]?.period || '-';
+    const end = series[series.length - 1]?.period || '-';
+    const high = series.reduce((best, item) => safeNumber(item.revenue) > safeNumber(best?.revenue) ? item : best, null);
+    const last = series[series.length - 1] || null;
+    const avgRevenueY = yAt(avgRevenue);
+    const avgPurchaseY = yAt(avgPurchase);
+    const gradientId = `annualRevenueArea-${String(title).replace(/[^a-zA-Z0-9가-힣]/g, '-')}`;
+    const grid = [0.25, 0.5, 0.75, 1].map(ratio => ({
+        y: pad.top + chartH - chartH * ratio,
+        value: maxValue * ratio,
+    }));
+
+    return (
+        <section className={styles.marketFlowPanel}>
+            <div className={styles.marketFlowHeader}>
+                <div>
+                    <h3>{title}</h3>
+                    <span>{start} ~ {end} · 조사범위 {scopeLabel}</span>
+                </div>
+                <div className={styles.marketFlowLegend}>
+                    <span><i className={styles.revenueDot} />매출</span>
+                    <span><i className={styles.purchaseDot} />매입</span>
+                    <span><i className={styles.avgRevenueDot} />매출 평균</span>
+                    <span><i className={styles.avgPurchaseDot} />매입 평균</span>
+                </div>
+            </div>
+            {series.length < 2 ? (
+                <div className={styles.emptyPanel}>장기 흐름을 그릴 월별 데이터가 부족합니다.</div>
+            ) : (
+                <>
+                    <svg className={styles.marketFlowSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 매출 매입 흐름`}>
+                        <defs>
+                            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor="#0f766e" stopOpacity="0.22" />
+                                <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
+                            </linearGradient>
+                        </defs>
+                        {grid.map(item => (
+                            <g key={item.y}>
+                                <line x1={pad.left} x2={pad.left + chartW} y1={item.y} y2={item.y} className={styles.marketGridLine} />
+                                <text x={pad.left - 8} y={item.y + 3} className={styles.marketAxisText} textAnchor="end">{formatPerformanceAmount(item.value)}</text>
+                            </g>
+                        ))}
+                        <polygon points={revenueArea} className={styles.marketRevenueArea} style={{ fill: `url(#${gradientId})` }} />
+                        <polyline points={revenuePoints} className={styles.marketRevenueLine} />
+                        <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
+                        <line x1={pad.left} x2={pad.left + chartW} y1={avgRevenueY} y2={avgRevenueY} className={styles.marketRevenueAvgLine} />
+                        <line x1={pad.left} x2={pad.left + chartW} y1={avgPurchaseY} y2={avgPurchaseY} className={styles.marketPurchaseAvgLine} />
+                        <text x={pad.left + chartW - 4} y={avgRevenueY - 6} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
+                        <text x={pad.left + chartW - 4} y={avgPurchaseY + 14} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
+                        {series.map((item, idx) => {
+                            const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 8)) === 0;
+                            return showTick ? (
+                                <text key={item.period} x={xAt(idx)} y={height - 16} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
+                            ) : null;
+                        })}
+                    </svg>
+                    <div className={styles.marketFlowStats}>
+                        <div><span>최고 매출월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
+                        <div><span>최근월</span><strong>{last?.period || '-'}</strong><em>매출 {last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
+                        <div><span>매출 평균</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>월 평균</em></div>
+                        <div><span>매입 평균</span><strong>{formatPerformanceAmount(avgPurchase)}</strong><em>월 평균</em></div>
+                    </div>
+                </>
+            )}
+        </section>
+    );
 }
 
 function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
@@ -278,6 +529,9 @@ export default function AsanAnnualPerformance() {
     const [activeTab, setActiveTab] = useState('analytics');
     const [analysisView, setAnalysisView] = useState('overview');
     const [selectedSegmentKey, setSelectedSegmentKey] = useState('own_direct');
+    const [scopeMode, setScopeMode] = useState('all');
+    const [scopeStart, setScopeStart] = useState('');
+    const [scopeEnd, setScopeEnd] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchMode, setSearchMode] = useState('or');
@@ -446,23 +700,57 @@ export default function AsanAnnualPerformance() {
     const weekly = Array.isArray(summary.weekly) ? summary.weekly : EMPTY_LIST;
     const weekday = Array.isArray(summary.weekday) ? summary.weekday : EMPTY_LIST;
     const strategicSegments = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
-    const monthlyTrend = monthly.slice(-12);
-    const weeklyTrend = weekly.slice(-26);
+    const periodOptions = useMemo(() => getPeriodOptions(monthly), [monthly]);
+    const scopeBounds = useMemo(() => getScopeBounds({
+        mode: scopeMode,
+        periods: periodOptions,
+        start: scopeStart,
+        end: scopeEnd,
+    }), [periodOptions, scopeEnd, scopeMode, scopeStart]);
+    const scopedMonthly = useMemo(() => filterSeriesByScope(monthly, scopeBounds), [monthly, scopeBounds]);
+    const scopedYearly = useMemo(() => aggregateYearlyFromMonthly(scopedMonthly), [scopedMonthly]);
+    const scopedWeekly = useMemo(() => filterSeriesByScope(weekly, scopeBounds), [scopeBounds, weekly]);
+    const scopedTotals = useMemo(() => {
+        const totals = sumSeriesMetrics(scopedMonthly);
+        if (!monthly.length) {
+            return {
+                revenue: safeNumber(summary.totalRevenue),
+                purchase: safeNumber(summary.totalPurchase),
+                profit: safeNumber(summary.totalProfit),
+                rowCount: safeNumber(summary.analysisRows || totalRows),
+            };
+        }
+        return totals;
+    }, [monthly.length, scopedMonthly, summary.analysisRows, summary.totalProfit, summary.totalPurchase, summary.totalRevenue, totalRows]);
+    const scopedStrategicSegments = useMemo(() => (
+        strategicSegments.map(segment => scopeStrategicSegment(segment, scopeBounds, scopedTotals.revenue))
+    ), [scopeBounds, scopedTotals.revenue, strategicSegments]);
+    const monthlyTrend = scopedMonthly.slice(-12);
+    const weeklyTrend = scopedWeekly.slice(-26);
     const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
-    const chartMax = getPerformanceChartMax(yearly, ['revenue', 'purchase', 'profit']);
+    const vehiclePerformance = Array.isArray(summary.vehiclePerformance)
+        ? summary.vehiclePerformance
+        : (breakdowns.find(section => String(section.column || '').includes('영업넘버'))?.items || EMPTY_LIST);
+    const scopedVehiclePerformance = useMemo(() => (
+        vehiclePerformance
+            .map(item => scopePerformanceItem(item, scopeBounds, scopedTotals.revenue))
+            .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
+            .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
+    ), [scopeBounds, scopedTotals.revenue, vehiclePerformance]);
+    const chartMax = getPerformanceChartMax(scopedYearly, ['revenue', 'purchase', 'profit']);
     const monthChartMax = getPerformanceChartMax(monthlyTrend, ['revenue', 'purchase', 'profit']);
-    const analysisRows = Number(summary.analysisRows || totalRows || 0) || 0;
-    const avgRevenue = analysisRows ? (Number(summary.totalRevenue) || 0) / analysisRows : 0;
-    const avgProfit = analysisRows ? (Number(summary.totalProfit) || 0) / analysisRows : 0;
-    const purchaseRate = rate(summary.totalPurchase, summary.totalRevenue);
-    const profitRate = Number(summary.profitRate || rate(summary.totalProfit, summary.totalRevenue)) || 0;
+    const analysisRows = Number(scopedTotals.rowCount || 0) || 0;
+    const avgRevenue = analysisRows ? scopedTotals.revenue / analysisRows : 0;
+    const avgProfit = analysisRows ? scopedTotals.profit / analysisRows : 0;
+    const purchaseRate = rate(scopedTotals.purchase, scopedTotals.revenue);
+    const profitRate = rate(scopedTotals.profit, scopedTotals.revenue);
     const performanceGrade = getPerformanceGrade(profitRate);
-    const bestProfitMonth = monthly.reduce((best, item) => (Number(item.profit) || 0) > (Number(best?.profit) || -Infinity) ? item : best, null);
-    const worstProfitMonth = monthly.reduce((worst, item) => (Number(item.profit) || 0) < (Number(worst?.profit) || Infinity) ? item : worst, null);
-    const bestRevenueMonth = monthly.reduce((best, item) => (Number(item.revenue) || 0) > (Number(best?.revenue) || -Infinity) ? item : best, null);
-    const latestMonth = monthly[monthly.length - 1] || null;
-    const previousMonth = monthly[monthly.length - 2] || null;
+    const bestProfitMonth = scopedMonthly.reduce((best, item) => (Number(item.profit) || 0) > (Number(best?.profit) || -Infinity) ? item : best, null);
+    const worstProfitMonth = scopedMonthly.reduce((worst, item) => (Number(item.profit) || 0) < (Number(worst?.profit) || Infinity) ? item : worst, null);
+    const bestRevenueMonth = scopedMonthly.reduce((best, item) => (Number(item.revenue) || 0) > (Number(best?.revenue) || -Infinity) ? item : best, null);
+    const latestMonth = scopedMonthly[scopedMonthly.length - 1] || null;
+    const previousMonth = scopedMonthly[scopedMonthly.length - 2] || null;
     const dimensionOptions = useMemo(() => {
         return breakdowns
             .filter(section => Array.isArray(section.items) && section.items.length)
@@ -488,7 +776,7 @@ export default function AsanAnnualPerformance() {
         .slice()
         .sort((a, b) => profitRateOf(b) - profitRateOf(a))
         .slice(0, 5);
-    const bridgeMax = Math.max(1, Math.abs(safeNumber(summary.totalRevenue)), Math.abs(safeNumber(summary.totalPurchase)), Math.abs(safeNumber(summary.totalProfit)));
+    const bridgeMax = Math.max(1, Math.abs(scopedTotals.revenue), Math.abs(scopedTotals.purchase), Math.abs(scopedTotals.profit));
     const executiveNotes = buildExecutiveNotes({
         profitRate,
         purchaseRate,
@@ -498,7 +786,7 @@ export default function AsanAnnualPerformance() {
         top3Share,
         lowMarginItems,
     });
-    const selectedSegment = strategicSegments.find(item => item.key === selectedSegmentKey) || strategicSegments.find(item => item.key === 'own_direct') || strategicSegments[0] || null;
+    const selectedSegment = scopedStrategicSegments.find(item => item.key === selectedSegmentKey) || scopedStrategicSegments.find(item => item.key === 'own_direct') || scopedStrategicSegments[0] || null;
     const ledgerValidation = summary.ledgerValidation || {};
     const amountQuality = summary.amountQuality || ledgerValidation.amountQuality || {};
     const dateQuality = summary.dateQuality || ledgerValidation.dateQuality || {};
@@ -516,6 +804,12 @@ export default function AsanAnnualPerformance() {
             setSelectedSegmentKey(strategicSegments[0].key);
         }
     }, [strategicSegments, selectedSegmentKey]);
+
+    useEffect(() => {
+        if (!periodOptions.length) return;
+        if (!scopeStart || !periodOptions.includes(scopeStart)) setScopeStart(periodOptions[0]);
+        if (!scopeEnd || !periodOptions.includes(scopeEnd)) setScopeEnd(periodOptions[periodOptions.length - 1]);
+    }, [periodOptions, scopeEnd, scopeStart]);
 
     const syncNow = async () => {
         setSyncing(true);
@@ -680,7 +974,7 @@ export default function AsanAnnualPerformance() {
                                 </span>
                             </div>
                             <div className={styles.commandMeta}>
-                                <span>기간 {getPeriodRange(monthly)}</span>
+                                <span>기간 {getPeriodRange(scopedMonthly)}</span>
                                 <span>분석 {analysisRows.toLocaleString('ko-KR')}행</span>
                                 <span>월별 {summary.monthlyBasis || '마감월'} 기준</span>
                                 <span>현재 스냅샷 {summary.currentSnapshotId ? '고정' : '미확인'}</span>
@@ -694,21 +988,39 @@ export default function AsanAnnualPerformance() {
                         </div>
                     </section>
 
+                    <ScopeControls
+                        mode={scopeMode}
+                        setMode={setScopeMode}
+                        start={scopeStart}
+                        end={scopeEnd}
+                        setStart={setScopeStart}
+                        setEnd={setScopeEnd}
+                        periods={periodOptions}
+                        bounds={scopeBounds}
+                        rowCount={analysisRows}
+                    />
+
+                    <LedgerFlowChart
+                        items={scopedMonthly}
+                        title="원장 장기 흐름"
+                        scopeLabel={scopeBounds.label}
+                    />
+
                     <div className={styles.kpiGrid}>
                         <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>연간 매출</span>
-                            <strong>{formatPerformanceAmount(summary.totalRevenue)}</strong>
+                            <span className={styles.kpiLabel}>조사범위 매출</span>
+                            <strong>{formatPerformanceAmount(scopedTotals.revenue)}</strong>
                             <em>건당 매출 {formatPerformanceAmount(avgRevenue)}</em>
                         </div>
                         <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>연간 매입</span>
-                            <strong>{formatPerformanceAmount(summary.totalPurchase)}</strong>
+                            <span className={styles.kpiLabel}>조사범위 매입</span>
+                            <strong>{formatPerformanceAmount(scopedTotals.purchase)}</strong>
                             <em>매입률 {formatPercent(purchaseRate)}</em>
                         </div>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>손익</span>
-                            <strong className={(Number(summary.totalProfit) || 0) < 0 ? styles.negative : styles.positive}>
-                                {formatPerformanceAmount(summary.totalProfit)}
+                            <strong className={scopedTotals.profit < 0 ? styles.negative : styles.positive}>
+                                {formatPerformanceAmount(scopedTotals.profit)}
                             </strong>
                             <em>건당 {formatPerformanceAmount(avgProfit)}</em>
                         </div>
@@ -741,9 +1053,9 @@ export default function AsanAnnualPerformance() {
                             </div>
                             <div className={styles.bridgeList}>
                                 {[
-                                    { label: '매출', value: summary.totalRevenue, tone: 'revenue', sub: '총 청구 기준' },
-                                    { label: '매입', value: summary.totalPurchase, tone: 'purchase', sub: `${formatPercent(purchaseRate)} 사용` },
-                                    { label: '손익', value: summary.totalProfit, tone: safeNumber(summary.totalProfit) < 0 ? 'loss' : 'profit', sub: `${formatPercent(profitRate, 2)} 잔여` },
+                                    { label: '매출', value: scopedTotals.revenue, tone: 'revenue', sub: '총 청구 기준' },
+                                    { label: '매입', value: scopedTotals.purchase, tone: 'purchase', sub: `${formatPercent(purchaseRate)} 사용` },
+                                    { label: '손익', value: scopedTotals.profit, tone: scopedTotals.profit < 0 ? 'loss' : 'profit', sub: `${formatPercent(profitRate, 2)} 잔여` },
                                 ].map(item => (
                                     <div className={styles.bridgeRow} key={item.label}>
                                         <div>
@@ -761,7 +1073,7 @@ export default function AsanAnnualPerformance() {
                                 ))}
                                 <div className={styles.bridgeFormula}>
                                     <span>손익 = 매출 - 매입</span>
-                                    <strong>{formatPerformanceAmount(summary.totalRevenue)} - {formatPerformanceAmount(summary.totalPurchase)} = {formatPerformanceAmount(summary.totalProfit)}</strong>
+                                    <strong>{formatPerformanceAmount(scopedTotals.revenue)} - {formatPerformanceAmount(scopedTotals.purchase)} = {formatPerformanceAmount(scopedTotals.profit)}</strong>
                                 </div>
                             </div>
                         </section>
@@ -769,7 +1081,7 @@ export default function AsanAnnualPerformance() {
                         <section className={`${styles.panel} ${styles.monthPanel}`}>
                             <div className={styles.panelHeader}>
                                 <h3>월별 성과 흐름</h3>
-                                <span>{summary.monthlyBasis || '마감월'} 기준 · 최근 {monthlyTrend.length.toLocaleString()}개월</span>
+                                <span>{summary.monthlyBasis || '마감월'} 기준 · {scopeBounds.label}</span>
                             </div>
                             <div className={styles.monthChart}>
                                 {monthlyTrend.length === 0 ? (
@@ -804,7 +1116,7 @@ export default function AsanAnnualPerformance() {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>연도별 매출·매입·손익</h3>
-                                <span>{yearly.length.toLocaleString()}개 연도</span>
+                                <span>{scopedYearly.length.toLocaleString()}개 연도 · {scopeBounds.label}</span>
                             </div>
                             <div className={styles.metricLegend}>
                                 <span><i className={styles.revenueDot} />매출</span>
@@ -812,9 +1124,9 @@ export default function AsanAnnualPerformance() {
                                 <span><i className={styles.profitDot} />손익</span>
                             </div>
                             <div className={styles.yearChart}>
-                                {yearly.length === 0 ? (
+                                {scopedYearly.length === 0 ? (
                                     <div className={styles.emptyPanel}>분석 가능한 금액/연도 컬럼이 아직 없습니다.</div>
-                                ) : yearly.map(item => (
+                                ) : scopedYearly.map(item => (
                                     <div className={styles.yearRow} key={getPerformanceYearLabel(item)}>
                                         <div className={styles.yearLabel}>{getPerformanceYearLabel(item)}</div>
                                         <div className={styles.barStack}>
@@ -991,8 +1303,8 @@ export default function AsanAnnualPerformance() {
 
                     {analysisView === 'flow' && (
                         <div className={styles.deepGrid}>
-                            <MiniTrendChart items={monthly} title="원장 전체 월별 흐름" basis="마감월" />
-                            <MiniTrendChart items={yearly} title="연도별 장기 흐름" basis="연도" />
+                            <LedgerFlowChart items={scopedMonthly} title="조사범위 월별 흐름" scopeLabel={scopeBounds.label} />
+                            <MiniTrendChart items={scopedYearly} title="연도별 장기 흐름" basis="연도" />
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
                                     <h3>최근 변화 근거</h3>
@@ -1023,9 +1335,9 @@ export default function AsanAnnualPerformance() {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>연도×월 매출/손익 매트릭스</h3>
-                                <span>{summary.monthlyBasis || '마감월'} 기준 · {monthly.length.toLocaleString('ko-KR')}개월</span>
+                                <span>{summary.monthlyBasis || '마감월'} 기준 · {scopedMonthly.length.toLocaleString('ko-KR')}개월</span>
                             </div>
-                            <YearMonthHeatmap monthly={monthly} onSelectPeriod={period => openDetailSearch([period], 'and')} />
+                            <YearMonthHeatmap monthly={scopedMonthly} onSelectPeriod={period => openDetailSearch([period], 'and')} />
                         </section>
                     )}
 
@@ -1033,11 +1345,11 @@ export default function AsanAnnualPerformance() {
                         <div className={styles.deepGrid}>
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
-                                    <h3>주체/계약 세그먼트</h3>
-                                    <span>ELS솔루션은 주체 항목으로 분리</span>
+                                    <h3>계약/명의 세그먼트</h3>
+                                    <span>{scopeBounds.label} · ELS솔루션은 외부 운송사와 분리</span>
                                 </div>
                                 <div className={styles.segmentCards}>
-                                    {strategicSegments.map(segment => (
+                                    {scopedStrategicSegments.map(segment => (
                                         <button
                                             key={segment.key}
                                             className={selectedSegment?.key === segment.key ? styles.segmentCardActive : ''}
@@ -1103,6 +1415,46 @@ export default function AsanAnnualPerformance() {
                                     </div>
                                 </>
                             )}
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>차량별 손익</h3>
+                                    <span>{scopeBounds.label} · 영업넘버 기준</span>
+                                </div>
+                                {scopedVehiclePerformance.length === 0 ? (
+                                    <div className={styles.emptyPanel}>차량별 손익 summary가 아직 없습니다.</div>
+                                ) : (
+                                    <div className={styles.vehicleProfitTable}>
+                                        <div className={styles.vehicleProfitHead}>
+                                            <span>차량/영업넘버</span>
+                                            <span>기사</span>
+                                            <span>매출</span>
+                                            <span>매입</span>
+                                            <span>손익</span>
+                                            <span>률</span>
+                                            <span>건수</span>
+                                        </div>
+                                        {scopedVehiclePerformance.slice(0, 30).map((item, idx) => {
+                                            const vehicleName = item.vehicleNo || item.name || item.label || '미분류';
+                                            return (
+                                                <button
+                                                    key={`${vehicleName}-${idx}`}
+                                                    className={styles.vehicleProfitRow}
+                                                    onClick={() => openDetailSearch([vehicleName], 'and')}
+                                                    title={`${vehicleName} 원장 상세`}
+                                                >
+                                                    <strong>{vehicleName}</strong>
+                                                    <span>{item.drivers || item.driver || '-'}</span>
+                                                    <span>{formatPerformanceAmount(item.revenue)}</span>
+                                                    <span>{formatPerformanceAmount(item.purchase)}</span>
+                                                    <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
+                                                    <em className={profitRateOf(item) < profitRate ? styles.warningText : ''}>{formatPercent(profitRateOf(item), 1)}</em>
+                                                    <span>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </section>
                         </div>
                     )}
 
@@ -1111,7 +1463,7 @@ export default function AsanAnnualPerformance() {
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
                                     <h3>주차별 금액/건수</h3>
-                                    <span>최근 26주</span>
+                                    <span>{scopeBounds.label} · 최근 {weeklyTrend.length.toLocaleString('ko-KR')}주</span>
                                 </div>
                                 <div className={styles.weekList}>
                                     {weeklyTrend.map(item => (
@@ -1128,7 +1480,7 @@ export default function AsanAnnualPerformance() {
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
                                     <h3>요일별 원장 분석</h3>
-                                    <span>전체 기간</span>
+                                    <span>전체 기간 summary 기준</span>
                                 </div>
                                 <div className={styles.weekdayGrid}>
                                     {weekday.map(item => (

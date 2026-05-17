@@ -495,9 +495,12 @@ function createAdvancedAccumulator(headers) {
   const routeIdx = headerIndex(headers, ['노선'], '노선');
   const categoryIdx = headerIndex(headers, ['구분'], '구분');
   const pickupIdx = headerIndex(headers, ['픽업'], '픽업');
+  const vehicleIdx = headerIndex(headers, ['영업넘버', '차량번호', '차량'], '영업넘버');
+  const driverIdx = headerIndex(headers, ['기사'], '기사');
   const weekly = new Map();
   const weekday = new Map();
   const segments = new Map();
+  const vehicles = new Map();
   const segmentDefs = [
     {
       key: 'own_direct',
@@ -509,7 +512,7 @@ function createAdvancedAccumulator(headers) {
     {
       key: 'own_total',
       label: 'ELS솔루션 명의 전체',
-      description: '운송사(명의)가 ELS솔루션인 전체 물량입니다. 주체 항목이라 외부 운송사 비교와 분리합니다.',
+      description: '운송사(명의)가 ELS솔루션인 전체 물량입니다. 외부 운송사 비교와 분리합니다.',
       filterTerms: ['ELS솔루션'],
       match: ({ carrier }) => carrier === 'ELS솔루션',
     },
@@ -550,6 +553,23 @@ function createAdvancedAccumulator(headers) {
     return segments.get(definition.key);
   };
 
+  const ensureVehicle = (vehicleNo) => {
+    if (!vehicleNo) return null;
+    if (!vehicles.has(vehicleNo)) {
+      vehicles.set(vehicleNo, {
+        name: vehicleNo,
+        vehicleNo,
+        drivers: new Set(),
+        revenue: 0,
+        purchase: 0,
+        profit: 0,
+        rowCount: 0,
+        monthly: new Map(),
+      });
+    }
+    return vehicles.get(vehicleNo);
+  };
+
   function add(row, year, month, revenue, purchase, profit) {
     const dateInfo = workDateInfo(headers, row);
     if (dateInfo) {
@@ -565,9 +585,21 @@ function createAdvancedAccumulator(headers) {
 
     const carrier = rowValue(row, carrierIdx);
     const contract = rowValue(row, contractIdx);
+    const vehicleNo = rowValue(row, vehicleIdx);
+    const driver = rowValue(row, driverIdx);
     const values = { carrier, contract };
     const yearKey = year ? String(year) : '미지정';
     const monthKey = year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
+
+    const vehicle = ensureVehicle(vehicleNo);
+    if (vehicle) {
+      vehicle.revenue += revenue;
+      vehicle.purchase += purchase;
+      vehicle.profit += profit;
+      vehicle.rowCount += 1;
+      if (driver) vehicle.drivers.add(driver);
+      if (monthKey) addMetric(vehicle.monthly, monthKey, { period: monthKey, year, month }, revenue, purchase, profit);
+    }
 
     for (const definition of segmentDefs) {
       if (!definition.match(values)) continue;
@@ -637,6 +669,21 @@ function createAdvancedAccumulator(headers) {
         const order = ['own_direct', 'own_total', 'direct_total', 'external_carrier'];
         return order.indexOf(a.key) - order.indexOf(b.key);
       }),
+      vehiclePerformance: Array.from(vehicles.values()).map((vehicle) => {
+        const rounded = roundItem({
+          name: vehicle.name,
+          vehicleNo: vehicle.vehicleNo,
+          drivers: Array.from(vehicle.drivers).slice(0, 5).join(', '),
+          revenue: vehicle.revenue,
+          purchase: vehicle.purchase,
+          profit: vehicle.profit,
+          rowCount: vehicle.rowCount,
+        });
+        rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
+        rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
+        rounded.monthly = finalizeSeries(vehicle.monthly, 240, (a, b) => a.period.localeCompare(b.period));
+        return rounded;
+      }).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue)).slice(0, 80),
     };
   }
 

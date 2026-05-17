@@ -333,6 +333,236 @@
     color: #1d4ed8 !important;
 }
 
+.scopePanel {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.42fr) minmax(360px, 1fr) minmax(220px, 0.45fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.scopeTitle {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+}
+
+.scopeTitle span,
+.scopeTitle em {
+    color: #64748b;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.scopeTitle strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.scopePresets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.scopePresets button {
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.scopeActive {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.scopeSelects {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+}
+
+.scopeSelects select {
+    min-width: 0;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.scopeSelects span {
+    color: #94a3b8;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.marketFlowPanel {
+    border: 1px solid #dbeafe;
+    border-radius: 7px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.marketFlowHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 11px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.marketFlowHeader h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 950;
+}
+
+.marketFlowHeader span {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.marketFlowLegend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.marketFlowLegend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.marketFlowLegend i {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+}
+
+.avgRevenueDot {
+    background: #14b8a6;
+}
+
+.avgPurchaseDot {
+    background: #f59e0b;
+}
+
+.marketFlowSvg {
+    width: 100%;
+    height: 270px;
+    display: block;
+    background: linear-gradient(#ffffff, #f8fafc);
+}
+
+.marketGridLine {
+    stroke: #e2e8f0;
+    stroke-width: 1;
+}
+
+.marketAxisText,
+.marketAvgText {
+    fill: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.marketRevenueArea {
+    stroke: none;
+}
+
+.marketRevenueLine,
+.marketPurchaseLine {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.marketRevenueLine {
+    stroke: #0f766e;
+}
+
+.marketPurchaseLine {
+    stroke: #d97706;
+}
+
+.marketRevenueAvgLine,
+.marketPurchaseAvgLine {
+    stroke-width: 2;
+    stroke-dasharray: 7 5;
+}
+
+.marketRevenueAvgLine {
+    stroke: #14b8a6;
+}
+
+.marketPurchaseAvgLine {
+    stroke: #f59e0b;
+}
+
+.marketFlowStats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px 10px 10px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.marketFlowStats div {
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.marketFlowStats span,
+.marketFlowStats em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.marketFlowStats strong {
+    display: block;
+    margin: 2px 0;
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 950;
+}
+
 .deepGrid {
     display: grid;
     grid-template-columns: 1fr;
@@ -653,6 +883,73 @@
 .compactButtonRow b,
 .compactButtonRow em {
     text-align: right;
+}
+
+.vehicleProfitTable {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 9px 9px;
+    overflow-x: auto;
+}
+
+.vehicleProfitHead,
+.vehicleProfitRow {
+    display: grid;
+    grid-template-columns: minmax(120px, 1.2fr) minmax(90px, 0.8fr) 92px 92px 92px 56px 54px;
+    align-items: center;
+    gap: 7px;
+    min-width: 760px;
+}
+
+.vehicleProfitHead {
+    min-height: 27px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.vehicleProfitHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-align: right;
+}
+
+.vehicleProfitHead span:first-child,
+.vehicleProfitHead span:nth-child(2) {
+    text-align: left;
+}
+
+.vehicleProfitRow {
+    min-height: 30px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.vehicleProfitRow:hover {
+    background: #f8fafc;
+}
+
+.vehicleProfitRow strong,
+.vehicleProfitRow span,
+.vehicleProfitRow b,
+.vehicleProfitRow em {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.vehicleProfitRow strong,
+.vehicleProfitRow span:nth-child(2) {
+    text-align: left;
 }
 
 .weekList {
@@ -1635,6 +1932,7 @@
 
     .commandPanel,
     .commandNotes,
+    .scopePanel,
     .kpiGrid,
     .changeGrid,
     .validationGrid,
@@ -1648,6 +1946,28 @@
     .segmentDetailGrid,
     .formGrid {
         grid-template-columns: 1fr;
+    }
+
+    .scopeTitle {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .marketFlowHeader {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .marketFlowLegend {
+        justify-content: flex-start;
+    }
+
+    .marketFlowStats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .marketFlowSvg {
+        height: 220px;
     }
 
     .bridgeRow {

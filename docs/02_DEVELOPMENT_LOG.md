@@ -1,4 +1,27 @@
 
+## [2026-05-18] 아산 연간실적 장기 흐름/조사범위/차량별 손익 보강 (v5.13.94)
+### 핵심
+- 연간실적 분석 상단에 월별 매출·매입을 선형으로 잇는 장기 흐름 차트를 추가하고, 매출 평균선/매입 평균선을 함께 표시했습니다.
+- 조사범위 선택을 `전체/최근 12개월/최근 36개월/최근 5년/최근 연도/직접`으로 제공하고, KPI·월별 흐름·연도별 집계·직계약 세그먼트·주차 분석이 선택 범위 기준으로 재계산되게 했습니다.
+- 기존 애매한 표현은 화면/문서/summary 설명에서 제거하고, `직계약/차량`, `계약/명의 세그먼트`, `외부 운송사와 분리` 표현으로 정리했습니다.
+- Supabase summary에 `vehiclePerformance`를 추가해 `영업넘버` 기준 차량별 매출·매입·손익·손익률·건수와 월별 흐름을 볼 수 있게 했습니다.
+### 검증
+- 운영 Supabase `branch_performance_files.summary.vehiclePerformance`: 80개 차량 반영, 최상위 `부산98사1786` 손익률 15.74% 확인.
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --check "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+- 로컬 브라우저 플러그인 확인은 `ERR_BLOCKED_BY_CLIENT`로 차단되어 빌드 검증으로 대체했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
+- `web/supabase_sql/20260518_asan_performance_vehicle_scope_summary.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] AI 어시스턴트 전체 대화 삭제 DB 레이스 차단 (v5.13.93)
 ### 핵심
 - 전체 기록 삭제 시 예약된 자동저장뿐 아니라 이미 진행 중인 저장 fetch도 abort하고, 삭제 중에는 visibility/beforeunload 저장이 예전 대화를 다시 보내지 못하게 막았습니다.
@@ -41,9 +64,9 @@
 
 ## [2026-05-17] 아산 연간실적 10년 원장 분석 워크벤치 확장 (v5.13.91)
 ### 핵심
-- 연간실적 분석 탭을 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 하위 탭으로 확장했습니다.
+- 연간실적 분석 탭을 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 하위 탭으로 확장했습니다.
 - 운영 Supabase `branch_performance_files.summary`에 `weekly`, `weekday`, `strategicSegments`, `ledgerValidation`, `amountQuality`, `dateQuality`를 추가했습니다.
-- `운송사(명의)=ELS솔루션`은 외부 운송사 비교 대상이 아니라 주체 항목으로 분리하고, `ELS솔루션+직계약` 세그먼트를 별도 분석합니다.
+- `운송사(명의)=ELS솔루션`은 외부 운송사 비교 대상과 분리하고, `ELS솔루션+직계약` 세그먼트를 별도 분석합니다.
 - 분석 항목의 원장 상세 버튼과 연도×월 셀 클릭은 테이블 탭으로 이동해 AND 검색을 적용합니다.
 - 선적관리는 기본 진입 시 최근 3개월 `작업일` 서버 필터를 적용해 DB 조회량을 줄이고, 모바일 무한 스크롤은 페이지 단위 추가 조회로 유지했습니다.
 ### 데이터 검증
