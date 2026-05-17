@@ -1,4 +1,48 @@
 
+## [2026-05-17] 아산 배차 고객사/실행사 기준 차이 추적 패널 (v5.13.76)
+### 핵심
+- 대시보드 기준 전환 버튼 옆 빈 영역에 `기준차이` 패널을 추가했습니다.
+- 일/주/月 기준으로 `실행사 지역칸 합계 - 고객사 오더` 차이를 바로 표시합니다.
+- 차이 큰 행은 날짜, 작업지, 사유, 고객/실행 수량을 함께 보여주고 `보기` 버튼으로 해당 날짜 탭과 작업지 검색까지 연결합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (51개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 배차 도넛 점유율·빈 날짜 탭·모비스 국가명 집계 (v5.13.74)
+### 핵심
+- 화주/상차지 도넛 범례에 항목별 점유율 %를 추가해 중앙 `톱1점유`와 각 항목 비중을 같이 읽을 수 있게 했습니다.
+- 데이터가 없는 날짜 탭은 disabled 처리하고, 초기 선택 탭도 실제 데이터가 있는 날짜를 우선 선택하도록 보정했습니다.
+- 모비스 고객사 구분표는 고객사가 비어 있으면 `국가명/국가` 컬럼을 우선 사용해 `미분류`로 뭉치지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs` 통과 (50개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 선적관리 모바일 빠른 버튼 폭 정렬 (v5.13.73)
+### 핵심
+- 모바일 선적관리 날짜 필터에서 `미선적`과 `자체보관` 버튼이 `76px + 나머지` 그리드 비율을 타며 서로 다른 폭으로 보이던 문제를 정리했습니다.
+- 모바일 날짜 필터 그리드를 2등분 구조로 바꾸고 빠른 필터 버튼에 `min-width: 0`을 적용해 두 버튼이 같은 폭을 쓰도록 했습니다.
+- 모바일 상단/월 선택 회귀 테스트에 빠른 필터 동일 폭 조건을 추가했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs` 통과 (32개)
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"` 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 배차 상차지 비율·돋보기 표시 보정 (v5.13.72)
 ### 핵심
 - `상차지별 비율` 도넛을 작업지 기준이 아니라 `아산/부산/광양/평택/중부/부곡/인천` 등 배차 지역 칸의 업체 수량 기준으로 집계하도록 바로잡았습니다.
@@ -114,6 +158,19 @@
 - `web/utils/asanDashboardView.mjs`
 - `web/tests/asanDashboardView.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 연간실적 웹 조회 count timeout 제거 (v5.13.75)
+### 핵심
+- 연간실적 화면 조회에서 Supabase `count=exact`를 제거하고 파일 메타의 `current_row_count`를 전체 건수로 사용하도록 변경했습니다.
+- 첫 화면/더보기는 실제 표시 행만 `row_index` 범위로 가져오며, 한 행을 추가 조회해 다음 페이지 존재 여부만 판단합니다.
+- 36만 행 current 원장에서도 화면 진입 시 정확한 count 집계 때문에 statement timeout이 나는 흐름을 차단했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
+- `npm.cmd run lint -- "lib/asan-branch-db.js"` 0 errors
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
 
 ## [2026-05-17] 아산 연간실적 current 조회 timeout 회피 (v5.13.65)
 ### 핵심

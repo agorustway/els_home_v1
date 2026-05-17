@@ -76,19 +76,27 @@ function getCols(headers = []) {
     line: findDashboardCol(headers, '라인(선사명)', '라인', '선사명', '선사'),
     container: findDashboardCol(headers, 'TYPE', 'T'),
     direction: findDashboardCol(headers, '구분'),
-    customer: findDashboardCol(headers, '고객사(국가)', '고객사', '국가'),
+    customer: findDashboardCol(headers, '고객사(국가)', '고객사'),
+    country: findDashboardCol(headers, '국가명', '국가'),
     order: findDashboardCol(headers, '오더(계)', '오더'),
     qty: findDashboardCol(headers, '오더(계)', '계', '수량'),
     dispatch: findDashboardCol(headers, '배차'),
   };
 }
 
-function getRowMeta(row = [], cols = {}) {
+function resolveCustomerLabel(row = [], cols = {}, viewType = 'integrated') {
+  const customer = normalizeLabel(row[cols.customer], '');
+  const country = normalizeLabel(row[cols.country], '');
+  if (viewType === 'mobis') return country || customer || '미분류';
+  return customer || country || '미분류';
+}
+
+function getRowMeta(row = [], cols = {}, viewType = 'integrated') {
   return {
     shipper: normalizeLabel(row[cols.shipper]),
     workplace: normalizeLabel(row[cols.workplace]),
     line: normalizeLabel(row[cols.line]),
-    customer: normalizeLabel(row[cols.customer]),
+    customer: resolveCustomerLabel(row, cols, viewType),
     direction: normalizeLabel(row[cols.direction]),
     container: normalizeLabel(row[cols.container]),
   };
@@ -132,11 +140,15 @@ function addRegionAggs(scope, records = []) {
   records.forEach((record) => addMap(scope.pieAggs.region, record.region, record.count));
 }
 
+function sumDispatchRecords(records = []) {
+  return records.reduce((sum, record) => sum + record.count, 0);
+}
+
 function addCustomerRow(scope, row, headers, cols, viewType) {
   const amount = getCustomerWeight(row, cols, viewType);
   if (amount <= 0) return;
 
-  const meta = getRowMeta(row, cols);
+  const meta = getRowMeta(row, cols, viewType);
   scope.total += amount;
   addPieAggs(scope, meta, amount);
   addRegionAggs(scope, parseDispatchRecords(row, headers));
@@ -167,8 +179,8 @@ function parseDispatchRecords(row = [], headers = []) {
   return records;
 }
 
-function addDispatcherRow(scope, row, headers, cols) {
-  const meta = getRowMeta(row, cols);
+function addDispatcherRow(scope, row, headers, cols, viewType) {
+  const meta = getRowMeta(row, cols, viewType);
   const records = parseDispatchRecords(row, headers);
   addRegionAggs(scope, records);
   records.forEach((record) => {
@@ -189,7 +201,7 @@ function accumulateRows(scope, rows = [], headers = [], viewType = 'integrated',
   (rows || []).forEach((row) => {
     addBaseRowMetrics(scope, row, cols, viewType);
     if (viewMode === 'dispatcher') {
-      addDispatcherRow(scope, row, headers, cols);
+      addDispatcherRow(scope, row, headers, cols, viewType);
     } else {
       addCustomerRow(scope, row, headers, cols, viewType);
     }
@@ -605,6 +617,128 @@ export function buildAsanDashboardTimeline({
 function parseWeekKey(weekKey = '') {
   const [start, end] = String(weekKey || '').split('_');
   return start && end ? { start, end } : null;
+}
+
+function inWeekRange(item, weekKey = '') {
+  const range = parseWeekKey(weekKey);
+  return range ? item.target_date >= range.start && item.target_date <= range.end : false;
+}
+
+function classifyBasisDiff(customerTotal, dispatcherTotal, records = []) {
+  if (dispatcherTotal <= 0 && customerTotal > 0) return '지역 배차칸 수량 없음';
+  if (customerTotal <= 0 && dispatcherTotal > 0) return '오더 수량 없음';
+  if (records.length === 0) return '실행사 지역칸 미기입';
+  return '오더와 지역칸 합계 차이';
+}
+
+function buildBasisDiffIssues(items = [], viewType = 'integrated', limit = 4) {
+  const issues = [];
+  normalizeSourceItems(items).forEach((item) => {
+    const cols = getCols(item.headers || []);
+    (item.data || []).forEach((row, rowIndex) => {
+      const customerTotal = getCustomerWeight(row, cols, viewType);
+      const records = parseDispatchRecords(row, item.headers || []);
+      const dispatcherTotal = sumDispatchRecords(records);
+      const diff = dispatcherTotal - customerTotal;
+      if (Math.abs(diff) < 0.01) return;
+
+      const meta = getRowMeta(row, cols, viewType);
+      const regionSummary = records
+        .slice()
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3)
+        .map((record) => `${record.region}:${record.company} ${record.count}`)
+        .join(' / ');
+
+      issues.push({
+        id: `${item.target_date}_${rowIndex}`,
+        date: item.target_date,
+        dateLabel: formatDateLabel(item.target_date),
+        rowIndex: rowIndex + 1,
+        title: meta.workplace || meta.customer || meta.shipper,
+        subtitle: [meta.shipper, meta.customer, meta.line].filter((value) => value && value !== '미분류').join(' · '),
+        search: meta.workplace || meta.customer || meta.shipper || '',
+        customerTotal,
+        dispatcherTotal,
+        diff,
+        reason: classifyBasisDiff(customerTotal, dispatcherTotal, records),
+        regionSummary,
+      });
+    });
+  });
+
+  return issues
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+    .slice(0, limit);
+}
+
+export function buildAsanDashboardBasisDiffSummary({
+  sourceItems = [],
+  fallbackRows = [],
+  fallbackHeaders = [],
+  viewType = 'integrated',
+  selectedDay = '',
+  selectedWeek = '',
+  selectedMonth = '',
+} = {}) {
+  const customerPeriods = buildSelectableAsanDashboardPeriods({
+    sourceItems,
+    fallbackRows,
+    fallbackHeaders,
+    viewType,
+    viewMode: 'customer',
+    selectedDay,
+    selectedWeek,
+    selectedMonth,
+  });
+  const dispatcherPeriods = buildSelectableAsanDashboardPeriods({
+    sourceItems,
+    fallbackRows,
+    fallbackHeaders,
+    viewType,
+    viewMode: 'dispatcher',
+    selectedDay,
+    selectedWeek,
+    selectedMonth,
+  });
+
+  const periodKeys = ['daily', 'weekly', 'monthly'];
+  const periods = periodKeys.map((key) => {
+    const customer = customerPeriods.periods.find((period) => period.key === key);
+    const dispatcher = dispatcherPeriods.periods.find((period) => period.key === key);
+    const customerTotal = customer?.scope?.total || 0;
+    const dispatcherTotal = dispatcher?.scope?.total || 0;
+    return {
+      key,
+      label: customer?.label || dispatcher?.label || key,
+      title: customer?.title || dispatcher?.title || '',
+      selectedKey: customer?.selectedKey || dispatcher?.selectedKey || '',
+      customerTotal,
+      dispatcherTotal,
+      diff: dispatcherTotal - customerTotal,
+    };
+  });
+
+  const weeklyKey = periods.find((period) => period.key === 'weekly')?.selectedKey || '';
+  const monthlyKey = periods.find((period) => period.key === 'monthly')?.selectedKey || '';
+  const dailyKey = periods.find((period) => period.key === 'daily')?.selectedKey || selectedDay;
+  const focusPeriod = periods.reduce((best, period) => (
+    Math.abs(period.diff) > Math.abs(best.diff) ? period : best
+  ), periods[0] || { key: 'monthly', diff: 0 });
+  const items = normalizeSourceItems(sourceItems);
+  const focusItems = focusPeriod.key === 'daily'
+    ? items.filter((item) => item.target_date === dailyKey)
+    : focusPeriod.key === 'weekly'
+      ? items.filter((item) => inWeekRange(item, weeklyKey))
+      : monthlyKey
+        ? items.filter((item) => item.target_date.startsWith(monthlyKey))
+        : items;
+  const issueSource = focusItems.length > 0 ? focusItems : [{ target_date: selectedDay || '', headers: fallbackHeaders, data: fallbackRows }];
+
+  return {
+    periods,
+    issues: buildBasisDiffIssues(issueSource, viewType, 4),
+  };
 }
 
 function createWeekdayBuckets() {

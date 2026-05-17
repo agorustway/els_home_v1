@@ -1,21 +1,22 @@
-# ELS MISSION CONTROL (v5.13.72 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.76 / APK v5.11.12)
 
-> 최신 업데이트: 아산 배차 상차지 비율 기준과 추세 돋보기 표시를 보정했습니다.
+> 최신 업데이트: 아산 배차 고객사/실행사 기준 차이 추적 패널을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.72
+- **웹 버전**: v5.13.76
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 상차지별 비율은 작업지가 아니라 `아산/부산/광양/평택/중부...` 배차 지역 칸 기준으로 집계.
-  - 추세 돋보기는 높은 점에서는 아래쪽으로 배치하고 양수/음수 색상을 빨강/파랑으로 표시.
-  - 요일별 작업지 비중의 주간 실데이터는 정수면 소수점 없이 표시.
+  - 대시보드 기준 버튼 옆 빈 영역에 `기준차이` 패널 추가.
+  - 일/주/月 기준으로 실행사 합계와 고객사 오더의 차이를 표시.
+  - 차이 상위 행은 날짜·작업지·사유와 `보기` 링크로 표 검색까지 연결.
+  - 배차 도넛 범례/빈 날짜 탭/모비스 국가명 집계 보강 유지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 아산 배차 분석 대시보드/선적/실적 테스트 통과 |
-| Supabase 인증/DB | 정상 | 연간실적 직접 주입 snapshot 반영 전환, current 조회 보조 인덱스 SQL 추가 |
+| Supabase 인증/DB | 정상 | 연간실적 직접 주입 완료, 웹 조회 exact count 제거 |
 | NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 주기 적용 |
 | ELS Bot | 정상 | eTrans 세션 연장/자정 롤오버 타이머 가드 보강 |
 | Android 드라이버 앱 | 정상 | APK v5.11.12 유지 |
@@ -36,6 +37,10 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.76**: 아산 배차 고객사/실행사 기준 차이 패널을 추가하고, 차이 원인 행을 날짜 탭+검색 링크로 추적 가능하게 함.
+- **v5.13.75**: 연간실적 웹 조회에서 Supabase exact count를 제거하고 파일 메타 행 수를 사용해 화면 진입 timeout을 완화.
+- **v5.13.74**: 아산 배차 도넛 범례에 항목별 점유율을 붙이고, 데이터 없는 날짜 탭 비활성화와 모비스 국가명 고객사 집계를 적용.
+- **v5.13.73**: 아산 선적관리 모바일 날짜 필터에서 `미선적`/`자체보관` 빠른 버튼 폭을 동일하게 정렬.
 - **v5.13.72**: 아산 배차 상차지별 비율을 지역 배차 칸 기준으로 고치고 추세 돋보기 위치·양수/음수 색상, 주간 실데이터 표기를 보정.
 - **v5.13.71**: 아산 배차 모바일 기간 카드를 1열로 정리하고 요일별 패널 안에서 주/월을 바로 선택하게 하며 전체 탭 미래 주차 선택지를 제외.
 - **v5.13.70**: 아산 배차 점유율 영역에 상차지별 비율 도넛을 추가하고 도넛/카드 표기를 `톱1점유`로 통일.
@@ -64,12 +69,6 @@
 - **v5.13.46**: 아산 연간실적 페이지, 누적 원장형 `branch_performance_*` SQL, NAS Core 동기화 모듈, 파이프라인 문서를 추가.
 - **v5.13.45**: 아산 선적관리 모바일 상단 제목/저장정보/검색/월 선택 영역을 한 화면 폭 기준으로 정돈.
 - **v5.13.44**: 아산 선적관리 날짜 필터를 최근 6개월 월 다중선택 버튼으로 바꾸고, 기본값을 현재월 포함 3개월로 설정.
-- **v5.13.43**: 아산 선적관리 조회 건수를 `전체 N건 / 조회 N건`으로 표시하고, 컨테이너 조회 완료/실패 카운트 및 엑셀 헤더 변경/삭제/추가 반영을 보강.
-- **v5.13.42**: 아산 선적관리 날짜 필터 바 버튼 글자 높이를 통일하고, 조회 건수를 일반 텍스트로 바꾸며, 필터/정렬 조회 중 빈 테이블에 `자료 조회중...` 안내를 추가.
-- **v5.13.41**: 아산 선적관리 미선적 필터가 이력 데이터 없는 행도 남기도록 보강하고, 필터 적용 조회 건수 배지와 컨테이너 조회 대상 상태 문구를 추가.
-- **v5.13.40**: 아산 선적관리 필터 드롭다운 글자색을 복구하고, 미선적 판정 기준일에 `반입일` fallback을 추가. 대량 컨테이너 이력 저장값은 150건씩 청크 조회.
-- **v5.13.39**: eTrans 세션 연장 후 클라이언트 타이머를 재시작하고 자정 날짜 변경 시 WebSquare 타이머가 세션 종료로 오판하지 않도록 롤오버 가드를 설치.
-- **v5.13.38**: 미선적 필터 상태에서 컨테이너 조회 준비값이 기존 이력 판정을 지우지 않게 하고, 실패 응답은 DB 기존값을 삭제하지 않도록 보강. 가상 스크롤 시작점 클램프로 필터 후 빈 화면 표시도 방지.
 
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
@@ -81,6 +80,8 @@
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 51개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs" "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors
 - Browser: standalone 서버와 `?debug=true` 접근 확인, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨

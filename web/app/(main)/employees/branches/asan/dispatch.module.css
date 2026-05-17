@@ -761,6 +761,20 @@
     color: #334155;
 }
 
+.dateTabDisabled,
+.dateTabDisabled:hover {
+    cursor: not-allowed;
+    opacity: 0.42;
+    background: #f8fafc;
+    color: #cbd5e1;
+    border-color: #e2e8f0;
+    box-shadow: none;
+}
+
+.dateTabDisabled .tabDay {
+    color: #dbe2ea;
+}
+
 .dateTabActive {
     background: #2563eb !important; /* 진한 파랑 (선택됨) */
     color: #fff !important;

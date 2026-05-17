@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './dashboard.module.css';
 import {
     ASAN_DASHBOARD_CHART_MODES,
+    buildAsanDashboardBasisDiffSummary,
     buildAsanDashboardTimeline,
     buildAsanDashboardScope,
     buildAsanDashboardWeekdayComparison,
@@ -56,6 +57,7 @@ export default function AsanDashboard({
     activeDate = '',
     selectedMonth = '',
     dateControlsSlot = null,
+    onIssueSelect = null,
 }) {
     const [viewMode, setViewMode] = useState('customer');
     const [chartMode, setChartMode] = useState('작업지');
@@ -105,12 +107,22 @@ export default function AsanDashboard({
             weekKey: weeklyPeriod?.selectedKey || '',
             monthKey: monthlyPeriod?.selectedKey || '',
         });
+        const basisDiff = buildAsanDashboardBasisDiffSummary({
+            sourceItems,
+            fallbackRows: data,
+            fallbackHeaders: headers,
+            viewType,
+            selectedDay: periodSelection.day || activeDate,
+            selectedWeek: periodSelection.week,
+            selectedMonth: periodSelection.month || selectedMonth,
+        });
         return {
             activeScope,
             periods: selectablePeriods.periods,
             periodOptions: selectablePeriods.options,
             timeline,
             weekdayComparison,
+            basisDiff,
         };
     }, [data, headers, viewType, viewMode, sourceItems, activeDate, selectedMonth, periodSelection]);
 
@@ -154,6 +166,7 @@ export default function AsanDashboard({
                         실행사(협력업체) 기준
                     </button>
                 </div>
+                <BasisDiffPanel data={dashboardData.basisDiff} onIssueSelect={onIssueSelect} />
                 <div className={styles.dashTotal}>
                     현재 선택 총계 <b>{formatQty(dashboardData.activeScope.total)}</b>
                 </div>
@@ -236,6 +249,69 @@ export default function AsanDashboard({
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function formatSignedQty(value) {
+    if (!value) return '0';
+    return `${value > 0 ? '+' : ''}${formatQty(value)}`;
+}
+
+function getDiffToneClass(value) {
+    if (value > 0) return styles.basisDiffUp;
+    if (value < 0) return styles.basisDiffDown;
+    return styles.basisDiffFlat;
+}
+
+function BasisDiffPanel({ data, onIssueSelect }) {
+    const periods = (data?.periods || []).filter((period) => period.key !== 'total');
+    const issues = data?.issues || [];
+    if (periods.length === 0) return null;
+
+    const hasDiff = periods.some((period) => Math.abs(period.diff) >= 0.01);
+    return (
+        <div className={styles.basisDiffPanel}>
+            <div className={styles.basisDiffHead}>
+                <strong>기준차이</strong>
+                <span>실행-고객</span>
+            </div>
+            <div className={styles.basisDiffStats}>
+                {periods.map((period) => (
+                    <span key={period.key} className={getDiffToneClass(period.diff)} title={`${period.title} 고객 ${formatQty(period.customerTotal)} / 실행 ${formatQty(period.dispatcherTotal)}`}>
+                        <em>{period.label}</em>
+                        <b>{formatSignedQty(period.diff)}</b>
+                    </span>
+                ))}
+            </div>
+            {issues.length > 0 ? (
+                <div className={styles.basisIssueList}>
+                    {issues.slice(0, 2).map((issue) => (
+                        <div key={issue.id} className={styles.basisIssue}>
+                            <div className={styles.basisIssueText}>
+                                <strong title={issue.subtitle || issue.title}>{issue.dateLabel} · {issue.title} · {issue.rowIndex}행</strong>
+                                <span title={issue.regionSummary || issue.reason}>
+                                    {issue.reason} · 고객 {formatQty(issue.customerTotal)} / 실행 {formatQty(issue.dispatcherTotal)}
+                                    <b className={getDiffToneClass(issue.diff)}> {formatSignedQty(issue.diff)}</b>
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className={styles.basisIssueLink}
+                                onClick={() => onIssueSelect?.(issue)}
+                                disabled={!onIssueSelect}
+                                title={`${issue.dateLabel} 탭에서 ${issue.search || issue.title} 검색`}
+                            >
+                                보기
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className={styles.basisDiffOk}>
+                    {hasDiff ? '기간 합계 차이는 있으나 행 단위 원인 없음' : '선택 기간 기준 차이 없음'}
+                </div>
+            )}
         </div>
     );
 }
@@ -765,6 +841,7 @@ function ShareDonut({ data, title }) {
                             <span className={styles.pieDot} style={{ background: CHART_COLORS[idx % CHART_COLORS.length] }} />
                             <span className={styles.pieLabel} title={name}>{name}</span>
                             <span className={styles.pieVal}>{formatQty(value)}</span>
+                            <span className={styles.piePct}>{getPct(value, total)}%</span>
                         </div>
                     ))}
                 </div>

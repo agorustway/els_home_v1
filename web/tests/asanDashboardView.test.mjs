@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  buildAsanDashboardBasisDiffSummary,
   buildAsanDashboardPeriods,
   buildAsanDashboardScope,
   buildAsanDashboardTimeline,
@@ -73,6 +74,27 @@ test('아산 현황판 고객사별 비중 집계를 제공한다', () => {
   assert.equal(scope.feuTotal, 42);
 });
 
+test('아산 현황판 모비스 고객사 구분표는 국가명으로 집계한다', () => {
+  const mobisHeaders = ['구분', '화주', '작업지', '고객사', '국가명', '라인(선사명)', 'TYPE', '계', '배차', '아산'];
+  const scope = buildAsanDashboardScope({
+    rows: [
+      ['수출', '모비스AS', '모비스아산', '', 'KOREA', 'ONE', '40HC', '2', '2', '이지 2'],
+      ['수출', '모비스AS', '모비스천안', '', 'USA', 'ONE', '20FT', '3', '3', '대신 3'],
+      ['수출', '모비스AS', '모비스천안', '', 'USA', 'ONE', '20FT', '1', '1', '대신 1'],
+    ],
+    headers: mobisHeaders,
+    viewType: 'mobis',
+    viewMode: 'customer',
+  });
+
+  const customerRows = toSortedChartEntries(scope.chartAggs['고객사']);
+  assert.equal(customerRows[0].name, 'USA');
+  assert.equal(customerRows[0].total, 4);
+  assert.equal(customerRows[1].name, 'KOREA');
+  assert.equal(customerRows[1].total, 2);
+  assert.equal(scope.chartAggs['고객사'].미분류, undefined);
+});
+
 test('아산 현황판 FEU는 20FT 기준으로 TYPE별 환산한다', () => {
   const scope = buildAsanDashboardScope({
     rows: [
@@ -117,6 +139,31 @@ test('아산 현황판 실행사 기준은 지역 칸의 업체명과 대수를 
   assert.equal(weekly.total, 20);
   assert.equal(companyRows[0].name, '이지');
   assert.equal(companyRows[0].total, 13);
+});
+
+test('아산 현황판 기준차이 패널은 고객사 오더와 실행사 지역 합계 차이를 찾는다', () => {
+  const diffSummary = buildAsanDashboardBasisDiffSummary({
+    sourceItems: [
+      {
+        target_date: '2026-05-18',
+        headers,
+        data: [
+          ['수출', '글로비스', '글로비스1공장', '고객A', 'HMM', '40HC', '10', '10', '이지 6,대신 5', ''],
+          ['수출', '글로비스', '글로비스2공장', '고객B', 'HMM', '40HC', '8', '8', '이지 8', ''],
+        ],
+      },
+    ],
+    viewType: 'integrated',
+    selectedDay: '2026-05-18',
+  });
+
+  const daily = diffSummary.periods.find((period) => period.key === 'daily');
+  assert.equal(daily.customerTotal, 18);
+  assert.equal(daily.dispatcherTotal, 19);
+  assert.equal(daily.diff, 1);
+  assert.equal(diffSummary.issues[0].title, '글로비스1공장');
+  assert.equal(diffSummary.issues[0].reason, '오더와 지역칸 합계 차이');
+  assert.equal(diffSummary.issues[0].search, '글로비스1공장');
 });
 
 test('아산 현황판 선택형 기간 카드는 일별, 주별, 월별 옵션과 전기간 메트릭을 제공한다', () => {
@@ -316,4 +363,36 @@ test('아산 현황판 추세 돋보기는 포인트 위치에 따라 위아래 
   assert.match(source, /const getLensTransform = \(point\) =>/);
   assert.match(source, /point\.y < 105 \? '14px' : 'calc\(-100% - 16px\)'/);
   assert.match(source, /transform: getLensTransform\(hoverPoint\)/);
+});
+
+test('아산 현황판 도넛 범례는 항목별 점유율을 함께 표시한다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/AsanDashboard.js'),
+    'utf8',
+  );
+  const css = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dashboard.module.css'),
+    'utf8',
+  );
+
+  assert.match(source, /className=\{styles\.piePct\}>\{getPct\(value, total\)\}%/);
+  assert.match(css, /\.piePct\s*{[\s\S]*color: #94a3b8;[\s\S]*font-variant-numeric: tabular-nums;/);
+});
+
+test('아산 배차 날짜 탭은 데이터 없는 날짜를 비활성화한다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const css = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dispatch.module.css'),
+    'utf8',
+  );
+
+  assert.match(source, /const hasRows = \(item\) => Array\.isArray\(item\?\.data\) && item\.data\.length > 0;/);
+  assert.match(source, /disabled=\{!hasRows\}/);
+  assert.match(source, /styles\.dateTabDisabled/);
+  assert.match(source, /title=\{!hasRows \? '데이터 없음' : undefined\}/);
+  assert.match(source, /for \(let i = items\.length - 1; i >= 0; i -= 1\)/);
+  assert.match(css, /\.dateTabDisabled,[\s\S]*cursor: not-allowed;/);
 });
