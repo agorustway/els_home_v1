@@ -6,6 +6,8 @@ export async function GET(request) {
     const type = searchParams.get('type') || 'glovis';
     const date = searchParams.get('date');       // 'all' or 'YYYY-MM-DD'
     const month = searchParams.get('month');      // '01','02'... (전체탭 월필터)
+    const weekStart = searchParams.get('weekStart');
+    const weekEnd = searchParams.get('weekEnd');
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -108,6 +110,7 @@ export async function GET(request) {
             const finalRows = [];
             sortedDates.forEach(dStr => {
                 if (month && dStr.slice(5, 7) !== month) return;
+                if (weekStart && weekEnd && (dStr < weekStart || dStr > weekEnd)) return;
                 const d = new Date(dStr + 'T00:00:00');
                 const days = ['일', '월', '화', '수', '목', '금', '토'];
                 const label = `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
@@ -136,6 +139,7 @@ export async function GET(request) {
             const sorted = [...rawData].sort((a, b) => b.target_date.localeCompare(a.target_date));
             sorted.forEach(item => {
                 if (month && item.target_date.slice(5, 7) !== month) return;
+                if (weekStart && weekEnd && (item.target_date < weekStart || item.target_date > weekEnd)) return;
                 const d = new Date(item.target_date + 'T00:00:00');
                 const days = ['일', '월', '화', '수', '목', '금', '토'];
                 const label = `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
@@ -233,7 +237,11 @@ export async function GET(request) {
     const buffer = await workbook.xlsx.writeBuffer();
     const typeNames = { integrated: '통합현황', glovis: '글로비스KD', mobis: '모비스AS' };
     const typeName = typeNames[type] || type;
-    const datePart = date === 'all' ? (month ? `${parseInt(month)}월` : '전체') : date;
+    const datePart = date === 'all'
+        ? weekStart && weekEnd
+            ? `${weekStart}_${weekEnd}`
+            : (month ? `${parseInt(month)}월` : '전체')
+        : date;
     const filename = `아산_${typeName}_${datePart}.xlsx`;
 
     return new Response(buffer, {

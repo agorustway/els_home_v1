@@ -1,16 +1,16 @@
-# ELS MISSION CONTROL (v5.13.65 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.67 / APK v5.11.12)
 
-> 최신 업데이트: 아산 연간실적 직접 주입을 current 전체 조회 없이 새 스냅샷 staged/current 방식으로 반영하도록 보강했습니다.
+> 최신 업데이트: 아산 배차 전체 탭에 주간 버튼과 요일별 오더 비교 패널을 추가하고 카드 FEU/TOP1 점유 표시를 정리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.65
+- **웹 버전**: v5.13.67
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
-  - 연간실적 직접 주입 기본값을 current 원장 전체 조회(diff) 없이 새 스냅샷 반영으로 전환.
-  - 파일 mtime이 같으면 기존처럼 스킵해 일 1회 자동 실행 부담 유지.
-  - 행별 hash 비교는 `--diff-current` 옵션으로 분리.
-  - current 조회 보조 인덱스 SQL을 추가해 웹/점검 조회 timeout 가능성 완화.
+  - 전체 탭 월간 필터 아래 주간 버튼을 추가하고 Excel export도 주간 범위를 반영.
+  - 추세 그래프 높이를 줄이고 요일별 오더 비교 패널을 병렬 배치.
+  - 요일별 비교는 월간 요일별 일평균과 선택 주 실제 오더를 hover 설명과 함께 제공.
+  - 기간 카드의 TYPE 칩을 20FT 기준 환산 `FEU`로 바꾸고 `집중`은 `TOP1 점유`로 명확화.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -37,6 +37,8 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.67**: 아산 배차 전체 탭에 주간 필터 버튼, 주간 export, 요일별 오더 비교 패널을 추가하고 카드 FEU/TOP1 점유 표시로 변경.
+- **v5.13.66**: 아산 배차 추세 그래프를 영업일 기준으로 재구성하고 평균선/축/고저점/hover 지표를 추가, 날짜 탭은 그래프 아래로 이동.
 - **v5.13.65**: 연간실적 직접 주입 기본값을 current 전체 조회 없는 snapshot 반영으로 바꾸고 `--diff-current`와 조회 보조 인덱스를 분리.
 - **v5.13.64**: 아산 배차 주별/월별 카드 기본값을 선택일 기준 지난주/지난달로 바꿔 진행 중 기간 비교 왜곡을 완화.
 - **v5.13.63**: 아산 배차 종합 카드에서 전체를 빼고 날짜 탭을 분석 영역 앞으로 내렸으며, 일자별 추세 그래프와 카드 색상 범례/툴팁을 보강.
@@ -64,8 +66,6 @@
 - **v5.13.40**: 아산 선적관리 필터 드롭다운 글자색을 복구하고, 미선적 판정 기준일에 `반입일` fallback을 추가. 대량 컨테이너 이력 저장값은 150건씩 청크 조회.
 - **v5.13.39**: eTrans 세션 연장 후 클라이언트 타이머를 재시작하고 자정 날짜 변경 시 WebSquare 타이머가 세션 종료로 오판하지 않도록 롤오버 가드를 설치.
 - **v5.13.38**: 미선적 필터 상태에서 컨테이너 조회 준비값이 기존 이력 판정을 지우지 않게 하고, 실패 응답은 DB 기존값을 삭제하지 않도록 보강. 가상 스크롤 시작점 클램프로 필터 후 빈 화면 표시도 방지.
-- **v5.13.37**: 아산 선적관리 미선적 정의를 `작업일자 <= 이력 MOVE TIME`인 비완료 이력(`반입/적하` 제외)으로 변경. 완료 음영도 같은 작업일 기준으로 맞췄고, 컨테이너 조회 최종 저장은 기존 file/container 조회값을 삭제 후 최신 결과로 교체.
-- **v5.13.36**: 차량위치관제 운행기록 Excel export 라우트에 `force-dynamic`을 선언해 Next 빌드 중 정적 렌더 오류 로그를 제거.
 
 ## VERIFICATION
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe elsbot\tests\test_els_bot_logic.py`: 14개 통과
@@ -77,8 +77,8 @@
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 48개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors
 - Browser: standalone 서버와 `?debug=true` 접근 확인, 로컬 Supabase role 조회 대기로 본문 hydrate 시각검증은 제한됨
 - `git diff --check`: 통과 (CRLF 치환 warning만 표시)
 

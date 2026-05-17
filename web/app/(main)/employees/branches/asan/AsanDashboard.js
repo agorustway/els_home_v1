@@ -5,6 +5,7 @@ import {
     ASAN_DASHBOARD_CHART_MODES,
     buildAsanDashboardTimeline,
     buildAsanDashboardScope,
+    buildAsanDashboardWeekdayComparison,
     buildSelectableAsanDashboardPeriods,
     toSortedChartEntries,
     toSortedMapEntries,
@@ -83,7 +84,21 @@ export default function AsanDashboard({
             selectedMonth: periodSelection.month || selectedMonth,
         });
         const timeline = buildAsanDashboardTimeline({ sourceItems, viewType, viewMode });
-        return { activeScope, periods: selectablePeriods.periods, periodOptions: selectablePeriods.options, timeline };
+        const weeklyPeriod = selectablePeriods.periods.find((period) => period.key === 'weekly');
+        const monthlyPeriod = selectablePeriods.periods.find((period) => period.key === 'monthly');
+        const weekdayComparison = buildAsanDashboardWeekdayComparison({
+            sourceItems,
+            viewType,
+            weekKey: weeklyPeriod?.selectedKey || '',
+            monthKey: monthlyPeriod?.selectedKey || '',
+        });
+        return {
+            activeScope,
+            periods: selectablePeriods.periods,
+            periodOptions: selectablePeriods.options,
+            timeline,
+            weekdayComparison,
+        };
     }, [data, headers, viewType, viewMode, sourceItems, activeDate, selectedMonth, periodSelection]);
 
     const displayChartData = useMemo(() => {
@@ -142,16 +157,19 @@ export default function AsanDashboard({
                 ))}
             </div>
 
+            <div className={styles.analysisRow}>
+                <TrendPanel
+                    items={dashboardData.timeline}
+                    title={viewMode === 'customer' ? '일자별 오더 추세' : '일자별 실행 배차 추세'}
+                />
+                <WeekdayOrderPanel data={dashboardData.weekdayComparison} />
+            </div>
+
             {dateControlsSlot && (
                 <div className={styles.dateBridge}>
                     {dateControlsSlot}
                 </div>
             )}
-
-            <TrendPanel
-                items={dashboardData.timeline}
-                title={viewMode === 'customer' ? '일자별 오더 추세' : '일자별 실행 배차 추세'}
-            />
 
             <div className={styles.mixModules}>
                 <ShareDonut data={dashboardData.activeScope.pieAggs.shipper} title="화주 점유율" />
@@ -267,7 +285,6 @@ function getTrend(current, previous) {
 function PeriodCard({ period, chartMode, onSelect }) {
     const entries = toSortedChartEntries(period.scope.chartAggs[chartMode], 4);
     const direction = topEntry(period.scope.pieAggs.direction);
-    const container = topEntry(period.scope.pieAggs.container);
     const trend = getTrend(period.scope, period.previousScope);
     const focusPct = entries[0] ? getPct(entries[0].total, period.scope.total) : 0;
     const mismatchTone = period.scope.mismatchTotal > 0 ? styles.metricWarn : '';
@@ -335,54 +352,89 @@ function PeriodCard({ period, chartMode, onSelect }) {
 
             <div className={styles.periodChips}>
                 {direction && <span>{direction[0]} {formatQty(direction[1])}</span>}
-                {container && <span>{container[0]} {formatQty(container[1])}</span>}
-                {focusPct > 0 && <span>집중 {focusPct}%</span>}
+                {period.scope.feuTotal > 0 && (
+                    <span title="20FT 기준 환산값입니다. 20FT=1, 40FT/40HC=2, 45FT=2.25로 계산합니다.">
+                        FEU: {formatQty(period.scope.feuTotal)}
+                    </span>
+                )}
+                {focusPct > 0 && (
+                    <span title="현재 카드 기준에서 1위 항목 수량을 전체 수량으로 나눈 비율입니다.">
+                        TOP1 점유 {focusPct}%
+                    </span>
+                )}
             </div>
         </div>
     );
 }
 
 function TrendPanel({ items, title }) {
+    const [hoverPoint, setHoverPoint] = useState(null);
     const visibleItems = (items || []).filter((item) => item.total > 0);
     if (visibleItems.length < 2) return null;
 
-    const width = 720;
-    const height = 176;
-    const padX = 18;
-    const padY = 20;
+    const width = 820;
+    const height = 224;
+    const padLeft = 52;
+    const padRight = 24;
+    const padTop = 20;
+    const padBottom = 38;
+    const chartWidth = width - padLeft - padRight;
+    const chartHeight = height - padTop - padBottom;
     const totals = visibleItems.map((item) => item.total);
     const min = Math.min(...totals);
     const max = Math.max(...totals);
-    const range = Math.max(1, max - min);
+    const average = totals.reduce((sum, value) => sum + value, 0) / totals.length;
+    const axisMin = Math.max(0, Math.floor((Math.min(min, average) * 0.85) / 10) * 10);
+    const axisMax = Math.max(axisMin + 10, Math.ceil((Math.max(max, average) * 1.08) / 10) * 10);
+    const range = Math.max(1, axisMax - axisMin);
+    const getY = (value) => padTop + ((axisMax - value) * chartHeight) / range;
     const points = visibleItems.map((item, idx) => {
-        const x = padX + (idx * (width - padX * 2)) / Math.max(1, visibleItems.length - 1);
-        const y = padY + ((max - item.total) * (height - padY * 2)) / range;
+        const x = padLeft + (idx * chartWidth) / Math.max(1, visibleItems.length - 1);
+        const y = getY(item.total);
         return { ...item, x, y };
     });
     const linePath = points.map((point, idx) => `${idx === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
-    const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z`;
+    const baselineY = height - padBottom;
+    const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baselineY} L ${points[0].x.toFixed(1)} ${baselineY} Z`;
     const first = visibleItems[0];
     const last = visibleItems[visibleItems.length - 1];
-    const delta = last.total - first.total;
-    const deltaPct = first.total ? Math.round((delta / first.total) * 100) : 0;
+    const startDelta = last.total - first.total;
+    const startDeltaPct = first.total ? Math.round((startDelta / first.total) * 100) : 0;
+    const averageGap = last.total - average;
+    const averageGapPct = average ? Math.round((averageGap / average) * 100) : 0;
     const peak = visibleItems.reduce((best, item) => item.total > best.total ? item : best, visibleItems[0]);
     const low = visibleItems.reduce((best, item) => item.total < best.total ? item : best, visibleItems[0]);
-    const recent = visibleItems.slice(-7);
-    const recentAvg = recent.reduce((sum, item) => sum + item.total, 0) / recent.length;
+    const deltas = visibleItems.slice(1).map((item, idx) => item.total - visibleItems[idx].total);
+    const avgAbsDelta = deltas.length
+        ? deltas.reduce((sum, value) => sum + Math.abs(value), 0) / deltas.length
+        : 0;
+    const averageY = getY(average);
+    const gridValues = Array.from(new Set([
+        axisMax,
+        Math.round((axisMax + axisMin) / 2),
+        axisMin,
+    ]));
+    const xTicks = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]]
+        .filter((point, idx, arr) => point && arr.findIndex((item) => item.date === point.date) === idx);
+    const peakPoint = points.find((point) => point.date === peak.date);
+    const lowPoint = points.find((point) => point.date === low.date);
 
     return (
         <div className={styles.trendPanel}>
             <div className={styles.trendHeader}>
                 <div>
                     <h3 className={styles.panelTitle}>{title}</h3>
-                    <span className={styles.panelSub}>초기 적재일부터 현재까지 변동폭</span>
+                    <span className={styles.panelSub}>배차판 기입 시작일부터 현재까지 영업일 기준 변동</span>
                 </div>
                 <div className={styles.trendStats}>
-                    <span><b>현재</b>{formatQty(last.total)}</span>
-                    <span className={delta >= 0 ? styles.trendStatUp : styles.trendStatDown}>
-                        <b>누적 변동</b>{delta >= 0 ? '+' : ''}{formatQty(delta)} ({deltaPct >= 0 ? '+' : ''}{deltaPct}%)
+                    <span><b>최신 영업일</b>{formatQty(last.total)}</span>
+                    <span className={startDelta >= 0 ? styles.trendStatUp : styles.trendStatDown}>
+                        <b>시작 대비</b>{startDelta >= 0 ? '+' : ''}{formatQty(startDelta)} ({startDeltaPct >= 0 ? '+' : ''}{startDeltaPct}%)
                     </span>
-                    <span><b>최근 7일 평균</b>{formatQty(recentAvg)}</span>
+                    <span><b>영업일 평균</b>{formatQty(average)}</span>
+                    <span className={averageGap >= 0 ? styles.trendStatUp : styles.trendStatDown}>
+                        <b>평균 대비</b>{averageGap >= 0 ? '+' : ''}{formatQty(averageGap)} ({averageGapPct >= 0 ? '+' : ''}{averageGapPct}%)
+                    </span>
                 </div>
             </div>
 
@@ -394,29 +446,141 @@ function TrendPanel({ items, title }) {
                             <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
                         </linearGradient>
                     </defs>
-                    <line x1={padX} y1={height - padY} x2={width - padX} y2={height - padY} className={styles.trendAxis} />
-                    <line x1={padX} y1={padY} x2={padX} y2={height - padY} className={styles.trendAxis} />
+                    {gridValues.map((value) => {
+                        const y = getY(value);
+                        return (
+                            <g key={value}>
+                                <line x1={padLeft} y1={y} x2={width - padRight} y2={y} className={styles.trendGrid} />
+                                <text x={padLeft - 10} y={y + 4} className={styles.trendTick} textAnchor="end">{formatQty(value)}</text>
+                            </g>
+                        );
+                    })}
+                    <line x1={padLeft} y1={baselineY} x2={width - padRight} y2={baselineY} className={styles.trendAxis} />
+                    <line x1={padLeft} y1={padTop} x2={padLeft} y2={baselineY} className={styles.trendAxis} />
+                    <line x1={padLeft} y1={averageY} x2={width - padRight} y2={averageY} className={styles.trendAverageLine} />
+                    <text x={width - padRight - 2} y={averageY - 6} className={styles.trendAverageLabel} textAnchor="end">
+                        평균 {formatQty(average)}
+                    </text>
                     <path d={areaPath} className={styles.trendArea} />
                     <path d={linePath} className={styles.trendLine} />
+                    {peakPoint && (
+                        <text x={Math.min(width - 92, peakPoint.x + 8)} y={Math.max(14, peakPoint.y - 10)} className={styles.trendMarkerLabel}>
+                            고점 {peak.label} · {formatQty(peak.total)}
+                        </text>
+                    )}
+                    {lowPoint && (
+                        <text x={Math.min(width - 92, lowPoint.x + 8)} y={Math.min(baselineY - 8, lowPoint.y + 18)} className={styles.trendMarkerLabel}>
+                            저점 {low.label} · {formatQty(low.total)}
+                        </text>
+                    )}
                     {points.map((point, idx) => (
-                        <g key={point.date}>
+                        <g
+                            key={point.date}
+                            onMouseEnter={() => setHoverPoint(point)}
+                            onMouseLeave={() => setHoverPoint(null)}
+                        >
                             <circle
                                 cx={point.x}
                                 cy={point.y}
                                 r={idx === points.length - 1 ? 4.8 : 3.3}
                                 className={point.delta >= 0 ? styles.trendPointUp : styles.trendPointDown}
-                            >
-                                <title>{`${point.label} ${formatQty(point.total)}대 (${point.delta >= 0 ? '+' : ''}${formatQty(point.delta)}, ${point.deltaPct >= 0 ? '+' : ''}${point.deltaPct}%)`}</title>
-                            </circle>
+                            />
                         </g>
                     ))}
+                    {xTicks.map((point) => (
+                        <text key={point.date} x={point.x} y={height - 11} className={styles.trendTick} textAnchor="middle">
+                            {point.label}
+                        </text>
+                    ))}
+                    <text x={(padLeft + width - padRight) / 2} y={height - 1} className={styles.trendAxisLabel} textAnchor="middle">
+                        X축: 영업일
+                    </text>
+                    <text x={14} y={(padTop + baselineY) / 2} className={styles.trendAxisLabel} textAnchor="middle" transform={`rotate(-90 14 ${(padTop + baselineY) / 2})`}>
+                        Y축: 대수
+                    </text>
                 </svg>
+                {hoverPoint && (
+                    <div
+                        className={`${styles.trendTooltip} ${hoverPoint.x < 150 ? styles.trendTooltipLeft : ''} ${hoverPoint.x > width - 150 ? styles.trendTooltipRight : ''}`}
+                        style={{ left: `${(hoverPoint.x / width) * 100}%`, top: `${(hoverPoint.y / height) * 100}%` }}
+                    >
+                        <strong>{hoverPoint.label}</strong>
+                        <span>총량 <b>{formatQty(hoverPoint.total)}</b></span>
+                        <span>전영업일 대비 <b>{hoverPoint.delta >= 0 ? '+' : ''}{formatQty(hoverPoint.delta)} ({hoverPoint.deltaPct >= 0 ? '+' : ''}{hoverPoint.deltaPct}%)</b></span>
+                        <span>평균 대비 <b>{hoverPoint.total - average >= 0 ? '+' : ''}{formatQty(hoverPoint.total - average)}</b></span>
+                    </div>
+                )}
             </div>
 
             <div className={styles.trendFooter}>
-                <span><b>최초</b>{first.label} · {formatQty(first.total)}</span>
-                <span><b>저점</b>{low.label} · {formatQty(low.total)}</span>
+                <span><b>분석 범위</b>{first.label} - {last.label} · 영업일 {visibleItems.length}일</span>
                 <span><b>고점</b>{peak.label} · {formatQty(peak.total)}</span>
+                <span><b>저점</b>{low.label} · {formatQty(low.total)}</span>
+                <span><b>평균 변동폭</b>{formatQty(avgAbsDelta)}</span>
+            </div>
+        </div>
+    );
+}
+
+function WeekdayOrderPanel({ data }) {
+    const [mode, setMode] = useState('month');
+    if (!data?.month?.buckets && !data?.week?.buckets) return null;
+
+    const active = mode === 'week' ? data.week : data.month;
+    const metricKey = mode === 'week' ? 'total' : 'average';
+    const maxValue = Math.max(1, ...active.buckets.map((bucket) => bucket[metricKey] || 0));
+    const monthTotal = data.month.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
+    const weekTotal = data.week.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
+
+    return (
+        <div className={styles.weekdayPanel}>
+            <div className={styles.weekdayHead}>
+                <div>
+                    <h3 className={styles.panelTitle}>요일별 오더 비교</h3>
+                    <span className={styles.panelSub}>영업일 기준 월평균과 선택 주 실적</span>
+                </div>
+                <div className={styles.weekdayTabs}>
+                    <button
+                        className={`${styles.weekdayTab} ${mode === 'month' ? styles.weekdayTabActive : ''}`}
+                        onClick={() => setMode('month')}
+                    >
+                        월간
+                    </button>
+                    <button
+                        className={`${styles.weekdayTab} ${mode === 'week' ? styles.weekdayTabActive : ''}`}
+                        onClick={() => setMode('week')}
+                    >
+                        주간
+                    </button>
+                </div>
+            </div>
+
+            <div className={styles.weekdaySummary}>
+                <span><b>{data.month.label}</b>월 누적 {formatQty(monthTotal)}</span>
+                <span><b>{data.week.label}</b>주 누적 {formatQty(weekTotal)}</span>
+            </div>
+
+            <div className={styles.weekdayBars}>
+                {active.buckets.map((bucket) => {
+                    const value = bucket[metricKey] || 0;
+                    const width = `${Math.max(value > 0 ? 8 : 0, (value / maxValue) * 100)}%`;
+                    const tooltip = mode === 'week'
+                        ? `${active.label} ${bucket.label}요일 · 오더 ${formatQty(bucket.total)}대`
+                        : `${active.label} ${bucket.label}요일 · 일평균 ${formatQty(bucket.average)}대 · 누적 ${formatQty(bucket.total)}대 · 관측 ${bucket.count}일`;
+                    return (
+                        <div key={bucket.dayIndex} className={styles.weekdayRow}>
+                            <span className={styles.weekdayName}>{bucket.label}</span>
+                            <div className={styles.weekdayTrack}>
+                                <span
+                                    className={styles.weekdayFill}
+                                    data-tooltip={tooltip}
+                                    style={{ width }}
+                                />
+                            </div>
+                            <b>{formatQty(value)}</b>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

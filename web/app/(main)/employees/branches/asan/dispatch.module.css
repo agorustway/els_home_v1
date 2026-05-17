@@ -877,13 +877,27 @@
     color: #f3e8ff;
 }
 
-/* 월별 필터 (전체 탭 전용) */
+/* 전체 탭 기간 필터 */
+.periodFilterPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
 .monthFilter {
     display: flex;
     gap: 4px;
-    margin-bottom: 6px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+.periodFilterLabel {
+    min-width: 34px;
+    padding: 4px 0;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 900;
 }
 
 .monthBtn {

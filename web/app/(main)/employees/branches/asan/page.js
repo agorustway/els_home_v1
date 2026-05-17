@@ -100,6 +100,23 @@ function formatTabLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return { mm: d.getMonth() + 1, dd: d.getDate(), day: ['일', '월', '화', '수', '목', '금', '토'][d.getDay()] };
 }
+function getWeekFilterRange(dateStr) {
+    const date = new Date(dateStr + 'T00:00:00');
+    if (Number.isNaN(date.getTime())) return null;
+    const day = date.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const start = new Date(date);
+    start.setDate(date.getDate() + mondayOffset);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const toKey = (value) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+    return {
+        key: `${toKey(start)}_${toKey(end)}`,
+        start: toKey(start),
+        end: toKey(end),
+        label: `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`,
+    };
+}
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
 function parseQty(value) {
     const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
@@ -246,6 +263,7 @@ function AsanDispatchContent() {
     const [colWidths, setColWidths] = useState({});
     const [showColPanel, setShowColPanel] = useState(false);
     const [allTabMonth, setAllTabMonth] = useState(null);
+    const [allTabWeek, setAllTabWeek] = useState(null);
     const [elapsed, setElapsed] = useState('');
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
@@ -374,9 +392,10 @@ function AsanDispatchContent() {
         const mComments = {};
         const sorted = [...data].sort((a, b) => b.target_date.localeCompare(a.target_date));
         sorted.forEach(item => {
-            // 월필터 적용: allTabMonth가 설정되면 해당 월만
+            // 전체 탭 기간 필터: 월간/주간 중 하나만 적용
             const itemMonth = item.target_date.slice(5, 7);
             if (allTabMonth && itemMonth !== allTabMonth) return;
+            if (allTabWeek && (item.target_date < allTabWeek.start || item.target_date > allTabWeek.end)) return;
             const { mm, dd, day } = formatTabLabel(item.target_date);
             const dateLabel = `${mm}/${dd}(${day})`;
             (item.data || []).forEach((row, origIdx) => {
@@ -388,10 +407,16 @@ function AsanDispatchContent() {
                 });
             });
         });
-        // 사용할 수 있는 월 목록
+        // 사용할 수 있는 월/주 목록
         const months = [...new Set(data.map(d => d.target_date.slice(5, 7)))].sort();
-        return { headers: mHeaders, data: mRows, comments: mComments, months };
-    }, [data, allTabMonth]);
+        const weekMap = new Map();
+        data.forEach((item) => {
+            const week = getWeekFilterRange(item.target_date);
+            if (week && !weekMap.has(week.key)) weekMap.set(week.key, week);
+        });
+        const weeks = [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start));
+        return { headers: mHeaders, data: mRows, comments: mComments, months, weeks };
+    }, [data, allTabMonth, allTabWeek]);
 
     // ===== 현재 뷰 데이터 =====
     const activeItem = useMemo(() => isAllTab ? null : data[activeTab], [isAllTab, data, activeTab]);
@@ -448,8 +473,9 @@ function AsanDispatchContent() {
         const dateParam = isAllTab ? 'all' : activeItem?.target_date;
         if (!dateParam) return;
         const monthParam = isAllTab && allTabMonth ? `&month=${allTabMonth}` : '';
+        const weekParam = isAllTab && allTabWeek ? `&weekStart=${allTabWeek.start}&weekEnd=${allTabWeek.end}` : '';
         
-        const url = `/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}`;
+        const url = `/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}${weekParam}`;
         const a = document.createElement('a');
         a.href = url;
         document.body.appendChild(a);
@@ -602,7 +628,7 @@ function AsanDispatchContent() {
                     const tabType = getTabType(item.target_date);
                     return (
                         <button key={item.id} className={`${styles.dateTab} ${styles[`tab_${tabType}`]} ${activeTab === idx ? styles.dateTabActive : ''}`}
-                            onClick={() => { setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setDisplayLimit(100); }}>
+                            onClick={() => { setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}>
                             <span className={styles.tabMonth}>{mm}/{dd}</span>
                             <span className={styles.tabDay}>({day})</span>
                         </button>
@@ -610,20 +636,30 @@ function AsanDispatchContent() {
                 })}
                 {data.length > 0 && (
                     <button className={`${styles.dateTab} ${styles.tab_all} ${isAllTab ? styles.dateTabActive : ''}`}
-                        onClick={() => { setActiveTab(data.length); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setDisplayLimit(100); }}>
+                        onClick={() => { setActiveTab(data.length); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}>
                         <span className={styles.tabMonth}>📊 전체</span>
                     </button>
                 )}
             </div>
 
             {isAllTab && mergedView?.months && (
-                <div className={styles.monthFilter}>
-                    <button className={`${styles.monthBtn} ${allTabMonth === null ? styles.monthBtnActive : ''}`}
-                        onClick={() => { setAllTabMonth(null); setDisplayLimit(100); }}>전체</button>
-                    {mergedView.months.map(m => (
-                        <button key={m} className={`${styles.monthBtn} ${allTabMonth === m ? styles.monthBtnActive : ''}`}
-                            onClick={() => { setAllTabMonth(m); setDisplayLimit(100); }}>{parseInt(m)}월</button>
-                    ))}
+                <div className={styles.periodFilterPanel}>
+                    <div className={styles.monthFilter}>
+                        <span className={styles.periodFilterLabel}>월간</span>
+                        <button className={`${styles.monthBtn} ${allTabMonth === null && allTabWeek === null ? styles.monthBtnActive : ''}`}
+                            onClick={() => { setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}>전체</button>
+                        {mergedView.months.map(m => (
+                            <button key={m} className={`${styles.monthBtn} ${allTabMonth === m ? styles.monthBtnActive : ''}`}
+                                onClick={() => { setAllTabMonth(m); setAllTabWeek(null); setDisplayLimit(100); }}>{parseInt(m)}월</button>
+                        ))}
+                    </div>
+                    <div className={styles.monthFilter}>
+                        <span className={styles.periodFilterLabel}>주간</span>
+                        {mergedView.weeks.map(week => (
+                            <button key={week.key} className={`${styles.monthBtn} ${allTabWeek?.key === week.key ? styles.monthBtnActive : ''}`}
+                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}>{week.label}</button>
+                        ))}
+                    </div>
                 </div>
             )}
         </>

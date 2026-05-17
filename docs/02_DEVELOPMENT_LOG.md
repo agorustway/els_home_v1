@@ -1,4 +1,42 @@
 
+## [2026-05-17] 아산 배차 주간 필터 및 요일별 오더 비교 추가 (v5.13.67)
+### 핵심
+- 전체 탭의 월간 필터 아래에 주간 버튼을 추가해 특정 주차만 바로 합산 조회할 수 있게 했습니다.
+- 전체 탭 Excel export도 `weekStart/weekEnd` 범위를 받아 주간 필터 결과와 맞게 내려가도록 보강했습니다.
+- 추세 그래프 높이를 줄이고 옆에 `요일별 오더 비교` 패널을 배치했습니다. 월간은 요일별 일평균, 주간은 선택 주 실제 오더를 보여줍니다.
+- 기간 카드의 컨테이너 TYPE 칩은 20FT 기준 환산 `FEU`로 변경했고, `집중`은 의미가 분명한 `TOP1 점유`로 바꿨습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 8개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 50개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/route.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/export/route.js`
+- `web/utils/asanDashboardView.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-17] 아산 배차 추세 그래프 전문 지표화 (v5.13.66)
+### 핵심
+- 날짜 탭을 추세 그래프 아래로 내려, 전체 영업일 추세와 선택일 기반 분석 영역을 시각적으로 분리했습니다.
+- 일자별 추세는 주말/공휴일을 제외한 영업일 기준으로 계산해 휴무일 저점이 평균과 전영업일 대비 지표를 왜곡하지 않게 했습니다.
+- 그래프에 평균선, X축/영업일, Y축/대수 라벨, 고점/저점 라벨, 시작 대비, 평균 대비, 평균 변동폭을 추가했습니다.
+- SVG 기본 title 대신 가로형 hover 정보 박스를 사용하고, 비중/기간 막대 툴팁도 세로로 찢어지지 않게 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 7개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 49개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js" "utils/asanDashboardView.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/Supabase sandbox EACCES 경고만 표시)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 current 조회 timeout 회피 (v5.13.65)
 ### 핵심
 - 직접 주입 기본 모드를 current 원장 전체 조회(diff)에서 새 스냅샷 staged/current 반영 방식으로 바꿨습니다.
@@ -65,7 +103,7 @@
 ## [2026-05-17] 아산 배차 현황판 선택형 분석 대시보드 개편 (v5.13.60)
 ### 핵심
 - 거의 쓰지 않던 데이터 요약 트리 패널을 제거하고, 일별/주별/월별/전체 선택 카드로 총량 확인 흐름을 바꿨습니다.
-- 각 기간 카드는 총계, 전기간 대비 증감, 오더/배차/언매치, 상위 항목, 수출입/TYPE, 집중도를 압축 표시합니다.
+- 각 기간 카드는 총계, 전기간 대비 증감, 오더/배차/언매치, 상위 항목, 수출입/TYPE, TOP1 점유를 압축 표시합니다.
 - 화주 점유율은 도넛 차트로 유지하고, 수출입/TYPE은 단일 원형 차트 대신 작은 막대 지표로 전환했습니다.
 - 기존 비중 차트는 유지하면서 `고객사별` 탭을 추가했고, 실행사 기준에서도 고객사/작업지/업체명 TOP 구분표를 제공합니다.
 - 집계 규칙을 `web/utils/asanDashboardView.mjs`로 분리해 선택 기간 계산과 실행사 지역칸 파싱을 테스트 가능하게 했습니다.

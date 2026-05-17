@@ -5,6 +5,14 @@ export const ASAN_DASHBOARD_CHART_MODES = {
 
 const DISPATCH_REGIONS = ['배차예정', '기타/철송', '기타', '아산', '부산', '신항', '광양', '평택', '중부', '부곡', '인천'];
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const LUNAR_HOLIDAYS = {
+  2025: ['2025-01-28', '2025-01-29', '2025-01-30', '2025-05-05', '2025-10-05', '2025-10-06', '2025-10-07'],
+  2026: ['2026-02-16', '2026-02-17', '2026-02-18', '2026-05-24', '2026-09-24', '2026-09-25', '2026-09-26'],
+  2027: ['2027-02-05', '2027-02-06', '2027-02-07', '2027-05-13', '2027-09-14', '2027-09-15', '2027-09-16'],
+  2028: ['2028-01-26', '2028-01-27', '2028-01-28', '2028-05-02', '2028-10-02', '2028-10-03', '2028-10-04'],
+  2029: ['2029-02-12', '2029-02-13', '2029-02-14', '2029-05-20', '2029-09-21', '2029-09-22', '2029-09-23'],
+  2030: ['2030-02-02', '2030-02-03', '2030-02-04', '2030-05-09', '2030-09-11', '2030-09-12', '2030-09-13'],
+};
 
 export function parseDashboardQty(value) {
   const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
@@ -32,6 +40,7 @@ function createScope() {
     sheetDispatchTotal: 0,
     mismatchTotal: 0,
     dispatchCount: 0,
+    feuTotal: 0,
     pieAggs: {
       shipper: {},
       direction: {},
@@ -96,6 +105,19 @@ function addPieAggs(scope, meta, amount) {
   addMap(scope.pieAggs.container, meta.container, amount);
 }
 
+function getFeuMultiplier(container = '') {
+  const text = String(container || '').toUpperCase().replace(/\s+/g, '');
+  if (text.includes('45')) return 2.25;
+  if (text.includes('40') || text.includes('4O')) return 2;
+  if (text.includes('20') || text.includes('2O')) return 1;
+  return 1;
+}
+
+function addFeu(scope, container, amount) {
+  if (amount <= 0) return;
+  scope.feuTotal += amount * getFeuMultiplier(container);
+}
+
 function addBaseRowMetrics(scope, row, cols, viewType) {
   const order = getCustomerWeight(row, cols, viewType);
   const dispatch = parseDashboardQty(row[cols.dispatch]);
@@ -112,6 +134,7 @@ function addCustomerRow(scope, row, cols, viewType) {
   const meta = getRowMeta(row, cols);
   scope.total += amount;
   addPieAggs(scope, meta, amount);
+  addFeu(scope, meta.container, amount);
 
   addChart(scope.chartAggs, '작업지', meta.workplace, amount, meta.line);
   addChart(scope.chartAggs, '라인/선사', meta.line, amount, meta.workplace);
@@ -144,6 +167,7 @@ function addDispatcherRow(scope, row, headers, cols) {
     scope.total += record.count;
     scope.dispatchCount += 1;
     addPieAggs(scope, meta, record.count);
+    addFeu(scope, meta.container, record.count);
 
     addChart(scope.chartAggs, '업체명', record.company, record.count, meta.workplace);
     addChart(scope.chartAggs, '작업지', meta.workplace, record.count, record.company);
@@ -187,6 +211,40 @@ function formatDateLabel(dateStr = '') {
   const date = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateStr;
   return `${date.getMonth() + 1}/${date.getDate()}(${WEEKDAYS[date.getDay()]})`;
+}
+
+function getDashboardHolidays(year) {
+  const holidays = new Set(['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'].map((day) => `${year}-${day}`));
+  (LUNAR_HOLIDAYS[year] || []).forEach((day) => holidays.add(day));
+
+  Array.from(holidays).forEach((holiday) => {
+    const date = new Date(`${holiday}T00:00:00`);
+    if (date.getDay() !== 0 && date.getDay() !== 6) return;
+
+    const next = new Date(date);
+    while (true) {
+      next.setDate(next.getDate() + 1);
+      const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+      if (next.getDay() !== 0 && next.getDay() !== 6 && !holidays.has(nextKey)) {
+        holidays.add(nextKey);
+        break;
+      }
+    }
+  });
+
+  return holidays;
+}
+
+const DASHBOARD_HOLIDAY_CACHE = {};
+function isDashboardBusinessDay(dateStr = '') {
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const day = date.getDay();
+  if (day === 0 || day === 6) return false;
+
+  const year = date.getFullYear();
+  if (!DASHBOARD_HOLIDAY_CACHE[year]) DASHBOARD_HOLIDAY_CACHE[year] = getDashboardHolidays(year);
+  return !DASHBOARD_HOLIDAY_CACHE[year].has(dateStr);
 }
 
 function formatMonthLabel(monthKey = '') {
@@ -478,7 +536,7 @@ export function buildAsanDashboardTimeline({
   viewType = 'integrated',
   viewMode = 'customer',
 } = {}) {
-  const items = normalizeSourceItems(sourceItems);
+  const items = normalizeSourceItems(sourceItems).filter((item) => isDashboardBusinessDay(item.target_date));
   let prevTotal = null;
 
   return items.map((item) => {
@@ -498,6 +556,71 @@ export function buildAsanDashboardTimeline({
       deltaPct,
     };
   });
+}
+
+function parseWeekKey(weekKey = '') {
+  const [start, end] = String(weekKey || '').split('_');
+  return start && end ? { start, end } : null;
+}
+
+function createWeekdayBuckets() {
+  return [1, 2, 3, 4, 5].map((dayIndex) => ({
+    dayIndex,
+    label: WEEKDAYS[dayIndex],
+    total: 0,
+    count: 0,
+    average: 0,
+  }));
+}
+
+function summarizeWeekdayItems(items = [], viewType = 'integrated') {
+  const buckets = createWeekdayBuckets();
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.dayIndex, bucket]));
+
+  items.forEach((item) => {
+    if (!isDashboardBusinessDay(item.target_date)) return;
+    const date = new Date(`${item.target_date}T00:00:00`);
+    const bucket = bucketMap.get(date.getDay());
+    if (!bucket) return;
+    const scope = buildScopeFromItems([item], viewType, 'customer');
+    bucket.total += scope.total;
+    bucket.count += 1;
+  });
+
+  buckets.forEach((bucket) => {
+    bucket.average = bucket.count > 0 ? bucket.total / bucket.count : 0;
+  });
+
+  return buckets;
+}
+
+export function buildAsanDashboardWeekdayComparison({
+  sourceItems = [],
+  viewType = 'integrated',
+  weekKey = '',
+  monthKey = '',
+} = {}) {
+  const items = normalizeSourceItems(sourceItems);
+  const weekRange = parseWeekKey(weekKey);
+  const weekItems = weekRange
+    ? items.filter((item) => item.target_date >= weekRange.start && item.target_date <= weekRange.end)
+    : [];
+  const monthItems = monthKey
+    ? items.filter((item) => item.target_date.startsWith(monthKey))
+    : [];
+
+  return {
+    week: {
+      key: weekKey,
+      label: weekRange ? `${formatDateLabel(weekRange.start)}-${formatDateLabel(weekRange.end).replace(/\(.+\)/, '')}` : '선택 주',
+      buckets: summarizeWeekdayItems(weekItems, viewType),
+    },
+    month: {
+      key: monthKey,
+      label: formatMonthLabel(monthKey),
+      buckets: summarizeWeekdayItems(monthItems, viewType),
+    },
+  };
 }
 
 export function toSortedChartEntries(chartAgg = {}, limit = 0) {
