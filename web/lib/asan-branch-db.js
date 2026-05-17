@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { findWorkDateColumnIndex } from '@/utils/asanShippingView.mjs';
 
 const DEFAULT_ASAN_SHIPPING_PATH = '/아산지점/2026_자체보관리스트.xlsx';
 const DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
@@ -51,6 +52,80 @@ function searchFilterValue(term) {
     return String(term || '').replace(/[,\\]/g, ' ');
 }
 
+function normalizeMonthKeys(months) {
+    const rawMonths = Array.isArray(months)
+        ? months
+        : String(months || '').split(',');
+    const seen = new Set();
+    const keys = [];
+    rawMonths.forEach((month) => {
+        const match = String(month || '').trim().match(/^(20\d{2})-(0[1-9]|1[0-2])$/);
+        if (!match) return;
+        const key = `${match[1]}-${match[2]}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        keys.push(key);
+    });
+    return keys;
+}
+
+function nextMonthKey(monthKey) {
+    const [year, month] = monthKey.split('-').map(Number);
+    const date = new Date(year, month, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function buildMonthRanges(months) {
+    const ranges = normalizeMonthKeys(months)
+        .sort()
+        .map((key) => ({
+            key,
+            start: `${key}-01`,
+            end: `${nextMonthKey(key)}-01`,
+        }));
+    const merged = [];
+    ranges.forEach((range) => {
+        const prev = merged[merged.length - 1];
+        if (prev && prev.end === range.start) {
+            prev.end = range.end;
+            prev.keys.push(range.key);
+        } else {
+            merged.push({ ...range, keys: [range.key] });
+        }
+    });
+    return merged;
+}
+
+function resolveShippingDateColumn(headers, requestedCol) {
+    const requested = String(requestedCol || '').trim();
+    if (requested && headers.includes(requested)) return requested;
+    const workDateIdx = findWorkDateColumnIndex(headers);
+    return workDateIdx >= 0 ? headers[workDateIdx] : '';
+}
+
+function applyDateMonthFilter(query, { headers = [], dateCol = '', months = [] } = {}) {
+    const resolvedCol = resolveShippingDateColumn(headers, dateCol);
+    const ranges = buildMonthRanges(months);
+    if (!resolvedCol || ranges.length === 0) {
+        return { query, dateCol: '', months: [] };
+    }
+
+    const columnExpr = `row_data->>${resolvedCol}`;
+    if (ranges.length === 1) {
+        return {
+            query: query.gte(columnExpr, ranges[0].start).lt(columnExpr, ranges[0].end),
+            dateCol: resolvedCol,
+            months: ranges[0].keys,
+        };
+    }
+
+    return {
+        query: query.or(ranges.map(range => `and(${columnExpr}.gte.${range.start},${columnExpr}.lt.${range.end})`).join(',')),
+        dateCol: resolvedCol,
+        months: ranges.flatMap(range => range.keys),
+    };
+}
+
 function sortValue(value) {
     const text = String(value ?? '').trim();
     if (!text) return null;
@@ -82,12 +157,17 @@ function compareSortTuple(left, right) {
     return 0;
 }
 
-function applySearch(query, search) {
+function applySearch(query, search, mode = 'or') {
     const terms = searchTerms(search);
     if (terms.length === 1) {
         return query.ilike('search_text', `%${searchFilterValue(terms[0])}%`);
     }
     if (terms.length > 1) {
+        if (String(mode || '').toLowerCase() === 'and') {
+            return terms.reduce((nextQuery, term) => (
+                nextQuery.ilike('search_text', `%${searchFilterValue(term)}%`)
+            ), query);
+        }
         return query.or(terms.map(term => `search_text.ilike.%${searchFilterValue(term)}%`).join(','));
     }
     return query;
@@ -142,8 +222,11 @@ export async function queryAsanShippingFromSupabase(searchParams) {
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
     const pageSize = parsePositiveInt(searchParams.get('page_size'), 5000, 10000);
     const search = (searchParams.get('search') || '').trim();
+    const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
     const sortKey = (searchParams.get('sort_key') || '').trim();
     const sortDir = searchParams.get('sort_dir') || 'asc';
+    const dateCol = (searchParams.get('date_col') || '').trim();
+    const months = searchParams.get('months') || '';
 
     const { data: metas, error: metaError } = await supabase
         .from('branch_shipping_files')
@@ -164,7 +247,9 @@ export async function queryAsanShippingFromSupabase(searchParams) {
         .select('row_values,row_index', { count: 'exact' })
         .eq('branch_id', 'asan')
         .eq('file_path', normalizedPath);
-    query = applySearch(query, search);
+    query = applySearch(query, search, searchMode);
+    const dateFilter = applyDateMonthFilter(query, { headers, dateCol, months });
+    query = dateFilter.query;
 
     const paged = await getPagedRows({
         query,
@@ -187,6 +272,8 @@ export async function queryAsanShippingFromSupabase(searchParams) {
         page_size: pageSize,
         sort_key: paged.sortKey,
         sort_dir: paged.sortDir,
+        date_col: dateFilter.dateCol,
+        months: dateFilter.months,
         source: 'supabase',
         read_path: 'next-direct',
     };
@@ -237,6 +324,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
     const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
     const search = (searchParams.get('search') || '').trim();
+    const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
     const sortKey = (searchParams.get('sort_key') || '').trim();
     const sortDir = searchParams.get('sort_dir') || 'asc';
 
@@ -275,7 +363,7 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
     } else {
         query = query.eq('is_current', true);
     }
-    query = applySearch(query, search);
+    query = applySearch(query, search, searchMode);
 
     const paged = await getPagedRows({
         query,

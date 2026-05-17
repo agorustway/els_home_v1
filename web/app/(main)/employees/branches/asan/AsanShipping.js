@@ -12,6 +12,8 @@ import {
     areSetsEqual,
     buildRecentShippingMonthOptions,
     compareShippingFilterValues,
+    findWorkDateColumnIndex,
+    getDefaultShippingMonthKeys,
     getShippingVirtualWindow,
     getShippingSignalTone,
     getVisibleShippingColumns,
@@ -36,8 +38,9 @@ const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
 
 // 날짜 관련 컬럼 키워드. 실제 날짜값 샘플 검증과 함께 사용한다.
-const DATE_COL_KEYWORDS = ['일자', '일', '날짜', 'date', '픽업', '반입', '입항', '출항', '접안'];
+const DATE_COL_KEYWORDS = ['일자', '일', '날짜', 'date', '작업', '픽업', '반입', '입항', '출항', '접안'];
 const DATE_COLUMN_SAMPLE_SIZE = 200;
+const DEFAULT_DATE_FILTER_COL = '작업일';
 
 // 20260508.0 → 2026-05-08 변환
 function formatCellValue(val, colName) {
@@ -66,10 +69,39 @@ function formatCellValue(val, colName) {
 }
 
 // 컬럼이 날짜 계열인지 판별
+function isStrongDateColumnName(colName) {
+    const text = String(colName || '').replace(/\s+/g, '').toLowerCase();
+    if (!text) return false;
+    return (
+        text.includes('date')
+        || text.includes('날짜')
+        || text.includes('일자')
+        || (text.includes('작업') && text.includes('일'))
+        || (text.includes('픽업') && text.includes('일'))
+        || (text.includes('반입') && text.includes('일'))
+        || (text.includes('접안') && text.includes('일'))
+        || (text.includes('입항') && text.includes('일'))
+        || (text.includes('출항') && text.includes('일'))
+    );
+}
+
+function getDateColumnRank(colName) {
+    const text = String(colName || '').replace(/\s+/g, '').toLowerCase();
+    if (text.includes('작업') && text.includes('일')) return 0;
+    if (text.includes('픽업') && text.includes('일')) return 1;
+    if (text.includes('반입') && text.includes('일')) return 2;
+    if (text.includes('접안') && text.includes('일')) return 3;
+    if (text.includes('입항') && text.includes('일')) return 4;
+    if (text.includes('출항') && text.includes('일')) return 5;
+    if (text.includes('date') || text.includes('날짜') || text.includes('일자')) return 6;
+    return 99;
+}
+
 function isDateColumn(colName, rows = [], colIdx = -1) {
     const lower = (colName || '').toLowerCase();
     if (!DATE_COL_KEYWORDS.some(kw => lower.includes(kw))) return false;
     if (colIdx < 0) return false;
+    const strongDateName = isStrongDateColumnName(colName);
 
     const sampleRows = (rows || []).slice(0, DATE_COLUMN_SAMPLE_SIZE);
     let checked = 0;
@@ -81,7 +113,7 @@ function isDateColumn(colName, rows = [], colIdx = -1) {
         if (normalizeDateOnly(raw)) dateValues += 1;
     });
 
-    if (checked === 0) return false;
+    if (checked === 0) return strongDateName;
     return dateValues >= 2 || dateValues / checked >= 0.2;
 }
 
@@ -158,8 +190,8 @@ export default function AsanShipping() {
     const [columnFilters, setColumnFilters] = useState({});
     // Date Month Filter
     const [dateFilter, setDateFilter] = useState(() => ({
-        col: '',
-        months: [],
+        col: DEFAULT_DATE_FILTER_COL,
+        months: getDefaultShippingMonthKeys(),
     }));
     const [unshippedOnly, setUnshippedOnly] = useState(false);
     const [storageOnly, setStorageOnly] = useState(false);
@@ -214,6 +246,10 @@ export default function AsanShipping() {
         const quiet = Boolean(options.quiet);
         const sortKey = (options.sortKey || '').trim();
         const sortDir = options.sortDir === 'desc' ? 'desc' : 'asc';
+        const dateCol = (options.dateCol || '').trim();
+        const months = Array.isArray(options.months)
+            ? options.months.map(month => String(month || '').trim()).filter(Boolean)
+            : [];
         const requestId = append ? fetchRequestIdRef.current : fetchRequestIdRef.current + 1;
         if (!append) fetchRequestIdRef.current = requestId;
 
@@ -234,6 +270,10 @@ export default function AsanShipping() {
             if (sortKey) {
                 params.set('sort_key', sortKey);
                 params.set('sort_dir', sortDir);
+            }
+            if (dateCol && months.length > 0) {
+                params.set('date_col', dateCol);
+                params.set('months', months.join(','));
             }
 
             const r = await fetch(`/api/branches/asan/shipping?${params.toString()}`);
@@ -292,6 +332,11 @@ export default function AsanShipping() {
     }, [containerLookupResults, data?.headers, getRowContainerNo]);
 
     const serverSortParams = useMemo(() => getServerSortParams(sortConfig), [sortConfig]);
+    const serverDateMonthsKey = useMemo(() => (dateFilter.months || []).join(','), [dateFilter.months]);
+    const serverDateFilterParams = useMemo(() => ({
+        dateCol: dateFilter.col,
+        months: serverDateMonthsKey ? serverDateMonthsKey.split(',') : [],
+    }), [dateFilter.col, serverDateMonthsKey]);
 
     useEffect(() => {
         containerLookupResultsRef.current = containerLookupResults;
@@ -346,8 +391,8 @@ export default function AsanShipping() {
     useEffect(() => {
         if (!selectedPath) return;
         const quiet = lastLoadedPathRef.current === selectedPath;
-        fetchData(selectedPath, { page: 1, search: searchTerm, quiet, ...serverSortParams });
-    }, [selectedPath, searchTerm, serverSortParams, fetchData]);
+        fetchData(selectedPath, { page: 1, search: searchTerm, quiet, ...serverSortParams, ...serverDateFilterParams });
+    }, [selectedPath, searchTerm, serverSortParams, serverDateFilterParams, fetchData]);
 
     useEffect(() => {
         if (!data?.headers || !data?.data?.length) return;
@@ -621,7 +666,7 @@ export default function AsanShipping() {
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
-        setDateFilter({ col: dateColumns[0] || '', months: [] });
+        setDateFilter({ col: dateColumns[0] || DEFAULT_DATE_FILTER_COL, months: getDefaultShippingMonthKeys() });
         setUnshippedOnly(false);
         setStorageOnly(false);
         setSearchInput('');
@@ -864,9 +909,12 @@ export default function AsanShipping() {
     };
 
     // Detect date-type columns
-    const dateColumns = useMemo(() => (
-        headers.filter((h, idx) => isDateColumn(h, data?.data || [], idx))
-    ), [headers, data?.data]);
+    const dateColumns = useMemo(() => {
+        const workDateIdx = findWorkDateColumnIndex(headers);
+        return headers
+            .filter((h, idx) => idx === workDateIdx || isDateColumn(h, data?.data || [], idx))
+            .sort((a, b) => getDateColumnRank(a) - getDateColumnRank(b));
+    }, [headers, data?.data]);
     const recentMonthOptions = useMemo(() => buildRecentShippingMonthOptions(), []);
 
     useEffect(() => {
@@ -968,7 +1016,6 @@ export default function AsanShipping() {
         && (
             filterDropdown
             || Object.keys(columnFilters).length > 0
-            || Boolean(dateFilter.col && dateFilter.months?.length > 0)
             || storageOnly
             || unshippedOnly
         )
@@ -981,30 +1028,23 @@ export default function AsanShipping() {
             pageSize: FULL_FILTER_PAGE_SIZE,
             search: searchTerm,
             quiet: true,
-            ...serverSortParams
+            ...serverSortParams,
+            ...serverDateFilterParams
         });
-    }, [shouldLoadFullRowsForFilters, selectedPath, searchTerm, serverSortParams, fetchData]);
+    }, [shouldLoadFullRowsForFilters, selectedPath, searchTerm, serverSortParams, serverDateFilterParams, fetchData]);
 
     useEffect(() => {
         setTableScrollTop(0);
         if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
     }, [searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly]);
 
-    if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
-    if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
-
-    const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
-    const dbSyncedTimeStr = data.synced_at ? new Date(data.synced_at).toLocaleString() : '';
-    const searchPending = searchInput !== searchTerm;
-    const hasSearchQuery = Boolean(searchInput.trim() || searchTerm.trim());
-    const shouldShowSearchRefreshing = Boolean(showSearchRefreshing && hasSearchQuery);
-    const searchStatusText = searchPending ? '입력 대기' : (shouldShowSearchRefreshing ? '검색 중' : '');
-
     const totalRows = processedData.length;
-    const serverTotalRows = data.source === 'supabase' ? Number(data.total || data.data.length || 0) : totalRows;
-    const loadedRows = data.source === 'supabase' ? data.data.length : totalRows;
-    const canLoadMore = data.source === 'supabase' && loadedRows < serverTotalRows;
+    const serverTotalRows = data?.source === 'supabase' ? Number(data.total || data.data?.length || 0) : totalRows;
+    const loadedRows = data?.source === 'supabase' ? (data.data?.length || 0) : totalRows;
+    const canLoadMore = data?.source === 'supabase' && loadedRows < serverTotalRows;
+    const isMobileTableMode = dynamicHeight === 'auto';
     const selectedMonthSet = new Set(dateFilter.months || []);
+
     const toggleMonthFilter = (monthKey) => {
         setDateFilter(prev => {
             const nextMonths = new Set(prev.months || []);
@@ -1016,18 +1056,45 @@ export default function AsanShipping() {
             return { ...prev, months: Array.from(nextMonths) };
         });
     };
-    const loadNextPage = () => {
+
+    const loadNextPage = useCallback(() => {
         if (!canLoadMore || loadingMore || autoLoadMoreRef.current) return;
         autoLoadMoreRef.current = true;
         fetchData(selectedPath, {
-            page: Number(data.page || 1) + 1,
+            page: Number(data?.page || 1) + 1,
             search: searchTerm,
             append: true,
-            ...serverSortParams
+            ...serverSortParams,
+            ...serverDateFilterParams,
         }).finally(() => {
             autoLoadMoreRef.current = false;
         });
-    };
+    }, [canLoadMore, loadingMore, selectedPath, data?.page, searchTerm, serverSortParams, serverDateFilterParams, fetchData]);
+
+    useEffect(() => {
+        if (!isMobileTableMode || loading || loadingMore || !canLoadMore) return undefined;
+        const handleWindowScroll = () => {
+            const doc = document.documentElement;
+            const remaining = doc.scrollHeight - window.scrollY - window.innerHeight;
+            if (remaining < ROW_HEIGHT * 14) {
+                loadNextPage();
+            }
+        };
+        window.addEventListener('scroll', handleWindowScroll, { passive: true });
+        handleWindowScroll();
+        return () => window.removeEventListener('scroll', handleWindowScroll);
+    }, [isMobileTableMode, loading, loadingMore, canLoadMore, loadNextPage]);
+
+    if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
+    if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
+
+    const fileTimeStr = data.file_modified_at ? new Date(data.file_modified_at).toLocaleString() : '';
+    const dbSyncedTimeStr = data.synced_at ? new Date(data.synced_at).toLocaleString() : '';
+    const searchPending = searchInput !== searchTerm;
+    const hasSearchQuery = Boolean(searchInput.trim() || searchTerm.trim());
+    const shouldShowSearchRefreshing = Boolean(showSearchRefreshing && hasSearchQuery);
+    const searchStatusText = searchPending ? '입력 대기' : (shouldShowSearchRefreshing ? '검색 중' : '');
+
     const handleTableScroll = (e) => {
         const target = e.currentTarget;
         setTableScrollTop(target.scrollTop);
@@ -1036,19 +1103,18 @@ export default function AsanShipping() {
             loadNextPage();
         }
     };
-    const {
-        visibleStart,
-        visibleEnd,
-        topSpacerHeight,
-        bottomSpacerHeight,
-    } = getShippingVirtualWindow({
+    const virtualWindow = getShippingVirtualWindow({
         scrollTop: tableScrollTop,
         rowHeight: ROW_HEIGHT,
         viewportHeight: tableViewportHeight,
         totalRows,
         overscan: VIRTUAL_OVERSCAN,
     });
-    const visibleRows = processedData.slice(visibleStart, visibleEnd);
+    const visibleStart = isMobileTableMode ? 0 : virtualWindow.visibleStart;
+    const visibleEnd = isMobileTableMode ? totalRows : virtualWindow.visibleEnd;
+    const topSpacerHeight = isMobileTableMode ? 0 : virtualWindow.topSpacerHeight;
+    const bottomSpacerHeight = isMobileTableMode ? 0 : virtualWindow.bottomSpacerHeight;
+    const visibleRows = isMobileTableMode ? processedData : processedData.slice(visibleStart, visibleEnd);
     const tableIsRefreshing = Boolean(searchRefreshing || loadingMore || shouldLoadFullRowsForFilters);
 
     // Extract unique values for the currently opened dropdown

@@ -752,7 +752,7 @@ def register_asan_performance_routes(app, supabase, kst):
                 app.logger.error(f"[연간실적DB] 동기화 실패: {exc}", exc_info=True)
             return None
 
-    def _query(rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, page=1, page_size=500, search="", sort_key="", sort_dir="asc"):
+    def _query(rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, page=1, page_size=500, search="", search_mode="or", sort_key="", sort_dir="asc"):
         if not supabase or not state["db_available"]:
             return None
 
@@ -789,11 +789,16 @@ def register_asan_performance_routes(app, supabase, kst):
             .eq("is_current", True)
         )
         terms = _search_terms(search)
+        search_mode = str(search_mode or "or").lower()
         if len(terms) == 1:
             q = q.ilike("search_text", f"%{_search_filter_value(terms[0])}%")
         elif terms:
-            filters = ",".join(f"search_text.ilike.%{_search_filter_value(term)}%" for term in terms)
-            q = q.or_(filters)
+            if search_mode == "and":
+                for term in terms:
+                    q = q.ilike("search_text", f"%{_search_filter_value(term)}%")
+            else:
+                filters = ",".join(f"search_text.ilike.%{_search_filter_value(term)}%" for term in terms)
+                q = q.or_(filters)
 
         if sort_idx >= 0:
             rows_res = q.order("row_index", desc=False).range(0, 19999).execute()
@@ -872,6 +877,7 @@ def register_asan_performance_routes(app, supabase, kst):
                         page=body.get("page") or request.args.get("page", 1),
                         page_size=body.get("page_size") or request.args.get("page_size", 500),
                         search=(body.get("search") or request.args.get("search") or "").strip(),
+                        search_mode=(body.get("search_mode") or request.args.get("search_mode") or "or").strip(),
                         sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
                         sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
                     )
@@ -899,6 +905,7 @@ def register_asan_performance_routes(app, supabase, kst):
                     page=body.get("page") or request.args.get("page", 1),
                     page_size=body.get("page_size") or request.args.get("page_size", 500),
                     search=(body.get("search") or request.args.get("search") or "").strip(),
+                    search_mode=(body.get("search_mode") or request.args.get("search_mode") or "or").strip(),
                     sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
                     sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
                 )
@@ -914,6 +921,7 @@ def register_asan_performance_routes(app, supabase, kst):
                     page=request.args.get("page", 1),
                     page_size=request.args.get("page_size", 500),
                     search=(request.args.get("search") or "").strip(),
+                    search_mode=(request.args.get("search_mode") or "or").strip(),
                     sort_key=(request.args.get("sort_key") or "").strip(),
                     sort_dir=request.args.get("sort_dir") or "asc",
                 )

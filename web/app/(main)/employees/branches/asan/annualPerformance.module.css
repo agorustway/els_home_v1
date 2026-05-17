@@ -74,6 +74,7 @@
 
 .segmented button,
 .ghostBtn,
+.smallActiveBtn,
 .primaryBtn,
 .smallBtn,
 .loadMoreBtn,
@@ -107,6 +108,12 @@
     border-color: #99f6e4;
     background: #ccfbf1;
     color: #0f766e;
+}
+
+.smallActiveBtn {
+    border-color: #0f766e;
+    background: #0f766e;
+    color: #fff;
 }
 
 .primaryBtn:disabled,
@@ -295,6 +302,439 @@
     font-size: 0.7rem;
     font-style: normal;
     font-weight: 850;
+}
+
+.analysisTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.analysisTabs button {
+    height: 28px;
+    padding: 0 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.analysisTabActive {
+    border-color: #1d4ed8 !important;
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+}
+
+.deepGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.trendCard {
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.trendTitle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.trendTitle h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 950;
+}
+
+.trendTitle span,
+.trendFoot span {
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 850;
+}
+
+.trendLegend {
+    display: flex;
+    gap: 10px;
+}
+
+.trendLegend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.trendSvg {
+    width: 100%;
+    height: 180px;
+    display: block;
+    background: linear-gradient(#fff, #f8fafc);
+}
+
+.axisLine {
+    stroke: #e2e8f0;
+    stroke-width: 1;
+}
+
+.zeroLine {
+    stroke: #cbd5e1;
+    stroke-dasharray: 4 4;
+    stroke-width: 1;
+}
+
+.revenueLine,
+.profitLine {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.revenueLine {
+    stroke: #0f766e;
+}
+
+.profitLine {
+    stroke: #2563eb;
+}
+
+.trendFoot {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 10px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.changeGrid,
+.validationGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+}
+
+.changeGrid div,
+.validationGrid div {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.changeGrid span,
+.changeGrid em,
+.validationGrid span,
+.validationGrid em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.changeGrid strong,
+.validationGrid strong {
+    display: block;
+    margin: 2px 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 950;
+}
+
+.heatmap {
+    overflow: auto;
+    padding: 8px;
+}
+
+.heatHead,
+.heatRow {
+    display: grid;
+    grid-template-columns: 58px repeat(12, minmax(78px, 1fr));
+    gap: 4px;
+    min-width: 1040px;
+    align-items: stretch;
+}
+
+.heatHead {
+    margin-bottom: 4px;
+}
+
+.heatHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-align: center;
+}
+
+.heatRow {
+    margin-bottom: 4px;
+}
+
+.heatRow strong {
+    display: flex;
+    align-items: center;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 950;
+}
+
+.heatCell {
+    min-height: 42px;
+    padding: 5px;
+    border: 1px solid #dbeafe;
+    border-radius: 5px;
+    background: rgba(15, 118, 110, calc(0.08 + var(--heat, 0) * 0.28));
+    color: #0f172a;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.heatCell:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.heatCell span,
+.heatCell em {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.heatCell em {
+    color: #475569;
+}
+
+.segmentCards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+}
+
+.segmentCards button {
+    min-width: 0;
+    min-height: 74px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.segmentCardActive {
+    border-color: #0f766e !important;
+    background: #ecfdf5 !important;
+}
+
+.segmentCards span,
+.segmentCards em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.segmentCards strong {
+    display: block;
+    margin: 4px 0;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 950;
+}
+
+.inlineAction {
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid #99f6e4;
+    border-radius: 5px;
+    background: #ccfbf1;
+    color: #0f766e;
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.segmentSummary {
+    padding: 9px 10px;
+}
+
+.segmentSummary p {
+    margin: 0 0 8px;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.segmentSummary div {
+    display: grid;
+    grid-template-columns: repeat(4, auto minmax(70px, 1fr));
+    gap: 5px 8px;
+    align-items: center;
+}
+
+.segmentSummary span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.segmentSummary strong {
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 950;
+}
+
+.segmentDetailGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.compactButtonRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 88px 58px;
+    align-items: center;
+    gap: 8px;
+    min-height: 27px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.compactButtonRow:hover {
+    background: #f8fafc;
+}
+
+.compactButtonRow span,
+.compactButtonRow b,
+.compactButtonRow em {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compactButtonRow b,
+.compactButtonRow em {
+    text-align: right;
+}
+
+.weekList {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+}
+
+.weekRow {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 92px 64px 92px;
+    align-items: center;
+    gap: 7px;
+    min-height: 28px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.weekRow span,
+.weekRow strong,
+.weekRow em,
+.weekRow b {
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    text-align: right;
+}
+
+.weekRow span {
+    text-align: left;
+}
+
+.weekdayGrid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+}
+
+.weekdayCard {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.weekdayCard span,
+.weekdayCard em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.weekdayCard strong {
+    display: block;
+    margin: 4px 0;
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.evidenceHelp {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 10px;
+}
+
+.evidenceHelp strong {
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 950;
+}
+
+.evidenceHelp span {
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.42;
 }
 
 .insightGrid {
@@ -1196,12 +1636,16 @@
     .commandPanel,
     .commandNotes,
     .kpiGrid,
+    .changeGrid,
+    .validationGrid,
     .reportGrid,
     .analysisGrid,
     .detailGrid,
     .insightGrid,
     .portfolioGrid,
     .dimensionSummaryGrid,
+    .segmentCards,
+    .segmentDetailGrid,
     .formGrid {
         grid-template-columns: 1fr;
     }
@@ -1226,6 +1670,24 @@
 
     .signalGrid {
         grid-template-columns: 1fr;
+    }
+
+    .weekdayGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .segmentSummary div,
+    .evidenceHelp {
+        grid-template-columns: 1fr;
+    }
+
+    .weekRow {
+        grid-template-columns: 78px minmax(0, 1fr) 82px;
+    }
+
+    .weekRow em,
+    .weekRow b {
+        display: none;
     }
 
     .rowCount {

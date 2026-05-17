@@ -19,6 +19,14 @@ const PAGE_SIZE = 300;
 const SEARCH_DEBOUNCE_MS = 700;
 const DIMENSION_PRIORITY = ['청구처', '작업지', '운송사', '노선', '구분', '지급처', '포트', '하차', '계약', '픽업', '지역'];
 const EMPTY_LIST = Object.freeze([]);
+const ANALYSIS_VIEWS = [
+    { key: 'overview', label: '개요' },
+    { key: 'flow', label: '10년 흐름' },
+    { key: 'matrix', label: '연도×월' },
+    { key: 'segments', label: '직계약/주체' },
+    { key: 'calendar', label: '주차·요일' },
+    { key: 'evidence', label: '검증·근거' },
+];
 
 function fmtTs(value) {
     if (!value) return '-';
@@ -146,6 +154,116 @@ function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMo
     return notes.slice(0, 5);
 }
 
+function normalizeSeries(items = []) {
+    return (Array.isArray(items) ? items : []).filter(item => item && (safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)));
+}
+
+function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
+    const series = normalizeSeries(items);
+    const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
+    const maxProfit = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.profit))));
+    const width = 720;
+    const height = 168;
+    const padX = 24;
+    const revenuePoints = series.map((item, idx) => {
+        const x = series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2);
+        const y = 18 + (1 - (safeNumber(item.revenue) / maxRevenue)) * 74;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const profitPoints = series.map((item, idx) => {
+        const x = series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2);
+        const y = 118 - (safeNumber(item.profit) / maxProfit) * 42;
+        return `${x.toFixed(1)},${Math.max(76, Math.min(154, y)).toFixed(1)}`;
+    }).join(' ');
+    const first = series[0]?.period || series[0]?.weekStart || series[0]?.year || '-';
+    const last = series[series.length - 1]?.period || series[series.length - 1]?.weekStart || series[series.length - 1]?.year || '-';
+    const recent = series[series.length - 1] || null;
+
+    return (
+        <div className={styles.trendCard}>
+            <div className={styles.trendTitle}>
+                <div>
+                    <h3>{title}</h3>
+                    <span>{basis} {first} ~ {last}</span>
+                </div>
+                <div className={styles.trendLegend}>
+                    <span><i className={styles.revenueDot} />매출</span>
+                    <span><i className={styles.profitDot} />손익</span>
+                </div>
+            </div>
+            {series.length < 2 ? (
+                <div className={styles.emptyPanel}>흐름 데이터가 부족합니다.</div>
+            ) : (
+                <>
+                    <svg className={styles.trendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 차트`}>
+                        <line x1="20" y1="92" x2="700" y2="92" className={styles.axisLine} />
+                        <line x1="20" y1="118" x2="700" y2="118" className={styles.zeroLine} />
+                        <polyline points={revenuePoints} className={styles.revenueLine} />
+                        <polyline points={profitPoints} className={styles.profitLine} />
+                    </svg>
+                    <div className={styles.trendFoot}>
+                        <span>최근 {recent?.period || recent?.weekStart || recent?.year}: 매출 {formatPerformanceAmount(recent?.revenue)}, 손익 {formatPerformanceAmount(recent?.profit)}</span>
+                        <span>원장 summary 기반, 금액은 원 단위 집계 후 화면에서 축약 표시</span>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+function YearMonthHeatmap({ monthly = [], onSelectPeriod = null }) {
+    const series = normalizeSeries(monthly);
+    const years = Array.from(new Set(series.map(item => String(item.year || String(item.period || '').slice(0, 4))))).filter(Boolean);
+    const byPeriod = new Map(series.map(item => [item.period, item]));
+    const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
+
+    return (
+        <div className={styles.heatmap}>
+            <div className={styles.heatHead}>
+                <span>연도</span>
+                {Array.from({ length: 12 }, (_, idx) => <span key={idx}>{idx + 1}월</span>)}
+            </div>
+            {years.map(year => (
+                <div className={styles.heatRow} key={year}>
+                    <strong>{year}</strong>
+                    {Array.from({ length: 12 }, (_, idx) => {
+                        const period = `${year}-${String(idx + 1).padStart(2, '0')}`;
+                        const item = byPeriod.get(period);
+                        const intensity = item ? Math.max(0.08, Math.min(1, Math.abs(safeNumber(item.revenue)) / maxRevenue)) : 0;
+                        const margin = profitRateOf(item);
+                        return (
+                            <button
+                                key={period}
+                                className={styles.heatCell}
+                                style={{ '--heat': intensity }}
+                                onClick={() => item && onSelectPeriod?.(period)}
+                                title={`${period}\n매출 ${formatPerformanceAmount(item?.revenue)}\n손익 ${formatPerformanceAmount(item?.profit)}\n손익률 ${formatPercent(margin)}`}
+                                disabled={!item}
+                            >
+                                <span>{item ? formatPerformanceAmount(item.revenue, { unit: '' }) : '-'}</span>
+                                <em className={margin < 5 ? styles.warningText : ''}>{item ? formatPercent(margin, 0) : '-'}</em>
+                            </button>
+                        );
+                    })}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function EvidenceHelp() {
+    return (
+        <div className={styles.evidenceHelp}>
+            <strong>등급 기준</strong>
+            <span>수익성 양호: 전체 손익률 10% 이상. 마진 관리: 5~10%. 저마진 주의: 0~5%. 손익 위험: 0% 이하.</span>
+            <strong>금액 기준</strong>
+            <span>매출은 청구, 매입은 하불, 손익은 청구 - 하불로 집계합니다. 모든 합계는 원장 행의 원 단위 값을 합산한 뒤 화면에서만 억/만 원으로 축약합니다.</span>
+            <strong>상세 보기 기준</strong>
+            <span>분석 항목의 상세 버튼은 테이블 탭으로 이동해 AND 검색을 적용합니다. 예: ELS솔루션 + 직계약은 두 단어가 모두 있는 원장 행만 보여줍니다.</span>
+        </div>
+    );
+}
+
 export default function AsanAnnualPerformance() {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
@@ -158,8 +276,11 @@ export default function AsanAnnualPerformance() {
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('analytics');
+    const [analysisView, setAnalysisView] = useState('overview');
+    const [selectedSegmentKey, setSelectedSegmentKey] = useState('own_direct');
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchMode, setSearchMode] = useState('or');
     const [sortConfig, setSortConfig] = useState({ key: '', direction: 'asc' });
     const [activeDimension, setActiveDimension] = useState('');
     const [colOrder, setColOrder] = useState([]);
@@ -254,6 +375,8 @@ export default function AsanAnnualPerformance() {
             if (effectiveHeaderRow) params.set('header_row', String(effectiveHeaderRow));
             const effectiveSearch = options.search ?? searchTerm;
             if (effectiveSearch) params.set('search', effectiveSearch);
+            const effectiveSearchMode = options.searchMode ?? searchMode;
+            if (effectiveSearch) params.set('search_mode', effectiveSearchMode || 'or');
             const sortKey = options.sortKey ?? sortConfig.key;
             const sortDir = options.sortDir ?? sortConfig.direction;
             if (sortKey) {
@@ -271,7 +394,7 @@ export default function AsanAnnualPerformance() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [selectedPath, sheetName, headerRow, searchTerm, sortConfig, applyPayload]);
+    }, [selectedPath, sheetName, headerRow, searchTerm, searchMode, sortConfig, applyPayload]);
 
     useEffect(() => {
         if (!selectedPath) return;
@@ -287,8 +410,8 @@ export default function AsanAnnualPerformance() {
 
     useEffect(() => {
         if (!selectedPath) return;
-        fetchData({ page: 1, search: searchTerm, quiet: Boolean(payload) });
-    }, [searchTerm, selectedPath]); // eslint-disable-line react-hooks/exhaustive-deps
+        fetchData({ page: 1, search: searchTerm, searchMode, quiet: Boolean(payload) });
+    }, [searchTerm, searchMode, selectedPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!payload?.file_modified_at) {
@@ -319,7 +442,11 @@ export default function AsanAnnualPerformance() {
     }, [colOrder, headers, hiddenCols]);
     const yearly = Array.isArray(summary.yearly) ? summary.yearly : EMPTY_LIST;
     const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
+    const weekly = Array.isArray(summary.weekly) ? summary.weekly : EMPTY_LIST;
+    const weekday = Array.isArray(summary.weekday) ? summary.weekday : EMPTY_LIST;
+    const strategicSegments = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
     const monthlyTrend = monthly.slice(-12);
+    const weeklyTrend = weekly.slice(-26);
     const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
     const chartMax = getPerformanceChartMax(yearly, ['revenue', 'purchase', 'profit']);
@@ -370,6 +497,10 @@ export default function AsanAnnualPerformance() {
         top3Share,
         lowMarginItems,
     });
+    const selectedSegment = strategicSegments.find(item => item.key === selectedSegmentKey) || strategicSegments.find(item => item.key === 'own_direct') || strategicSegments[0] || null;
+    const ledgerValidation = summary.ledgerValidation || {};
+    const amountQuality = summary.amountQuality || ledgerValidation.amountQuality || {};
+    const dateQuality = summary.dateQuality || ledgerValidation.dateQuality || {};
 
     useEffect(() => {
         if (!dimensionOptions.length) return;
@@ -377,6 +508,13 @@ export default function AsanAnnualPerformance() {
             setActiveDimension(dimensionOptions[0].column);
         }
     }, [activeDimension, dimensionOptions]);
+
+    useEffect(() => {
+        if (!strategicSegments.length) return;
+        if (!strategicSegments.some(item => item.key === selectedSegmentKey)) {
+            setSelectedSegmentKey(strategicSegments[0].key);
+        }
+    }, [strategicSegments, selectedSegmentKey]);
 
     const syncNow = async () => {
         setSyncing(true);
@@ -394,6 +532,7 @@ export default function AsanAnnualPerformance() {
                     page: 1,
                     page_size: PAGE_SIZE,
                     search: searchTerm,
+                    search_mode: searchMode,
                     sort_key: sortConfig.key,
                     sort_dir: sortConfig.direction,
                 }),
@@ -408,6 +547,15 @@ export default function AsanAnnualPerformance() {
             setError(err.message || '연간실적 동기화 실패');
             setSyncing(false);
         }
+    };
+
+    const openDetailSearch = (terms = [], mode = 'and') => {
+        const query = terms.filter(Boolean).join(',');
+        setSearchInput(query);
+        setSearchTerm(query);
+        setSearchMode(mode);
+        setActiveTab('table');
+        fetchData({ page: 1, search: query, searchMode: mode, quiet: true });
     };
 
     useEffect(() => {
@@ -570,6 +718,20 @@ export default function AsanAnnualPerformance() {
                         </div>
                     </div>
 
+                    <div className={styles.analysisTabs}>
+                        {ANALYSIS_VIEWS.map(view => (
+                            <button
+                                key={view.key}
+                                className={analysisView === view.key ? styles.analysisTabActive : ''}
+                                onClick={() => setAnalysisView(view.key)}
+                            >
+                                {view.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {analysisView === 'overview' && (
+                        <>
                     <div className={styles.reportGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
@@ -823,6 +985,195 @@ export default function AsanAnnualPerformance() {
                         <span>조회: {summary.currentSnapshotId ? '현재 스냅샷 고정' : 'current 행 기준'}</span>
                         <span>원장: 삭제 없이 누적</span>
                     </section>
+                        </>
+                    )}
+
+                    {analysisView === 'flow' && (
+                        <div className={styles.deepGrid}>
+                            <MiniTrendChart items={monthly} title="원장 전체 월별 흐름" basis="마감월" />
+                            <MiniTrendChart items={yearly} title="연도별 장기 흐름" basis="연도" />
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>최근 변화 근거</h3>
+                                    <span>전월 대비</span>
+                                </div>
+                                <div className={styles.changeGrid}>
+                                    <div>
+                                        <span>최근월</span>
+                                        <strong>{latestMonth?.period || '-'}</strong>
+                                        <em>매출 {formatPerformanceAmount(latestMonth?.revenue)}</em>
+                                    </div>
+                                    <div>
+                                        <span>전월 대비 매출</span>
+                                        <strong>{formatSignedAmount(safeNumber(latestMonth?.revenue) - safeNumber(previousMonth?.revenue))}</strong>
+                                        <em>{previousMonth?.period || '-'} 기준</em>
+                                    </div>
+                                    <div>
+                                        <span>전월 대비 손익</span>
+                                        <strong>{formatSignedAmount(safeNumber(latestMonth?.profit) - safeNumber(previousMonth?.profit))}</strong>
+                                        <em>손익률 {formatPercent(profitRateOf(latestMonth), 2)}</em>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    )}
+
+                    {analysisView === 'matrix' && (
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h3>연도×월 매출/손익 매트릭스</h3>
+                                <span>{summary.monthlyBasis || '마감월'} 기준 · {monthly.length.toLocaleString('ko-KR')}개월</span>
+                            </div>
+                            <YearMonthHeatmap monthly={monthly} onSelectPeriod={period => openDetailSearch([period], 'and')} />
+                        </section>
+                    )}
+
+                    {analysisView === 'segments' && (
+                        <div className={styles.deepGrid}>
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>주체/계약 세그먼트</h3>
+                                    <span>ELS솔루션은 주체 항목으로 분리</span>
+                                </div>
+                                <div className={styles.segmentCards}>
+                                    {strategicSegments.map(segment => (
+                                        <button
+                                            key={segment.key}
+                                            className={selectedSegment?.key === segment.key ? styles.segmentCardActive : ''}
+                                            onClick={() => setSelectedSegmentKey(segment.key)}
+                                        >
+                                            <span>{segment.label}</span>
+                                            <strong>{formatPerformanceAmount(segment.revenue)}</strong>
+                                            <em>손익률 {formatPercent(segment.profitRate, 2)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                            {selectedSegment && (
+                                <>
+                                    <section className={styles.panel}>
+                                        <div className={styles.panelHeader}>
+                                            <h3>{selectedSegment.label} 분석</h3>
+                                            <button
+                                                className={styles.inlineAction}
+                                                onClick={() => openDetailSearch(selectedSegment.filterTerms || [], 'and')}
+                                            >
+                                                원장 상세
+                                            </button>
+                                        </div>
+                                        <div className={styles.segmentSummary}>
+                                            <p>{selectedSegment.description}</p>
+                                            <div>
+                                                <span>매출</span><strong>{formatPerformanceAmount(selectedSegment.revenue)}</strong>
+                                                <span>매입</span><strong>{formatPerformanceAmount(selectedSegment.purchase)}</strong>
+                                                <span>손익</span><strong>{formatPerformanceAmount(selectedSegment.profit)}</strong>
+                                                <span>비중</span><strong>{formatPercent(selectedSegment.revenueShare, 2)}</strong>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <MiniTrendChart items={selectedSegment.monthly || []} title={`${selectedSegment.label} 월별 흐름`} basis="마감월" />
+                                    <div className={styles.segmentDetailGrid}>
+                                        {[
+                                            ['작업지', selectedSegment.topWorkSites || []],
+                                            ['청구처', selectedSegment.topClients || []],
+                                            ['노선', selectedSegment.topRoutes || []],
+                                            ['구분', selectedSegment.topCategories || []],
+                                        ].map(([label, items]) => (
+                                            <section className={styles.panel} key={label}>
+                                                <div className={styles.panelHeader}>
+                                                    <h3>{label} 근거</h3>
+                                                    <span>상위 12</span>
+                                                </div>
+                                                <div className={styles.compactList}>
+                                                    {items.slice(0, 12).map((item, idx) => (
+                                                        <button
+                                                            className={styles.compactButtonRow}
+                                                            key={`${label}-${item.name}-${idx}`}
+                                                            onClick={() => openDetailSearch([...(selectedSegment.filterTerms || []), item.name], 'and')}
+                                                        >
+                                                            <span>{item.name}</span>
+                                                            <b>{formatPerformanceAmount(item.revenue)}</b>
+                                                            <em>{formatPercent(profitRateOf(item), 1)}</em>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {analysisView === 'calendar' && (
+                        <div className={styles.deepGrid}>
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>주차별 금액/건수</h3>
+                                    <span>최근 26주</span>
+                                </div>
+                                <div className={styles.weekList}>
+                                    {weeklyTrend.map(item => (
+                                        <div className={styles.weekRow} key={item.weekStart}>
+                                            <span>{item.weekStart}</span>
+                                            <DataBar value={item.revenue} max={getPerformanceChartMax(weeklyTrend, ['revenue'])} tone="revenue" />
+                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                            <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</em>
+                                            <b>{formatPerformanceAmount(item.profit)}</b>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>요일별 원장 분석</h3>
+                                    <span>전체 기간</span>
+                                </div>
+                                <div className={styles.weekdayGrid}>
+                                    {weekday.map(item => (
+                                        <div className={styles.weekdayCard} key={item.label || item.day}>
+                                            <span>{item.label}요일</span>
+                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                            <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건 · 손익률 {formatPercent(profitRateOf(item), 1)}</em>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    )}
+
+                    {analysisView === 'evidence' && (
+                        <div className={styles.deepGrid}>
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>원장 검증 상태</h3>
+                                    <span>1원 단위</span>
+                                </div>
+                                <div className={styles.validationGrid}>
+                                    <div><span>총 행수</span><strong>{safeNumber(ledgerValidation.rowCountActual || totalRows).toLocaleString('ko-KR')}</strong><em>메타 {safeNumber(ledgerValidation.rowCountMeta || totalRows).toLocaleString('ko-KR')}</em></div>
+                                    <div><span>월별 불일치</span><strong>{safeNumber(ledgerValidation.monthlyMismatchCount || 0).toLocaleString('ko-KR')}</strong><em>0이어야 정상</em></div>
+                                    <div><span>마감월 오류</span><strong>{safeNumber(dateQuality.invalidPeriodRows || 0).toLocaleString('ko-KR')}</strong><em>{dateQuality.minPeriod || '-'} ~ {dateQuality.maxPeriod || '-'}</em></div>
+                                    <div><span>작업일자 오류</span><strong>{safeNumber(dateQuality.invalidWorkDateRows || 0).toLocaleString('ko-KR')}</strong><em>{dateQuality.minWorkDate || '-'} ~ {dateQuality.maxWorkDate || '-'}</em></div>
+                                    <div><span>소수점 매출 행</span><strong>{safeNumber(amountQuality.revenueDecimalRows || 0).toLocaleString('ko-KR')}</strong><em>{formatPerformanceAmount(amountQuality.revenueDecimalSum)}</em></div>
+                                    <div><span>소수점 매입 행</span><strong>{safeNumber(amountQuality.purchaseDecimalRows || 0).toLocaleString('ko-KR')}</strong><em>{formatPerformanceAmount(amountQuality.purchaseDecimalSum)}</em></div>
+                                </div>
+                            </section>
+                            <section className={styles.panel}>
+                                <div className={styles.panelHeader}>
+                                    <h3>분석 기준 설명</h3>
+                                    <span>마우스 도움말 대신 상시 표시</span>
+                                </div>
+                                <EvidenceHelp />
+                            </section>
+                            <section className={styles.detectPanel}>
+                                <span>매출 컬럼: {(summary.detected?.revenueColumns || []).join(', ') || '자동 후보 없음'}</span>
+                                <span>매입 컬럼: {(summary.detected?.purchaseColumns || []).join(', ') || '자동 후보 없음'}</span>
+                                <span>손익 산식: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
+                                <span>월 기준: {summary.monthlyBasis || '마감월'}</span>
+                                <span>검증: 원장 재집계와 summary 차이 0원 기준</span>
+                            </section>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className={styles.tableArea}>
@@ -833,6 +1184,13 @@ export default function AsanAnnualPerformance() {
                             onChange={e => setSearchInput(e.target.value)}
                             placeholder="검색어"
                         />
+                        <button
+                            className={searchMode === 'and' ? styles.smallActiveBtn : styles.ghostBtn}
+                            onClick={() => setSearchMode(prev => (prev === 'and' ? 'or' : 'and'))}
+                            title="쉼표로 나눈 검색어를 모두 포함할지, 하나라도 포함할지 선택합니다."
+                        >
+                            {searchMode === 'and' ? 'AND 검색' : 'OR 검색'}
+                        </button>
                         <button className={styles.ghostBtn} onClick={() => setShowColPanel(prev => !prev)}>컬럼</button>
                         <span className={styles.rowCount}>조회 {loadedRows.toLocaleString()} / 전체 {totalRows.toLocaleString()}</span>
                     </div>

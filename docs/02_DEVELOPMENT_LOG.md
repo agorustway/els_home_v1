@@ -1,4 +1,37 @@
 
+## [2026-05-17] 아산 연간실적 10년 원장 분석 워크벤치 확장 (v5.13.91)
+### 핵심
+- 연간실적 분석 탭을 `개요/10년 흐름/연도×월/직계약·주체/주차·요일/검증·근거` 하위 탭으로 확장했습니다.
+- 운영 Supabase `branch_performance_files.summary`에 `weekly`, `weekday`, `strategicSegments`, `ledgerValidation`, `amountQuality`, `dateQuality`를 추가했습니다.
+- `운송사(명의)=ELS솔루션`은 외부 운송사 비교 대상이 아니라 주체 항목으로 분리하고, `ELS솔루션+직계약` 세그먼트를 별도 분석합니다.
+- 분석 항목의 원장 상세 버튼과 연도×월 셀 클릭은 테이블 탭으로 이동해 AND 검색을 적용합니다.
+- 선적관리는 기본 진입 시 최근 3개월 `작업일` 서버 필터를 적용해 DB 조회량을 줄이고, 모바일 무한 스크롤은 페이지 단위 추가 조회로 유지했습니다.
+### 데이터 검증
+- 운영 current snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7`: 368,617행.
+- 원장 raw 재집계와 summary 총합 차이: 매출 0원, 매입 0원, 손익 0원.
+- 월별 raw 재집계와 summary 불일치: 0건 / 132개월.
+- 검증 월: `2024-01` 매출 1,775,915,940 / 매입 1,543,857,480, `2025-01` 매출 1,701,698,800 / 매입 1,501,277,000.
+- ELS솔루션 직계약 세그먼트: 48,010건, 매출 28,877,118,648원, 매입 25,394,777,236.21원, 손익 3,482,341,411.79원.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
+- `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `npm.cmd run build`: 통과. 외부 WebDAV/API fetch는 sandbox 네트워크 EACCES 경고만 출력.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/lib/asan-branch-db.js`
+- `docker/els-backend/asan_performance.py`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanShippingFlow.test.mjs`
+- `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-18] 아산 배차 월기준 주간평균합 표기 및 모바일 검색 진입 버튼 (v5.13.90)
 ### 핵심
 - 요일별 작업지 비중의 월간 지표명을 `월기준 주간평균합`으로 정정했습니다.

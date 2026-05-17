@@ -168,6 +168,10 @@ export function buildRecentShippingMonthOptions(baseDate = new Date(), count = 6
   });
 }
 
+export function getDefaultShippingMonthKeys(baseDate = new Date(), count = 3) {
+  return buildRecentShippingMonthOptions(baseDate, count).map((option) => option.key);
+}
+
 export function normalizeShippingFilterValue(value) {
   if (value == null) return '';
   return String(value)
@@ -195,7 +199,10 @@ export function compareShippingFilterValues(a, b, direction = 'asc') {
 }
 
 export function findWorkDateColumnIndex(headers = []) {
-  const exactIdx = headers.findIndex((header) => String(header || '').trim() === '작업일자');
+  const exactIdx = headers.findIndex((header) => {
+    const text = String(header || '').replace(/\s+/g, '');
+    return text === '작업일' || text === '작업일자';
+  });
   if (exactIdx >= 0) return exactIdx;
 
   const workIdx = headers.findIndex((header) => {

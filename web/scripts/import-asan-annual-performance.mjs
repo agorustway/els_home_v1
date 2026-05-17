@@ -9,6 +9,7 @@ import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
 import {
   isPerformanceDateHeader,
+  isPerformanceMonthHeader,
   normalizeAnnualPerformanceRow,
   parsePerformanceDateParts,
 } from '../utils/asanPerformanceView.mjs';
@@ -396,12 +397,9 @@ function inferYearMonth(headers, row) {
       const match = text.match(/\b(1[0-2]|0?[1-9])\b/);
       if (match) month = Number(match[1]);
     }
-    if (hasKeyword(header, dateKeywords)) {
-      const match = text.match(/(20\d{2}|19\d{2})[-./년\s]?(0?[1-9]|1[0-2])?/);
-      if (match) {
-        if (year == null) year = Number(match[1]);
-        if (month == null && match[2]) month = Number(match[2]);
-      }
+    if (hasKeyword(header, dateKeywords) && year == null) {
+      const match = text.match(/(20\d{2}|19\d{2})/);
+      if (match) year = Number(match[1]);
     }
   });
 
@@ -435,6 +433,214 @@ function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, prof
     item.profit += profit;
     item.rowCount += 1;
   }
+}
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function addMetric(map, key, seed, revenue, purchase, profit, rowCount = 1) {
+  if (!key) return null;
+  if (!map.has(key)) map.set(key, { ...seed, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+  const item = map.get(key);
+  item.revenue += revenue;
+  item.purchase += purchase;
+  item.profit += profit;
+  item.rowCount += rowCount;
+  return item;
+}
+
+function headerIndex(headers, words, exact = '') {
+  if (exact) {
+    const exactIdx = headers.findIndex(header => String(header || '').trim() === exact);
+    if (exactIdx >= 0) return exactIdx;
+  }
+  return headers.findIndex(header => hasKeyword(header, words));
+}
+
+function rowValue(row, idx) {
+  return idx >= 0 ? String(row[idx] || '').trim() : '';
+}
+
+function workDateInfo(headers, row) {
+  const idx = headers.findIndex(header => isPerformanceDateHeader(header) && !isPerformanceMonthHeader(header));
+  if (idx < 0) return null;
+  const parts = parsePerformanceDateParts(row[idx]);
+  if (!parts?.year || !parts?.month || !parts?.day) return null;
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  if (Number.isNaN(date.getTime())) return null;
+  const day = date.getUTCDay();
+  const weekStart = new Date(date);
+  weekStart.setUTCDate(date.getUTCDate() - ((day + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  const format = value => `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, '0')}-${String(value.getUTCDate()).padStart(2, '0')}`;
+  return {
+    date: format(date),
+    day,
+    weekday: WEEKDAY_LABELS[day],
+    weekStart: format(weekStart),
+    weekEnd: format(weekEnd),
+  };
+}
+
+function addTopDimension(map, value, revenue, purchase, profit) {
+  const name = value || '미분류';
+  addMetric(map, name, { name }, revenue, purchase, profit);
+}
+
+function createAdvancedAccumulator(headers) {
+  const carrierIdx = headerIndex(headers, ['운송사'], '운송사(명의)');
+  const contractIdx = headerIndex(headers, ['계약'], '계약');
+  const workSiteIdx = headerIndex(headers, ['작업지'], '작업지');
+  const clientIdx = headerIndex(headers, ['청구처', '거래처', '화주'], '청구처');
+  const routeIdx = headerIndex(headers, ['노선'], '노선');
+  const categoryIdx = headerIndex(headers, ['구분'], '구분');
+  const pickupIdx = headerIndex(headers, ['픽업'], '픽업');
+  const weekly = new Map();
+  const weekday = new Map();
+  const segments = new Map();
+  const segmentDefs = [
+    {
+      key: 'own_direct',
+      label: '우리 직계약차량',
+      description: '운송사(명의)가 ELS솔루션이고 계약이 직계약인 원장 행만 별도 집계합니다.',
+      filterTerms: ['ELS솔루션', '직계약'],
+      match: ({ carrier, contract }) => carrier === 'ELS솔루션' && contract.includes('직계약'),
+    },
+    {
+      key: 'own_total',
+      label: 'ELS솔루션 명의 전체',
+      description: '운송사(명의)가 ELS솔루션인 전체 물량입니다. 주체 항목이라 외부 운송사 비교와 분리합니다.',
+      filterTerms: ['ELS솔루션'],
+      match: ({ carrier }) => carrier === 'ELS솔루션',
+    },
+    {
+      key: 'direct_total',
+      label: '직계약 전체',
+      description: '계약 컬럼에 직계약이 포함된 전체 행입니다. ELS솔루션 명의와 외부 명의를 함께 포함합니다.',
+      filterTerms: ['직계약'],
+      match: ({ contract }) => contract.includes('직계약'),
+    },
+    {
+      key: 'external_carrier',
+      label: '외부/타 운송사',
+      description: '운송사(명의)가 비어 있지 않고 ELS솔루션이 아닌 행입니다.',
+      filterTerms: [],
+      match: ({ carrier }) => Boolean(carrier) && carrier !== 'ELS솔루션',
+    },
+  ];
+
+  const ensureSegment = (definition) => {
+    if (!segments.has(definition.key)) {
+      segments.set(definition.key, {
+        ...definition,
+        revenue: 0,
+        purchase: 0,
+        profit: 0,
+        rowCount: 0,
+        yearly: new Map(),
+        monthly: new Map(),
+        weekday: new Map(),
+        topWorkSites: new Map(),
+        topClients: new Map(),
+        topRoutes: new Map(),
+        topCategories: new Map(),
+        topPickups: new Map(),
+      });
+    }
+    return segments.get(definition.key);
+  };
+
+  function add(row, year, month, revenue, purchase, profit) {
+    const dateInfo = workDateInfo(headers, row);
+    if (dateInfo) {
+      addMetric(weekly, dateInfo.weekStart, {
+        weekStart: dateInfo.weekStart,
+        weekEnd: dateInfo.weekEnd,
+      }, revenue, purchase, profit);
+      addMetric(weekday, String(dateInfo.day), {
+        day: dateInfo.day,
+        label: dateInfo.weekday,
+      }, revenue, purchase, profit);
+    }
+
+    const carrier = rowValue(row, carrierIdx);
+    const contract = rowValue(row, contractIdx);
+    const values = { carrier, contract };
+    const yearKey = year ? String(year) : '미지정';
+    const monthKey = year && month ? `${year}-${String(month).padStart(2, '0')}` : '';
+
+    for (const definition of segmentDefs) {
+      if (!definition.match(values)) continue;
+      const segment = ensureSegment(definition);
+      segment.revenue += revenue;
+      segment.purchase += purchase;
+      segment.profit += profit;
+      segment.rowCount += 1;
+      addMetric(segment.yearly, yearKey, { year: yearKey }, revenue, purchase, profit);
+      if (monthKey) addMetric(segment.monthly, monthKey, { period: monthKey, year, month }, revenue, purchase, profit);
+      if (dateInfo) {
+        addMetric(segment.weekday, String(dateInfo.day), {
+          day: dateInfo.day,
+          label: dateInfo.weekday,
+        }, revenue, purchase, profit);
+      }
+      addTopDimension(segment.topWorkSites, rowValue(row, workSiteIdx), revenue, purchase, profit);
+      addTopDimension(segment.topClients, rowValue(row, clientIdx), revenue, purchase, profit);
+      addTopDimension(segment.topRoutes, rowValue(row, routeIdx), revenue, purchase, profit);
+      addTopDimension(segment.topCategories, rowValue(row, categoryIdx), revenue, purchase, profit);
+      addTopDimension(segment.topPickups, rowValue(row, pickupIdx), revenue, purchase, profit);
+    }
+  }
+
+  function finish(roundItem, totalRevenue) {
+    const finalizeSeries = (map, limit = 9999, sorter = null) => {
+      const list = Array.from(map.values()).map(item => roundItem({ ...item }));
+      if (sorter) list.sort(sorter);
+      return list.slice(0, limit);
+    };
+    const finalizeTop = map => finalizeSeries(
+      map,
+      12,
+      (a, b) => Math.abs(b.revenue) - Math.abs(a.revenue),
+    ).map((item) => ({
+      ...item,
+      profitRate: item.revenue ? Math.round((item.profit / item.revenue) * 10000) / 100 : 0,
+      revenueShare: totalRevenue ? Math.round((item.revenue / totalRevenue) * 10000) / 100 : 0,
+    }));
+
+    return {
+      weekly: finalizeSeries(weekly, 620, (a, b) => a.weekStart.localeCompare(b.weekStart)),
+      weekday: finalizeSeries(weekday, 7, (a, b) => a.day - b.day),
+      strategicSegments: Array.from(segments.values()).map((segment) => {
+        const rounded = roundItem({
+          key: segment.key,
+          label: segment.label,
+          description: segment.description,
+          filterTerms: segment.filterTerms,
+          revenue: segment.revenue,
+          purchase: segment.purchase,
+          profit: segment.profit,
+          rowCount: segment.rowCount,
+        });
+        rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
+        rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
+        rounded.yearly = finalizeSeries(segment.yearly, 40, (a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR'));
+        rounded.monthly = finalizeSeries(segment.monthly, 240, (a, b) => a.period.localeCompare(b.period));
+        rounded.weekday = finalizeSeries(segment.weekday, 7, (a, b) => a.day - b.day);
+        rounded.topWorkSites = finalizeTop(segment.topWorkSites);
+        rounded.topClients = finalizeTop(segment.topClients);
+        rounded.topRoutes = finalizeTop(segment.topRoutes);
+        rounded.topCategories = finalizeTop(segment.topCategories);
+        rounded.topPickups = finalizeTop(segment.topPickups);
+        return rounded;
+      }).sort((a, b) => {
+        const order = ['own_direct', 'own_total', 'direct_total', 'external_carrier'];
+        return order.indexOf(a.key) - order.indexOf(b.key);
+      }),
+    };
+  }
+
+  return { add, finish };
 }
 
 function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, roundItem) {
@@ -481,6 +687,7 @@ function buildSummary(headers, rows) {
   const monthly = new Map();
   const groups = new Map();
   const breakdowns = new Map();
+  const advanced = createAdvancedAccumulator(headers);
   let totalRevenue = 0;
   let totalPurchase = 0;
   let totalProfit = 0;
@@ -524,6 +731,7 @@ function buildSummary(headers, rows) {
         groupItem.rowCount += 1;
       }
       addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
+      advanced.add(row, year, month, revenue, purchase, profit);
     }
   } else {
     const yearCols = numericCols.filter(idx => yearFromHeader(headers[idx]));
@@ -572,6 +780,8 @@ function buildSummary(headers, rows) {
   const topGroups = Array.from(groups.values()).map(roundItem);
   topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
 
+  const advancedSummary = advanced.finish(roundItem, totalRevenue);
+
   return {
     totalRows: rows.length,
     analysisRows: analysisRows.length,
@@ -581,6 +791,8 @@ function buildSummary(headers, rows) {
     profitRate: totalRevenue ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
     yearly: yearlyList,
     monthly: monthlyList.slice(0, 240),
+    monthlyBasis: '마감월',
+    ...advancedSummary,
     topGroups: topGroups.slice(0, 15),
     breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
     detected: {
@@ -657,6 +869,7 @@ function createSummaryAccumulator(headers, sampleRows) {
   const monthly = new Map();
   const groups = new Map();
   const breakdowns = new Map();
+  const advanced = createAdvancedAccumulator(headers);
   let totalRows = 0;
   let analysisRows = 0;
   let totalRevenue = 0;
@@ -706,6 +919,7 @@ function createSummaryAccumulator(headers, sampleRows) {
         groupItem.rowCount += 1;
       }
       addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
+      advanced.add(row, year, month, revenue, purchase, profit);
       return;
     }
 
@@ -754,6 +968,8 @@ function createSummaryAccumulator(headers, sampleRows) {
     const topGroups = Array.from(groups.values()).map(roundItem);
     topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
 
+    const advancedSummary = advanced.finish(roundItem, totalRevenue);
+
     return {
       totalRows,
       analysisRows,
@@ -763,6 +979,8 @@ function createSummaryAccumulator(headers, sampleRows) {
       profitRate: totalRevenue ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
       yearly: yearlyList,
       monthly: monthlyList.slice(0, 240),
+      monthlyBasis: '마감월',
+      ...advancedSummary,
       topGroups: topGroups.slice(0, 15),
       breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
       detected: {

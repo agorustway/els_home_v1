@@ -56,10 +56,14 @@
   - snapshot 조회 보조 인덱스: `web/supabase_sql/20260517_asan_performance_snapshot_row_index.sql`
   - 실패한 staged 스냅샷 빠른 공개 SQL: `web/supabase_sql/20260517_asan_performance_recover_staged_snapshot.sql`
   - 월별 summary 복구 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`
+  - 10년 원장 분석 summary 재생성 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
-  - 분석 탭: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 공헌도 매트릭스, 저마진/손실/고마진 포트폴리오
+  - 분석 하위 탭: `개요`, `10년 흐름`, `연도×월`, `직계약/주체`, `주차·요일`, `검증·근거`
+  - 분석 축: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 연도×월 히트맵, 주차/요일 흐름, 검증/근거 설명
   - 회계 분석 축: 매출(`청구`), 매입(`하불`), 손익, 손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도
+  - `운송사(명의)=ELS솔루션`은 외부 운송사 비교 대상이 아니라 주체 항목으로 분리한다.
+  - `ELS솔루션+직계약`은 우리 직계약차량 세그먼트로 별도 집계하고, 작업지/청구처/노선/구분 상세 버튼은 AND 검색으로 원장 테이블에 연결한다.
   - 화면 분석은 Supabase summary/breakdown을 사용하며, 브라우저에서 36만 행 전체를 재집계하지 않는다.
   - 월별 흐름은 `summary.monthlyBasis`를 표시하고, 현재 운영 기준은 원본 `마감월`이다.
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
@@ -74,10 +78,12 @@
 - 엑셀 제목만 바뀐 경우 웹 컬럼 레이아웃은 같은 인덱스 기준으로 최대한 복구한다.
 - 컬럼이 추가/삭제된 경우 저장된 숨김/순서 설정보다 현재 엑셀 헤더를 우선한다.
 - 화면 조회는 기본 300행 단위로 제한해 브라우저 메모리 부담을 낮춘다.
+- 분석 탭에서 원장 상세로 이동할 때는 `search_mode=and`를 사용해 쉼표로 나눈 조건을 모두 포함하는 행만 조회한다.
 - Supabase에 아직 적재 데이터가 없으면 `supabase-empty`와 `needs_sync=true`로 응답하며, 기본 조회가 Excel 파일을 직접 읽지 않는다.
 - 최초 적재처럼 60초를 넘길 수 있는 작업은 화면 요청을 붙잡지 않고 백그라운드 작업으로 돌린 뒤 폴링한다.
 - 직접 주입이 마지막 previous current 정리 단계에서 timeout 나면 이미 insert된 `staged_current` snapshot을 `20260517_asan_performance_recover_staged_snapshot.sql`로 공개한 뒤, 최신 웹 코드가 `currentSnapshotId` 기준으로 조회하게 한다.
 - 월별 summary가 잘못 계산된 경우 원장 행을 재주입하지 않고 current snapshot의 `row_data->>'마감월'` 기준으로 `20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`을 실행해 복구한다.
+- 분석 summary가 비어 있거나 구조가 바뀐 경우 `20260517_asan_performance_rebuild_analytics_workbench_summary.sql`을 실행한다. 운영 검증 기준은 current snapshot 368,617행, 월별 summary 불일치 0건, raw 재집계 차이 0원이다.
 
 ## 4. 월별실적 확장 계획
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.

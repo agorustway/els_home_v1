@@ -860,6 +860,84 @@ def _shipping_search_terms(search):
 def _shipping_search_filter_value(term):
     return str(term).replace(",", " ").replace("\\", " ")
 
+def _shipping_month_keys(months):
+    if isinstance(months, (list, tuple, set)):
+        raw_months = months
+    else:
+        raw_months = str(months or "").split(",")
+    seen = set()
+    keys = []
+    for month in raw_months:
+        m = re.fullmatch(r"(20\d{2})-(0[1-9]|1[0-2])", str(month or "").strip())
+        if not m:
+            continue
+        key = f"{m.group(1)}-{m.group(2)}"
+        if key in seen:
+            continue
+        seen.add(key)
+        keys.append(key)
+    return keys
+
+def _shipping_next_month_key(month_key):
+    year, month = [int(part) for part in month_key.split("-")]
+    if month == 12:
+        return f"{year + 1}-01"
+    return f"{year}-{month + 1:02d}"
+
+def _shipping_month_ranges(months):
+    ranges = [
+        {"key": key, "start": f"{key}-01", "end": f"{_shipping_next_month_key(key)}-01", "keys": [key]}
+        for key in sorted(_shipping_month_keys(months))
+    ]
+    merged = []
+    for item in ranges:
+        if merged and merged[-1]["end"] == item["start"]:
+            merged[-1]["end"] = item["end"]
+            merged[-1]["keys"].extend(item["keys"])
+        else:
+            merged.append(item)
+    return merged
+
+def _shipping_work_date_index(headers):
+    for i, header in enumerate(headers or []):
+        text = re.sub(r"\s+", "", str(header or ""))
+        if text in ("작업일", "작업일자"):
+            return i
+    for i, header in enumerate(headers or []):
+        text = re.sub(r"\s+", "", str(header or "")).lower()
+        if "작업" in text and ("일" in text or "일자" in text):
+            return i
+    for label in ("반입일", "반입일자", "픽업일", "픽업일자"):
+        for i, header in enumerate(headers or []):
+            if re.sub(r"\s+", "", str(header or "")) == label:
+                return i
+    return -1
+
+def _shipping_resolve_date_col(headers, date_col):
+    requested = str(date_col or "").strip()
+    if requested and requested in (headers or []):
+        return requested
+    idx = _shipping_work_date_index(headers)
+    return headers[idx] if idx >= 0 else ""
+
+def _shipping_apply_month_filter(q, headers, date_col, months):
+    resolved_col = _shipping_resolve_date_col(headers, date_col)
+    ranges = _shipping_month_ranges(months)
+    if not resolved_col or not ranges:
+        return q, "", []
+
+    col_expr = f"row_data->>{resolved_col}"
+    if len(ranges) == 1:
+        item = ranges[0]
+        return q.gte(col_expr, item["start"]).lt(col_expr, item["end"]), resolved_col, item["keys"]
+
+    filters = ",".join(
+        f"and({col_expr}.gte.{item['start']},{col_expr}.lt.{item['end']})"
+        for item in ranges
+    )
+    keys = [key for item in ranges for key in item["keys"]]
+    return q.or_(filters), resolved_col, keys
+
 def _shipping_sort_value(value):
     s = str(value if value is not None else "").strip()
     if not s:
@@ -1043,7 +1121,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             app.logger.error(f"[선적관리DB] 동기화 실패: {e}", exc_info=True)
         return None
 
-def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key="", sort_dir="asc"):
+def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key="", sort_dir="asc", date_col="", months=""):
     if not supabase or not shipping_db_available:
         return None
 
@@ -1073,6 +1151,7 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
     elif search_terms:
         filters = ",".join(f"search_text.ilike.%{_shipping_search_filter_value(term)}%" for term in search_terms)
         q = q.or_(filters)
+    q, resolved_date_col, filtered_months = _shipping_apply_month_filter(q, headers, date_col, months)
 
     if sort_idx >= 0:
         rows_res = q.order("row_index", desc=False).range(0, 9999).execute()
@@ -1102,6 +1181,8 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
         "page_size": page_size,
         "sort_key": sort_key if sort_idx >= 0 else "",
         "sort_dir": "desc" if sort_desc else "asc",
+        "date_col": resolved_date_col,
+        "months": filtered_months,
         "source": "supabase"
     }
 
@@ -1151,13 +1232,17 @@ def get_asan_shipping():
             search = (body.get("search") or request.args.get("search") or "").strip()
             sort_key = (body.get("sort_key") or request.args.get("sort_key") or "").strip()
             sort_dir = body.get("sort_dir") or request.args.get("sort_dir") or "asc"
+            date_col = (body.get("date_col") or request.args.get("date_col") or "").strip()
+            months = body.get("months") or request.args.get("months") or ""
             db_data = query_asan_shipping_db(
                 rel_path,
                 page=page,
                 page_size=page_size,
                 search=search,
                 sort_key=sort_key,
-                sort_dir=sort_dir
+                sort_dir=sort_dir,
+                date_col=date_col,
+                months=months
             )
             return jsonify({"ok": True, "data": db_data or sync_result})
 
@@ -1167,6 +1252,8 @@ def get_asan_shipping():
         search = (request.args.get("search") or "").strip()
         sort_key = (request.args.get("sort_key") or "").strip()
         sort_dir = request.args.get("sort_dir") or "asc"
+        date_col = (request.args.get("date_col") or "").strip()
+        months = request.args.get("months") or ""
 
         if source != "excel" and supabase and shipping_db_available:
             db_data = query_asan_shipping_db(
@@ -1175,7 +1262,9 @@ def get_asan_shipping():
                 page_size=page_size,
                 search=search,
                 sort_key=sort_key,
-                sort_dir=sort_dir
+                sort_dir=sort_dir,
+                date_col=date_col,
+                months=months
             )
             if db_data:
                 return jsonify({"data": db_data})
