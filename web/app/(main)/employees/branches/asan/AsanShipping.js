@@ -12,7 +12,6 @@ import {
     areSetsEqual,
     buildRecentShippingMonthOptions,
     compareShippingFilterValues,
-    getDefaultShippingMonthKeys,
     getShippingVirtualWindow,
     getShippingSignalTone,
     getVisibleShippingColumns,
@@ -160,7 +159,7 @@ export default function AsanShipping() {
     // Date Month Filter
     const [dateFilter, setDateFilter] = useState(() => ({
         col: '',
-        months: getDefaultShippingMonthKeys(),
+        months: [],
     }));
     const [unshippedOnly, setUnshippedOnly] = useState(false);
     const [storageOnly, setStorageOnly] = useState(false);
@@ -622,7 +621,7 @@ export default function AsanShipping() {
         setHiddenCols(new Set());
         setSortConfig({ key: null, direction: 'asc' });
         setColumnFilters({});
-        setDateFilter({ col: dateColumns[0] || '', months: getDefaultShippingMonthKeys() });
+        setDateFilter({ col: dateColumns[0] || '', months: [] });
         setUnshippedOnly(false);
         setStorageOnly(false);
         setSearchInput('');

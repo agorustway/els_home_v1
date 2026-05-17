@@ -1,4 +1,18 @@
 
+## [2026-05-17] 아산 선적관리 기본 로드/필터 로드 분리 (v5.13.80)
+### 핵심
+- 선적관리 기본 진입에서 최근 3개월 월 필터가 자동 선택되어 전체 데이터가 바로 로드되던 흐름을 해제했습니다.
+- 이제 첫 진입은 `SHIPPING_PAGE_SIZE = 100` 기준으로 100건만 로드하고, 테이블 스크롤 하단 접근 시 다음 100건을 추가 로드합니다.
+- 월 버튼, 미선적, 자체보관, 컬럼 필터처럼 전체 기준 판단이 필요한 작업에서만 전체 기준 로드를 수행합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 33개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "utils/asanShippingView.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-17] 아산 연간실적 현재 스냅샷 고정과 분석 확장 (v5.13.79)
 ### 핵심
 - 연간실적 메타 summary에 `currentSnapshotId`를 저장하고 웹 조회는 해당 스냅샷만 읽도록 보강했습니다. 여러 current 스냅샷이 남아 같은 row_index가 반복 표시되는 상황을 차단합니다.

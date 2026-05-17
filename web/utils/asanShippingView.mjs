@@ -168,10 +168,6 @@ export function buildRecentShippingMonthOptions(baseDate = new Date(), count = 6
   });
 }
 
-export function getDefaultShippingMonthKeys(baseDate = new Date(), count = 3) {
-  return buildRecentShippingMonthOptions(baseDate, count).map(option => option.key);
-}
-
 export function normalizeShippingFilterValue(value) {
   if (value == null) return '';
   return String(value)
