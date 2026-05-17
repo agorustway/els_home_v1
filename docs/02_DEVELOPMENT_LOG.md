@@ -1,4 +1,18 @@
 
+## [2026-05-18] AI 어시스턴트 삭제 후 유령 목록 재표시 차단 (v5.13.95)
+### 핵심
+- 전체 삭제를 누르는 즉시 `els_ai_sessions_cleared_at` 로컬 삭제 마커를 저장하고, UI/로컬 캐시를 먼저 빈 대화로 전환하도록 변경했습니다.
+- 페이지 재진입 때 로컬스토리지나 DB에서 삭제 마커보다 오래된 대화 스냅샷이 돌아와도 목록에 표시하지 않고, DB 잔여값은 purge 재시도로 정리합니다.
+- 마지막 개별 대화 삭제/현재 대화 비우기에서도 사용자 대화가 더 이상 없으면 같은 삭제 마커를 남기도록 맞췄습니다.
+### 검증
+- `node --test web/tests/chatMemory.test.mjs`: 7개 통과
+- `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/utils/chatMemory.mjs`
+- `web/tests/chatMemory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 장기 흐름/조사범위/차량별 손익 보강 (v5.13.94)
 ### 핵심
 - 연간실적 분석 상단에 월별 매출·매입을 선형으로 잇는 장기 흐름 차트를 추가하고, 매출 평균선/매입 평균선을 함께 표시했습니다.

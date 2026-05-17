@@ -8,6 +8,7 @@ import {
   hasUserConversation,
   optimizeSessionsForStorage,
   shouldIgnoreIncomingMemory,
+  shouldUsePersistedSessions,
 } from '../utils/chatMemory.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -93,4 +94,25 @@ test('대화 메모리 API는 삭제 마커와 purge 경로를 모두 가진다'
   assert.match(route, /stale_after_delete/);
   assert.match(route, /get\('purge'\)\s*===\s*'1'/);
   assert.match(route, /messages:\s*\[\]/);
+});
+
+test('로컬 삭제 마커보다 오래된 저장 대화는 재표시하지 않는다', () => {
+  assert.equal(shouldUsePersistedSessions({
+    sessions: oldSessions,
+    clearedAt: '2026-05-18T00:01:00.000Z',
+  }), false);
+
+  assert.equal(shouldUsePersistedSessions({
+    sessions: [
+      {
+        id: '1779000120000',
+        title: '삭제 후 새 대화',
+        messages: [
+          { role: 'assistant', content: 'init', timestamp: '2026-05-18T00:01:02.000Z' },
+          { role: 'user', content: '새 질문', timestamp: '2026-05-18T00:02:00.000Z' },
+        ],
+      },
+    ],
+    clearedAt: '2026-05-18T00:01:00.000Z',
+  }), true);
 });

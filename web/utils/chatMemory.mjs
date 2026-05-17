@@ -88,3 +88,14 @@ export function shouldIgnoreIncomingMemory({
     && incomingActivityTime <= clearMarkerTime
   );
 }
+
+export function shouldUsePersistedSessions({ sessions = [], clearedAt } = {}) {
+  if (!Array.isArray(sessions) || sessions.length === 0) return false;
+
+  const clearMarkerTime = parseTime(clearedAt);
+  if (clearMarkerTime === null) return true;
+  if (!hasUserConversation(sessions)) return false;
+
+  const latestActivityTime = getLatestUserActivityTime(sessions);
+  return latestActivityTime !== null && latestActivityTime > clearMarkerTime;
+}

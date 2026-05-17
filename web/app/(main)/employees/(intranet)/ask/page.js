@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
-import { hasUserConversation, optimizeSessionsForStorage } from '@/utils/chatMemory.mjs';
+import { hasUserConversation, optimizeSessionsForStorage, shouldUsePersistedSessions } from '@/utils/chatMemory.mjs';
 import styles from './ask.module.css';
 
 const QUICK_PROMPTS = [
@@ -16,6 +16,7 @@ const QUICK_PROMPTS = [
 ];
 
 const LS_KEY = 'els_ai_sessions';
+const LS_CLEAR_KEY = 'els_ai_sessions_cleared_at';
 
 function TypingIndicator() {
     return (
@@ -232,6 +233,20 @@ export default function AskPage() {
         setActiveId(nextSession.id);
     };
 
+    const markHistoryCleared = useCallback(() => {
+        const clearedAt = new Date().toISOString();
+        try {
+            localStorage.setItem(LS_CLEAR_KEY, clearedAt);
+            localStorage.removeItem(LS_KEY);
+        } catch {}
+        return clearedAt;
+    }, []);
+
+    const readHistoryClearedAt = useCallback(() => {
+        try { return localStorage.getItem(LS_CLEAR_KEY); } catch {}
+        return null;
+    }, []);
+
     const deleteSession = async (id) => {
         if (!window.confirm('이 대화 기록을 삭제하시겠습니까?')) return;
         const remaining = sessions.filter(s => s.id !== id);
@@ -239,6 +254,10 @@ export default function AskPage() {
         const nextActiveId = activeId === id ? nextSessions[0].id : activeId;
 
         clearPendingMemorySave();
+        if (!hasUserConversation(nextSessions)) {
+            memoryDeleteLockRef.current = true;
+            markHistoryCleared();
+        }
         sessionsRef.current = nextSessions;
         setSessions(nextSessions);
         setActiveId(nextActiveId);
@@ -255,19 +274,18 @@ export default function AskPage() {
         if (!window.confirm('모든 대화 기록을 일괄 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
         memoryDeleteLockRef.current = true;
         clearPendingMemorySave();
-        try {
-            await deleteRemoteMemory();
-        } catch(e) {
-            memoryDeleteLockRef.current = false;
-            alert(`DB 대화 기록 삭제에 실패했습니다.\n${e.message}`);
-            return;
-        }
-        try { localStorage.removeItem(LS_KEY); } catch {}
+        markHistoryCleared();
         const nextSessions = [createDefaultSession()];
         sessionsRef.current = nextSessions;
         setSessions(nextSessions);
         setActiveId(nextSessions[0].id);
         saveToLocal(nextSessions);
+
+        try {
+            await deleteRemoteMemory();
+        } catch(e) {
+            alert(`화면과 로컬 캐시는 비웠지만 DB 삭제 재시도가 필요합니다.\n${e.message}`);
+        }
         scheduleDeleteVerification();
     };
 
@@ -284,11 +302,16 @@ export default function AskPage() {
             const raw = localStorage.getItem(LS_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) return parsed;
+                if (
+                    Array.isArray(parsed)
+                    && parsed.length > 0
+                    && parsed[0].id
+                    && shouldUsePersistedSessions({ sessions: parsed, clearedAt: readHistoryClearedAt() })
+                ) return parsed;
             }
         } catch {}
         return null;
-    }, []);
+    }, [readHistoryClearedAt]);
 
     const clearPendingMemorySave = useCallback(() => {
         if (saveTimerRef.current) {
@@ -396,12 +419,19 @@ export default function AskPage() {
                     const data = await res.json();
                     let raw = data.messages || [];
                     if (raw.length > 0 && raw[0].id && raw[0].messages) {
-                        const dbTotal = raw.reduce((sum, s) => sum + (s.messages?.length || 0), 0);
-                        const localTotal = localData ? localData.reduce((sum, s) => sum + (s.messages?.length || 0), 0) : 0;
-                        if (dbTotal >= localTotal) {
-                            finalSessions = raw;
-                            setSessions(raw);
-                            saveToLocal(raw);
+                        const clearedAt = readHistoryClearedAt();
+                        if (shouldUsePersistedSessions({ sessions: raw, clearedAt })) {
+                            const dbTotal = raw.reduce((sum, s) => sum + (s.messages?.length || 0), 0);
+                            const localTotal = localData ? localData.reduce((sum, s) => sum + (s.messages?.length || 0), 0) : 0;
+                            if (dbTotal >= localTotal) {
+                                finalSessions = raw;
+                                setSessions(raw);
+                                saveToLocal(raw);
+                            }
+                        } else if (clearedAt) {
+                            deleteRemoteMemory({ purge: true }).catch((e) => {
+                                console.warn('[ELS-AI] 삭제 마커 이후 DB 잔여 대화 purge 실패:', e.message);
+                            });
                         }
                     }
                 }
@@ -414,7 +444,7 @@ export default function AskPage() {
             setIsLoaded(true);
         };
         loadMemory();
-    }, []);
+    }, [deleteRemoteMemory, loadFromLocal, readHistoryClearedAt, saveToLocal]);
 
     // ─── 세션 저장: localStorage 즉시 + DB 디바운스 ──────────────────
     sessionsRef.current = sessions;
@@ -707,6 +737,10 @@ export default function AskPage() {
                     : s
             ));
             clearPendingMemorySave();
+            if (!hasUserConversation(nextSessions)) {
+                memoryDeleteLockRef.current = true;
+                markHistoryCleared();
+            }
             sessionsRef.current = nextSessions;
             setSessions(nextSessions);
             saveToLocal(nextSessions);
