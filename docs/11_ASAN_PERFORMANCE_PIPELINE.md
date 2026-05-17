@@ -29,6 +29,10 @@
   - 기본 chunk size는 100, `nice=10`, `ionice=2/7`로 낮은 우선순위에서 실행한다.
   - `ASAN_PERFORMANCE_CHUNK_SIZE`, `ASAN_PERFORMANCE_NICE`, `ASAN_PERFORMANCE_IONICE_CLASS`, `ASAN_PERFORMANCE_IONICE_LEVEL`로 조정 가능하다.
   - cron 예시: `0 3 * * * cd /volume1/docker/els_home_v1 && bash scripts/import-asan-annual-performance.sh >> logs/asan-annual-performance-cron.log 2>&1`
+- 용량 영향:
+  - 직접 주입은 Docker image/layer/cache를 만들지 않는다.
+  - 남을 수 있는 것은 `web/node_modules` 설치분, cron 로그, Supabase DB 적재량이다.
+  - NAS 확인 명령: `du -sh /volume1/docker/els_home_v1/web/node_modules /volume1/docker/els_home_v1/logs 2>/dev/null`
 - 기본 파일 경로: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`
 - NAS 경로 탐색 기준: 배차판/선적관리와 동일하게 `/app/data/아산지점/...`
 - 기존 `/B_총무/...` 저장값은 백엔드와 웹에서 `/아산지점/B_총무/...`로 자동 보정한다.

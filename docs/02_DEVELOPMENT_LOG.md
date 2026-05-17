@@ -5,6 +5,7 @@
 - 수동 강제 갱신용 `--force` 옵션을 추가했습니다.
 - NAS cron용 `scripts/import-asan-annual-performance.sh`를 추가하고 중복 실행 lock, 기본 chunk size 100, `nice/ionice` 낮은 우선순위를 적용했습니다.
 - 파일이 바뀐 날에는 전체 엑셀을 스캔해 row hash를 비교하지만, DB insert는 신규/변경 행만 수행합니다. 최초 적재는 전체 행이 신규이므로 오래 걸릴 수 있습니다.
+- 직접 주입은 Docker image/layer/cache를 생성하지 않습니다. NAS에 남을 수 있는 로컬 용량은 `web/node_modules` 설치분과 cron 로그 정도이며, 실제 원장 데이터는 Supabase DB에 적재됩니다.
 ### 검증
 - `node --test web/tests/asanAnnualPerformance.test.mjs` 통과
 - `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs"` 0 errors
