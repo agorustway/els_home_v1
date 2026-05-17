@@ -6,6 +6,7 @@ import {
     DEFAULT_ANNUAL_PERFORMANCE_SHEET,
     formatPerformanceAmount,
     getPerformanceChartMax,
+    normalizePerformancePath,
     getPerformanceYearLabel,
     normalizePerformanceColumnOrder,
     reconcilePerformanceLayoutPrefs,
@@ -65,7 +66,7 @@ export default function AsanAnnualPerformance() {
     const [showColPanel, setShowColPanel] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showBrowser, setShowBrowser] = useState(false);
-    const [browserPath, setBrowserPath] = useState('/B_총무/C_마감/합계연간실적');
+    const [browserPath, setBrowserPath] = useState('/아산지점/B_총무/C_마감/합계연간실적');
     const [browserFiles, setBrowserFiles] = useState([]);
     const [browserLoading, setBrowserLoading] = useState(false);
     const [elapsed, setElapsed] = useState('');
@@ -73,7 +74,7 @@ export default function AsanAnnualPerformance() {
 
     useEffect(() => {
         const prefs = readPrefs();
-        setSelectedPath(prefs.path || DEFAULT_ANNUAL_PERFORMANCE_PATH);
+        setSelectedPath(normalizePerformancePath(prefs.path || DEFAULT_ANNUAL_PERFORMANCE_PATH));
         setSheetName(prefs.sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET);
         setHeaderRow(prefs.headerRow || '');
         setColOrder(prefs.colOrder || []);
@@ -134,7 +135,7 @@ export default function AsanAnnualPerformance() {
 
         try {
             const params = new URLSearchParams({
-                path: options.path || selectedPath,
+                path: normalizePerformancePath(options.path || selectedPath),
                 sheet_name: options.sheetName || sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
                 page: String(page),
                 page_size: String(PAGE_SIZE),
@@ -298,17 +299,20 @@ export default function AsanAnnualPerformance() {
             return;
         }
         if (/\.xls[mx]?$/i.test(file.name)) {
-            setSelectedPath(file.path);
-            persistPrefs({ path: file.path });
+            const nextPath = normalizePerformancePath(file.path);
+            setSelectedPath(nextPath);
+            persistPrefs({ path: nextPath });
             setShowBrowser(false);
             setShowSettings(true);
         }
     };
 
     const applySettings = () => {
-        persistPrefs();
+        const nextPath = normalizePerformancePath(selectedPath);
+        setSelectedPath(nextPath);
+        persistPrefs({ path: nextPath });
         setShowSettings(false);
-        fetchData({ page: 1, path: selectedPath, sheetName, headerRow });
+        fetchData({ page: 1, path: nextPath, sheetName, headerRow });
     };
 
     return (

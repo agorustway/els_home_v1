@@ -1,4 +1,19 @@
 
+## [2026-05-17] 아산 연간실적 rel_path 루트 통일 (v5.13.48)
+### 핵심
+- 형이 확인해준 기준대로 연간실적 기본 경로를 배차판/선적관리와 동일한 `/아산지점/...` 루트 규칙으로 통일했습니다.
+- 기본값을 `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`로 바꾸고, 기존 `/B_총무/...` 저장값은 웹/백엔드 모두에서 `/아산지점/B_총무/...`로 자동 보정합니다.
+- 파일 브라우저 시작 위치도 `/아산지점/B_총무/C_마감/합계연간실적`로 맞췄습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs` 통과 (7개)
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py` 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/utils/asanPerformanceView.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-17] 아산 연간실적 NAS 경로 탐색 후보 보강 (v5.13.47)
 ### 핵심
 - 운영 로그의 `연간실적 엑셀 파일을 찾을 수 없습니다` 404를 기준으로, 컨테이너 내부 탐색 후보에 `/app/data/아산지점/...`, `/app/volume2/아산지점/...`, `/app/volume1/아산지점/...`를 추가했습니다.

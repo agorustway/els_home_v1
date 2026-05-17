@@ -1,5 +1,13 @@
-export const DEFAULT_ANNUAL_PERFORMANCE_PATH = '/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
+export const DEFAULT_ANNUAL_PERFORMANCE_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
 export const DEFAULT_ANNUAL_PERFORMANCE_SHEET = '합계';
+
+export function normalizePerformancePath(path = DEFAULT_ANNUAL_PERFORMANCE_PATH) {
+  const raw = String(path || DEFAULT_ANNUAL_PERFORMANCE_PATH).replace(/\\/g, '/').trim();
+  if (raw.startsWith('/B_총무/')) return `/아산지점${raw}`;
+  if (raw.startsWith('B_총무/')) return `/아산지점/${raw}`;
+  if (!raw.startsWith('/')) return `/${raw}`;
+  return raw;
+}
 
 export function normalizePerformanceColumnOrder(order = [], currentHeaders = []) {
   const seen = new Set();

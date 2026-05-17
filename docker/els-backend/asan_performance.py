@@ -18,7 +18,7 @@ from flask import jsonify, request
 from file_sync_gate import StableFileSyncGate
 
 
-DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = "/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"
+DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = "/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"
 DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET = "합계"
 ASAN_VOLUME_BRANCH_ROOTS = ("아산지점",)
 
@@ -38,6 +38,8 @@ def _normalize_performance_path(rel_path=None):
         raw = raw[1:]
     if not raw.startswith("/"):
         raw = f"/{raw}"
+    if raw.startswith("/B_총무/"):
+        raw = f"/아산지점{raw}"
     return raw
 
 
@@ -55,14 +57,16 @@ def _resolve_performance_file(rel_path=None):
 
     for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
         candidates.append(root / normalized.lstrip("/"))
-        for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
-            candidates.append(root / branch_root / normalized.lstrip("/"))
+        if not normalized.startswith("/아산지점/"):
+            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                candidates.append(root / branch_root / normalized.lstrip("/"))
 
     if os.name == "nt":
         for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
             candidates.append(root / normalized.lstrip("/"))
-            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
-                candidates.append(root / branch_root / normalized.lstrip("/"))
+            if not normalized.startswith("/아산지점/"):
+                for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                    candidates.append(root / branch_root / normalized.lstrip("/"))
 
     for candidate in candidates:
         try:
@@ -93,13 +97,15 @@ def _performance_candidate_paths(rel_path=None):
         add(Path(root) / normalized.lstrip("/"))
     for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
         add(root / normalized.lstrip("/"))
-        for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
-            add(root / branch_root / normalized.lstrip("/"))
+        if not normalized.startswith("/아산지점/"):
+            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                add(root / branch_root / normalized.lstrip("/"))
     if os.name == "nt":
         for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
             add(root / normalized.lstrip("/"))
-            for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
-                add(root / branch_root / normalized.lstrip("/"))
+            if not normalized.startswith("/아산지점/"):
+                for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
+                    add(root / branch_root / normalized.lstrip("/"))
     return paths
 
 
