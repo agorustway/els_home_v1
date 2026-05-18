@@ -1,3 +1,14 @@
+## [2026-05-18] NAS els-bot 워커 2개 운영 전환 (v5.13.100)
+### 핵심
+- NAS 스왑 압박을 줄이기 위해 `els-bot`의 Selenium 워커 수를 `ELS_MAX_DRIVERS=2`로 낮췄습니다.
+- 배치 조회 병렬도도 `ELS_BATCH_MAX_WORKERS=2`로 맞춰 Chrome 워커 수보다 많은 작업이 동시에 몰리지 않게 했습니다.
+- 2워커 운영에 맞춰 `ELS_DRIVER_STAGGER_SEQUENCE=0,60`, `ELS_LATE_WORKER_MIN_READY=1`로 조정해 첫 워커를 빨리 열고 두 번째 워커는 60초 뒤 붙도록 했습니다.
+### 검증
+- `git diff --check`: 통과
+### 변경 파일
+- `docker/docker-compose.yml`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 분석섹션 고정 배치 (v5.13.99)
 ### 핵심
 - 분석섹션 탭을 조사범위 컨트롤 바로 아래로 이동해, 탭 전환 때 버튼 줄의 위치가 본문 섹션 높이에 끌려 움직이지 않도록 했습니다.
