@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.02 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.14.03 / APK v5.11.12)
 
-> 최신 업데이트: 모바일에서 아산지점 진입 시 이전 스크롤 위치가 복원되어 중간 카드부터 보이는 문제를 막고 상단 헤더부터 보이도록 보정했습니다.
+> 최신 업데이트: 아산 연간실적 장기 흐름 차트가 KPI 영역에 잘리지 않도록 패널 높이를 확정하고, 범위 버튼/저마진 분석/근거 섹션을 데스크탑 기준으로 재정리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.02
+- **웹 버전**: v5.14.03
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
@@ -16,6 +16,8 @@
   - 연간실적 원장 장기 흐름 패널은 flex shrink를 차단하고 차트 높이/가로 스크롤 래퍼를 고정해 데스크탑에서 그래프가 잘리지 않게 함.
   - 갤럭시 S24 폭 기준 조사범위/분석섹션 버튼은 3열 배치, 월별/차량/매트릭스 표는 내부 가로 스크롤과 `%` 컬럼 여유폭으로 밀림 방지.
   - 모바일 아산지점 진입/배차판 검색 전환 시 window/document/상위 스크롤 컨테이너를 상단으로 초기화.
+  - 연간실적 조사범위 버튼은 `전체 / 최근 12개월 / 최근 24개월 / 최근 3년 / 최근 5년 / 직접`으로 정리.
+  - 저마진/근거 분석은 조사범위 적용 가능한 월별 breakdown만 사용. 기존 전체기간 breakdown이 모든 구간에 섞여 미래산업이 반복 노출되던 문제 차단.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -42,6 +44,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.03**: 원장 장기 흐름 패널 높이를 확정해 KPI 카드에 그래프가 잘리는 문제를 차단. 범위 프리셋을 최근 12/24개월, 3/5년으로 정리하고 공헌도 매트릭스 대신 작업지/청구처/노선/구분 근거 표를 배치. summary breakdown 월별 집계 저장을 추가해 범위별 저마진 분석 기반 마련.
 - **v5.14.02**: 모바일 아산지점 진입 시 이전 스크롤 위치가 복원되는 현상을 방지하고, 배차판 검색 전환도 상단 카드 기준으로 스크롤 초기화.
 - **v5.14.01**: 아산 연간실적 원장 장기 흐름 차트가 flex 스크롤 영역에서 압축되어 보이지 않던 문제를 수정하고, 갤럭시 S24 기준 분석탭/조사범위/차량손익/월별표 `%` 컬럼 밀림을 보정.
 - **v5.14.00**: `els-core` 연간실적 자동 엑셀 파싱을 기본 차단하고, 선적관리/배차판 파싱 완료 후 DataFrame/Workbook/rows/payload/cache 참조를 즉시 비우도록 보강. 배차판은 DB 파일수정일이 최신이면 컨테이너 재시작 후 최초 전체 파싱을 생략.
@@ -56,6 +59,7 @@
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
 - `npm.cmd run build`: 통과 (외부 NAS/WebDAV/API/폰트 fetch는 sandbox EACCES 경고만 표시)
+- 브라우저 로컬 확인: 데스크탑 장기흐름 패널과 KPI 겹침 없음, Galaxy S24 360px 기준 문서 가로 overflow 없음.
 - `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과

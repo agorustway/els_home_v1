@@ -421,17 +421,21 @@ function breakdownColumnIndices(headers, numericCols) {
     .map(item => item.idx);
 }
 
-function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, profit) {
+function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, profit, year = null, month = null) {
   for (const idx of columnIndices) {
     const value = row[idx] || '미분류';
     if (!breakdowns.has(idx)) breakdowns.set(idx, new Map());
     const bucket = breakdowns.get(idx);
-    if (!bucket.has(value)) bucket.set(value, { name: value, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+    if (!bucket.has(value)) bucket.set(value, { name: value, revenue: 0, purchase: 0, profit: 0, rowCount: 0, monthly: new Map() });
     const item = bucket.get(value);
     item.revenue += revenue;
     item.purchase += purchase;
     item.profit += profit;
     item.rowCount += 1;
+    if (year && month) {
+      const period = `${year}-${String(month).padStart(2, '0')}`;
+      addMetric(item.monthly, period, { period, year, month }, revenue, purchase, profit);
+    }
   }
 }
 
@@ -718,6 +722,7 @@ function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, ro
       const rounded = roundItem(item);
       rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
       rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
+      rounded.monthly = finalizeSeries(item.monthly, 240, (a, b) => a.period.localeCompare(b.period));
       return rounded;
     });
     items.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
@@ -799,7 +804,7 @@ function buildSummary(headers, rows) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
-      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month);
       advanced.add(row, year, month, revenue, purchase, profit);
     }
   } else {
@@ -987,7 +992,7 @@ function createSummaryAccumulator(headers, sampleRows) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
-      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit);
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month);
       advanced.add(row, year, month, revenue, purchase, profit);
       return;
     }

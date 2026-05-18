@@ -30,9 +30,9 @@ const ANALYSIS_VIEWS = [
 const SCOPE_PRESETS = [
     { key: 'all', label: '전체' },
     { key: 'recent12', label: '최근 12개월' },
-    { key: 'recent36', label: '최근 36개월' },
+    { key: 'recent24', label: '최근 24개월' },
+    { key: 'recent36', label: '최근 3년' },
     { key: 'recent60', label: '최근 5년' },
-    { key: 'currentYear', label: '최근 연도' },
     { key: 'custom', label: '직접' },
 ];
 
@@ -183,15 +183,12 @@ function getScopeBounds({ mode, periods, start, end }) {
 
     if (mode === 'recent12') {
         nextStart = periods[Math.max(0, periods.length - 12)];
+    } else if (mode === 'recent24') {
+        nextStart = periods[Math.max(0, periods.length - 24)];
     } else if (mode === 'recent36') {
         nextStart = periods[Math.max(0, periods.length - 36)];
     } else if (mode === 'recent60') {
         nextStart = periods[Math.max(0, periods.length - 60)];
-    } else if (mode === 'currentYear') {
-        const year = last.slice(0, 4);
-        const yearPeriods = periods.filter(period => period.startsWith(year));
-        nextStart = yearPeriods[0] || last;
-        nextEnd = yearPeriods[yearPeriods.length - 1] || last;
     } else if (mode === 'custom') {
         nextStart = normalizedStart || first;
         nextEnd = normalizedEnd || last;
@@ -202,6 +199,7 @@ function getScopeBounds({ mode, periods, start, end }) {
         start: nextStart,
         end: nextEnd,
         label: nextStart === nextEnd ? nextStart : `${nextStart} ~ ${nextEnd}`,
+        isFullRange: nextStart === first && nextEnd === last,
     };
 }
 
@@ -256,7 +254,10 @@ function scopeStrategicSegment(segment = {}, scopeBounds = {}, scopedRevenue = 0
 }
 
 function scopePerformanceItem(item = {}, scopeBounds = {}, scopedRevenue = 0) {
-    if (!Array.isArray(item.monthly)) return item;
+    if (!Array.isArray(item.monthly)) {
+        if (scopeBounds.isFullRange || !scopeBounds.start || !scopeBounds.end) return item;
+        return { ...item, monthly: [], revenue: 0, purchase: 0, profit: 0, rowCount: 0, revenueShare: 0, profitRate: 0, scopeUnavailable: true };
+    }
     const scopedMonthly = filterSeriesByScope(item.monthly, scopeBounds);
     if (!scopedMonthly.length) return { ...item, monthly: [], revenue: 0, purchase: 0, profit: 0, rowCount: 0, revenueShare: 0, profitRate: 0 };
     const totals = sumSeriesMetrics(scopedMonthly);
@@ -784,7 +785,12 @@ export default function AsanAnnualPerformance() {
     const activeBreakdown = useMemo(() => (
         dimensionOptions.find(section => section.column === activeDimension) || dimensionOptions[0] || null
     ), [dimensionOptions, activeDimension]);
-    const activeItems = useMemo(() => (activeBreakdown?.items || []).filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)), [activeBreakdown]);
+    const activeItems = useMemo(() => (
+        (activeBreakdown?.items || [])
+            .map(item => scopePerformanceItem(item, scopeBounds, scopedTotals.revenue))
+            .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
+            .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
+    ), [activeBreakdown, scopeBounds, scopedTotals.revenue]);
     const topSegment = activeItems[0] || topGroups[0] || null;
     const top3Share = sumField(activeItems.slice(0, 3), 'revenueShare');
     const top10Share = sumField(activeItems.slice(0, 10), 'revenueShare');
@@ -800,6 +806,25 @@ export default function AsanAnnualPerformance() {
         .slice()
         .sort((a, b) => profitRateOf(b) - profitRateOf(a))
         .slice(0, 5);
+    const overviewEvidenceSections = useMemo(() => {
+        const specs = [
+            { label: '작업지', tokens: ['작업지'] },
+            { label: '청구처', tokens: ['청구처'] },
+            { label: '노선', tokens: ['노선'] },
+            { label: '구분', tokens: ['구분'] },
+        ];
+        return specs.map(spec => {
+            const section = dimensionOptions.find(candidate => (
+                spec.tokens.some(token => String(candidate.column || '').includes(token))
+            ));
+            const items = (section?.items || [])
+                .map(item => scopePerformanceItem(item, scopeBounds, scopedTotals.revenue))
+                .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
+                .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
+                .slice(0, 12);
+            return { label: spec.label, items };
+        });
+    }, [dimensionOptions, scopeBounds, scopedTotals.revenue]);
     const bridgeMax = Math.max(1, Math.abs(scopedTotals.revenue), Math.abs(scopedTotals.purchase), Math.abs(scopedTotals.profit));
     const executiveNotes = buildExecutiveNotes({
         profitRate,
@@ -1194,52 +1219,6 @@ export default function AsanAnnualPerformance() {
                         </section>
                     </div>
 
-                    <section className={`${styles.panel} ${styles.matrixPanel}`}>
-                        <div className={styles.panelHeader}>
-                            <h3>공헌도 매트릭스</h3>
-                            <span>{activeBreakdown?.column || '그룹'} 기준 상위 10</span>
-                        </div>
-                        <div className={styles.dimensionTabs}>
-                            {dimensionOptions.map(section => (
-                                <button
-                                    key={section.column}
-                                    className={activeBreakdown?.column === section.column ? styles.dimensionActive : ''}
-                                    onClick={() => setActiveDimension(section.column)}
-                                >
-                                    {section.column}
-                                </button>
-                            ))}
-                        </div>
-                        {activeItems.length === 0 ? (
-                            <div className={styles.emptyPanel}>세그먼트 분석 데이터가 아직 없습니다.</div>
-                        ) : (
-                            <div className={styles.matrixTable}>
-                                <div className={styles.matrixHead}>
-                                    <span>순위</span>
-                                    <span>항목</span>
-                                    <span>매출</span>
-                                    <span>매입</span>
-                                    <span>손익</span>
-                                    <span>손익률</span>
-                                    <span>비중</span>
-                                    <span>건수</span>
-                                </div>
-                                {activeItems.slice(0, 10).map((item, idx) => (
-                                    <div className={styles.matrixRow} key={`${activeBreakdown?.column}-${item.name}-${idx}`}>
-                                        <span className={styles.rankNo}>{idx + 1}</span>
-                                        <span className={styles.rankName}>{item.name || '미분류'}</span>
-                                        <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                        <span>{formatPerformanceAmount(item.purchase)}</span>
-                                        <strong className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</strong>
-                                        <span className={profitRateOf(item) < profitRate ? styles.warningText : ''}>{formatPercent(profitRateOf(item))}</span>
-                                        <span>{formatPercent(item.revenueShare)}</span>
-                                        <span>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </section>
-
                     <div className={styles.portfolioGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
@@ -1296,23 +1275,30 @@ export default function AsanAnnualPerformance() {
                         </section>
                     </div>
 
-                    <div className={styles.dimensionSummaryGrid}>
-                        {dimensionOptions.slice(0, 6).map(section => {
-                            const item = section.items?.[0];
-                            return (
-                                <section className={styles.dimensionCard} key={section.column}>
-                                    <div>
-                                        <span>{section.column}</span>
-                                        <strong>{item?.name || '미분류'}</strong>
-                                    </div>
-                                    <div className={styles.dimensionStats}>
-                                        <b>{item ? formatPerformanceAmount(item.revenue) : '-'}</b>
-                                        <em>비중 {item ? formatPercent(item.revenueShare) : '-'}</em>
-                                        <em>손익률 {item ? formatPercent(profitRateOf(item)) : '-'}</em>
-                                    </div>
-                                </section>
-                            );
-                        })}
+                    <div className={`${styles.segmentDetailGrid} ${styles.overviewEvidenceGrid}`}>
+                        {overviewEvidenceSections.map(({ label, items }) => (
+                            <section className={styles.panel} key={label}>
+                                <div className={styles.panelHeader}>
+                                    <h3>{label} 근거</h3>
+                                    <span>상위 12</span>
+                                </div>
+                                <div className={styles.compactList}>
+                                    {items.length === 0 ? (
+                                        <div className={styles.emptyMini}>근거 데이터 없음</div>
+                                    ) : items.map((item, idx) => (
+                                        <button
+                                            className={styles.compactButtonRow}
+                                            key={`${label}-${item.name}-${idx}`}
+                                            onClick={() => openDetailSearch([item.name], 'and')}
+                                        >
+                                            <span>{item.name || '미분류'}</span>
+                                            <b>{formatPerformanceAmount(item.revenue)}</b>
+                                            <em>{formatPercent(profitRateOf(item), 1)}</em>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
                     </div>
 
                     <section className={styles.detectPanel}>

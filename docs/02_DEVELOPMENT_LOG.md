@@ -1,3 +1,23 @@
+## [2026-05-18] 아산 연간실적 장기흐름/범위 분석 재보정 (v5.14.03)
+### 핵심
+- 원장 장기 흐름 차트 패널 자체에 고정 높이를 부여하고 분석 컨테이너의 숨김 overflow를 풀어 KPI 카드가 그래프 하단을 덮지 않게 했습니다.
+- 조사범위 버튼을 `전체 / 최근 12개월 / 최근 24개월 / 최근 3년 / 최근 5년 / 직접`으로 정리하고, 중복 의미였던 `최근 연도`를 제거했습니다.
+- 개요 하단의 공헌도 매트릭스는 제거하고 데스크탑 기준의 `작업지/청구처/노선/구분 근거` 표로 대체했습니다.
+- 미래산업이 모든 구간의 저마진 주의에 반복 노출되던 원인은 전체기간 breakdown을 범위 분석에 그대로 사용한 구조였습니다. 화면은 월별 breakdown이 없는 항목을 비전체 범위 분석에서 제외하고, import summary에는 breakdown별 월별 집계를 저장하도록 보강했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+- 인앱 브라우저 로컬 검증: 데스크탑 장기흐름 패널과 KPI 겹침 없음, Galaxy S24 360px 기준 문서 가로 overflow 없음. 로컬 DB 접근 제한으로 실데이터 대신 레이아웃 치수와 버튼/섹션 표시를 검증했습니다.
+### 운영 메모
+- 배포 후 NAS에서 `summary-only --force`를 1회 실행하면 Supabase summary에 breakdown 월별 집계가 채워져 범위별 저마진/근거 분석이 더 정확해집니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산지점 모바일 진입 스크롤 상단 고정 (v5.14.02)
 ### 핵심
 - 모바일에서 아산지점 메뉴를 다시 누를 때 브라우저가 이전 현황판 중간 위치를 복원해 보이던 문제를 보정했습니다.
