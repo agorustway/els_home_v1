@@ -10,6 +10,7 @@ const LOW_SPEED_KMH = 15;
 const STATIONARY_SPEED_KMH = 4;
 const LOW_SPEED_JUMP_KM = 0.08;
 const STATIONARY_JUMP_KM = 0.06;
+const STALE_REPLAY_RADIUS_KM = 0.008;
 
 export function toTripTime(trip) {
     const raw = trip?.lastLocation?.recorded_at
@@ -209,6 +210,54 @@ export function shouldAcceptLocation({ current, previous, next = null, forced = 
     return { ok: true, reason: 'accepted' };
 }
 
+export function detectStaleReplayLocation({ current, latest = null, history = [] }) {
+    if (!current || !latest) return { ok: true, reason: 'no_compare' };
+
+    const sourceText = String(current.source || current.method || '').toLowerCase();
+    const isNativeBackground = sourceText.includes('android_bg') || sourceText.includes('native_bg') || sourceText.includes('background');
+    if (!isNativeBackground) return { ok: true, reason: 'source_not_replay_prone' };
+
+    const speed = normalizeSpeedKmh(current.speed);
+    if (speed > STATIONARY_SPEED_KMH) return { ok: true, reason: 'moving_source' };
+
+    const lat = Number(current.lat);
+    const lng = Number(current.lng);
+    const latestLat = Number(latest.lat);
+    const latestLng = Number(latest.lng);
+    if (![lat, lng, latestLat, latestLng].every(Number.isFinite)) return { ok: true, reason: 'invalid_compare' };
+
+    const currentTime = getPointTime(current) || Date.now();
+    const latestTime = getPointTime(latest) || currentTime;
+    const latestDist = haversineKm(latestLat, latestLng, lat, lng);
+    const latestSec = Math.max(1, (currentTime - latestTime) / 1000);
+    const latestImpliedSpeed = latestDist / (latestSec / 3600);
+
+    if (latestDist < 0.12 || latestImpliedSpeed < 80) {
+        return { ok: true, reason: 'plausible_return' };
+    }
+
+    for (const previous of history || []) {
+        if (!previous || previous === latest) continue;
+        const prevTime = getPointTime(previous);
+        if (!prevTime || currentTime - prevTime < 15_000) continue;
+        const prevLat = Number(previous.lat);
+        const prevLng = Number(previous.lng);
+        if (![prevLat, prevLng].every(Number.isFinite)) continue;
+        const replayDist = haversineKm(prevLat, prevLng, lat, lng);
+        if (replayDist <= STALE_REPLAY_RADIUS_KM) {
+            return {
+                ok: false,
+                reason: 'stale_replay',
+                latestDist,
+                latestImpliedSpeed,
+                replayDist,
+            };
+        }
+    }
+
+    return { ok: true, reason: 'no_replay_match' };
+}
+
 export function shouldStoreLocation({ current, previous, forced = false, fastMode = false }) {
     if (forced || !previous) return { ok: true, reason: forced ? 'forced' : 'first' };
 
@@ -268,6 +317,59 @@ export function filterRouteLocations(locations = []) {
     return filtered;
 }
 
+export function simplifyRouteLocations(locations = []) {
+    const points = locations
+        .filter(Boolean)
+        .map((l) => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
+        .filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
+        .sort((a, b) => getPointTime(a) - getPointTime(b));
+
+    if (points.length <= 3) return points;
+
+    const simplified = [points[0]];
+    for (let i = 1; i < points.length - 1; i += 1) {
+        const current = points[i];
+        const previous = simplified[simplified.length - 1];
+        const next = points[i + 1];
+
+        if (current.marker_type) {
+            simplified.push(current);
+            continue;
+        }
+
+        const prevDist = haversineKm(previous.lat, previous.lng, current.lat, current.lng);
+        const nextDist = haversineKm(current.lat, current.lng, next.lat, next.lng);
+        const bridgeDist = haversineKm(previous.lat, previous.lng, next.lat, next.lng);
+        const speed = normalizeSpeedKmh(current.speed || previous.speed || next.speed);
+        const minKeepKm = speed < LOW_SPEED_KMH ? 0.035 : (speed < 45 ? 0.05 : 0.07);
+
+        if (prevDist < minKeepKm && nextDist < minKeepKm * 1.4) continue;
+
+        const jitterPocket = prevDist < 0.09
+            && nextDist < 0.09
+            && bridgeDist < Math.max(0.025, (prevDist + nextDist) * 0.65);
+        if (jitterPocket && speed < 45) continue;
+
+        const incoming = bearingDeg(previous.lat, previous.lng, current.lat, current.lng);
+        const outgoing = bearingDeg(current.lat, current.lng, next.lat, next.lng);
+        const turn = angleDiffDeg(incoming, outgoing);
+        if (turn != null && turn > 35 && (prevDist > 0.035 || nextDist > 0.035)) {
+            simplified.push(current);
+            continue;
+        }
+
+        if (prevDist >= minKeepKm) simplified.push(current);
+    }
+
+    const last = points[points.length - 1];
+    const prev = simplified[simplified.length - 1];
+    if (!prev || haversineKm(prev.lat, prev.lng, last.lat, last.lng) > 0.01 || last.marker_type) {
+        simplified.push(last);
+    }
+
+    return simplified.length >= 2 ? simplified : points;
+}
+
 export function trimEndpointOutliers(points = []) {
     let list = points.filter((p) => isCoordinateInKorea(Number(p.lat), Number(p.lng)));
     if (list.length < 3) return list;
@@ -310,13 +412,14 @@ export function trimEndpointOutliers(points = []) {
 
 export function sampleRouteWaypoints(locations = [], maxWaypoints = 12) {
     const clean = filterRouteLocations(locations);
-    if (clean.length <= 2) return { clean, waypoints: [] };
-    const middle = clean.slice(1, -1);
-    if (middle.length <= maxWaypoints) return { clean, waypoints: middle };
+    const routePoints = simplifyRouteLocations(clean);
+    if (routePoints.length <= 2) return { clean: routePoints, waypoints: [] };
+    const middle = routePoints.slice(1, -1);
+    if (middle.length <= maxWaypoints) return { clean: routePoints, waypoints: middle };
     const step = (middle.length - 1) / Math.max(1, maxWaypoints - 1);
     const waypoints = [];
     for (let i = 0; i < maxWaypoints; i += 1) {
         waypoints.push(middle[Math.round(i * step)]);
     }
-    return { clean, waypoints };
+    return { clean: routePoints, waypoints };
 }

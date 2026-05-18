@@ -6,13 +6,13 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5155';
-import { smartFetch, remoteLog } from './bridge.js?v=5155';
-import { showToast } from './utils.js?v=5155';
-import { showScreen } from './nav.js?v=5155';
-import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5155';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5155';
-import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5155';
+import { State, BASE_URL } from './store.js?v=5156';
+import { smartFetch, remoteLog } from './bridge.js?v=5156';
+import { showToast } from './utils.js?v=5156';
+import { showScreen } from './nav.js?v=5156';
+import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5156';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5156';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5156';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -411,6 +411,8 @@ function drawPolyline(path, options = {}) {
 
   if (filteredPath.length === 0) return;
   _lastRouteAppendPoint = filteredPath[filteredPath.length - 1] || null;
+  const isCompletedRoute = options.isCompleted !== false;
+  const endColor = isCompletedRoute ? '#dc2626' : '#2563eb';
 
   const latLngs = filteredPath.map(l => new naver.maps.LatLng(l.lat, l.lng));
 
@@ -435,14 +437,20 @@ function drawPolyline(path, options = {}) {
   _endMarker = new naver.maps.Marker({
     position : latLngs[latLngs.length - 1],
     map      : _map,
-    icon     : makeWaypointIcon('#dc2626'),
+    icon     : makeWaypointIcon(endColor),
     zIndex   : 201,
   });
 
   // 하단 패널 높이를 감안한 여백으로 fitBounds
   try {
-    const bounds = _polyline.getBounds();
-    _map.fitBounds(bounds, { top: 60, right: 20, bottom: 230, left: 20 });
+    if (options.fitBounds === false) {
+      const last = latLngs[latLngs.length - 1];
+      _map.panTo(last, { duration: 450, easing: 'easeOutCubic' });
+      if (_map.getZoom() < MAP_FOCUS_ZOOM) _map.setZoom(MAP_FOCUS_ZOOM, true);
+    } else {
+      const bounds = _polyline.getBounds();
+      _map.fitBounds(bounds, { top: 60, right: 20, bottom: 230, left: 20 });
+    }
   } catch (_) {
     _map.setCenter(latLngs[latLngs.length - 1]);
     _map.setZoom(13, true);
@@ -587,7 +595,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5155');
+    const { loadCurrentTrip } = await import('./trip.js?v=5156');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -676,7 +684,8 @@ function toggleVehicleZoom(trip) {
 
 /** 특정 차량의 경로를 지도 위에 표시 */
 export async function showTripRouteOnMap(trip, options = {}) {
-  _autoFollow = false; // 상세보기 중에는 지도 카메라를 고정한다.
+  const isActiveOwnTrip = isMyTrip(trip) && trip.status === 'driving';
+  _autoFollow = isActiveOwnTrip; // 내 운행 중 차량은 상세 경로를 봐도 네비 추적을 유지한다.
   _routeTripId = trip.id;
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');
 
@@ -696,8 +705,12 @@ export async function showTripRouteOnMap(trip, options = {}) {
 
   if (!path.length) { showToast('경로 데이터가 없습니다.'); return; }
 
-  drawPolyline(path, { alreadyMatched: path._matchedSource === 'naver-directions15' });
-  if (options.toggleZoom) toggleVehicleZoom(trip);
+  drawPolyline(path, {
+    alreadyMatched: path._matchedSource === 'naver-directions15',
+    isCompleted: trip.status === 'completed',
+    fitBounds: !isActiveOwnTrip,
+  });
+  if (options.toggleZoom && !isActiveOwnTrip) toggleVehicleZoom(trip);
 
   // 경로 패널 표시
   const panel = document.getElementById('map-route-panel');
@@ -714,6 +727,9 @@ export async function showTripRouteOnMap(trip, options = {}) {
       const s = cleanPath[0] || path[0];
       const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
       const stats = buildRouteStats(trip, rawLocations.length ? rawLocations : cleanPath);
+      const isCompleted = trip.status === 'completed';
+      const endLabel = isCompleted ? '도착' : '현재';
+      const endColor = isCompleted ? '#dc2626' : '#2563eb';
 
       const statsHtml = [
         `<div><b>총운행시간</b>: ${stats.duration}</div>`,
@@ -724,7 +740,7 @@ export async function showTripRouteOnMap(trip, options = {}) {
       bodyEl.innerHTML = `
         <div style="font-size:12px;color:#64748b;line-height:1.9;">
           <div><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:50%;margin-right:6px;"></span><b>입차</b>: ${s.address  || `${s.lat?.toFixed(5)}, ${s.lng?.toFixed(5)}`}</div>
-          <div><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;margin-right:6px;"></span><b>마지막</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
+          <div><span style="display:inline-block;width:10px;height:10px;background:${endColor};border-radius:50%;margin-right:6px;"></span><b>${endLabel}</b>: ${e.address  || `${e.lat?.toFixed(5)}, ${e.lng?.toFixed(5)}`}</div>
           <div><b>기록</b>: ${cleanPath.length}개 보정 포인트 / 원본 ${path.length}개</div>
           ${statsHtml}
         </div>`;

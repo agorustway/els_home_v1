@@ -69,6 +69,8 @@ public class FloatingWidgetService extends Service {
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationCallback mLocationCallback;
     private Location mLastLocation;
+    private Location mLastNativePostedLocation;
+    private long mLastNativePostedAtMs = 0;
     private long mLastSendTime = 0;
     private long mCurrentIntervalMs = 60_000; // 기본 60초
 
@@ -103,6 +105,7 @@ public class FloatingWidgetService extends Service {
     // [v4.2.48] GPS 상태 watchdog (JS 의존 없이 네이티브 자체 판단)
     private static final long GPS_DEAD_THRESHOLD_MS = 15_000;
     private static final long GPS_CHECK_INTERVAL_MS = 2_000;
+    private static final float NATIVE_ACCURACY_HARD_SKIP_M = 120f;
     private long mLastGpsCheckTime = 0;
 
     // [v4.2.50] 네이티브 역지오코딩 주기 (30초마다 한 번)
@@ -685,6 +688,64 @@ public class FloatingWidgetService extends Service {
         mSensorManager.registerListener(mGyroListener, gyro, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
+    private long getLocationTimeMs(Location location) {
+        if (location == null) return System.currentTimeMillis();
+        long time = location.getTime();
+        return time > 0 ? time : System.currentTimeMillis();
+    }
+
+    private String formatIsoUtc(long timeMs) {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return sdf.format(new java.util.Date(timeMs));
+    }
+
+    private double adaptiveNativeSpeedLimit(float speedKph) {
+        if (speedKph <= 4f) return 60d;
+        if (speedKph < 15f) return 90d;
+        return Math.min(145d, Math.max(105d, speedKph + 45d));
+    }
+
+    private boolean isNativeLocationPlausible(Location location, float speedKph, boolean allowMarker) {
+        if (location == null) return false;
+        if (!allowMarker && location.hasAccuracy() && location.getAccuracy() > NATIVE_ACCURACY_HARD_SKIP_M) {
+            sendNativeWebLog("NATIVE_GPS_SKIP", "저정밀 GPS skip acc=" + location.getAccuracy());
+            return false;
+        }
+        if (mLastNativePostedLocation == null) return true;
+
+        long currTime = getLocationTimeMs(location);
+        long prevTime = getLocationTimeMs(mLastNativePostedLocation);
+        if (!allowMarker && currTime + 1_000 < prevTime) {
+            sendNativeWebLog("NATIVE_GPS_SKIP", "과거 캐시 GPS skip");
+            return false;
+        }
+
+        float distKm = mLastNativePostedLocation.distanceTo(location) / 1000f;
+        double elapsedSec = Math.max(1d, (currTime - prevTime) / 1000d);
+        double impliedKmh = distKm / (elapsedSec / 3600d);
+        float sensorSpeed = Math.max(0f, speedKph);
+
+        if (!allowMarker && distKm < 0.03f && System.currentTimeMillis() - mLastNativePostedAtMs < 90_000) {
+            return false;
+        }
+        if (!allowMarker && distKm > 0.05f && impliedKmh > adaptiveNativeSpeedLimit(sensorSpeed)) {
+            sendNativeWebLog("NATIVE_GPS_SKIP", String.format(Locale.US, "불가능속도 skip dist=%.0fm imp=%.0f", distKm * 1000f, impliedKmh));
+            return false;
+        }
+        if (!allowMarker && sensorSpeed <= 4f && distKm > 0.06f && impliedKmh > 25d) {
+            sendNativeWebLog("NATIVE_GPS_SKIP", String.format(Locale.US, "정차점프 skip dist=%.0fm imp=%.0f", distKm * 1000f, impliedKmh));
+            return false;
+        }
+        return true;
+    }
+
+    private void rememberNativePostedLocation(Location location) {
+        if (location == null) return;
+        mLastNativePostedLocation = new Location(location);
+        mLastNativePostedAtMs = System.currentTimeMillis();
+    }
+
     // ─── 위치 서버 전송 ───────────────────────────────────────────
     private void sendLocationToServer(final Location location, final float speedKph) {
         // [v4.2.50] HandlerThread 사용 — GPS 콜백마다 new Thread() 생성 제거
@@ -696,6 +757,18 @@ public class FloatingWidgetService extends Service {
      * @param markerType null=일반, TRIP_START, TRIP_END, TRIP_PAUSE, TRIP_RESUME, GPS_TURN
      */
     private void sendLocationToServerWithMarker(final Location location, final float speedKph, final String markerType) {
+        Location candidateLocation = location;
+        float candidateSpeedKph = speedKph;
+        if (markerType == null || markerType.isEmpty()) {
+            if (!isNativeLocationPlausible(candidateLocation, candidateSpeedKph, false)) return;
+        } else if ("TRIP_END".equals(markerType) && mLastNativePostedLocation != null
+                && !isNativeLocationPlausible(candidateLocation, 0f, false)) {
+            candidateLocation = new Location(mLastNativePostedLocation);
+            candidateSpeedKph = 0f;
+        }
+
+        final Location outboundLocation = candidateLocation;
+        final float outboundSpeedKph = candidateSpeedKph;
         // HandlerThread(mNetworkHandler)에서 호출되므로 new Thread 불필요 — 직접 실행
         Runnable task = () -> {
             try {
@@ -709,14 +782,15 @@ public class FloatingWidgetService extends Service {
 
                 JSONObject jsonBody = new JSONObject();
                 jsonBody.put("trip_id", mTripId != null ? mTripId : "");
-                jsonBody.put("lat", location.getLatitude());
-                jsonBody.put("lng", location.getLongitude());
+                jsonBody.put("lat", outboundLocation.getLatitude());
+                jsonBody.put("lng", outboundLocation.getLongitude());
                 jsonBody.put("source", "android_bg");
-                if (speedKph >= 0) jsonBody.put("speed", speedKph);
+                if (outboundSpeedKph >= 0) jsonBody.put("speed", outboundSpeedKph);
                 if (markerType != null && !markerType.isEmpty()) jsonBody.put("marker_type", markerType);
                 
-                float accuracy = location.hasAccuracy() ? location.getAccuracy() : 0f;
+                float accuracy = outboundLocation.hasAccuracy() ? outboundLocation.getAccuracy() : 0f;
                 jsonBody.put("accuracy", accuracy);
+                jsonBody.put("recorded_at", formatIsoUtc(getLocationTimeMs(outboundLocation)));
 
                 String body = jsonBody.toString();
 
@@ -726,6 +800,7 @@ public class FloatingWidgetService extends Service {
                 // [v4.2.57] 네트워크 HTTP 처리 및 CCTV 전송 보강
                 if (respCode >= 200 && respCode < 300) {
                     conn.getInputStream().close();
+                    if (markerType == null || markerType.isEmpty()) rememberNativePostedLocation(outboundLocation);
                     sendNativeWebLog("NATIVE_POST_OK", "전송성공:" + respCode);
                 } else {
                     java.io.InputStream es = conn.getErrorStream();

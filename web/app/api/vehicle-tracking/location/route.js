@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
-import { sanitizeRecordedAt, shouldAcceptLocation, shouldStoreLocation } from '@/utils/vehicleLocation.mjs';
+import { detectStaleReplayLocation, sanitizeRecordedAt, shouldAcceptLocation, shouldStoreLocation } from '@/utils/vehicleLocation.mjs';
 
 /**
  * POST /api/vehicle-tracking/location
@@ -45,15 +45,32 @@ export async function POST(request) {
 
         const { data: previousLocations } = await supabase
             .from('vehicle_locations')
-            .select('lat,lng,accuracy,speed,address,recorded_at,marker_type')
+            .select('lat,lng,accuracy,speed,address,recorded_at,method')
             .eq('trip_id', trip_id)
             .order('recorded_at', { ascending: false })
-            .limit(2);
+            .limit(8);
 
         const latestLocation = previousLocations?.[0] || null;
         const olderLocation = previousLocations?.[1] || null;
-        const currentPoint = { lat, lng, accuracy, speed: speedKmh, recorded_at: recordedAt, marker_type };
+        const currentPoint = { lat, lng, accuracy, speed: speedKmh, recorded_at: recordedAt, marker_type, method: source || method, source };
         let previousForDecision = latestLocation;
+
+        if (!marker_type) {
+            const replayDecision = detectStaleReplayLocation({
+                current: currentPoint,
+                latest: latestLocation,
+                history: previousLocations || [],
+            });
+            if (!replayDecision.ok) {
+                return NextResponse.json({
+                    skipped: true,
+                    reason: replayDecision.reason,
+                    address: latestLocation?.address || null,
+                }, {
+                    headers: { 'Access-Control-Allow-Origin': '*' }
+                });
+            }
+        }
 
         // 이미 저장된 직전 점이 튀었다가 현재 점이 원래 경로로 복귀한 상황이면,
         // 현재 정상점을 버리지 않도록 그 이전 점을 기준으로 판정한다.

@@ -1,3 +1,28 @@
+## [2026-05-18] 차량위치관제 stale GPS replay 및 운행 중 경로 표시 보정 (v5.14.14 / APK v5.11.15)
+### 분석
+- 12가0140 2026-05-18 17시대 테스트 3건을 Supabase 원시 좌표로 확인했습니다.
+- 1번 운행은 정확도 3~5m, 불가능 속도 0건으로 좌표 자체보다 아파트 단지/저속 구간의 촘촘한 `map_foreground` 샘플을 도로 경로로 과신한 문제가 컸습니다.
+- 2번 운행은 `android_bg`가 36.9208965, 127.0432539 좌표를 반복 재전송하며 0~1초 사이 0.8~1.5km 왕복 튐이 저장된 것이 확인됐습니다.
+- 3번 운행은 터널 전후 36.8908607, 127.0342280 좌표가 반복 재등장하며 최대 3.2km / 9,098km/h급 불가능 구간이 생겼고, 화면을 끈 뒤에는 native 경로가 비교적 안정적으로 이어졌습니다.
+### 핵심
+- 서버 위치 수신 API에서 운영 DB에 없는 `marker_type` select 의존을 제거하고, 최근 8개 좌표 기준 `android_bg`/native 캐시 좌표 재등장을 `stale_replay`로 거부합니다.
+- Android 네이티브 `FloatingWidgetService`가 서버에 직접 보내는 `android_bg`도 전송 전 정확도·시간역전·불가능 속도·정차점프를 필터하고, `recorded_at`을 함께 보내 서버가 오래된 캐시 위치를 판별할 수 있게 했습니다.
+- Naver Directions waypoint는 저속/단지 내부 지그재그를 단순화한 점으로 요청해, 촘촘한 원시 좌표를 모두 경유지로 과신하지 않게 했습니다.
+- 운행 중 내 차량 마커를 누르면 빨간 종료점이 아니라 파란 현재점으로 표시하고 자동추적을 유지해, 앱 지도 확인 중 운행이 종료된 것처럼 보이는 혼선을 줄였습니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs`: 12개 통과
+- `npm.cmd run lint`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.15 / 5156 APK 빌드 및 배포 위치 복사 완료
+- APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.15`, `BUILD_CODE 5156` 확인
+- `git diff --check`: 통과 (version.json line-ending 경고만 표시)
+### 변경 파일
+- `web/utils/vehicleLocation.mjs`, `web/app/api/vehicle-tracking/location/route.js`
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/driver-src/modules/map.js`, `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/tests/vehicleLocation.test.mjs`
+- Android 버전/캐시버스터/APK 산출물: `web/android/app/build.gradle`, `web/driver-src/**`, `web/public/apk/**`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 선적관리 미선적 필터 이력구분 기준 보정 (v5.14.13)
 ### 핵심
 - 컨테이너 이력조회값이 있는 행은 날짜보다 이력구분을 우선해 `반입/적하`만 선적완료로 판정합니다.

@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL (v5.14.13 / APK v5.11.14)
+# ELS MISSION CONTROL (v5.14.14 / APK v5.11.15)
 
-> 최신 업데이트: 선적관리 미선적 필터를 컨테이너 이력구분 기준으로 보정했습니다.
+> 최신 업데이트: 차량위치관제 실제 12가0140 테스트 3건을 분석해 안드로이드 캐시 좌표 재등장과 운행 중 경로 표시 혼선을 보정했습니다.
 
 ## CURRENT STATUS
 - **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
-- **웹 버전**: v5.14.13
-- **APK 버전**: v5.11.14
+- **웹 버전**: v5.14.14
+- **APK 버전**: v5.11.15
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 안전운임 상단 탭 순서를 `구간별운임 → 거리별운임 → 구간조회 → 이외구간`으로 정리.
+  - 차량위치관제는 `android_bg`가 예전 좌표를 0km/h로 재전송하는 stale replay를 서버와 네이티브 앱 양쪽에서 차단하고, 운행 중 내 차량 마커 클릭 시 현재점/자동추적을 유지.
   - 선적관리 미선적 필터는 이력조회값이 있으면 `반입/적하`만 완료로 보고, 이외 이력은 작업일과 무관하게 미선적으로 판정.
   - 선적관리 컨테이너 조회 세션을 브라우저에 저장하고, 페이지 복귀 시 저장된 이력 결과를 기준으로 완료/실패/미확인 건수를 이어 표시.
   - 안전운임 주소 검색은 안전운임 데이터 키 기준으로 시도·시군구·행정동을 한 번에 정규화하고, 지도 경로조회는 터미널 키 기반으로 인천국제여객 구간운임을 우선 매칭.
@@ -35,7 +36,7 @@
 | Supabase 인증/DB | 정상 | 연간실적 current snapshot 368,617행 기준 조회 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 잔여 Chrome 정리 보강 |
-| Android 드라이버 앱 | 정상 | APK v5.11.14 빌드 완료 |
+| Android 드라이버 앱 | 정상 | APK v5.11.15 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -53,6 +54,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.14**: 12가0140 2026-05-18 17시대 테스트 3건 기준으로 GPS 튐을 재분석. 1번은 좌표 자체보다 촘촘한 전경 샘플/도로 매칭 과신 문제, 2·3번은 `android_bg` 캐시 좌표 재등장으로 확인. 서버 stale replay 필터, Android 네이티브 전송 전 물리 필터와 `recorded_at`, 경로 waypoint 단순화, 운행 중 현재점 표시를 적용. APK v5.11.15 / 5156 빌드.
 - **v5.14.13**: 선적관리 미선적 필터 기준을 `작업일 이후 MOVE TIME` 우선에서 컨테이너 이력구분 우선으로 보정. 이력조회값이 없는 행은 작업일이 지난 경우만 미선적 후보로 유지.
 - **v5.14.12**: 선적관리 컨테이너 조회 상태를 `localStorage` 세션으로 보존하고 4초 주기로 저장 결과를 복원. 시작 이후 저장된 이력만 완료로 인정해 이전 조회 결과와 섞이지 않게 함.
 - **v5.14.11**: 안전운임 탭 렌더 순서를 조정해 지도 기반 `구간조회` 버튼을 `이외구간` 앞에 배치.
@@ -75,6 +77,11 @@
 - **v5.13.98**: 관리자 문의/회원권한/활동로그 화면을 인트라넷 톤으로 재정리하고 로그 조회 경로를 `/api/admin/logs`로 복구.
 
 ## VERIFICATION
+- `node --test web/tests/vehicleLocation.test.mjs`: 12개 통과
+- `npm.cmd run lint`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.15 / 5156 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료
+- APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.15`, `BUILD_CODE 5156` 확인
+- `git diff --check`: 통과 (version.json line-ending 경고만 표시)
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - `npm.cmd run lint -- "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 0 errors

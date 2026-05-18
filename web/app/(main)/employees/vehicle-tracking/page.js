@@ -280,7 +280,7 @@ export default function VehicleTrackingPage() {
         // [v4.5.12][Fix] naver 전역 + mapRef 동시 체크 — 미초기화 시 retry
         if (!window.naver?.maps || !mapInstanceRef.current || !locations?.length) {
             if (retries > 0 && locations?.length) {
-                setTimeout(() => drawTripPath(locations, retries - 1), 300);
+                setTimeout(() => drawTripPath(locations, retries - 1, options), 300);
             }
             return;
         }
@@ -290,6 +290,9 @@ export default function VehicleTrackingPage() {
         markersRef.current = [];
 
         const filteredLocs = options.alreadyMatched ? locations : filterRouteLocations(locations);
+        const isCompletedRoute = options.isCompleted !== false;
+        const endMarkerColor = isCompletedRoute ? '#ef4444' : '#2563eb';
+        const endMarkerLabel = isCompletedRoute ? 'E' : 'C';
 
         if (filteredLocs.length === 0) return;
         const path = filteredLocs.map(l => new naver.maps.LatLng(l.lat, l.lng));
@@ -327,7 +330,7 @@ export default function VehicleTrackingPage() {
                     content: isStart ? 
                         '<div style="width:32px;height:32px;background:#10b981;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;z-index:999;">S</div>' :
                         isEnd ? 
-                        '<div style="width:32px;height:32px;background:#ef4444;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;z-index:999;">E</div>' :
+                        `<div style="width:32px;height:32px;background:${endMarkerColor};border:3px solid #fff;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;z-index:999;">${endMarkerLabel}</div>` :
                         '<div style="width:12px;height:12px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
                     anchor: new naver.maps.Point(isStart || isEnd ? 16 : 6, isStart || isEnd ? 16 : 6)
                 },
@@ -446,7 +449,7 @@ export default function VehicleTrackingPage() {
                             : cleanLocations;
                         setSelectedTripLocations(cleanLocations);
                         setSelectedMatchedPath(matchedPath);
-                        drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15' });
+                        drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15', isCompleted: false });
                     }
                 }
             } catch (e) { console.error('실시간 추적 오류:', e); }
@@ -501,6 +504,7 @@ export default function VehicleTrackingPage() {
             ]);
 
             const tripData = await tripRes.json();
+            const detailTrip = tripData && !tripData.error ? tripData : trip;
             if (tripData && !tripData.error) setSelectedTrip(tripData);
 
             const locData = await locRes.json();
@@ -512,7 +516,7 @@ export default function VehicleTrackingPage() {
 
                 setSelectedTripLocations(locations);
                 setSelectedMatchedPath(matchedPath);
-                drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15' });
+                drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15', isCompleted: detailTrip.status === 'completed' });
 
                 if (locations.length > 0) {
                     // 시작/종료 주소만 즉시 조회 (상세보기용)
