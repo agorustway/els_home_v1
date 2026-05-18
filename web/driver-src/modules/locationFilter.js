@@ -5,6 +5,21 @@ export function haversineKm(lat1, lng1, lat2, lng2) {
   return 12742 * Math.asin(Math.sqrt(a));
 }
 
+export function bearingDeg(lat1, lng1, lat2, lng2) {
+  const p = Math.PI / 180;
+  const y = Math.sin((lng2 - lng1) * p) * Math.cos(lat2 * p);
+  const x = Math.cos(lat1 * p) * Math.sin(lat2 * p)
+    - Math.sin(lat1 * p) * Math.cos(lat2 * p) * Math.cos((lng2 - lng1) * p);
+  return (Math.atan2(y, x) / p + 360) % 360;
+}
+
+export function angleDiffDeg(left, right) {
+  const a = Number(left);
+  const b = Number(right);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return Math.abs(((a - b + 540) % 360) - 180);
+}
+
 const HARD_TRUCK_SPEED_LIMIT_KMH = 145;
 const LOW_SPEED_KMH = 15;
 const STATIONARY_SPEED_KMH = 4;
@@ -40,16 +55,19 @@ function trimEndpointOutliers(points = []) {
   let list = points.filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && l.lat >= 33 && l.lat <= 39.5 && l.lng >= 124 && l.lng <= 132);
   if (list.length < 3) return list;
 
+  const hasMarker = point => Boolean(point?.marker_type);
+  const hasHardBadAccuracy = point => Number(point?.accuracy || 0) > 120;
+
   const dropFirst = () => {
     if (list.length < 3) return false;
     const [a, b, c] = list;
-    // TRIP_START 등 명시적 마커는 절대 드롭 안함
-    if (a.marker_type) return false;
     const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
     const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
     const timeSec = Math.max(1, (pointTime(b) - pointTime(a)) / 1000);
     const implied = ab / (timeSec / 3600);
-    return (ab > 0.5 && implied > 120) || (ab > 1.5 && bc < 0.35);
+    const outlier = (ab > 0.5 && implied > 120) || (ab > 1.5 && bc < 0.35) || (hasHardBadAccuracy(a) && ab > 0.08);
+    if (hasMarker(a) && !outlier) return false;
+    return outlier;
   };
 
   const dropLast = () => {
@@ -57,13 +75,13 @@ function trimEndpointOutliers(points = []) {
     const a = list[list.length - 3];
     const b = list[list.length - 2];
     const c = list[list.length - 1];
-    // TRIP_END 등 명시적 마커는 절대 드롭 안함
-    if (c.marker_type) return false;
     const ab = haversineKm(a.lat, a.lng, b.lat, b.lng);
     const bc = haversineKm(b.lat, b.lng, c.lat, c.lng);
     const timeSec = Math.max(1, (pointTime(c) - pointTime(b)) / 1000);
     const implied = bc / (timeSec / 3600);
-    return (bc > 0.5 && implied > 120) || (bc > 1.5 && ab < 0.35);
+    const outlier = (bc > 0.5 && implied > 120) || (bc > 1.5 && ab < 0.35) || (hasHardBadAccuracy(c) && bc > 0.08);
+    if (hasMarker(c) && !outlier) return false;
+    return outlier;
   };
 
   while (dropFirst()) list = list.slice(1);

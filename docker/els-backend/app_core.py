@@ -587,8 +587,10 @@ def _vehicle_filter_locations(points):
 @app.route("/api/vehicle-tracking", methods=["GET"])
 def get_vehicle_tracking():
     twenty_four_hours_ago = (datetime.now(KST) - timedelta(hours=24)).isoformat()
-    trips_res = supabase.from_("vehicle_trips").select("*").gte("started_at", twenty_four_hours_ago) \
-            .in_("status", ["driving", "paused", "completed"]).order("started_at", desc=True).execute()
+    trips_res = supabase.from_("vehicle_trips").select("*") \
+        .in_("status", ["driving", "paused", "completed"]) \
+        .or_(f"started_at.gte.{twenty_four_hours_ago},completed_at.gte.{twenty_four_hours_ago},updated_at.gte.{twenty_four_hours_ago}") \
+        .order("started_at", desc=True).execute()
     trips = trips_res.data or []
     trip_ids = [t["id"] for t in trips if t.get("id")]
     if not trip_ids: return jsonify({"data": [], "trips": []})
@@ -611,6 +613,8 @@ def get_vehicle_tracking():
                     driver_map[d["vehicle_number"]] = d
         except Exception:
             driver_map = {}
+    latest_by_vehicle = {}
+    status_rank = {"driving": 0, "paused": 1, "completed": 2}
     for t in trips:
         d = driver_map.get(t.get("vehicle_number")) or {}
         t["cargo_type"] = t.get("cargo_type") or d.get("cargo_type") or "container"
@@ -623,7 +627,32 @@ def get_vehicle_tracking():
         t["general_body_type"] = t.get("general_body_type") or d.get("general_body_type")
         t["lastLocation"] = loc_map.get(t["id"])
         t["last_location_address"] = t["lastLocation"]["address"] if t.get("lastLocation") else None
-    return jsonify({"data": trips, "trips": trips})
+        vehicle_key = (t.get("vehicle_number") or t.get("vehicle_id") or t.get("id") or "").replace(" ", "").upper()
+        last_time = (
+            (t.get("lastLocation") or {}).get("recorded_at")
+            or (t.get("lastLocation") or {}).get("timestamp")
+            or t.get("updated_at")
+            or t.get("completed_at")
+            or t.get("started_at")
+            or ""
+        )
+        prev = latest_by_vehicle.get(vehicle_key) if vehicle_key else None
+        prev_rank = status_rank.get((prev or {}).get("status"), 9)
+        curr_rank = status_rank.get(t.get("status"), 9)
+        if (
+            not vehicle_key
+            or not prev
+            or curr_rank < prev_rank
+            or (curr_rank == prev_rank and last_time > prev.get("_sort_time", ""))
+        ):
+            t["_sort_time"] = last_time
+            latest_by_vehicle[vehicle_key] = t
+
+    merged = sorted(latest_by_vehicle.values(), key=lambda x: x.get("_sort_time", ""), reverse=True)
+    merged = sorted(merged, key=lambda x: status_rank.get(x.get("status"), 9))
+    for t in merged:
+        t.pop("_sort_time", None)
+    return jsonify({"data": merged, "trips": merged})
 
 @app.route("/api/vehicle-tracking/trips/<trip_id>", methods=["GET"])
 def get_trip_detail(trip_id):

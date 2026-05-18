@@ -6,13 +6,13 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5153';
-import { smartFetch, remoteLog } from './bridge.js?v=5153';
-import { showToast } from './utils.js?v=5153';
-import { showScreen } from './nav.js?v=5153';
-import { filterRouteLocations, prepareLiveTrips } from './locationFilter.js?v=5153';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5153';
-import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5153';
+import { State, BASE_URL } from './store.js?v=5155';
+import { smartFetch, remoteLog } from './bridge.js?v=5155';
+import { showToast } from './utils.js?v=5155';
+import { showScreen } from './nav.js?v=5155';
+import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5155';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5155';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5155';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -34,6 +34,9 @@ let _autoFollow  = true;           // 내 차량 자동 추적 (네비 모드)
 let _routeTripId  = null;          // 현재 상세 경로 표시 중인 tripId
 let _gpsSampleHandler = null;      // 지도 전경 GPS 샘플 핸들러
 let _zoomedTripId = null;          // 차량 마커 반복 클릭 줌 토글 상태
+let _lastRouteAppendPoint = null;  // 실시간 경로선에 마지막으로 붙인 안정 포인트
+let _lastMotionSample = null;      // GPS 공백 중 화면 예측 이동용 마지막 안정 샘플
+let _coastTimer = null;            // 터널/음영구간 UI 관성 이동 타이머
 
 function getVisibleTrips(trips, includeCompleted = false) {
   return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
@@ -193,10 +196,78 @@ function setMarkerPositionSmooth(marker, lat, lng, duration = 700) {
   }
 }
 
+function pointTimeMs(point) {
+  const raw = point?.recordedAt || point?.recorded_at || point?.timestamp || point?.created_at;
+  const ms = raw ? new Date(raw).getTime() : NaN;
+  return Number.isFinite(ms) ? ms : Date.now();
+}
+
+function shouldAppendLiveRoutePoint(prev, next) {
+  if (!prev || !next) return true;
+  const distKm = haversineKm(prev.lat, prev.lng, next.lat, next.lng);
+  if (distKm < 0.015) return false;
+  const elapsedSec = Math.max(1, (pointTimeMs(next) - pointTimeMs(prev)) / 1000);
+  const implied = distKm / (elapsedSec / 3600);
+  const speed = Number(next.speed || 0);
+  const accuracy = Number(next.accuracy || 0);
+  const speedLimit = speed <= 4 ? 60 : (speed < 15 ? 90 : Math.min(145, Math.max(105, speed + 45)));
+  if (accuracy > 120) return false;
+  if (distKm > 0.05 && implied > speedLimit) return false;
+  if (accuracy > 60 && speed < 15 && distKm > 0.08) return false;
+  return true;
+}
+
+function projectPoint(lat, lng, bearing, distanceKm) {
+  const radiusKm = 6371;
+  const d = distanceKm / radiusKm;
+  const brng = Number(bearing) * Math.PI / 180;
+  const lat1 = Number(lat) * Math.PI / 180;
+  const lng1 = Number(lng) * Math.PI / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
+  const lng2 = lng1 + Math.atan2(
+    Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+  );
+  return {
+    lat: lat2 * 180 / Math.PI,
+    lng: ((lng2 * 180 / Math.PI + 540) % 360) - 180,
+  };
+}
+
+function applyPredictedMapPosition() {
+  if (!_map || State.trip.status !== 'driving' || !State.trip.id || !_lastMotionSample) return;
+  const speed = Number(_lastMotionSample.speed || 0);
+  const heading = Number(_lastMotionSample.heading);
+  const accuracy = Number(_lastMotionSample.accuracy || 0);
+  if (!Number.isFinite(heading) || speed < 8 || speed > 105 || accuracy > 80) return;
+
+  const elapsedMs = Date.now() - _lastMotionSample.receivedAtMs;
+  if (elapsedMs < 3500 || elapsedMs > 45000) return;
+  const distanceKm = Math.min(1.1, speed * (elapsedMs / 3600000));
+  const predicted = projectPoint(_lastMotionSample.lat, _lastMotionSample.lng, heading, distanceKm);
+  if (!Number.isFinite(predicted.lat) || !Number.isFinite(predicted.lng)) return;
+
+  const marker = _markers.get(State.trip.id);
+  if (marker) setMarkerPositionSmooth(marker, predicted.lat, predicted.lng, 900);
+  if (_routeTripId && String(_routeTripId) === String(State.trip.id) && _endMarker) {
+    setMarkerPositionSmooth(_endMarker, predicted.lat, predicted.lng, 900);
+  }
+  if (_autoFollow) _map.panTo(new naver.maps.LatLng(predicted.lat, predicted.lng), { duration: 900, easing: 'easeOutCubic' });
+}
+
 function handleForegroundGpsSample(event) {
   if (!_map || !window.naver?.maps || State.trip.status !== 'driving' || !State.trip.id) return;
-  const { lat, lng } = event.detail || {};
+  const { lat, lng, speed, accuracy, heading, recordedAt } = event.detail || {};
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const sampleHeading = Number(heading);
+  _lastMotionSample = {
+    lat, lng,
+    speed: Number(speed || 0),
+    accuracy: Number(accuracy || 0),
+    heading: Number.isFinite(sampleHeading) ? sampleHeading : _lastMotionSample?.heading,
+    recordedAt,
+    receivedAtMs: Date.now(),
+  };
 
   const pos = new naver.maps.LatLng(lat, lng);
   const marker = _markers.get(State.trip.id);
@@ -214,13 +285,17 @@ function handleForegroundGpsSample(event) {
   }
 
   if (_routeTripId && String(_routeTripId) === String(State.trip.id) && _endMarker) {
-    setMarkerPositionSmooth(_endMarker, lat, lng, 900);
     try {
       const path = _polyline?.getPath?.();
       const lastIdx = path?.getLength?.() ? path.getLength() - 1 : -1;
       const last = lastIdx >= 0 ? path.getAt(lastIdx) : null;
-      const moved = !last || Math.abs(last.lat() - lat) + Math.abs(last.lng() - lng) > 0.00015;
-      if (path && moved) path.push(pos);
+      const prev = _lastRouteAppendPoint || (last ? { lat: last.lat(), lng: last.lng(), recordedAt: new Date().toISOString() } : null);
+      const next = { lat, lng, speed, accuracy, recordedAt };
+      if (shouldAppendLiveRoutePoint(prev, next)) {
+        setMarkerPositionSmooth(_endMarker, lat, lng, 900);
+        if (path) path.push(pos);
+        _lastRouteAppendPoint = next;
+      }
     } catch (_) { }
   }
 
@@ -237,6 +312,7 @@ function startMapGpsSampling() {
     window.addEventListener('els:gps-sample', _gpsSampleHandler);
   }
   startMapForegroundTracking();
+  if (!_coastTimer) _coastTimer = setInterval(applyPredictedMapPosition, 1000);
 }
 
 function stopMapGpsSampling() {
@@ -245,13 +321,18 @@ function stopMapGpsSampling() {
     window.removeEventListener('els:gps-sample', _gpsSampleHandler);
     _gpsSampleHandler = null;
   }
+  if (_coastTimer) {
+    clearInterval(_coastTimer);
+    _coastTimer = null;
+  }
+  _lastMotionSample = null;
 }
 
 // ─── 마커 갱신 ──────────────────────────────────────────────────────
 function updateVehicleMarkers(trips) {
   if (!_map) return;
 
-  const visible = getVisibleTrips(trips, false);
+  const visible = getVisibleTrips(trips, true);
   const visibleIds = new Set(visible.map(t => t.id));
 
   // 사라진 마커 제거
@@ -329,6 +410,7 @@ function drawPolyline(path, options = {}) {
   const filteredPath = options.alreadyMatched ? path : filterRouteLocations(path);
 
   if (filteredPath.length === 0) return;
+  _lastRouteAppendPoint = filteredPath[filteredPath.length - 1] || null;
 
   const latLngs = filteredPath.map(l => new naver.maps.LatLng(l.lat, l.lng));
 
@@ -369,11 +451,17 @@ function drawPolyline(path, options = {}) {
 
 // ─── 하단 차량 목록 렌더링 ───────────────────────────────────────────
 function renderTripList(trips) {
-  const visible = getVisibleTrips(trips, false);
+  const visible = getVisibleTrips(trips, true);
 
   const countEl = document.getElementById('map-panel-count');
   const cargoLabel = (State.profile.cargoType || 'container') === 'general' ? '일반화물' : '컨테이너';
-  if (countEl) countEl.textContent = visible.length > 0 ? `${cargoLabel} ${visible.length}대 운행 중` : `${cargoLabel} 운행 차량 없음`;
+  if (countEl) {
+    const activeCount = visible.filter(t => t.status !== 'completed').length;
+    const completedCount = visible.length - activeCount;
+    countEl.textContent = visible.length > 0
+      ? `${cargoLabel} 표시 ${visible.length}대 · 운행 ${activeCount} · 완료 ${completedCount}`
+      : `${cargoLabel} 표시 차량 없음`;
+  }
 
   const container = document.getElementById('map-trip-items');
   if (!container) return;
@@ -391,7 +479,7 @@ function renderTripList(trips) {
          onclick="App.focusVehicleOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">
       <div style="font-weight:800;color:#0f172a;">${trip.vehicle_number || '-'}</div>
       <div style="font-size:12px;color:#64748b;margin-top:2px;">
-        ${trip.driver_name || '-'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type)} · ${trip.lastLocation?.address || '위치 정보 없음'}
+        ${trip.driver_name || '-'} · ${trip.status === 'completed' ? '운행완료' : '운행중'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type)} · ${trip.lastLocation?.address || '위치 정보 없음'}
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:6px;">
         <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;height:24px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;" onclick="event.stopPropagation(); App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">상세보기</button>
@@ -457,6 +545,7 @@ export async function openMap() {
   showScreen('map');
   _autoFollow = true;  // 지도 열 때 자동추적 모드 ON
   _routeTripId = null;
+  _lastRouteAppendPoint = null;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-btn-map')?.classList.add('active');
 
@@ -490,6 +579,7 @@ export async function closeMap() {
   if (_mapPollTimer) { clearInterval(_mapPollTimer); _mapPollTimer = null; }
   stopMapGpsSampling();
   _routeTripId = null;
+  _lastRouteAppendPoint = null;
   showScreen('main');
   // trip 탭 활성화 및 데이터 로드
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -497,7 +587,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5153');
+    const { loadCurrentTrip } = await import('./trip.js?v=5155');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -548,7 +638,7 @@ export function centerMyLocation() {
 export function showAllMapVehicles() {
   if (!_map) return;
   _autoFollow = false;  // 전체보기 누르면 자동추적 OFF
-  const visible = getVisibleTrips(_trips, false);
+  const visible = getVisibleTrips(_trips, true);
   if (!visible.length) {
     showToast('현재 공개범위에 표시할 차량이 없습니다.');
     return;
@@ -650,6 +740,7 @@ export function clearMapRoute() {
   if (_startMarker) { _startMarker.setMap(null); _startMarker = null; }
   if (_endMarker)   { _endMarker.setMap(null);   _endMarker   = null; }
   _routeTripId = null;
+  _lastRouteAppendPoint = null;
   _zoomedTripId = null;
   document.getElementById('map-route-panel')?.classList.add('hidden');
   document.getElementById('map-bottom-panel')?.classList.remove('collapsed');

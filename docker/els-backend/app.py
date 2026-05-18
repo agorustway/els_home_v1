@@ -666,11 +666,11 @@ def get_vehicle_tracking():
         KST = timezone(timedelta(hours=9))
         twenty_four_hours_ago = (datetime.now(KST) - timedelta(hours=24)).isoformat()
 
-        # 최근 24시간 내 운행 중이거나 종료된 차량 조회
+        # 최근 24시간 내 운행 중이거나 방금 종료/갱신된 차량 조회
         res = supabase.from_("vehicle_trips") \
                 .select("*") \
-                .gte("started_at", twenty_four_hours_ago) \
                 .in_("status", ["driving", "paused", "completed"]) \
+                .or_(f"started_at.gte.{twenty_four_hours_ago},completed_at.gte.{twenty_four_hours_ago},updated_at.gte.{twenty_four_hours_ago}") \
                 .order("started_at", desc=True) \
                 .execute()
         
@@ -710,6 +710,7 @@ def get_vehicle_tracking():
                 app.logger.warning(f"운전원 메타 조회 실패(무시): {meta_err}")
         
         latest_by_vehicle = {}
+        status_rank = {"driving": 0, "paused": 1, "completed": 2}
         for t in trips:
             d = driver_map.get(t.get("vehicle_number")) or {}
             t["cargo_type"] = t.get("cargo_type") or d.get("cargo_type") or "container"
@@ -731,11 +732,18 @@ def get_vehicle_tracking():
                 or t.get("started_at")
                 or ""
             )
-            if not vehicle_key or vehicle_key not in latest_by_vehicle or last_time > latest_by_vehicle[vehicle_key].get("_sort_time", ""):
+            prev = latest_by_vehicle.get(vehicle_key) if vehicle_key else None
+            prev_rank = status_rank.get((prev or {}).get("status"), 9)
+            curr_rank = status_rank.get(t.get("status"), 9)
+            if (
+                not vehicle_key
+                or not prev
+                or curr_rank < prev_rank
+                or (curr_rank == prev_rank and last_time > prev.get("_sort_time", ""))
+            ):
                 t["_sort_time"] = last_time
                 latest_by_vehicle[vehicle_key] = t
 
-        status_rank = {"driving": 0, "paused": 1, "completed": 2}
         merged = sorted(latest_by_vehicle.values(), key=lambda x: x.get("_sort_time", ""), reverse=True)
         merged = sorted(merged, key=lambda x: status_rank.get(x.get("status"), 9))
         for t in merged:

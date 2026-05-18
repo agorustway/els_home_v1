@@ -63,14 +63,15 @@ export async function GET(request) {
     try {
         // ─── mode=active: 관제맵용 (조회 기준 24시간 이내의 모든 driving/paused/completed 건) ───
         if (mode === 'active') {
-            // 사용자 요청: 조회시간 기준 정확히 24시간 이내의 데이터만 필터링 (유령/방치 데이터 방지)
+            // 운행 중 차량은 시작 기준, 완료 차량은 종료/갱신 기준까지 함께 본다.
+            // 장거리 운행이 24시간을 넘겨도 방금 종료한 마커는 관제 지도에 남아야 한다.
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
             let query = supabase
                 .from('vehicle_trips')
                 .select('*')
-                .gte('started_at', twentyFourHoursAgo)
                 .in('status', ['driving', 'paused', 'completed'])
+                .or(`started_at.gte.${twentyFourHoursAgo},completed_at.gte.${twentyFourHoursAgo},updated_at.gte.${twentyFourHoursAgo}`)
                 .order('started_at', { ascending: false });
 
             const { data, error } = await query;

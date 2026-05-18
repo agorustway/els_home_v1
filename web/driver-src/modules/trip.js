@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5153';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5153';
+import { Store, State, BASE_URL } from './store.js?v=5155';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5155';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5153';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5153';
+} from './gps.js?v=5155';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5155';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -428,7 +428,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5153');
+  const gpsModule = await import('./gps.js?v=5155');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -436,8 +436,9 @@ async function _recordTripEndMarker(tripId) {
       if (!navigator.geolocation) { resolve(false); return; }
       navigator.geolocation.getCurrentPosition(
         async pos => {
-          try { await _onGpsUpdate(pos, true, tripId, 'TRIP_END'); } catch (_) {}
-          resolve(true);
+          let saved = false;
+          try { saved = await _onGpsUpdate(pos, true, tripId, 'TRIP_END'); } catch (_) {}
+          resolve(Boolean(saved));
         },
         () => resolve(false),
         { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 0 }

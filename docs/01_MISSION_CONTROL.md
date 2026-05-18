@@ -1,12 +1,14 @@
-# ELS MISSION CONTROL (v5.14.07 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.14.10 / APK v5.11.14)
 
-> 최신 업데이트: 아산 연간실적 구간 필터에서는 전체기간 항목을 섞지 않고, 조회 구간에 맞는 월별 근거만 표시하도록 보정했습니다.
+> 최신 업데이트: 안전운임 주소 검색의 행정동 자동선택과 인천국제여객 구간운임 매칭을 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.07
-- **APK 버전**: v5.11.12
+- **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
+- **웹 버전**: v5.14.10
+- **APK 버전**: v5.11.14
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 안전운임 주소 검색은 안전운임 데이터 키 기준으로 시도·시군구·행정동을 한 번에 정규화하고, 지도 경로조회는 터미널 키 기반으로 인천국제여객 구간운임을 우선 매칭.
   - 연간실적 core 자동 동기화와 대용량 엑셀 직접 조회는 기본 비활성화. NAS 직접 주입 스크립트만 운영 기본 경로.
   - 연간실적 sync 경로는 완료 후 `cache.pop(...)`, 대형 row/payload/hash 참조 해제, `gc.collect()` 수행.
   - 선적관리 sync/엑셀 fallback은 파싱 후 `shipping_cache`에 전체 원장을 저장하지 않고, 페이지 단위 응답 후 참조를 비움.
@@ -30,7 +32,7 @@
 | Supabase 인증/DB | 정상 | 연간실적 current snapshot 368,617행 기준 조회 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 잔여 Chrome 정리 보강 |
-| Android 드라이버 앱 | 정상 | APK v5.11.12 유지 |
+| Android 드라이버 앱 | 정상 | APK v5.11.14 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -48,6 +50,9 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
+- **v5.14.09**: 차량 위치 관제에서 `TRIP_END` 저품질/불가능 좌표는 마지막 정상점으로 수렴시키고, 앱 지도는 GPS 공백 중 짧은 예측 이동만 표시. 터널 출구 후보는 방향·속도상 맞을 때만 실제 경로로 연결. 완료 마커는 유지하되 동일 차량 재운행 시 진행 중 운행이 우선 표시되도록 보강.
+- **v5.14.08**: `NAS 동기화` 버튼을 외부 Node importer 백그라운드 작업으로 연결. Core 메모리에 workbook/row를 남기지 않고, 동일 파일은 `summary-only`, 변경 파일은 snapshot import로 처리하도록 구성. Core Docker 이미지에 Node.js/npm/util-linux를 추가.
 - **v5.14.07**: 구간 필터의 저마진/손실/고마진 패널에서 전체기간 fallback을 제거. 최근 12/24개월 조회에 실제 해당 기간 항목만 남기고, monthly breakdown이 없을 때는 갱신 필요 상태만 표시.
 - **v5.14.06**: 구간 필터 적용 시 전체기간 breakdown만 있고 항목별 monthly breakdown이 없는 summary 데이터가 비어 보이던 문제를 보정. 화면은 전체기간 기준 fallback과 `월별 근거 갱신 필요`를 표시해 정확도 상태를 드러냄.
 - **v5.14.05**: 연간실적 원장 장기 흐름 차트와 조사범위 KPI 카드가 모든 분석 탭에 반복 노출되던 구조를 개요 탭 전용으로 변경.
@@ -64,6 +69,8 @@
 - **v5.13.98**: 관리자 문의/회원권한/활동로그 화면을 인트라넷 톤으로 재정리하고 로그 조회 경로를 `/api/admin/logs`로 복구.
 
 ## VERIFICATION
+- `node --test web/tests/safeFreightRegion.test.mjs`: 4개 통과
+- 안전운임 로컬 브라우저 확인: `[왕복] 인천국제여객 → 경기도 화성시 마도면` 구간운임 26.02월 42km / 안전운임 333,600원 표시 확인
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
 - `npm.cmd run build`: 통과 (외부 NAS/WebDAV/API/폰트 fetch는 sandbox EACCES 경고만 표시)

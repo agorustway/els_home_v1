@@ -7,9 +7,9 @@
  * - 수집 빈도 대폭 상향: 시간 기반 5~10초 + 거리 기반 10m
  * - 불필요한 자이로/모션/심폐소생 코드 제거
  */
-import { State, BASE_URL } from './store.js?v=5153';
-import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5153';
-import { haversineKm } from './locationFilter.js?v=5153';
+import { State, BASE_URL } from './store.js?v=5155';
+import { Overlay, remoteLog, smartFetch } from './bridge.js?v=5155';
+import { angleDiffDeg, bearingDeg, haversineKm } from './locationFilter.js?v=5155';
 
 // ─── GPS 상태 변수 ────────────────────────────────────────────────
 export let gpsWatchId        = null;   // 네이티브 Watcher ID (string)
@@ -197,6 +197,46 @@ function adaptiveLocalSpeedLimit(speedKph) {
   return Math.min(145, Math.max(95, speedKph + 45));
 }
 
+function pointHeading(point) {
+  const heading = Number(point?.heading);
+  return Number.isFinite(heading) ? ((heading % 360) + 360) % 360 : null;
+}
+
+function effectiveSpeedKph(point, prev = null) {
+  const candidates = [
+    Number(point?.speedKph || 0),
+    Number(prev?.speedKph || 0),
+    Number(_lastSentMotion?.speedKph || 0),
+  ];
+  return Math.max(0, ...candidates.filter(Number.isFinite));
+}
+
+function isDirectionMismatch(point, prev, distKm) {
+  if (!point || !prev || distKm < 0.05) return false;
+  const prevHeading = pointHeading(prev) ?? _lastSentMotion?.heading;
+  if (!Number.isFinite(prevHeading)) return false;
+
+  const moveBearing = bearingDeg(prev.lat, prev.lng, point.lat, point.lng);
+  const diff = angleDiffDeg(prevHeading, moveBearing);
+  if (diff == null) return false;
+
+  const speed = effectiveSpeedKph(point, prev);
+  const accuracy = Number(point.accuracy || 0);
+  if (speed < LOW_SPEED_KPH && distKm < 0.25) return false;
+  if (accuracy >= ACCURACY_SUSPECT_M && diff > 100 && distKm > 0.08) return true;
+  if (diff > 135 && distKm > 0.2) return true;
+  return false;
+}
+
+function isTunnelRecoveryCandidate(point, prev, distKm, impliedSpeed, dtSec) {
+  if (!point || !prev) return false;
+  if (dtSec < 8 || distKm < 0.08) return false;
+  if (isDirectionMismatch(point, prev, distKm)) return false;
+  const speed = effectiveSpeedKph(point, prev);
+  const limit = Math.min(145, Math.max(75, speed + 35));
+  return impliedSpeed <= limit;
+}
+
 function duplicateRadiusKm(point) {
   const speed = Number(point?.speedKph || 0);
   const accuracy = Number(point?.accuracy || 0);
@@ -220,11 +260,15 @@ function acceptPendingCandidate(point, prev) {
   const pendingGapKm = haversineKm(_pendingPoint.lat, _pendingPoint.lng, point.lat, point.lng);
   const pendingFromPrevKm = haversineKm(prev.lat, prev.lng, _pendingPoint.lat, _pendingPoint.lng);
   const currentFromPrevKm = haversineKm(prev.lat, prev.lng, point.lat, point.lng);
+  const elapsedSec = Math.max(1, (point.recordedAtMs - prev.recordedAtMs) / 1000);
+  const impliedSpeed = currentFromPrevKm / (elapsedSec / 3600);
   const clusterKm = Math.max(0.025, ((point.accuracy || 0) + (_pendingPoint.accuracy || 0)) / 1000);
   const sameCluster = pendingGapKm <= clusterKm;
   const stillAway = currentFromPrevKm > duplicateRadiusKm(point);
   const notRetreating = currentFromPrevKm >= Math.max(0.015, pendingFromPrevKm * 0.6);
-  return sameCluster && stillAway && notRetreating;
+  const plausibleByTime = currentFromPrevKm <= 0.05 || impliedSpeed <= adaptiveLocalSpeedLimit(effectiveSpeedKph(point, prev));
+  const plausibleDirection = !isDirectionMismatch(point, prev, currentFromPrevKm);
+  return sameCluster && stillAway && notRetreating && plausibleByTime && plausibleDirection;
 }
 
 function stabilizeGpsPoint(point, { forced = false } = {}) {
@@ -252,6 +296,20 @@ function stabilizeGpsPoint(point, { forced = false } = {}) {
     _pendingPoint = null;
     _pendingCount = 0;
     return { ok: false, reason: 'duplicate_jitter', distKm, impliedSpeed };
+  }
+
+  if (isDirectionMismatch(point, prev, distKm)) {
+    _pendingPoint = point;
+    _pendingCount = 1;
+    return { ok: false, reason: 'heading_mismatch', distKm, impliedSpeed };
+  }
+
+  const tunnelRecovery = isTunnelRecoveryCandidate(point, prev, distKm, impliedSpeed, dtSec);
+  if (tunnelRecovery && point.accuracy <= ACCURACY_SUSPECT_M) {
+    _lastAcceptedPoint = point;
+    _pendingPoint = null;
+    _pendingCount = 0;
+    return { ok: true, point, reason: 'tunnel_recovery' };
   }
 
   if (shouldHoldCandidate(point, prev, distKm, impliedSpeed)) {
@@ -457,7 +515,7 @@ export async function startGPS() {
             `GPS 초기수신: ${pos.coords.latitude.toFixed(5)},${pos.coords.longitude.toFixed(5)} acc:${pos.coords.accuracy?.toFixed(0)}m`,
             'GPS_INIT'
           );
-          onGpsUpdate(pos, true, State.trip.id);
+          onGpsUpdate(pos, false, State.trip.id, null, { source: 'app_initial' });
         },
         err => remoteLog(`GPS 초기수신 실패: ${err.code} ${err.message}`, 'GPS_INIT_ERR'),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -502,7 +560,7 @@ function _startBrowserFallback() {
   navigator.geolocation.getCurrentPosition(
     pos => {
       lastGpsTimestamp = Date.now();
-      onGpsUpdate(pos, true, State.trip.id);
+      onGpsUpdate(pos, false, State.trip.id, null, { source: 'browser_initial' });
     },
     () => {},
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -677,7 +735,7 @@ let lastEmergencyPollMs = 0;
 
 export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, markerType = null, options = {}) {
   const targetId = forcedTripId || State.trip.id;
-  if (!targetId) return;
+  if (!targetId) return false;
 
   // 30초마다 긴급명령 폴링
   const _now = Date.now();
@@ -686,19 +744,29 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
     window.App?.pollEmergency?.().catch?.(() => { });
   }
 
-  if (State.trip.status !== 'driving' && !isForced) return;
+  if (State.trip.status !== 'driving' && !isForced) return false;
 
   const source = options.source || (isForced ? (markerType || 'native_forced') : 'native_bg');
+  const markerName = String(markerType || '').toUpperCase();
+  const isTripEndMarker = markerName === 'TRIP_END';
   const rawPoint = toGpsPoint(pos, source);
   const speedKph = rawPoint.speedKph;
   _currentSpeedKph = speedKph > 160 ? 0 : speedKph;
   lastGpsTimestamp = Date.now();
 
-  const stable = stabilizeGpsPoint(rawPoint, { forced: isForced || Boolean(markerType) });
+  const forceStability = options.forceStability === true || ((isForced || Boolean(markerType)) && !isTripEndMarker);
+  let stable = stabilizeGpsPoint(rawPoint, { forced: forceStability });
+  if (!stable.ok && isTripEndMarker && stable.reason === 'duplicate_jitter' && _lastAcceptedPoint) {
+    stable = {
+      ok: true,
+      point: { ..._lastAcceptedPoint, speedKph: 0, recordedAtMs: rawPoint.recordedAtMs },
+      reason: 'trip_end_last_stable',
+    };
+  }
   if (!stable.ok) {
     logGpsFilter(stable.reason, stable.distKm ? `dist=${Math.round(stable.distKm * 1000)}m` : '');
     updateTripStatusLine();
-    return;
+    return false;
   }
 
   const point = stable.point;
@@ -707,6 +775,7 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   // 마지막 확정 위치 저장 (endTrip fallback과 지도 표시 모두 raw가 아니라 안정 포인트 기준)
   State._lastLat = lat;
   State._lastLng = lng;
+  State._lastGpsRecordedAtMs = point.recordedAtMs;
   emitGpsSample(point, source);
 
   const lastMotion = _lastSentMotion;
@@ -743,7 +812,7 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
 
   const curTime     = Date.now();
   const minInterval = (isForced || markerType) ? 0 : interval;
-  if (!isForced && !markerType && curTime - lastGpsSend < minInterval) return;
+  if (!isForced && !markerType && curTime - lastGpsSend < minInterval) return false;
 
   const transmitDecision = shouldTransmitStablePoint(point, {
     forced: isForced || Boolean(markerType),
@@ -751,7 +820,7 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
   });
   if (!transmitDecision.ok) {
     logGpsFilter(transmitDecision.reason, transmitDecision.distKm ? `dist=${Math.round(transmitDecision.distKm * 1000)}m` : '');
-    return;
+    return false;
   }
 
   lastGpsSend = curTime;
@@ -773,11 +842,13 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    let savedOnServer = false;
     if (gpsRes.ok) {
       const gpsData = await gpsRes.json().catch(() => ({}));
       lastKnownAddr = gpsData.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       if (!gpsData.skipped) {
         _lastSentMotion = { speedKph, heading };
+        savedOnServer = true;
       }
 
       // 서버 응답 성공 시 오프라인 큐 플러시 시도
@@ -790,11 +861,13 @@ export async function onGpsUpdate(pos, isForced = false, forcedTripId = null, ma
       `GPS전송[${markerType || transmitDecision.reason}]: ${lastKnownAddr} spd=${speedKph.toFixed(0)}kph acc=${accuracy?.toFixed(0)}m`,
       'GPS_OK'
     );
+    return savedOnServer;
   } catch (e) {
     lastKnownAddr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
     updateTripStatusLine();
     remoteLog(`GPS 서버전송 실패 (오프라인 캐시): ${e.message}`, 'GPS_SEND_ERR');
     enqueueGpsPayload(payload);
+    return true;
   }
 }
 

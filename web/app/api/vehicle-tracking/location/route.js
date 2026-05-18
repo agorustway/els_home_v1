@@ -27,6 +27,13 @@ export async function POST(request) {
 
         const speedNum = Number(speed || 0);
         const sourceText = String(source || '');
+        const markerType = String(marker_type || '').toUpperCase();
+        const isTripEndMarker = markerType === 'TRIP_END';
+        const isTripEndFallback = isTripEndMarker && Number(accuracy || 0) >= 9000;
+        const forceAccept = source === 'native_forced'
+            || isTripEndFallback
+            || (Boolean(marker_type) && !isTripEndMarker);
+        const forceStore = Boolean(marker_type) || source === 'native_forced';
         const speedKmh = sourceText.startsWith('native')
             || sourceText === 'standalone_app'
             || sourceText === 'map_foreground'
@@ -38,7 +45,7 @@ export async function POST(request) {
 
         const { data: previousLocations } = await supabase
             .from('vehicle_locations')
-            .select('lat,lng,accuracy,speed,address,recorded_at')
+            .select('lat,lng,accuracy,speed,address,recorded_at,marker_type')
             .eq('trip_id', trip_id)
             .order('recorded_at', { ascending: false })
             .limit(2);
@@ -64,8 +71,9 @@ export async function POST(request) {
         const decision = shouldAcceptLocation({
             current: currentPoint,
             previous: previousForDecision,
-            // marker_type(TRIP_START/END/PAUSE/RESUME)이 있으면 accuracy 무관 강제 허용
-            forced: Boolean(marker_type) || source === 'native_forced',
+            // TRIP_END는 터널/지하 캐시 GPS가 들어오기 쉬워 품질 필터를 통과한 경우만 저장한다.
+            // 단, 앱의 마지막 안정 위치 fallback(accuracy 9999)과 native_forced는 명시적으로 허용한다.
+            forced: forceAccept,
         });
 
         if (!decision.ok) {
@@ -84,7 +92,7 @@ export async function POST(request) {
         const storeDecision = shouldStoreLocation({
             current: currentPoint,
             previous: previousForDecision,
-            forced: Boolean(marker_type) || source === 'native_forced',
+            forced: forceStore,
             fastMode,
         });
         if (!storeDecision.ok) {

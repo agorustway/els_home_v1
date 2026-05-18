@@ -1,3 +1,49 @@
+## [2026-05-18] 안전운임 주소 행정동 자동선택 및 인천국제여객 구간운임 보정 (v5.14.10)
+### 핵심
+- 기본 안전운임 조회에서 주소 검색 결과를 `setTimeout` 연쇄로 시도·시군구·행정동에 넣던 구조를 제거하고, 안전운임 데이터의 지역 키 기준으로 한 번에 정규화하도록 공통 유틸을 추가했습니다.
+- `경기/경기도`, `화성시 만세구`처럼 API·표기 차이가 있어도 `경기도 / 화성시 / 마도면`으로 맞추고, 법정동 `청원리`보다 행정동 `마도면`을 우선 적용합니다.
+- 지도 기반 구간조회에서 `인천항국제여객터미널`이 문자열 포함관계 때문에 `인천항`으로 흔들릴 수 있던 부분을 터미널 키 기반 매칭으로 고정해 `[왕복] 인천국제여객` 구간운임을 우선 조회하도록 보정했습니다.
+### 검증
+- `node --test web/tests/safeFreightRegion.test.mjs`: 4개 통과
+- `npm.cmd run lint -- "app/(main)/employees/safe-freight/page.js" "app/(main)/employees/safe-freight/route-search/RouteSearchView.js" "app/(main)/employees/safe-freight/route-search/LocationBlock.js" "utils/safeFreightRegion.mjs" "utils/safeFreightRouteMatch.mjs" "tests/safeFreightRegion.test.mjs"`: 0 errors, 기존 warning 10건
+- 로컬 브라우저 확인: `[왕복] 인천국제여객 → 경기도 화성시 마도면` 조회 시 26.02월 42km, 40FT 안전운임 333,600원 표시 확인
+### 변경 파일
+- `web/utils/safeFreightRegion.mjs`, `web/utils/safeFreightRouteMatch.mjs`
+- `web/app/(main)/employees/safe-freight/page.js`
+- `web/app/(main)/employees/safe-freight/route-search/LocationBlock.js`
+- `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+- `web/tests/safeFreightRegion.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-18] 차량 관제 GPS 튐과 완료 마커 정책 보강 (v5.14.09)
+### 핵심
+- `TRIP_END` 마커라도 저품질/불가능 좌표는 서버·경로 필터에서 마지막 정상점으로 수렴시켜 터널/지하 GPS 캐시가 종료점으로 굳는 문제를 줄였습니다.
+- 앱 지도 전경 GPS가 경로선에 실시간 append 되기 전 거리·시간·정확도 기반 물리 가능성 가드를 통과하도록 보강했습니다.
+- 앱 지도는 GPS 공백 중 마지막 정상 속도·방향으로 최대 45초까지만 화면 예측 이동을 보여주며, 예측점은 서버/경로 데이터에 저장하지 않습니다.
+- 터널 출구 후보는 기존 진행 방향과 속도상 가능한 경우에만 빠르게 연결하고, 반대 방향·저품질 점프는 후보 보류/제외합니다.
+- 완료 차량 마커는 관제 지도에 남기고, 같은 차량이 재운행하면 진행 중 운행이 기존 완료 마커를 대체하도록 웹/NAS/앱 정렬 정책을 맞췄습니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs`: 10개 통과
+- `npm.cmd run lint -- "app/api/vehicle-tracking/location/route.js" "app/api/vehicle-tracking/trips/route.js" "utils/vehicleLocation.mjs" "tests/vehicleLocation.test.mjs"`: 0 errors
+- `npm.cmd run lint -- "driver-src/modules/gps.js" "driver-src/modules/map.js" "driver-src/modules/trip.js" "driver-src/modules/init.js" "driver-src/modules/locationFilter.js"`: 0 errors
+- `node --check` driver GPS/지도/운행/초기화 모듈: 통과
+- `python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.14 / 5155 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료
+- APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.14`, `BUILD_CODE 5155` 확인
+- `git diff --check`: 통과
+
+## [2026-05-18] 아산 연간실적 웹 동기화 외부 작업 전환 (v5.14.08)
+### 핵심
+- `NAS 동기화` 버튼이 더 이상 수동 쉘 명령을 요구하지 않도록, Core가 기존 Node importer를 낮은 우선순위 외부 프로세스로 실행하게 했습니다.
+- Core 내부 pandas/openpyxl 직접 파싱은 기본 비활성 상태를 유지하고, 외부 프로세스 종료 후 메모리가 반환되도록 분리했습니다.
+- 파일 mtime과 current snapshot이 같으면 `summary-only --force --snapshot-id`로 분석 근거만 갱신하고, 파일 변경 시에만 전체 snapshot import를 수행합니다.
+- `els-core` Docker 이미지에 Node.js/npm/util-linux를 추가해 컨테이너 안에서도 importer와 `nice/ionice`를 사용할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+
 ## [2026-05-18] 아산 연간실적 구간별 근거 분리 보정 (v5.14.07)
 ### 핵심
 - 최근 12개월/24개월 등 구간 조회에서 전체기간 breakdown 항목이 fallback으로 섞이던 문제를 제거했습니다.
