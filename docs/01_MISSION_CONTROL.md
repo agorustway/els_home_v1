@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.00 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.14.01 / APK v5.11.12)
 
-> 최신 업데이트: NAS `els-core`가 연간실적/선적관리/배차판 대용량 엑셀 파싱 후 원장 데이터를 메모리에 붙잡지 않도록 정리했고, 컨테이너 재시작 직후 DB가 최신이면 배차판 최초 전체 파싱을 건너뛰게 했다.
+> 최신 업데이트: 아산 실적관리 연간실적의 원장 장기 흐름 차트가 데스크탑 flex 영역에서 눌려 보이지 않던 문제를 보정하고, 갤럭시 S24 폭 기준 모바일 탭/범위/표 컬럼 밀림을 정리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.00
+- **웹 버전**: v5.14.01
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
@@ -13,6 +13,8 @@
   - 배차판 sync는 pandas/openpyxl workbook, DataFrame, rows, comments 참조를 시트/파일 처리 후 즉시 비움.
   - 배차판 스케줄러는 컨테이너 재시작으로 인메모리 캐시가 비어도 Supabase `branch_dispatch.file_modified_at`가 최신이면 최초 전체 파싱을 생략.
   - NAS `els-core` 고메모리 원인은 core가 연간실적/배차/선적 엑셀 원장을 파싱 후 캐시하거나 재시작 후 최초 파싱을 반복하던 구조로 확인됨.
+  - 연간실적 원장 장기 흐름 패널은 flex shrink를 차단하고 차트 높이/가로 스크롤 래퍼를 고정해 데스크탑에서 그래프가 잘리지 않게 함.
+  - 갤럭시 S24 폭 기준 조사범위/분석섹션 버튼은 3열 배치, 월별/차량/매트릭스 표는 내부 가로 스크롤과 `%` 컬럼 여유폭으로 밀림 방지.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -39,6 +41,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.01**: 아산 연간실적 원장 장기 흐름 차트가 flex 스크롤 영역에서 압축되어 보이지 않던 문제를 수정하고, 갤럭시 S24 기준 분석탭/조사범위/차량손익/월별표 `%` 컬럼 밀림을 보정.
 - **v5.14.00**: `els-core` 연간실적 자동 엑셀 파싱을 기본 차단하고, 선적관리/배차판 파싱 완료 후 DataFrame/Workbook/rows/payload/cache 참조를 즉시 비우도록 보강. 배차판은 DB 파일수정일이 최신이면 컨테이너 재시작 후 최초 전체 파싱을 생략.
 - **v5.13.103**: NAS 메모리 악화 중 Docker recreate가 60초 타임아웃으로 실패하지 않도록 Bot/Core 전용 배포 스크립트의 Docker/Compose 타임아웃을 600초로 상향.
 - **v5.13.102**: `deploy-bot.sh`, `deploy-core.sh`를 비대화형 sudo/Docker 경로 기준으로 정리하고 로그 확인을 종료형으로 변경.
@@ -49,6 +52,8 @@
 
 ## VERIFICATION
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 NAS/WebDAV/API/폰트 fetch는 sandbox EACCES 경고만 표시)
 - `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과

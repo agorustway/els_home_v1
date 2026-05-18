@@ -1,3 +1,20 @@
+## [2026-05-18] 아산 연간실적 차트/모바일 레이아웃 보정 (v5.14.01)
+### 핵심
+- 연간실적 원장 장기 흐름 차트가 데스크탑 flex 스크롤 영역에서 높이 0에 가깝게 눌려 보이던 문제를 `flex: 0 0 auto`와 고정 차트 래퍼로 수정했습니다.
+- 차트 SVG를 전용 가로 스크롤 래퍼에 넣고 높이를 명시해 10년치 월 흐름과 평균선이 본문 카드에 가려지지 않게 했습니다.
+- 갤럭시 S24 폭 기준으로 조사범위/분석섹션 버튼을 재배치하고, 월별/차량손익/매트릭스 표의 `%` 컬럼과 금액 컬럼 폭을 넓혀 글자 밀림을 줄였습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+- `npm.cmd run build`: 통과. 외부 NAS/WebDAV/API/폰트 fetch는 sandbox 네트워크 EACCES 경고만 표시.
+- 인앱 브라우저 로컬 검증: 데스크탑 2048px에서 장기 흐름 패널이 본문 KPI와 겹치지 않음, Galaxy S24 360px 기준 문서 가로 overflow 없음. 로컬 sandbox에서는 NAS 백엔드 접근이 막혀 실데이터 대신 레이아웃 치수 검증으로 확인했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 전용 배포 Docker 타임아웃 확대 (v5.13.103)
 ### 핵심
 - NAS 메모리/스왑 압박 중 `docker-compose up`이 Docker API 60초 응답 제한에 걸려 `Read timed out`으로 보이는 문제를 줄였습니다.

@@ -163,6 +163,10 @@
     padding-bottom: 4px;
 }
 
+.analytics > * {
+    flex: 0 0 auto;
+}
+
 .commandPanel {
     display: grid;
     grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.8fr);
@@ -445,6 +449,13 @@
     overflow: hidden;
 }
 
+.marketFlowChartWrap {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: linear-gradient(#ffffff, #f8fafc);
+}
+
 .marketFlowHeader {
     display: flex;
     align-items: center;
@@ -496,13 +507,10 @@
 }
 
 .marketFlowSvg {
-    width: 100%;
-    height: auto;
-    min-height: 180px;
-    max-height: 300px;
-    aspect-ratio: 1800 / 260;
     display: block;
-    background: linear-gradient(#ffffff, #f8fafc);
+    width: max(100%, 1180px);
+    height: clamp(250px, 15vw, 320px);
+    min-height: 250px;
 }
 
 .marketGridLine {
@@ -954,10 +962,10 @@
 .vehicleProfitHead,
 .vehicleProfitRow {
     display: grid;
-    grid-template-columns: minmax(120px, 1.2fr) minmax(90px, 0.8fr) 92px 92px 92px 56px 54px;
+    grid-template-columns: minmax(130px, 1.2fr) minmax(92px, 0.8fr) 96px 96px 96px 72px 68px;
     align-items: center;
     gap: 7px;
-    min-width: 760px;
+    min-width: 840px;
 }
 
 .vehicleProfitHead {
@@ -1542,10 +1550,10 @@
 .matrixHead,
 .matrixRow {
     display: grid;
-    grid-template-columns: 44px minmax(180px, 1.6fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) minmax(92px, 0.8fr) 68px 58px 56px;
+    grid-template-columns: 44px minmax(190px, 1.6fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) 78px 70px 64px;
     align-items: center;
     gap: 7px;
-    min-width: 900px;
+    min-width: 980px;
     padding: 0 10px;
 }
 
@@ -2030,12 +2038,18 @@
         justify-content: flex-start;
     }
 
+    .marketFlowChartWrap {
+        border-bottom: 1px solid #e2e8f0;
+    }
+
     .marketFlowStats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .marketFlowSvg {
-        min-height: 190px;
+        width: max(100%, 980px);
+        height: 230px;
+        min-height: 230px;
     }
 
     .vehicleQualityStrip {
@@ -2057,7 +2071,12 @@
 
     .monthHeaderRow,
     .monthRow {
-        grid-template-columns: 58px minmax(58px, 1fr) 74px minmax(42px, 0.5fr) 74px 46px;
+        grid-template-columns: 62px minmax(90px, 1fr) 82px minmax(72px, 0.6fr) 82px 64px;
+        min-width: 560px;
+    }
+
+    .monthChart {
+        overflow-x: auto;
     }
 
     .signalGrid {
@@ -2088,5 +2107,144 @@
 
     .tableScroll {
         max-height: 62vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        gap: 8px;
+    }
+
+    .topBar {
+        padding: 8px;
+    }
+
+    .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .segmented {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .commandPanel {
+        padding: 8px;
+    }
+
+    .commandTitleRow {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .commandMeta span,
+    .noteLine {
+        font-size: 0.64rem;
+    }
+
+    .scopePanel {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .scopePresets {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .scopePresets button {
+        min-width: 0;
+        width: 100%;
+        padding: 0 4px;
+        font-size: 0.64rem;
+    }
+
+    .scopeSelects {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .analysisTabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        min-height: 0;
+        padding: 7px;
+    }
+
+    .analysisTabs::before {
+        grid-column: 1 / -1;
+        width: auto;
+        line-height: 16px;
+    }
+
+    .analysisTabs button {
+        width: 100%;
+        min-width: 0;
+        padding: 0 4px;
+        font-size: 0.64rem;
+    }
+
+    .marketFlowSvg {
+        width: 980px;
+        height: 226px;
+        min-height: 226px;
+    }
+
+    .marketAxisText,
+    .marketAvgText {
+        font-size: 12px;
+    }
+
+    .marketFlowStats {
+        grid-template-columns: 1fr;
+    }
+
+    .kpiGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kpi {
+        padding: 9px;
+    }
+
+    .kpi strong {
+        font-size: 1rem;
+        word-break: keep-all;
+    }
+
+    .vehicleProfitHead,
+    .vehicleProfitRow {
+        grid-template-columns: minmax(128px, 1.2fr) minmax(88px, 0.8fr) 92px 92px 92px 76px 66px;
+        min-width: 820px;
+    }
+
+    .vehicleProfitRow strong,
+    .vehicleProfitRow span,
+    .vehicleProfitRow b,
+    .vehicleProfitRow em,
+    .matrixRow span,
+    .matrixRow strong,
+    .monthRow span,
+    .monthRow strong,
+    .monthRow em {
+        font-size: 0.68rem;
+    }
+
+    .matrixHead,
+    .matrixRow {
+        grid-template-columns: 42px minmax(170px, 1.5fr) 96px 96px 96px 80px 72px 64px;
+        min-width: 900px;
+    }
+
+    .monthHeaderRow,
+    .monthRow {
+        min-width: 560px;
+    }
+
+    .metricLegend {
+        gap: 7px;
     }
 }

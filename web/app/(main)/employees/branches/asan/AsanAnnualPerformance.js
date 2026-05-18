@@ -384,33 +384,41 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
                 <div className={styles.emptyPanel}>장기 흐름을 그릴 월별 데이터가 부족합니다.</div>
             ) : (
                 <>
-                    <svg className={styles.marketFlowSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 매출 매입 흐름`}>
-                        <defs>
-                            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stopColor="#0f766e" stopOpacity="0.22" />
-                                <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
-                            </linearGradient>
-                        </defs>
-                        {grid.map(item => (
-                            <g key={item.y}>
-                                <line x1={pad.left} x2={pad.left + chartW} y1={item.y} y2={item.y} className={styles.marketGridLine} />
-                                <text x={pad.left - 8} y={item.y + 3} className={styles.marketAxisText} textAnchor="end">{formatPerformanceAmount(item.value)}</text>
-                            </g>
-                        ))}
-                        <polygon points={revenueArea} className={styles.marketRevenueArea} style={{ fill: `url(#${gradientId})` }} />
-                        <polyline points={revenuePoints} className={styles.marketRevenueLine} />
-                        <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
-                        <line x1={pad.left} x2={pad.left + chartW} y1={avgRevenueY} y2={avgRevenueY} className={styles.marketRevenueAvgLine} />
-                        <line x1={pad.left} x2={pad.left + chartW} y1={avgPurchaseY} y2={avgPurchaseY} className={styles.marketPurchaseAvgLine} />
-                        <text x={pad.left + chartW - 4} y={avgRevenueY - 6} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
-                        <text x={pad.left + chartW - 4} y={avgPurchaseY + 14} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
-                        {series.map((item, idx) => {
-                            const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 10)) === 0;
-                            return showTick ? (
-                                <text key={item.period} x={xAt(idx)} y={height - 16} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
-                            ) : null;
-                        })}
-                    </svg>
+                    <div className={styles.marketFlowChartWrap}>
+                        <svg
+                            className={styles.marketFlowSvg}
+                            viewBox={`0 0 ${width} ${height}`}
+                            preserveAspectRatio="none"
+                            role="img"
+                            aria-label={`${title} 매출 매입 흐름`}
+                        >
+                            <defs>
+                                <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stopColor="#0f766e" stopOpacity="0.22" />
+                                    <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
+                                </linearGradient>
+                            </defs>
+                            {grid.map(item => (
+                                <g key={item.y}>
+                                    <line x1={pad.left} x2={pad.left + chartW} y1={item.y} y2={item.y} className={styles.marketGridLine} />
+                                    <text x={pad.left - 8} y={item.y + 3} className={styles.marketAxisText} textAnchor="end">{formatPerformanceAmount(item.value)}</text>
+                                </g>
+                            ))}
+                            <polygon points={revenueArea} className={styles.marketRevenueArea} style={{ fill: `url(#${gradientId})` }} />
+                            <polyline points={revenuePoints} className={styles.marketRevenueLine} />
+                            <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
+                            <line x1={pad.left} x2={pad.left + chartW} y1={avgRevenueY} y2={avgRevenueY} className={styles.marketRevenueAvgLine} />
+                            <line x1={pad.left} x2={pad.left + chartW} y1={avgPurchaseY} y2={avgPurchaseY} className={styles.marketPurchaseAvgLine} />
+                            <text x={pad.left + chartW - 4} y={avgRevenueY - 6} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
+                            <text x={pad.left + chartW - 4} y={avgPurchaseY + 14} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
+                            {series.map((item, idx) => {
+                                const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 10)) === 0;
+                                return showTick ? (
+                                    <text key={item.period} x={xAt(idx)} y={height - 16} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
+                                ) : null;
+                            })}
+                        </svg>
+                    </div>
                     <div className={styles.marketFlowStats}>
                         <div><span>최고 매출월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
                         <div><span>최근월</span><strong>{last?.period || '-'}</strong><em>매출 {last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
