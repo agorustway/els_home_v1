@@ -1,3 +1,22 @@
+## [2026-05-18] 아산 연간실적 개요 근거 표 제거와 계약/차량 명칭 정리 (v5.14.04)
+### 핵심
+- 개요 화면 하단의 근거 표 묶음은 `계약/차량` 상세 탭에 이미 있는 성격이라 개요에서는 제거했습니다.
+- 분석 탭명 `직계약/차량`을 `계약/차량`으로 변경했습니다.
+- 청구처 근거가 비던 원인은 importer가 breakdown 후보를 엑셀 앞쪽 8개 컬럼으로 잘라 `청구처`가 뒤쪽에 있으면 누락될 수 있던 구조였습니다.
+- breakdown 후보를 `작업지 → 청구처 → 운송사 → 노선 → 구분...` 우선순위 기반 최대 12개로 보정해 다음 summary 갱신부터 `청구처`, `운송사(명의)` 축이 누락되지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+### 운영 메모
+- 배포 후 NAS에서 `summary-only --force`를 1회 실행하면 Supabase summary의 breakdown 후보와 월별 집계가 새 기준으로 갱신됩니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 장기흐름/범위 분석 재보정 (v5.14.03)
 ### 핵심
 - 원장 장기 흐름 차트 패널 자체에 고정 높이를 부여하고 분석 컨테이너의 숨김 overflow를 풀어 KPI 카드가 그래프 하단을 덮지 않게 했습니다.

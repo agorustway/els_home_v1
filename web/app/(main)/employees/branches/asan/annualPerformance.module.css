@@ -1509,93 +1509,6 @@
     text-align: right;
 }
 
-.matrixPanel {
-    overflow: hidden;
-}
-
-.dimensionTabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 10px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
-}
-
-.dimensionTabs button {
-    height: 26px;
-    padding: 0 9px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #fff;
-    color: #475569;
-    font-family: inherit;
-    font-size: 0.7rem;
-    font-weight: 900;
-    cursor: pointer;
-}
-
-.dimensionTabs button:hover {
-    background: #f1f5f9;
-}
-
-.dimensionActive {
-    border-color: #0f766e !important;
-    background: #0f766e !important;
-    color: #fff !important;
-}
-
-.matrixTable {
-    overflow-x: auto;
-}
-
-.matrixHead,
-.matrixRow {
-    display: grid;
-    grid-template-columns: 44px minmax(190px, 1.6fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) minmax(104px, 0.8fr) 78px 70px 64px;
-    align-items: center;
-    gap: 7px;
-    min-width: 980px;
-    padding: 0 10px;
-}
-
-.matrixHead {
-    min-height: 28px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
-}
-
-.matrixHead span {
-    color: #64748b;
-    font-size: 0.68rem;
-    font-weight: 950;
-}
-
-.matrixRow {
-    min-height: 30px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.matrixRow:last-child {
-    border-bottom: 0;
-}
-
-.matrixRow span,
-.matrixRow strong {
-    min-width: 0;
-    color: #334155;
-    font-size: 0.72rem;
-    font-weight: 850;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.matrixRow strong,
-.matrixRow span:nth-child(n+3) {
-    text-align: right;
-}
-
 .warningText {
     color: #c2410c !important;
 }
@@ -1651,55 +1564,6 @@
     color: #64748b;
     font-size: 0.76rem;
     font-weight: 850;
-}
-
-.dimensionSummaryGrid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.dimensionCard {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 10px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    background: #fff;
-}
-
-.dimensionCard span,
-.dimensionCard em {
-    display: block;
-    color: #64748b;
-    font-size: 0.68rem;
-    font-style: normal;
-    font-weight: 850;
-}
-
-.dimensionCard strong {
-    display: block;
-    margin-top: 3px;
-    color: #0f172a;
-    font-size: 0.8rem;
-    font-weight: 950;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.dimensionStats {
-    text-align: right;
-}
-
-.dimensionStats b {
-    display: block;
-    margin-bottom: 2px;
-    color: #0f172a;
-    font-size: 0.8rem;
-    font-weight: 950;
 }
 
 .breakdownRow {
@@ -2019,7 +1883,6 @@
     .detailGrid,
     .insightGrid,
     .portfolioGrid,
-    .dimensionSummaryGrid,
     .segmentCards,
     .segmentDetailGrid,
     .formGrid {
@@ -2229,18 +2092,10 @@
     .vehicleProfitRow span,
     .vehicleProfitRow b,
     .vehicleProfitRow em,
-    .matrixRow span,
-    .matrixRow strong,
     .monthRow span,
     .monthRow strong,
     .monthRow em {
         font-size: 0.68rem;
-    }
-
-    .matrixHead,
-    .matrixRow {
-        grid-template-columns: 42px minmax(170px, 1.5fr) 96px 96px 96px 80px 72px 64px;
-        min-width: 900px;
     }
 
     .monthHeaderRow,

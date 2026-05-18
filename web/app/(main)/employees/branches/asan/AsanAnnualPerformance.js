@@ -23,7 +23,7 @@ const ANALYSIS_VIEWS = [
     { key: 'overview', label: '개요' },
     { key: 'flow', label: '10년 흐름' },
     { key: 'matrix', label: '연도×월' },
-    { key: 'segments', label: '직계약/차량' },
+    { key: 'segments', label: '계약/차량' },
     { key: 'calendar', label: '주차·요일' },
     { key: 'evidence', label: '검증·근거' },
 ];
@@ -806,25 +806,6 @@ export default function AsanAnnualPerformance() {
         .slice()
         .sort((a, b) => profitRateOf(b) - profitRateOf(a))
         .slice(0, 5);
-    const overviewEvidenceSections = useMemo(() => {
-        const specs = [
-            { label: '작업지', tokens: ['작업지'] },
-            { label: '청구처', tokens: ['청구처'] },
-            { label: '노선', tokens: ['노선'] },
-            { label: '구분', tokens: ['구분'] },
-        ];
-        return specs.map(spec => {
-            const section = dimensionOptions.find(candidate => (
-                spec.tokens.some(token => String(candidate.column || '').includes(token))
-            ));
-            const items = (section?.items || [])
-                .map(item => scopePerformanceItem(item, scopeBounds, scopedTotals.revenue))
-                .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
-                .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
-                .slice(0, 12);
-            return { label: spec.label, items };
-        });
-    }, [dimensionOptions, scopeBounds, scopedTotals.revenue]);
     const bridgeMax = Math.max(1, Math.abs(scopedTotals.revenue), Math.abs(scopedTotals.purchase), Math.abs(scopedTotals.profit));
     const executiveNotes = buildExecutiveNotes({
         profitRate,
@@ -1274,33 +1255,6 @@ export default function AsanAnnualPerformance() {
                             </div>
                         </section>
                     </div>
-
-                    <div className={`${styles.segmentDetailGrid} ${styles.overviewEvidenceGrid}`}>
-                        {overviewEvidenceSections.map(({ label, items }) => (
-                            <section className={styles.panel} key={label}>
-                                <div className={styles.panelHeader}>
-                                    <h3>{label} 근거</h3>
-                                    <span>상위 12</span>
-                                </div>
-                                <div className={styles.compactList}>
-                                    {items.length === 0 ? (
-                                        <div className={styles.emptyMini}>근거 데이터 없음</div>
-                                    ) : items.map((item, idx) => (
-                                        <button
-                                            className={styles.compactButtonRow}
-                                            key={`${label}-${item.name}-${idx}`}
-                                            onClick={() => openDetailSearch([item.name], 'and')}
-                                        >
-                                            <span>{item.name || '미분류'}</span>
-                                            <b>{formatPerformanceAmount(item.revenue)}</b>
-                                            <em>{formatPercent(profitRateOf(item), 1)}</em>
-                                        </button>
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
-                    </div>
-
                     <section className={styles.detectPanel}>
                         <span>매출: {(summary.detected?.revenueColumns || []).join(', ') || '자동 후보 없음'}</span>
                         <span>매입: {(summary.detected?.purchaseColumns || []).join(', ') || '자동 후보 없음'}</span>

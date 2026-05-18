@@ -411,13 +411,21 @@ function yearFromHeader(header) {
   return match ? Number(match[1]) : null;
 }
 
-const BREAKDOWN_COLUMN_WORDS = ['매출', '지역', '작업지', '운송사', '구분', '노선', '픽업', '포트', '하차', '청구처', '지급처', '계약'];
+const BREAKDOWN_COLUMN_PRIORITY = ['작업지', '청구처', '운송사', '노선', '구분', '계약', '픽업', '포트', '하차', '지급처', '지역', '매출'];
+const BREAKDOWN_COLUMN_WORDS = BREAKDOWN_COLUMN_PRIORITY;
+
+function breakdownPriority(header) {
+  const normalized = String(header || '');
+  const idx = BREAKDOWN_COLUMN_PRIORITY.findIndex(word => hasKeyword(normalized, [word]));
+  return idx >= 0 ? idx : BREAKDOWN_COLUMN_PRIORITY.length;
+}
 
 function breakdownColumnIndices(headers, numericCols) {
   return headers
     .map((header, idx) => ({ header, idx }))
     .filter(({ header, idx }) => !numericCols.includes(idx) && hasKeyword(header, BREAKDOWN_COLUMN_WORDS))
-    .slice(0, 8)
+    .sort((a, b) => breakdownPriority(a.header) - breakdownPriority(b.header) || a.idx - b.idx)
+    .slice(0, 12)
     .map(item => item.idx);
 }
 
