@@ -1,3 +1,16 @@
+## [2026-05-18] 아산 연간실적 구간 필터 근거 fallback 보정 (v5.14.06)
+### 핵심
+- `전체`에서는 보이지만 `최근 12개월`, `최근 24개월` 등 구간 필터에서 저마진/손실/고마진 항목이 비어 보이는 원인을 보정했습니다.
+- 원인은 기존 summary에 전체기간 breakdown은 있으나 항목별 `monthly` breakdown이 아직 없으면 구간별 금액을 정확히 재계산할 수 없어 0으로 필터링되던 구조였습니다.
+- 구간별 월별 근거가 없는 경우 `전체기간 기준 · 월별 근거 갱신 필요`를 표시하고, 전체기간 기준 항목을 fallback으로 노출해 빈 화면처럼 보이지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+- `npm.cmd run build`: 통과 (외부 fetch는 sandbox EACCES 경고만 표시)
+### 운영 메모
+- NAS에서 `summary-only --force`를 실행하면 항목별 monthly breakdown이 채워져 구간별 금액으로 정밀 표시됩니다.
+
 ## [2026-05-18] 아산 연간실적 장기 흐름 개요 전용 정리 (v5.14.05)
 ### 핵심
 - 원장 장기 흐름 차트와 조사범위 KPI 카드가 모든 분석 탭 상단에 반복 노출되던 구조를 개요 탭 전용으로 변경했습니다.

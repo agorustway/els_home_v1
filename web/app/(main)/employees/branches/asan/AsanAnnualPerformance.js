@@ -791,17 +791,37 @@ export default function AsanAnnualPerformance() {
             .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
             .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
     ), [activeBreakdown, scopeBounds, scopedTotals.revenue]);
-    const topSegment = activeItems[0] || topGroups[0] || null;
-    const top3Share = sumField(activeItems.slice(0, 3), 'revenueShare');
-    const top10Share = sumField(activeItems.slice(0, 10), 'revenueShare');
-    const lowMarginItems = activeItems
+    const fallbackActiveItems = useMemo(() => (
+        (activeBreakdown?.items || [])
+            .map(item => ({
+                ...item,
+                revenueShare: rate(item.revenue, summary.totalRevenue),
+                profitRate: profitRateOf(item),
+                scopeUnavailable: true,
+            }))
+            .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
+            .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
+    ), [activeBreakdown, summary.totalRevenue]);
+    const activeBreakdownHasMonthly = Boolean((activeBreakdown?.items || []).some(item => Array.isArray(item.monthly) && item.monthly.length));
+    const activeBreakdownNeedsRefresh = Boolean(
+        activeBreakdown?.items?.length
+        && !scopeBounds.isFullRange
+        && !activeBreakdownHasMonthly
+        && fallbackActiveItems.length
+    );
+    const evidenceItems = activeBreakdownNeedsRefresh ? fallbackActiveItems : activeItems;
+    const evidenceBasisLabel = activeBreakdownNeedsRefresh ? '전체기간 기준 · 월별 근거 갱신 필요' : null;
+    const topSegment = evidenceItems[0] || topGroups[0] || null;
+    const top3Share = sumField(evidenceItems.slice(0, 3), 'revenueShare');
+    const top10Share = sumField(evidenceItems.slice(0, 10), 'revenueShare');
+    const lowMarginItems = evidenceItems
         .filter(item => safeNumber(item.revenue) > 0 && profitRateOf(item) < Math.max(3, profitRate - 2))
         .slice(0, 5);
-    const lossItems = activeItems
+    const lossItems = evidenceItems
         .filter(item => safeNumber(item.profit) < 0)
         .sort((a, b) => safeNumber(a.profit) - safeNumber(b.profit))
         .slice(0, 5);
-    const marginLeaders = activeItems
+    const marginLeaders = evidenceItems
         .filter(item => safeNumber(item.revenue) > 0)
         .slice()
         .sort((a, b) => profitRateOf(b) - profitRateOf(a))
@@ -1204,11 +1224,11 @@ export default function AsanAnnualPerformance() {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>저마진 주의</h3>
-                                <span>매출 상위 내 손익률 낮음</span>
+                                <span>{evidenceBasisLabel || '매출 상위 내 손익률 낮음'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {lowMarginItems.length === 0 ? (
-                                    <div className={styles.emptyMini}>주요 저마진 항목 없음</div>
+                                    <div className={styles.emptyMini}>{activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : '주요 저마진 항목 없음'}</div>
                                 ) : lowMarginItems.map((item, idx) => (
                                     <div className={styles.compactRow} key={`low-${item.name}-${idx}`}>
                                         <span>{item.name || '미분류'}</span>
@@ -1222,11 +1242,11 @@ export default function AsanAnnualPerformance() {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>손실 항목</h3>
-                                <span>손익 음수</span>
+                                <span>{evidenceBasisLabel || '손익 음수'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {lossItems.length === 0 ? (
-                                    <div className={styles.emptyMini}>손실 항목 없음</div>
+                                    <div className={styles.emptyMini}>{activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : '손실 항목 없음'}</div>
                                 ) : lossItems.map((item, idx) => (
                                     <div className={styles.compactRow} key={`loss-${item.name}-${idx}`}>
                                         <span>{item.name || '미분류'}</span>
@@ -1240,11 +1260,11 @@ export default function AsanAnnualPerformance() {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>고마진 항목</h3>
-                                <span>손익률 기준</span>
+                                <span>{evidenceBasisLabel || '손익률 기준'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {marginLeaders.length === 0 ? (
-                                    <div className={styles.emptyMini}>고마진 항목 없음</div>
+                                    <div className={styles.emptyMini}>{activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : '고마진 항목 없음'}</div>
                                 ) : marginLeaders.map((item, idx) => (
                                     <div className={styles.compactRow} key={`margin-${item.name}-${idx}`}>
                                         <span>{item.name || '미분류'}</span>
