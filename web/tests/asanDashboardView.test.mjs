@@ -440,8 +440,14 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   assert.match(pageSource, /onOpenDailyGrid=\{handleOpenDailyGrid\}/);
   assert.match(pageSource, /onViewTypeChange=\{setViewType\}/);
   assert.match(pageSource, /setMainView\('grid'\)/);
-  assert.match(pageSource, /containerRef\.current\.scrollTop = 0/);
-  assert.match(pageSource, /\(topBarRef\.current \|\| containerRef\.current\)\?\.scrollIntoView/);
+  assert.match(pageSource, /function resetScrollChainToTop\(target\)/);
+  assert.match(pageSource, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
+  assert.match(pageSource, /function scheduleScrollReset\(getTarget\)/);
+  assert.match(pageSource, /resetScrollChainToTop\(containerRef\.current\)/);
+  assert.match(pageSource, /\(topBarRef\.current \|\| containerRef\.current\)\?\.scrollIntoView\(\{ behavior: 'auto', block: 'start' \}\)/);
+  assert.match(pageSource, /const pageWrapperRef = useRef\(null\);/);
+  assert.match(pageSource, /return scheduleScrollReset\(\(\) => pageWrapperRef\.current\);/);
+  assert.match(pageSource, /<div ref=\{pageWrapperRef\} className=\{styles\.pageWrapper\}>/);
   assert.match(css, /\.mobileDateActionBar,[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*display: none;/);
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileDateActionBar,[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*display: grid;/);
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.mobileScopeActionBar\s*{[\s\S]*background: #f8fafc;/);

@@ -299,6 +299,35 @@ function loadPrefs(vt) {
 function savePrefs(vt, p) {
     try { localStorage.setItem(`${PREFS_KEY}_${vt}`, JSON.stringify(p)); } catch { }
 }
+function resetScrollChainToTop(target) {
+    if (typeof window === 'undefined') return;
+    const scrollToTop = (node) => {
+        if (!node) return;
+        if (typeof node.scrollTo === 'function') node.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        else node.scrollTop = 0;
+    };
+
+    scrollToTop(document.scrollingElement);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    let node = target;
+    while (node && node !== document.body && node !== document.documentElement) {
+        if (node.scrollHeight > node.clientHeight) scrollToTop(node);
+        node = node.parentElement;
+    }
+}
+function scheduleScrollReset(getTarget) {
+    const run = () => resetScrollChainToTop(getTarget?.());
+    run();
+    const raf = requestAnimationFrame(run);
+    const timer = setTimeout(run, 160);
+    return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+    };
+}
 
 function AsanDispatchContent() {
     const [viewType, setViewType] = useState('integrated');
@@ -713,8 +742,8 @@ function AsanDispatchContent() {
         setMainView('grid');
         setDisplayLimit(100);
         requestAnimationFrame(() => {
-            if (containerRef.current) containerRef.current.scrollTop = 0;
-            (topBarRef.current || containerRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            resetScrollChainToTop(containerRef.current);
+            (topBarRef.current || containerRef.current)?.scrollIntoView({ behavior: 'auto', block: 'start' });
         });
     }, []);
 
@@ -1116,6 +1145,7 @@ function AsanPerformanceManagement() {
 
 export default function AsanBranchPage() {
     const [activeMainTab, setActiveMainTab] = useState(null);
+    const pageWrapperRef = useRef(null);
 
     useEffect(() => {
         try {
@@ -1134,8 +1164,13 @@ export default function AsanBranchPage() {
         } catch { /* ignore */ }
     };
 
+    useEffect(() => {
+        if (!activeMainTab) return undefined;
+        return scheduleScrollReset(() => pageWrapperRef.current);
+    }, [activeMainTab]);
+
     return (
-        <div className={styles.pageWrapper}>
+        <div ref={pageWrapperRef} className={styles.pageWrapper}>
             {/* 전역 아산지점 헤더 */}
             <div className={styles.mainHeader}>
                 <h1 className={styles.mainTitle}>

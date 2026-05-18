@@ -1,3 +1,16 @@
+## [2026-05-18] 아산지점 모바일 진입 스크롤 상단 고정 (v5.14.02)
+### 핵심
+- 모바일에서 아산지점 메뉴를 다시 누를 때 브라우저가 이전 현황판 중간 위치를 복원해 보이던 문제를 보정했습니다.
+- 아산지점 탭 진입/전환 시 `window`, `document.scrollingElement`, 상위 스크롤 컨테이너를 함께 0으로 초기화합니다.
+- 모바일 중간의 `배차판 검색` 전환도 같은 스크롤 초기화를 사용해 배차판 상단 카드부터 보이게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 차트/모바일 레이아웃 보정 (v5.14.01)
 ### 핵심
 - 연간실적 원장 장기 흐름 차트가 데스크탑 flex 스크롤 영역에서 높이 0에 가깝게 눌려 보이던 문제를 `flex: 0 0 auto`와 고정 차트 래퍼로 수정했습니다.
