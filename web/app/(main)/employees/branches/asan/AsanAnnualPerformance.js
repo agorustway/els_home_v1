@@ -791,27 +791,15 @@ export default function AsanAnnualPerformance() {
             .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
             .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
     ), [activeBreakdown, scopeBounds, scopedTotals.revenue]);
-    const fallbackActiveItems = useMemo(() => (
-        (activeBreakdown?.items || [])
-            .map(item => ({
-                ...item,
-                revenueShare: rate(item.revenue, summary.totalRevenue),
-                profitRate: profitRateOf(item),
-                scopeUnavailable: true,
-            }))
-            .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
-            .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
-    ), [activeBreakdown, summary.totalRevenue]);
     const activeBreakdownHasMonthly = Boolean((activeBreakdown?.items || []).some(item => Array.isArray(item.monthly) && item.monthly.length));
     const activeBreakdownNeedsRefresh = Boolean(
         activeBreakdown?.items?.length
         && !scopeBounds.isFullRange
         && !activeBreakdownHasMonthly
-        && fallbackActiveItems.length
     );
-    const evidenceItems = activeBreakdownNeedsRefresh ? fallbackActiveItems : activeItems;
-    const evidenceBasisLabel = activeBreakdownNeedsRefresh ? '전체기간 기준 · 월별 근거 갱신 필요' : null;
-    const topSegment = evidenceItems[0] || topGroups[0] || null;
+    const evidenceItems = activeItems;
+    const evidenceBasisLabel = activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : null;
+    const topSegment = evidenceItems[0] || (scopeBounds.isFullRange ? topGroups[0] : null);
     const top3Share = sumField(evidenceItems.slice(0, 3), 'revenueShare');
     const top10Share = sumField(evidenceItems.slice(0, 10), 'revenueShare');
     const lowMarginItems = evidenceItems

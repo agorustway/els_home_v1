@@ -1,3 +1,16 @@
+## [2026-05-18] 아산 연간실적 구간별 근거 분리 보정 (v5.14.07)
+### 핵심
+- 최근 12개월/24개월 등 구간 조회에서 전체기간 breakdown 항목이 fallback으로 섞이던 문제를 제거했습니다.
+- 조회 구간에 항목별 monthly breakdown이 없으면 전체기간 항목을 보여주지 않고 `구간별 월별 근거 갱신 필요`만 표시합니다.
+- 따라서 최근 기간에 없는 `미래산업` 같은 항목이 전체기간 기준으로 끼어드는 상황을 차단했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+- `npm.cmd run build`: 통과 (외부 fetch는 sandbox EACCES 경고만 표시)
+### 운영 메모
+- NAS에서 `summary-only --force`를 실행해 항목별 monthly breakdown을 채우면 각 구간별로 정확히 분리된 저마진/손실/고마진 항목이 표시됩니다.
+
 ## [2026-05-18] 아산 연간실적 구간 필터 근거 fallback 보정 (v5.14.06)
 ### 핵심
 - `전체`에서는 보이지만 `최근 12개월`, `최근 24개월` 등 구간 필터에서 저마진/손실/고마진 항목이 비어 보이는 원인을 보정했습니다.
