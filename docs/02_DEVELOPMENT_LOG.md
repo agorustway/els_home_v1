@@ -1,3 +1,17 @@
+## [2026-05-18] 아산 연간실적 분석섹션 고정 배치 (v5.13.99)
+### 핵심
+- 분석섹션 탭을 조사범위 컨트롤 바로 아래로 이동해, 탭 전환 때 버튼 줄의 위치가 본문 섹션 높이에 끌려 움직이지 않도록 했습니다.
+- 분석섹션 라벨과 버튼의 폭/높이/라인 높이를 고정해 활성 버튼 색상이 바뀌어도 줄바꿈이나 미세 흔들림이 생기지 않게 보정했습니다.
+- 연간실적 화면 테스트에 `조사범위 → 분석섹션 → 장기 흐름` 렌더 순서 검증을 추가했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `npm.cmd run build`: 통과 (외부 WebDAV/API sandbox EACCES 경고만 표시)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ## [2026-05-18] 아산 연간실적 차량 미기재 분리와 보고서 레이아웃 보정 (v5.13.97)
 ### 핵심

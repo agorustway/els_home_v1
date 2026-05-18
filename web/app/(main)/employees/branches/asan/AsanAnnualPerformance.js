@@ -1016,6 +1016,19 @@ export default function AsanAnnualPerformance() {
                         rowCount={analysisRows}
                     />
 
+                    <div className={styles.analysisTabs} aria-label="연간실적 분석 섹션">
+                        {ANALYSIS_VIEWS.map(view => (
+                            <button
+                                key={view.key}
+                                type="button"
+                                className={analysisView === view.key ? styles.analysisTabActive : ''}
+                                onClick={() => setAnalysisView(view.key)}
+                            >
+                                {view.label}
+                            </button>
+                        ))}
+                    </div>
+
                     <LedgerFlowChart
                         items={scopedMonthly}
                         title="원장 장기 흐름"
@@ -1045,18 +1058,6 @@ export default function AsanAnnualPerformance() {
                             <strong>{formatPercent(profitRate, 2)}</strong>
                             <em>{topSegment ? `최대 비중 ${formatPercent(topSegment.revenueShare)}` : '비중 자료 없음'}</em>
                         </div>
-                    </div>
-
-                    <div className={styles.analysisTabs} aria-label="연간실적 분석 섹션">
-                        {ANALYSIS_VIEWS.map(view => (
-                            <button
-                                key={view.key}
-                                className={analysisView === view.key ? styles.analysisTabActive : ''}
-                                onClick={() => setAnalysisView(view.key)}
-                            >
-                                {view.label}
-                            </button>
-                        ))}
                     </div>
 
                     {analysisView === 'overview' && (
