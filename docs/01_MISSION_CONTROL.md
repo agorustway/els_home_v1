@@ -1,14 +1,15 @@
-# ELS MISSION CONTROL (v5.14.12 / APK v5.11.14)
+# ELS MISSION CONTROL (v5.14.13 / APK v5.11.14)
 
-> 최신 업데이트: 선적관리 컨테이너 조회 중 페이지 이탈 후 복귀해도 조회 세션과 완료/실패 건수를 복원합니다.
+> 최신 업데이트: 선적관리 미선적 필터를 컨테이너 이력구분 기준으로 보정했습니다.
 
 ## CURRENT STATUS
 - **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
-- **웹 버전**: v5.14.12
+- **웹 버전**: v5.14.13
 - **APK 버전**: v5.11.14
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 안전운임 상단 탭 순서를 `구간별운임 → 거리별운임 → 구간조회 → 이외구간`으로 정리.
+  - 선적관리 미선적 필터는 이력조회값이 있으면 `반입/적하`만 완료로 보고, 이외 이력은 작업일과 무관하게 미선적으로 판정.
   - 선적관리 컨테이너 조회 세션을 브라우저에 저장하고, 페이지 복귀 시 저장된 이력 결과를 기준으로 완료/실패/미확인 건수를 이어 표시.
   - 안전운임 주소 검색은 안전운임 데이터 키 기준으로 시도·시군구·행정동을 한 번에 정규화하고, 지도 경로조회는 터미널 키 기반으로 인천국제여객 구간운임을 우선 매칭.
   - 연간실적 core 자동 동기화와 대용량 엑셀 직접 조회는 기본 비활성화. NAS 직접 주입 스크립트만 운영 기본 경로.
@@ -52,6 +53,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.13**: 선적관리 미선적 필터 기준을 `작업일 이후 MOVE TIME` 우선에서 컨테이너 이력구분 우선으로 보정. 이력조회값이 없는 행은 작업일이 지난 경우만 미선적 후보로 유지.
 - **v5.14.12**: 선적관리 컨테이너 조회 상태를 `localStorage` 세션으로 보존하고 4초 주기로 저장 결과를 복원. 시작 이후 저장된 이력만 완료로 인정해 이전 조회 결과와 섞이지 않게 함.
 - **v5.14.11**: 안전운임 탭 렌더 순서를 조정해 지도 기반 `구간조회` 버튼을 `이외구간` 앞에 배치.
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
@@ -74,6 +76,7 @@
 
 ## VERIFICATION
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `node --test web/tests/safeFreightTabOrder.test.mjs`: 1개 통과
 - `node --test web/tests/safeFreightRegion.test.mjs`: 4개 통과

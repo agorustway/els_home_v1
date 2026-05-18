@@ -227,20 +227,22 @@ export function getShippingSignalTone(headers = [], row = [], lookupRecord = nul
   if (!lookupRecord?.mainRow) return 'neutral';
   if (!Array.isArray(headers) || !Array.isArray(row)) return 'neutral';
 
-  const workDateIdx = findWorkDateColumnIndex(headers);
-  const workDate = normalizeDateOnly(workDateIdx >= 0 ? row[workDateIdx] : '');
-  const moveDate = normalizeDateOnly(lookupRecord.mainRow?.[5]);
-  if (!workDate || !moveDate) return 'neutral';
-
   const eventType = String(lookupRecord.mainRow?.[3] || '').trim();
-  const isTargetType = SHIPPING_SIGNAL_TYPES.has(eventType);
-  const isOnOrAfterWorkDate = moveDate >= workDate;
-
-  if (!isOnOrAfterWorkDate) return 'open';
-  return isTargetType ? 'completed' : 'unshipped';
+  if (!eventType) return 'neutral';
+  return SHIPPING_SIGNAL_TYPES.has(eventType) ? 'completed' : 'unshipped';
 }
 
-export function isShippingUnshippedCandidate(headers = [], row = [], lookupRecord = null) {
-  if (!lookupRecord?.mainRow) return true;
-  return getShippingSignalTone(headers, row, lookupRecord) === 'unshipped';
+function isShippingWorkDateDue(headers = [], row = [], referenceDate = new Date()) {
+  const workDateIdx = findWorkDateColumnIndex(headers);
+  const workDate = normalizeDateOnly(workDateIdx >= 0 ? row?.[workDateIdx] : '');
+  if (!workDate) return true;
+  const today = normalizeDateOnly(referenceDate);
+  if (!today) return true;
+  return workDate <= today;
+}
+
+export function isShippingUnshippedCandidate(headers = [], row = [], lookupRecord = null, referenceDate = new Date()) {
+  if (!lookupRecord?.mainRow) return isShippingWorkDateDue(headers, row, referenceDate);
+  const signalTone = getShippingSignalTone(headers, row, lookupRecord);
+  return signalTone !== 'completed';
 }

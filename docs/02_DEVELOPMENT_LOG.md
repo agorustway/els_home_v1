@@ -1,3 +1,16 @@
+## [2026-05-18] 아산 선적관리 미선적 필터 이력구분 기준 보정 (v5.14.13)
+### 핵심
+- 컨테이너 이력조회값이 있는 행은 날짜보다 이력구분을 우선해 `반입/적하`만 선적완료로 판정합니다.
+- `반출/양하/기타/공백` 등 `반입/적하`가 아닌 이력은 작업일 전후와 무관하게 미선적으로 남깁니다.
+- 컨테이너 이력조회값이 없는 행은 작업일이 지난 경우만 미선적 후보로 유지해, 아직 작업일이 오지 않은 미조회 행이 섞이지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
+### 변경 파일
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 선적관리 컨테이너 조회 세션 복원 (v5.14.12)
 ### 핵심
 - 선적관리 컨테이너 조회를 시작하면 대상 파일/컨테이너/진행 건수를 브라우저 세션에 저장해, 필터 조회 중 다른 페이지로 이동했다가 돌아와도 진행 상태를 복원합니다.
