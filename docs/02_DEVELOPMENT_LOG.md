@@ -6,6 +6,9 @@
 - APK 버전은 `v5.11.17 / 5158`로 반영했고 캐시버스터와 배포 APK 산출물도 함께 갱신했습니다.
 ### 검증
 - `node --check web/driver-src/modules/map.js`: 통과
+- `npm.cmd run lint`: 통과
+- `git diff --check`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.17 / 5158 APK 빌드 및 배포 위치 복사 완료
 - APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.17`, `BUILD_CODE 5158` 확인
 ### 변경 파일
 - `web/driver-src/modules/map.js`

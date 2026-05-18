@@ -54,12 +54,12 @@
 ## VERIFICATION
 - `node --check web/driver-src/modules/map.js`: 통과
 - APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.17`, `BUILD_CODE 5158` 확인
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.17 / 5158 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료
 - `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `node --test web/tests/vehicleLocation.test.mjs`: 13개 통과
 - `npm.cmd run lint`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.17 / 5158 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료
-- `git diff --check`: 통과 (version.json line-ending 경고만 표시)
+- `git diff --check`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
