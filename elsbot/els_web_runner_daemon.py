@@ -107,6 +107,7 @@ class DriverPool:
         print(formatted)
 
     def clear(self, mark_stopped=True):
+        ports_to_cleanup = []
         with self.lock:
             self.generation += 1
             if mark_stopped:
@@ -117,14 +118,22 @@ class DriverPool:
                 try: self.available_queue.get_nowait()
                 except: break
             for d in self.drivers:
+                used_port = getattr(d, 'used_port', None)
+                if isinstance(used_port, int):
+                    ports_to_cleanup.append(used_port)
                 try: d.quit()
                 except: pass
+            for idx in range(max(0, self.max_drivers)):
+                ports_to_cleanup.append(32000 + idx)
+            ports_to_cleanup = sorted(set(ports_to_cleanup))
             self.drivers = []
             self.consecutive_login_failures = 0
             self.restart_inflight.clear()
             self.last_restart_attempt.clear()
             self.log_buffer.clear()
             self.add_log("--- 드라이버 풀이 초기화되었습니다. ---")
+        for port in ports_to_cleanup:
+            self.cleanup_lingering_chrome(port)
 
     def is_cancelled(self, generation=None):
         with self.lock:

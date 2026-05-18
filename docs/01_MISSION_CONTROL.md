@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.100 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.101 / APK v5.11.12)
 
-> 최신 업데이트: NAS 메모리 압박 완화를 위해 `els-bot` Selenium 워커와 배치 병렬도를 2개로 낮추고, 기동 간격/후발 워커 기준을 2워커 운영에 맞췄습니다.
+> 최신 업데이트: NAS 메모리 압박 완화를 위해 `els-bot` Selenium 워커와 배치 병렬도를 2개로 낮추고, 데몬 정지 시 pool이 비어 있어도 설정된 Chrome 포트를 함께 정리하도록 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.100
+- **웹 버전**: v5.13.101
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -21,6 +21,7 @@
   - 활동 로그 관리는 `/api/admin/logs` 경유로 조회·삭제하고, 정확 count 대신 추정 count+다음 페이지 감지로 병목을 줄임.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
   - NAS `els-bot`은 메모리 여유 확보를 위해 `ELS_MAX_DRIVERS=2`, `ELS_BATCH_MAX_WORKERS=2`로 운영.
+  - 데몬 정지 시 등록 워커가 0개여도 설정된 `drission_port_32000+` 잔여 Chrome을 포트 기준으로 정리.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -28,7 +29,7 @@
 | Next.js 웹 | 정상 | 아산 배차 분석 대시보드/선적/실적 테스트 통과 |
 | Supabase 인증/DB | 정상 | 연간실적 current snapshot 고정, 분석 summary/검증 메타 반영 |
 | NAS 백엔드 | 정상 | 배차판/선적관리/연간실적 저부하 파일감지 주기 적용 |
-| ELS Bot | 정상 | NAS 메모리 압박 완화를 위해 Selenium 워커 2개 운영 |
+| ELS Bot | 정상 | Selenium 워커 2개 운영 및 stop-daemon 잔여 Chrome 정리 보강 |
 | Android 드라이버 앱 | 정상 | APK v5.11.12 유지 |
 
 ## INTRANET UI 기준
@@ -47,6 +48,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.101**: `stop-daemon` 이후 pool은 비었지만 Chrome 프로세스가 남는 상황을 줄이기 위해, `DriverPool.clear()`가 등록 워커 포트와 설정된 기본 포트 범위를 함께 정리하도록 보강.
 - **v5.13.100**: NAS 스왑 압박 완화를 위해 `els-bot` Selenium 워커/배치 병렬도를 2개로 낮추고, 후발 워커 기동 기준을 1개 준비 후 60초 간격으로 조정.
 - **v5.13.99**: 아산 연간실적 분석섹션 탭을 조사범위 바로 아래로 이동하고, 버튼 폭/높이/라벨 영역을 고정해 탭 클릭 시 컨트롤 줄이 흔들리지 않게 보정.
 - **v5.13.98**: 관리자 문의/회원 권한/활동 로그 화면을 담백한 인트라넷 톤으로 재정리하고 이모지 장식을 제거. 활동 로그 화면은 NAS 직접 호출 대신 인증된 Next 관리자 API를 사용하며 모바일 카드 뷰와 로컬 `/api/logs` 수집 fallback을 추가.
@@ -70,6 +72,7 @@
 
 ## VERIFICATION
 - `git diff --check`: 통과
+- `python -m unittest elsbot.tests.test_daemon_stop_control`: 통과
 - `node --test web/tests/chatMemory.test.mjs`: 7개 통과
 - `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" "app/api/chat/memory/route.js" "utils/chatMemory.mjs"`: 0 errors (기존 warning 8건)
 - `node --test web/tests/asanDashboardView.test.mjs`: 23개 통과

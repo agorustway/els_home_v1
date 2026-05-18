@@ -64,6 +64,8 @@ class TestDaemonStopControl(unittest.TestCase):
 
     def test_clear_invalidates_workers_and_rejects_late_driver(self):
         pool = self.daemon.DriverPool()
+        cleaned_ports = []
+        pool.cleanup_lingering_chrome = lambda port: cleaned_ports.append(port)
         driver = DummyDriver()
         self.assertTrue(pool.add_driver(driver))
         self.assertEqual(pool.available_queue.qsize(), 1)
@@ -80,6 +82,7 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertEqual(pool.available_queue.qsize(), 0)
         self.assertEqual(pool.drivers, [])
         self.assertEqual(driver.quit_count, 1)
+        self.assertEqual(cleaned_ports, [32000, 32001, 32002])
 
         late_driver = DummyDriver(32001)
         self.assertFalse(pool.add_driver(late_driver))
@@ -88,6 +91,7 @@ class TestDaemonStopControl(unittest.TestCase):
 
     def test_generation_change_cancels_wait_and_return_driver(self):
         pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
         generation = pool.generation
         pool.generation += 1
         self.assertFalse(pool.wait_unless_cancelled(0, generation))
@@ -119,6 +123,17 @@ class TestDaemonStopControl(unittest.TestCase):
         while not pool.available_queue.empty():
             queued.append(pool.available_queue.get_nowait())
         self.assertEqual(queued, [good])
+
+    def test_clear_cleans_configured_ports_even_when_pool_is_empty(self):
+        with patch.dict(os.environ, {"ELS_MAX_DRIVERS": "2"}):
+            pool = self.daemon.DriverPool()
+
+        cleaned_ports = []
+        pool.cleanup_lingering_chrome = lambda port: cleaned_ports.append(port)
+
+        pool.clear()
+
+        self.assertEqual(cleaned_ports, [32000, 32001])
 
     def test_return_driver_does_not_enqueue_duplicates(self):
         pool = self.daemon.DriverPool()

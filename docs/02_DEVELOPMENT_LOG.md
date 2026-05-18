@@ -1,3 +1,16 @@
+## [2026-05-18] stop-daemon 잔여 Chrome 정리 보강 (v5.13.101)
+### 핵심
+- `stop-daemon` 후 데몬 pool은 비었지만 `drission_port_32000+` Chrome 프로세스가 남는 상황을 줄이기 위해 `DriverPool.clear()`에 포트 기준 잔여 Chrome 정리를 추가했습니다.
+- 등록된 드라이버의 `used_port`와 `ELS_MAX_DRIVERS` 기준 기본 포트 범위를 합쳐 중복 없이 정리합니다.
+- stop 제어 테스트에서 실제 `fuser/pkill`이 실행되지 않도록 cleanup 호출을 mock 처리하고, pool이 비어 있어도 설정 포트를 정리하는 회귀 테스트를 추가했습니다.
+### 검증
+- `python -m unittest elsbot.tests.test_daemon_stop_control`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] NAS els-bot 워커 2개 운영 전환 (v5.13.100)
 ### 핵심
 - NAS 스왑 압박을 줄이기 위해 `els-bot`의 Selenium 워커 수를 `ELS_MAX_DRIVERS=2`로 낮췄습니다.
