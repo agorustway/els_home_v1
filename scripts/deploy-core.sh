@@ -1,14 +1,21 @@
 #!/bin/bash
-# [v4.5.2] ELS Core (API/관제) 전용 경량 배포 스크립트
-cd "$(dirname "$0")/.."
-echo "--- ⚡ ELS Core API 전용 배포 시작 ---"
+# ELS Core-only deploy script. Rebuilds/recreates els-core without touching bot/gateway.
+set -e
 
-# 1. 소스코드 동기화
+cd "$(dirname "$0")/.."
+echo "--- ELS Core deploy start ---"
+
+DOCKER_BIN="${DOCKER_BIN:-/usr/local/bin/docker}"
+COMPOSE_BIN="${COMPOSE_BIN:-/usr/local/bin/docker-compose}"
+SUDO_BIN="${SUDO_BIN:-sudo -n}"
+DOCKER_PATH="${DOCKER_PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}}"
+
+# 1. Sync source from origin/main.
 /opt/bin/git fetch origin main
 /opt/bin/git reset --hard origin/main
 
-# 2. 환경변수 동기화 (web/.env.local -> docker/.env)
-echo ">>> 환경변수 동기화 중..."
+# 2. Sync env values from web/.env.local to docker/.env.
+echo ">>> Sync docker/.env..."
 ENV_FILE="web/.env.local"
 DOCKER_ENV="docker/.env"
 if [ -f "$ENV_FILE" ]; then
@@ -22,15 +29,15 @@ SUPABASE_SERVICE_ROLE_KEY=$S_KEY
 GEMINI_API_KEY=$G_KEY
 DAEMON_URL=http://127.0.0.1:2931
 EOF
-    echo "✅ docker/.env 생성 완료 (G_KEY 존재 확인: $([ -n "$G_KEY" ] && echo "YES" || echo "NO"))"
+    echo "docker/.env synced (GEMINI_API_KEY: $([ -n "$G_KEY" ] && echo "YES" || echo "NO"))"
 fi
 
-# 2. Core 서비스만 빌드 및 재실행 (기타 서비스 유지)
-echo ">>> els-core 서비스 빌드 및 재가동..."
-sudo docker-compose -f docker/docker-compose.yml up -d --build --force-recreate els-core
+# 3. Rebuild/recreate only els-core. Bot service stays up.
+echo ">>> Rebuild and recreate els-core..."
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --build --force-recreate els-core
 
-# 3. 정리
-sudo docker system prune -f
-sudo docker builder prune -f
-echo "✅ Core API 배포 완료 (봇 서비스는 중단 없이 유지됨)"
-sudo docker logs -f els-core --tail 20
+# 4. Cleanup and show a bounded log tail.
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" system prune -f
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" builder prune -f
+echo "Core deploy complete. Recent els-core logs:"
+$SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" logs els-core --tail 80

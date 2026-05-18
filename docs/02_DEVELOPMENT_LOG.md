@@ -1,3 +1,16 @@
+## [2026-05-18] Bot/Core 전용 배포 스크립트 비대화형 정리 (v5.13.102)
+### 핵심
+- `deploy-bot.sh`와 `deploy-core.sh`도 통합 배포 스크립트처럼 Docker/Compose 절대 경로와 Docker PATH를 주입하도록 맞췄습니다.
+- `sudo -n` 기본값으로 비밀번호 프롬프트에서 멈추지 않고 실패 원인을 바로 드러내게 했습니다.
+- 마지막 로그 확인을 `docker logs -f`에서 `docker logs --tail 80`으로 바꿔 스크립트가 정상 종료되도록 했습니다.
+### 검증
+- `C:\Program Files\Git\bin\bash.exe -n scripts/deploy-bot.sh`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts/deploy-core.sh`: 통과
+### 변경 파일
+- `scripts/deploy-bot.sh`
+- `scripts/deploy-core.sh`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] stop-daemon 잔여 Chrome 정리 보강 (v5.13.101)
 ### 핵심
 - `stop-daemon` 후 데몬 pool은 비었지만 `drission_port_32000+` Chrome 프로세스가 남는 상황을 줄이기 위해 `DriverPool.clear()`에 포트 기준 잔여 Chrome 정리를 추가했습니다.
