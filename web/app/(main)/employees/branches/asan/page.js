@@ -328,6 +328,11 @@ function scheduleScrollReset(getTarget) {
         clearTimeout(timer);
     };
 }
+function scrollDateTabHorizontally(tabsEl, tabEl) {
+    if (!tabsEl || !tabEl) return;
+    const targetLeft = Math.max(0, tabEl.offsetLeft - ((tabsEl.clientWidth - tabEl.offsetWidth) / 2));
+    tabsEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
+}
 
 function AsanDispatchContent() {
     const [viewType, setViewType] = useState('integrated');
@@ -440,7 +445,7 @@ function AsanDispatchContent() {
     useEffect(() => {
         if (tabsRef.current && activeTab >= 0 && activeTab < data.length) {
             const el = tabsRef.current.children[activeTab];
-            if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            scrollDateTabHorizontally(tabsRef.current, el);
         }
     }, [activeTab, data]);
     // localStorage 로드

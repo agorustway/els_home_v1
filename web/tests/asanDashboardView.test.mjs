@@ -443,6 +443,10 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   assert.match(pageSource, /function resetScrollChainToTop\(target\)/);
   assert.match(pageSource, /window\.scrollTo\(\{ top: 0, left: 0, behavior: 'auto' \}\)/);
   assert.match(pageSource, /function scheduleScrollReset\(getTarget\)/);
+  assert.match(pageSource, /function scrollDateTabHorizontally\(tabsEl, tabEl\)/);
+  assert.match(pageSource, /tabsEl\.scrollTo\(\{ left: targetLeft, behavior: 'smooth' \}\)/);
+  assert.match(pageSource, /scrollDateTabHorizontally\(tabsRef\.current, el\)/);
+  assert.doesNotMatch(pageSource, /inline: 'center', block: 'nearest'/);
   assert.match(pageSource, /resetScrollChainToTop\(containerRef\.current\)/);
   assert.match(pageSource, /\(topBarRef\.current \|\| containerRef\.current\)\?\.scrollIntoView\(\{ behavior: 'auto', block: 'start' \}\)/);
   assert.match(pageSource, /const pageWrapperRef = useRef\(null\);/);

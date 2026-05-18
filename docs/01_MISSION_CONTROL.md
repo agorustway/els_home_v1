@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL (v5.14.15 / APK v5.11.16)
+# ELS MISSION CONTROL (v5.14.16 / APK v5.11.16)
 
-> 최신 업데이트: 차량위치관제 오늘 아침 12가0140 데이터 기준 진행 중 마커 클릭과 회전구간 루프 경로를 추가 보정했습니다.
+> 최신 업데이트: 아산 배차 모바일 날짜탭 자동 가운데 맞춤이 세로 스크롤까지 움직이던 문제를 수평 스크롤 전용으로 보정했습니다.
 
 ## CURRENT STATUS
 - **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
-- **웹 버전**: v5.14.15
+- **웹 버전**: v5.14.16
 - **APK 버전**: v5.11.16
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
@@ -12,6 +12,7 @@
   - Android 서비스 종료/재시작만으로 `TRIP_END`를 남기지 않음.
   - Naver Directions 경로가 원시 trace 대비 과도하게 길거나 루프면 보정 GPS선으로 fallback.
   - `android_bg` stale replay 차단과 네이티브 물리 필터 유지.
+  - 아산 배차 모바일 날짜탭 자동 포커스는 `scrollIntoView` 대신 `scrollLeft`만 조정해 화면 세로 위치 유지.
   - 선적관리/안전운임/연간실적 v5.14 개선사항 운영 유지.
 
 ## ACTIVE SYSTEMS
@@ -39,6 +40,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.16**: 아산 배차 모바일 범위 전환 시 날짜탭 자동 가운데 맞춤이 세로 스크롤을 끌어내리지 않도록 수평 스크롤 전용으로 변경. 첫 진입 상단 위치도 유지.
 - **v5.14.15**: 12가0140 2026-05-19 06:59/07:03 운행을 재분석. 원시 좌표는 불가능 속도 0건이나 진행 중 마커 클릭이 상세경로/끝점으로 오해될 수 있어 내 차량 마커 클릭은 추적/줌만 수행하도록 변경. Android 서비스 `onDestroy`의 자동 `TRIP_END` 전송을 제거하고, Naver Directions 결과가 원시 진행 대비 과도하게 길거나 trace 밖/루프면 필터 경로로 대체. 운행 완료 액션 로그도 남김. APK v5.11.16 / 5157 빌드.
 - **v5.14.14**: 12가0140 2026-05-18 17시대 테스트 3건 기준으로 GPS 튐을 재분석. 1번은 좌표 자체보다 촘촘한 전경 샘플/도로 매칭 과신 문제, 2·3번은 `android_bg` 캐시 좌표 재등장으로 확인. 서버 stale replay 필터, Android 네이티브 전송 전 물리 필터와 `recorded_at`, 경로 waypoint 단순화, 운행 중 현재점 표시를 적용. APK v5.11.15 / 5156 빌드.
 - **v5.14.13**: 선적관리 미선적 필터 기준을 `작업일 이후 MOVE TIME` 우선에서 컨테이너 이력구분 우선으로 보정. 이력조회값이 없는 행은 작업일이 지난 경우만 미선적 후보로 유지.
@@ -48,6 +50,8 @@
 - **v5.14.09**: 차량 위치 관제에서 `TRIP_END` 저품질/불가능 좌표는 마지막 정상점으로 수렴시키고, 앱 지도는 GPS 공백 중 짧은 예측 이동만 표시. 터널 출구 후보는 방향·속도상 맞을 때만 실제 경로로 연결. 완료 마커는 유지하되 동일 차량 재운행 시 진행 중 운행이 우선 표시되도록 보강.
 
 ## VERIFICATION
+- `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `node --test web/tests/vehicleLocation.test.mjs`: 13개 통과
 - `npm.cmd run lint`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.16 / 5157 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료

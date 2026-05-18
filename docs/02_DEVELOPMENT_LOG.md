@@ -1,3 +1,16 @@
+## [2026-05-19] 아산 배차 모바일 날짜탭 세로 스크롤 튐 보정 (v5.14.16)
+### 핵심
+- 중간 `통합현황/글로비스 KD 외/모비스 AS` 버튼 중 모비스 AS 전환 때 화면 위치가 튀던 원인을 날짜탭 `scrollIntoView`의 세로 스크롤 개입으로 보고 보정했습니다.
+- 날짜탭 활성 항목 자동 가운데 맞춤은 이제 날짜탭 컨테이너의 `scrollLeft`만 조정해 현재 화면 세로 위치를 유지합니다.
+- 첫 진입 시 데이터 로딩 후 날짜탭 자동 포커스가 페이지를 중간으로 끌어내리는 현상도 함께 차단했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 0 errors
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 차량위치관제 진행 중 마커 클릭 및 회전구간 루프 보정 (v5.14.15 / APK v5.11.16)
 ### 분석
 - 12가0140 2026-05-19 아침 운행 2건을 확인했습니다.
