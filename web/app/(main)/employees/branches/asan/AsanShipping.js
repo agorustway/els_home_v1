@@ -36,6 +36,9 @@ const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const SEARCH_BUSY_VISIBLE_DELAY_MS = 350;
 const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(col => col.header);
+const LOOKUP_SESSION_KEY = 'asan_shipping_container_lookup_session';
+const LOOKUP_SESSION_STALE_MS = 30 * 60 * 1000;
+const LOOKUP_SESSION_POLL_MS = 4000;
 
 // 날짜 관련 컬럼 키워드. 실제 날짜값 샘플 검증과 함께 사용한다.
 const DATE_COL_KEYWORDS = ['일자', '일', '날짜', 'date', '작업', '픽업', '반입', '입항', '출항', '접안'];
@@ -163,6 +166,70 @@ function summarizeContainerLookupProgress(rows = [], containers = [], options = 
     };
 }
 
+function readContainerLookupSession() {
+    if (typeof window === 'undefined') return null;
+    try {
+        return JSON.parse(localStorage.getItem(LOOKUP_SESSION_KEY) || 'null');
+    } catch {
+        return null;
+    }
+}
+
+function writeContainerLookupSession(session) {
+    if (typeof window === 'undefined' || !session) return session;
+    const next = {
+        ...session,
+        updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(LOOKUP_SESSION_KEY, JSON.stringify(next));
+    return next;
+}
+
+function isSameLookupPath(session, path) {
+    return Boolean(session?.path && path && session.path === path);
+}
+
+function isLookupSessionStale(session) {
+    if (!session || session.state !== 'running') return false;
+    const timestamp = Date.parse(session.lastSignalAt || session.startedAt || '');
+    if (!Number.isFinite(timestamp)) return true;
+    return Date.now() - timestamp > LOOKUP_SESSION_STALE_MS;
+}
+
+function summarizeSavedLookupProgress(savedMap = {}, containers = [], fallback = {}) {
+    const targets = (containers || []).map(v => String(v || '').trim().toUpperCase()).filter(Boolean);
+    const startedAt = Date.parse(fallback.startedAt || '');
+    const completed = targets.filter(containerNo => {
+        const record = savedMap?.[containerNo];
+        if (!Array.isArray(record?.mainRow) || record.mainRow.length === 0) return false;
+        if (!Number.isFinite(startedAt)) return true;
+        const lookedUpAt = Date.parse(record.lookedUpAt || '');
+        return Number.isFinite(lookedUpAt) && lookedUpAt >= startedAt;
+    }).length;
+    const total = targets.length || Number(fallback.total || 0);
+    const fallbackFailed = Math.max(0, Number(fallback.failed || 0));
+    const failed = Math.min(Math.max(0, total - completed), fallbackFailed);
+    return { total, completed, failed };
+}
+
+function createLookupSession({ path, containers, status }) {
+    const now = new Date().toISOString();
+    const targets = Array.from(new Set((containers || []).map(v => String(v || '').trim().toUpperCase()).filter(Boolean)));
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        path,
+        containers: targets,
+        total: targets.length,
+        completed: 0,
+        failed: 0,
+        state: 'running',
+        status,
+        startedAt: now,
+        lastSignalAt: now,
+        updatedAt: now,
+    };
+}
+
 export default function AsanShipping() {
     const [data, setData] = useState(null);
     const [headers, setHeaders] = useState([]);
@@ -208,6 +275,7 @@ export default function AsanShipping() {
     const [containerLookupRunning, setContainerLookupRunning] = useState(false);
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
     const [containerLookupProgress, setContainerLookupProgress] = useState(null);
+    const [activeLookupSession, setActiveLookupSession] = useState(null);
     const containerLookupResultsRef = useRef({});
     const lastLoadedPathRef = useRef('');
     const fetchRequestIdRef = useRef(0);
@@ -342,31 +410,96 @@ export default function AsanShipping() {
         containerLookupResultsRef.current = containerLookupResults;
     }, [containerLookupResults]);
 
+    const fetchSavedContainerLookupResults = useCallback(async (containers) => {
+        const resultMap = {};
+        if (!selectedPath || !containers?.length) return resultMap;
+        for (let i = 0; i < containers.length; i += CONTAINER_RESULTS_CHUNK_SIZE) {
+            const chunk = containers.slice(i, i + CONTAINER_RESULTS_CHUNK_SIZE);
+            const params = new URLSearchParams({
+                path: selectedPath,
+                containers: chunk.join(',')
+            });
+            const res = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`);
+            const json = await res.json();
+            if (json.data) Object.assign(resultMap, json.data);
+        }
+        return resultMap;
+    }, [selectedPath]);
+
     const loadSavedContainerLookupResults = useCallback(async (containers) => {
         const missingContainers = Array.from(new Set(containers || []))
             .filter(containerNo => containerNo && !containerLookupResultsRef.current?.[containerNo]?.mainRow);
         if (!selectedPath || !missingContainers.length) return;
         try {
-            for (let i = 0; i < missingContainers.length; i += CONTAINER_RESULTS_CHUNK_SIZE) {
-                const chunk = missingContainers.slice(i, i + CONTAINER_RESULTS_CHUNK_SIZE);
-                const params = new URLSearchParams({
-                    path: selectedPath,
-                    containers: chunk.join(',')
+            const savedMap = await fetchSavedContainerLookupResults(missingContainers);
+            if (Object.keys(savedMap).length > 0) {
+                setContainerLookupResults(prev => {
+                    const next = { ...prev, ...savedMap };
+                    containerLookupResultsRef.current = next;
+                    return next;
                 });
-                const res = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`);
-                const json = await res.json();
-                if (json.data) {
-                    setContainerLookupResults(prev => {
-                        const next = { ...prev, ...json.data };
-                        containerLookupResultsRef.current = next;
-                        return next;
-                    });
-                }
             }
         } catch (err) {
             console.warn('Failed to load container lookup results:', err);
         }
-    }, [selectedPath]);
+    }, [selectedPath, fetchSavedContainerLookupResults]);
+
+    const refreshContainerLookupSession = useCallback(async (options = {}) => {
+        const session = options.session || readContainerLookupSession();
+        if (!session || !isSameLookupPath(session, selectedPath)) return null;
+        if (session.state && !['running', 'stale'].includes(session.state)) return null;
+        const containers = Array.isArray(session.containers) ? session.containers : [];
+        if (!containers.length) return null;
+
+        try {
+            const savedMap = await fetchSavedContainerLookupResults(containers);
+            if (Object.keys(savedMap).length > 0) {
+                setContainerLookupResults(prev => {
+                    const next = { ...prev, ...savedMap };
+                    containerLookupResultsRef.current = next;
+                    return next;
+                });
+            }
+
+            let progress = summarizeSavedLookupProgress(savedMap, containers, session);
+            let state = session.state || 'running';
+            let status = session.status || '이전 컨테이너 조회 상태 확인 중';
+            const isDone = progress.total > 0 && progress.completed + progress.failed >= progress.total;
+
+            if (isDone) {
+                state = progress.failed > 0 ? 'failed' : 'completed';
+                status = progress.failed > 0
+                    ? `이전 컨테이너 조회 종료: 완료 ${progress.completed.toLocaleString()}건, 실패 ${progress.failed.toLocaleString()}건`
+                    : `이전 컨테이너 조회 완료: 저장 결과 ${progress.completed.toLocaleString()}건 확인`;
+            } else if (isLookupSessionStale(session)) {
+                progress = {
+                    ...progress,
+                    failed: Math.max(progress.failed, Math.max(0, progress.total - progress.completed)),
+                };
+                state = 'stale';
+                status = `이전 컨테이너 조회 상태 확인: 완료 ${progress.completed.toLocaleString()}건, 미확인 ${Math.max(0, progress.total - progress.completed).toLocaleString()}건`;
+            } else {
+                status = `이전 컨테이너 조회 진행 중: 완료 ${progress.completed.toLocaleString()}건 / 대상 ${progress.total.toLocaleString()}건`;
+            }
+
+            const progressAdvanced = progress.completed > Number(session.completed || 0)
+                || progress.failed > Number(session.failed || 0);
+            const next = writeContainerLookupSession({
+                ...session,
+                ...progress,
+                state,
+                status,
+                lastSignalAt: progressAdvanced ? new Date().toISOString() : session.lastSignalAt,
+            });
+            setActiveLookupSession(next);
+            setContainerLookupProgress(progress);
+            setContainerLookupStatus(status);
+            return next;
+        } catch (err) {
+            console.warn('컨테이너 조회 세션 복원 실패:', err);
+            return session;
+        }
+    }, [selectedPath, fetchSavedContainerLookupResults]);
 
     useEffect(() => {
         if (isComposingSearch) return undefined;
@@ -399,6 +532,19 @@ export default function AsanShipping() {
         const containers = extractUniqueContainerNos(data.headers, data.data);
         loadSavedContainerLookupResults(containers);
     }, [data?.headers, data?.data, loadSavedContainerLookupResults]);
+
+    useEffect(() => {
+        if (!selectedPath) return;
+        refreshContainerLookupSession();
+    }, [selectedPath, refreshContainerLookupSession]);
+
+    useEffect(() => {
+        if (!activeLookupSession || activeLookupSession.state !== 'running' || isLookupSessionStale(activeLookupSession)) return undefined;
+        const timer = setInterval(() => {
+            refreshContainerLookupSession({ session: activeLookupSession });
+        }, LOOKUP_SESSION_POLL_MS);
+        return () => clearInterval(timer);
+    }, [activeLookupSession, refreshContainerLookupSession]);
 
     useEffect(() => {
         if (!data || !data.file_modified_at) {
@@ -792,14 +938,36 @@ export default function AsanShipping() {
 
     const handleContainerLookup = async () => {
         if (containerLookupRunning) return;
+        const persistedSession = readContainerLookupSession();
+        if (isSameLookupPath(persistedSession, selectedPath) && persistedSession?.state === 'running' && !isLookupSessionStale(persistedSession)) {
+            await refreshContainerLookupSession({ session: persistedSession });
+            alert('이전 컨테이너 조회가 아직 진행 중입니다. 완료/실패 건수를 복원해서 표시했습니다.');
+            return;
+        }
         const containers = extractUniqueContainerNos(data?.headers || [], processedData);
         if (!containers.length) {
             alert('현재 필터 결과에서 조회할 컨테이너 번호가 없습니다.');
             return;
         }
 
+        let lookupSession = writeContainerLookupSession(createLookupSession({
+            path: selectedPath,
+            containers,
+            status: `현재 필터 결과 ${processedData.length.toLocaleString()}행 중 컨테이너 ${containers.length.toLocaleString()}건 조회 준비 중`,
+        }));
+        const updateLookupSession = (patch) => {
+            lookupSession = writeContainerLookupSession({
+                ...lookupSession,
+                ...patch,
+                lastSignalAt: new Date().toISOString(),
+            });
+            setActiveLookupSession(lookupSession);
+            return lookupSession;
+        };
+
         setContainerLookupRunning(true);
-        setContainerLookupStatus(`현재 필터 결과 ${processedData.length.toLocaleString()}행 중 컨테이너 ${containers.length.toLocaleString()}건 조회 준비 중`);
+        setActiveLookupSession(lookupSession);
+        setContainerLookupStatus(lookupSession.status);
         setContainerLookupProgress({ total: containers.length, completed: 0, failed: 0 });
         setContainerLookupResults(prev => mergePendingContainerLookupResults(prev, containers));
 
@@ -828,7 +996,9 @@ export default function AsanShipping() {
 
             const processLine = (line) => {
                 if (line.startsWith('LOG:')) {
-                    setContainerLookupStatus(line.substring(4).trim());
+                    const status = line.substring(4).trim();
+                    updateLookupSession({ status, state: 'running' });
+                    setContainerLookupStatus(status);
                     return;
                 }
                 if (line.startsWith('RESULT_PARTIAL:')) {
@@ -836,7 +1006,9 @@ export default function AsanShipping() {
                         const part = JSON.parse(line.substring(15));
                         if (Array.isArray(part.result)) {
                             receivedRows.push(...part.result);
-                            setContainerLookupProgress(summarizeContainerLookupProgress(receivedRows, containers));
+                            const progress = summarizeContainerLookupProgress(receivedRows, containers);
+                            updateLookupSession({ ...progress, state: 'running' });
+                            setContainerLookupProgress(progress);
                             const partialMap = part.saved_data || buildContainerLookupMapFromRows(receivedRows, containers);
                             setContainerLookupResults(prev => ({ ...prev, ...partialMap }));
                         }
@@ -851,7 +1023,9 @@ export default function AsanShipping() {
                         if (payload.ok) {
                             finalRows = payload.result || [];
                             savedPayload = payload;
-                            setContainerLookupProgress(summarizeContainerLookupProgress(finalRows, containers));
+                            const progress = summarizeContainerLookupProgress(finalRows, containers);
+                            updateLookupSession({ ...progress, state: 'completed' });
+                            setContainerLookupProgress(progress);
                             if (payload.saved_data) {
                                 setContainerLookupResults(prev => {
                                     const next = { ...prev, ...payload.saved_data };
@@ -863,12 +1037,15 @@ export default function AsanShipping() {
                             }
                         }
                         else {
+                            let progress;
                             if (Array.isArray(payload.result) && payload.result.length > 0) {
                                 receivedRows.push(...payload.result);
-                                setContainerLookupProgress(summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true }));
+                                progress = summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true });
                             } else {
-                                setContainerLookupProgress(summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true }));
+                                progress = summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true });
                             }
+                            updateLookupSession({ ...progress, state: 'failed', status: payload.error || '컨테이너 조회 실패' });
+                            setContainerLookupProgress(progress);
                             throw new Error(payload.error || '컨테이너 조회 실패');
                         }
                     } catch (err) {
@@ -893,15 +1070,22 @@ export default function AsanShipping() {
                 throw new Error(`컨테이너 조회 결과 저장 실패: ${savedPayload.saved_error}`);
             }
             if (savedPayload?.saved_data) {
-                setContainerLookupStatus(`조회/저장 완료: ${savedPayload.saved_count || 0}건`);
+                const status = `조회/저장 완료: ${savedPayload.saved_count || 0}건`;
+                updateLookupSession({ state: 'completed', status });
+                setContainerLookupStatus(status);
             } else {
                 const saved = await saveContainerLookupResults(rowsToSave, containers);
-                setContainerLookupStatus(`조회/저장 완료: ${saved.count || 0}건`);
+                const status = `조회/저장 완료: ${saved.count || 0}건`;
+                updateLookupSession({ state: 'completed', status });
+                setContainerLookupStatus(status);
             }
         } catch (err) {
             console.error('컨테이너 조회 실패:', err);
-            setContainerLookupProgress(summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true }));
-            setContainerLookupStatus(`오류: ${err.message}`);
+            const progress = summarizeContainerLookupProgress(receivedRows, containers, { forceRemainingFailed: true });
+            const status = `오류: ${err.message}`;
+            updateLookupSession({ ...progress, state: 'failed', status });
+            setContainerLookupProgress(progress);
+            setContainerLookupStatus(status);
             alert(err.message || '컨테이너 조회에 실패했습니다.');
         } finally {
             setContainerLookupRunning(false);
@@ -1095,6 +1279,7 @@ export default function AsanShipping() {
     const hasSearchQuery = Boolean(searchInput.trim() || searchTerm.trim());
     const shouldShowSearchRefreshing = Boolean(showSearchRefreshing && hasSearchQuery);
     const searchStatusText = searchPending ? '입력 대기' : (shouldShowSearchRefreshing ? '검색 중' : '');
+    const activeLookupRunning = Boolean(activeLookupSession?.state === 'running' && !isLookupSessionStale(activeLookupSession));
 
     const handleTableScroll = (e) => {
         const target = e.currentTarget;
@@ -1239,10 +1424,10 @@ export default function AsanShipping() {
                             <button
                                 className={styles.lookupBtn}
                                 onClick={handleContainerLookup}
-                                disabled={containerLookupRunning}
-                                title="현재 검색/필터 결과에 남아있는 컨테이너를 모두 이력조회합니다"
+                                disabled={containerLookupRunning || activeLookupRunning}
+                                title={activeLookupRunning ? '이전 컨테이너 조회가 아직 진행 중입니다. 완료/실패 건수를 복원 중입니다.' : '현재 검색/필터 결과에 남아있는 컨테이너를 모두 이력조회합니다'}
                             >
-                                {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                                {containerLookupRunning || activeLookupRunning ? '조회 중' : '컨테이너 조회'}
                             </button>
                         </div>
                     </div>
@@ -1251,7 +1436,6 @@ export default function AsanShipping() {
 
             {containerLookupStatus && (
                 <div className={styles.lookupStatus}>
-                    <span>{containerLookupStatus}</span>
                     {containerLookupProgress && (
                         <span className={styles.lookupStatusCounts}>
                             <span>컨테이너 조회건수 {containerLookupProgress.total.toLocaleString()}건</span>
@@ -1261,6 +1445,7 @@ export default function AsanShipping() {
                             </span>
                         </span>
                     )}
+                    <span className={styles.lookupStatusMessage}>{containerLookupStatus}</span>
                 </div>
             )}
 

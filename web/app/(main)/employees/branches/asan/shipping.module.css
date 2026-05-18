@@ -217,6 +217,13 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+    flex: 0 0 auto;
+    order: 0;
+}
+
+.lookupStatusMessage {
+    min-width: 0;
+    order: 1;
 }
 
 .lookupStatusFailed {

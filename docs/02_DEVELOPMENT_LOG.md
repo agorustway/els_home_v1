@@ -1,3 +1,18 @@
+## [2026-05-18] 아산 선적관리 컨테이너 조회 세션 복원 (v5.14.12)
+### 핵심
+- 선적관리 컨테이너 조회를 시작하면 대상 파일/컨테이너/진행 건수를 브라우저 세션에 저장해, 필터 조회 중 다른 페이지로 이동했다가 돌아와도 진행 상태를 복원합니다.
+- 복귀 화면은 4초 주기로 저장된 컨테이너 이력 결과를 다시 읽어 `컨테이너 조회건수 / 조회완료 / 조회실패`을 앞쪽에 고정 표시합니다.
+- 이전 조회 결과가 완료 건수로 섞이지 않도록 이번 세션 시작 이후 저장된 `lookedUpAt`만 완료로 인정하고, 30분간 새 신호가 없으면 남은 건은 미확인/실패 상태로 정리합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 안전운임 구간조회 탭 위치 조정 (v5.14.11)
 ### 핵심
 - 안전운임 상단 탭 순서를 `구간별운임 → 거리별운임 → 구간조회 → 이외구간`으로 바꿨습니다.
