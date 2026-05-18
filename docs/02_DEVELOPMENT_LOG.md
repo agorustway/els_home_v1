@@ -1,3 +1,17 @@
+## [2026-05-18] 아산 연간실적 장기 흐름 개요 전용 정리 (v5.14.05)
+### 핵심
+- 원장 장기 흐름 차트와 조사범위 KPI 카드가 모든 분석 탭 상단에 반복 노출되던 구조를 개요 탭 전용으로 변경했습니다.
+- `10년 흐름`, `연도×월`, `계약/차량`, `주차·요일`, `검증·근거` 탭은 각 탭의 고유 분석 내용부터 바로 보이도록 정리했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
+- `npm.cmd run build`: 통과 (외부 fetch는 sandbox EACCES 경고만 표시)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 개요 근거 표 제거와 계약/차량 명칭 정리 (v5.14.04)
 ### 핵심
 - 개요 화면 하단의 근거 표 묶음은 `계약/차량` 상세 탭에 이미 있는 성격이라 개요에서는 제거했습니다.

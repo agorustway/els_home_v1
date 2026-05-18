@@ -1043,6 +1043,8 @@ export default function AsanAnnualPerformance() {
                         ))}
                     </div>
 
+                    {analysisView === 'overview' && (
+                        <>
                     <LedgerFlowChart
                         items={scopedMonthly}
                         title="원장 장기 흐름"
@@ -1074,8 +1076,6 @@ export default function AsanAnnualPerformance() {
                         </div>
                     </div>
 
-                    {analysisView === 'overview' && (
-                        <>
                     <div className={styles.reportGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
