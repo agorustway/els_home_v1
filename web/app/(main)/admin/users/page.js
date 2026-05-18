@@ -203,41 +203,34 @@ export default function AdminUsersPage() {
             <div className={styles.mainContent}>
                 <header className={styles.compactHeader}>
                     <h1 className={styles.pageTitle}>회원 권한 관리</h1>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div className={styles.headerActions}>
                         {users.some(u => u.isDirty) && (
                             <button onClick={handleSaveAll} className={`${styles.btn} ${styles.btnPoint}`}>
-                                💾 전체 저장 ({users.filter(u => u.isDirty).length})
+                                전체 저장 ({users.filter(u => u.isDirty).length})
                             </button>
                         )}
                         <button type="button" onClick={() => fetchUsers(pagination.page, activeQuery, showBanned)} className={styles.btn} title="목록 새로고침">
-                            🔄
+                            새로고침
                         </button>
                     </div>
                 </header>
 
                 {/* Search & Filter Toolbar */}
-                <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <form onSubmit={handleSearch} style={{ display: 'flex', gap: '6px', flex: 1, minWidth: '300px' }}>
+                <div className={styles.toolbar}>
+                    <form onSubmit={handleSearch} className={styles.toolbarForm}>
                         <input
                             type="text"
                             placeholder="이메일, 이름, 권한 검색..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                border: '1px solid #e2e8f0',
-                                outline: 'none',
-                                fontSize: '0.85rem'
-                            }}
+                            className={styles.textInput}
                         />
                         <button type="submit" className={`${styles.btn} ${styles.btnPoint}`}>검색</button>
                     </form>
 
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div className={styles.toolbarActions}>
 
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none', fontSize: '0.85rem' }}>
+                        <label className={styles.filterCheck}>
                             <input
                                 type="checkbox"
                                 checked={showBanned}
@@ -246,83 +239,83 @@ export default function AdminUsersPage() {
                                     setPagination(prev => ({ ...prev, page: 1 }));
                                 }}
                             />
-                            <span style={{ color: '#475569', fontWeight: '600' }}>차단된 계정 포함</span>
+                            <span>차단된 계정 포함</span>
                         </label>
                     </div>
                 </div>
 
                 {error && (
-                    <div style={{ margin: '0 0 16px', padding: '12px', backgroundColor: '#fee2e2', color: '#ef4444', borderRadius: '8px', fontSize: '0.85rem' }}>
-                        ⚠️ {error}
+                    <div className={styles.errorBox}>
+                        {error}
                     </div>
                 )}
 
                 {/* Desktop Table */}
-                <div className={styles.tableWrapper} style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden', marginBottom: '20px' }}>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
+                <div className={styles.tableWrapper}>
+                    <div className={styles.scrollX}>
+                        <table className={styles.adminTable} style={{ minWidth: '1100px' }}>
                             <thead>
-                                <tr style={{ backgroundColor: '#f1f5f9' }}>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '200px' }}>이메일</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '100px' }}>이름</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '160px' }}>직급/직책</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '140px' }}>전화번호</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', width: '180px' }}>지점/권한</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>상태</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '80px' }}>게시글</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '130px' }}>권한 설정</th>
-                                    <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center', width: '180px' }}>관리</th>
+                                <tr>
+                                    <th style={{ width: '200px' }}>이메일</th>
+                                    <th style={{ width: '100px' }}>이름</th>
+                                    <th style={{ width: '160px' }}>직급/직책</th>
+                                    <th style={{ width: '140px' }}>전화번호</th>
+                                    <th style={{ width: '180px' }}>지점/권한</th>
+                                    <th style={{ textAlign: 'center', width: '80px' }}>상태</th>
+                                    <th style={{ textAlign: 'center', width: '80px' }}>게시글</th>
+                                    <th style={{ textAlign: 'center', width: '130px' }}>권한 설정</th>
+                                    <th style={{ textAlign: 'center', width: '180px' }}>관리</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>데이터 로딩 중...</td></tr>
+                                    <tr><td colSpan="9" className={styles.empty}>데이터를 불러오는 중입니다...</td></tr>
                                 ) : users.length === 0 ? (
-                                    <tr><td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>검색 결과가 없습니다.</td></tr>
+                                    <tr><td colSpan="9" className={styles.empty}>검색 결과가 없습니다.</td></tr>
                                 ) : users.map((u) => (
-                                    <tr key={u.id} style={{ borderTop: '1px solid #f1f5f9', opacity: u.is_banned ? 0.6 : 1, background: u.is_banned ? '#fff1f2' : 'white' }}>
-                                        <td style={{ padding: '16px', color: '#1e293b', fontWeight: '500' }}>
+                                    <tr key={u.id} className={u.is_banned ? styles.mutedRow : ''}>
+                                        <td className={styles.breakCell} style={{ color: '#1e293b', fontWeight: '600' }}>
                                             {u.email}
-                                            {u.is_banned && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 'bold', marginTop: '4px' }}>⛔ 차단됨</div>}
+                                            {u.is_banned && <div className={styles.statusNote}>차단됨</div>}
                                         </td>
-                                        <td style={{ padding: '16px' }}>
+                                        <td>
                                             <input
                                                 type="text"
                                                 value={u.name || ''}
                                                 placeholder="이름"
                                                 onChange={(e) => handleLocalUpdate(u.id, 'name', e.target.value)}
-                                                style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                                className={styles.tableInput}
                                             />
                                         </td>
-                                        <td style={{ padding: '16px' }}>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                        <td>
+                                            <div className={styles.inlineInputs}>
                                                 <input
                                                     type="text"
                                                     value={u.rank || ''}
                                                     placeholder="직급"
                                                     onChange={(e) => handleLocalUpdate(u.id, 'rank', e.target.value)}
-                                                    style={{ width: '50%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                                    className={styles.tableInput}
                                                 />
                                                 <input
                                                     type="text"
                                                     value={u.position || ''}
                                                     placeholder="직책"
                                                     onChange={(e) => handleLocalUpdate(u.id, 'position', e.target.value)}
-                                                    style={{ width: '50%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                                                    className={styles.tableInput}
                                                 />
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px' }}>
+                                        <td>
                                             <input
                                                 type="text"
                                                 value={u.phone || ''}
                                                 placeholder="010-0000-0000"
                                                 onInput={(e) => { e.target.value = formatPhoneNumber(e.target.value); }}
                                                 onChange={(e) => handleLocalUpdate(u.id, 'phone', e.target.value)}
-                                                style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                                                className={styles.tableInput}
                                             />
                                         </td>
-                                        <td style={{ padding: '16px' }}>
+                                        <td>
                                             <div style={{ position: 'relative' }}>
                                                 <select
                                                     value={u.role}
@@ -340,40 +333,35 @@ export default function AdminUsersPage() {
                                                     ))}
                                                 </select>
                                                 {u.requested_role && (
-                                                    <div style={{ fontSize: '0.7rem', color: '#d97706', marginTop: '4px', fontWeight: 'bold' }}>
-                                                        🔔 요청: {getRoleLabel(u.requested_role)}
+                                                    <div className={styles.requestNote}>
+                                                        요청: {getRoleLabel(u.requested_role)}
                                                     </div>
                                                 )}
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px', textAlign: 'center' }}>
+                                        <td style={{ textAlign: 'center' }}>
                                             <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700', backgroundColor: u.is_banned ? '#fee2e2' : '#dcfce7', color: u.is_banned ? '#991b1b' : '#166534' }}>
                                                 {u.is_banned ? '차단' : '정상'}
                                             </span>
                                         </td>
-                                        <td style={{ padding: '16px', textAlign: 'center', fontWeight: 'bold', color: u.post_count > 0 ? '#3b82f6' : '#cbd5e1' }}>
+                                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: u.post_count > 0 ? '#3b82f6' : '#cbd5e1' }}>
                                             {u.post_count}
                                         </td>
-                                        <td style={{ padding: '16px', textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                                <label title="쓰기"><input type="checkbox" checked={u.can_write || false} onChange={(e) => handleLocalUpdate(u.id, 'can_write', e.target.checked)} /> ✏️</label>
-                                                <label title="삭제"><input type="checkbox" checked={u.can_delete || false} onChange={(e) => handleLocalUpdate(u.id, 'can_delete', e.target.checked)} /> 🗑️</label>
-                                                <label title="보안"><input type="checkbox" checked={u.can_read_security || false} onChange={(e) => handleLocalUpdate(u.id, 'can_read_security', e.target.checked)} /> 🔐</label>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div className={styles.permissionGroup}>
+                                                <label className={styles.permissionLabel} title="쓰기"><input type="checkbox" checked={u.can_write || false} onChange={(e) => handleLocalUpdate(u.id, 'can_write', e.target.checked)} /> 쓰기</label>
+                                                <label className={styles.permissionLabel} title="삭제"><input type="checkbox" checked={u.can_delete || false} onChange={(e) => handleLocalUpdate(u.id, 'can_delete', e.target.checked)} /> 삭제</label>
+                                                <label className={styles.permissionLabel} title="보안"><input type="checkbox" checked={u.can_read_security || false} onChange={(e) => handleLocalUpdate(u.id, 'can_read_security', e.target.checked)} /> 보안</label>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px', textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div className={styles.rowActions} style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
                                                 <button
                                                     onClick={() => handleSaveUser(u.id)}
                                                     disabled={!u.isDirty}
-                                                    style={{
-                                                        padding: '6px 10px', borderRadius: '6px',
-                                                        background: u.isDirty ? '#4f46e5' : '#e2e8f0',
-                                                        color: u.isDirty ? 'white' : '#94a3b8',
-                                                        border: 'none', cursor: u.isDirty ? 'pointer' : 'default', fontWeight: 'bold', fontSize: '0.75rem'
-                                                    }}
+                                                    className={`${styles.saveButton} ${u.isDirty ? styles.saveButtonActive : ''}`}
                                                 >
-                                                    {u.isDirty ? '💾 저장' : '완료'}
+                                                    {u.isDirty ? '저장' : '완료'}
                                                 </button>
                                                 <button onClick={() => handleBanUser(u.id, u.email, u.is_banned)} style={{ padding: '6px 10px', borderRadius: '6px', background: u.is_banned ? '#dcfce7' : '#f1f5f9', color: u.is_banned ? '#166534' : '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>
                                                     {u.is_banned ? '해제' : '차단'}
@@ -393,7 +381,7 @@ export default function AdminUsersPage() {
                 {/* Mobile Card List */}
                 <div className={styles.cardList}>
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>로딩 중...</div>
+                        <div className={styles.empty}>데이터를 불러오는 중입니다...</div>
                     ) : users.map((u) => (
                         <div key={u.id} className={styles.userCard} style={{ opacity: u.is_banned ? 0.7 : 1, background: u.is_banned ? '#fff1f2' : 'white' }}>
                             <div className={styles.cardHeader}>
@@ -432,22 +420,22 @@ export default function AdminUsersPage() {
                                             <option key={key} value={key}>{label}</option>
                                         ))}
                                     </select>
-                                    {u.requested_role && <div style={{ fontSize: '0.7rem', color: '#d97706', marginTop: '4px' }}>🔔 요청: {getRoleLabel(u.requested_role)}</div>}
+                                    {u.requested_role && <div className={styles.requestNote}>요청: {getRoleLabel(u.requested_role)}</div>}
                                 </div>
                             </div>
 
                             <div className={styles.cardPermissions}>
                                 <label className={styles.permItem}>
                                     <input type="checkbox" checked={u.can_write || false} onChange={(e) => handleLocalUpdate(u.id, 'can_write', e.target.checked)} />
-                                    <span>쓰기✏️</span>
+                                    <span>쓰기</span>
                                 </label>
                                 <label className={styles.permItem}>
                                     <input type="checkbox" checked={u.can_delete || false} onChange={(e) => handleLocalUpdate(u.id, 'can_delete', e.target.checked)} />
-                                    <span>삭제🗑️</span>
+                                    <span>삭제</span>
                                 </label>
                                 <label className={styles.permItem}>
                                     <input type="checkbox" checked={u.can_read_security || false} onChange={(e) => handleLocalUpdate(u.id, 'can_read_security', e.target.checked)} />
-                                    <span>보안🔐</span>
+                                    <span>보안</span>
                                 </label>
                             </div>
 
@@ -458,7 +446,7 @@ export default function AdminUsersPage() {
                                     className={`${styles.btn} ${u.isDirty ? styles.btnPoint : ''}`}
                                     style={{ width: '100%', marginBottom: '6px' }}
                                 >
-                                    {u.isDirty ? '💾 변경사항 저장' : '저장됨'}
+                                    {u.isDirty ? '변경사항 저장' : '저장됨'}
                                 </button>
                                 <button onClick={() => handleBanUser(u.id, u.email, u.is_banned)} className={styles.btn} style={{ flex: 1 }}>
                                     {u.is_banned ? '차단 해제' : '계정 차단'}
@@ -472,12 +460,12 @@ export default function AdminUsersPage() {
                 </div>
 
                 {/* Pagination Controls */}
-                <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                <div className={styles.pagination}>
+                    <div className={styles.paginationButtons}>
                         <button onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page === 1} className={styles.btn}>이전</button>
                         <button onClick={() => handlePageChange(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages} className={styles.btn}>다음</button>
                     </div>
-                    <span style={{ fontWeight: '600', color: '#475569', fontSize: '0.85rem' }}>
+                    <span className={styles.paginationText}>
                         {pagination.page} / {pagination.totalPages || 1} 페이지 (총 {pagination.total}명)
                     </span>
                 </div>

@@ -1,23 +1,23 @@
-/* Admin Users Page Styles */
 .adminContainer {
     padding: 12px 14px 36px;
-    background: #fcfdfe;
+    background: #f8fafc;
     min-height: calc(100vh - 70px);
 }
 
 .mainContent {
     width: 100%;
+    min-width: 0;
 }
 
-/* 페이지 헤더 (클린 스타일) */
 .compactHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     background: #fff;
     padding: 10px 14px;
     border-radius: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
@@ -32,7 +32,15 @@
     border-left: 3px solid #2563eb;
 }
 
-/* 표준 버튼 통일 */
+.headerActions,
+.toolbarActions,
+.paginationButtons,
+.cardActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .btn {
     padding: 6px 12px;
     border-radius: 6px;
@@ -42,16 +50,23 @@
     font-weight: 700;
     font-size: 0.78rem;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
     height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
+    font-family: inherit;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
     background: #f1f5f9;
+}
+
+.btn:disabled {
+    color: #94a3b8;
+    background: #f8fafc;
+    cursor: not-allowed;
 }
 
 .btnPoint {
@@ -60,12 +75,294 @@
     border-color: #bfdbfe;
 }
 
-.btnPoint:hover {
+.btnPoint:hover:not(:disabled) {
     background: #dbeafe;
 }
 
-.cardList {
-    display: none;
+.btnDanger {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.btnDangerSolid {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+}
+
+.btnSuccess {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+}
+
+.toolbar {
+    margin-bottom: 8px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.toolbarForm {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    min-width: 300px;
+    align-items: center;
+}
+
+.textInput,
+.selectInput,
+.dateInput,
+.tableInput,
+.tableSelect {
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    outline: none;
+    font-size: 0.82rem;
+    font-family: inherit;
+    color: #334155;
+    background: #fff;
+}
+
+.textInput,
+.selectInput,
+.dateInput {
+    height: 32px;
+    padding: 0 10px;
+}
+
+.textInput {
+    min-width: 180px;
+}
+
+.selectInput {
+    min-width: 130px;
+}
+
+.dateRange {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background: #f8fafc;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    height: 32px;
+}
+
+.dateSeparator {
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.dateInput {
+    border: none;
+    background: transparent;
+    padding: 0;
+    min-width: 118px;
+}
+
+.filterCheck {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.82rem;
+    color: #475569;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.noticeBox,
+.errorBox {
+    margin: 0 0 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    font-weight: 600;
+}
+
+.noticeBox {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.errorBox {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+}
+
+.tableWrapper,
+.tableShell {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.scrollX {
+    overflow-x: auto;
+}
+
+.adminTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    table-layout: fixed;
+}
+
+.adminTable th,
+.adminTable td {
+    padding: 10px 12px;
+    border-top: 1px solid #f1f5f9;
+    vertical-align: middle;
+    font-size: 0.8rem;
+}
+
+.adminTable thead th {
+    border-top: none;
+    background: #315f8c;
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.adminTable tbody tr:hover {
+    background: #f8fafc;
+}
+
+.selectedRow {
+    background: #eff6ff;
+}
+
+.mutedRow {
+    opacity: 0.65;
+    background: #fff1f2;
+}
+
+.checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.tableInput {
+    width: 100%;
+    height: 30px;
+    padding: 0 8px;
+    box-sizing: border-box;
+}
+
+.tableSelect {
+    width: 100%;
+    height: 30px;
+    padding: 0 8px;
+}
+
+.inlineInputs,
+.permissionGroup,
+.rowActions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.permissionGroup {
+    justify-content: center;
+}
+
+.permissionLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.statusNote,
+.requestNote {
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+.statusNote {
+    color: #dc2626;
+}
+
+.requestNote {
+    color: #d97706;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: color-mix(in srgb, var(--badge-color, #64748b) 12%, #fff);
+    color: var(--badge-color, #64748b);
+    border: 1px solid color-mix(in srgb, var(--badge-color, #64748b) 24%, #fff);
+    white-space: nowrap;
+}
+
+.pathCell,
+.breakCell {
+    word-break: break-all;
+}
+
+.nowrapCell {
+    white-space: nowrap;
+}
+
+.metaPreview {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    background: #f8fafc;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.saveButton {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+    cursor: default;
+    font-weight: 800;
+    font-size: 0.75rem;
+    font-family: inherit;
+}
+
+.saveButtonActive {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+    cursor: pointer;
 }
 
 .deleteBtn {
@@ -74,24 +371,208 @@
     border: 1px solid #fecaca;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.15s;
     white-space: nowrap;
 }
 
 .deleteBtn:hover {
     background-color: #ef4444;
-    color: white;
+    color: #fff;
     border-color: #ef4444;
 }
 
+.divider {
+    width: 1px;
+    height: 24px;
+    background: #e2e8f0;
+    margin: 0 2px;
+}
+
+.cardList {
+    display: none;
+}
+
+.empty {
+    padding: 40px;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.pagination {
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.paginationText {
+    font-weight: 700;
+    color: #475569;
+    font-size: 0.82rem;
+}
+
+.logCard,
+.userCard {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+}
+
+.logCardHeader,
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 8px;
+}
+
+.logCardTitle,
+.cardEmail {
+    font-weight: 800;
+    color: #1e293b;
+    font-size: 0.86rem;
+    word-break: break-all;
+}
+
+.logCardDate,
+.cardStatus {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.logCardBody {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.logCardPath {
+    word-break: break-all;
+    color: #334155;
+}
+
+.cardGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.infoGroup label {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 4px;
+    font-weight: 700;
+}
+
+.cardPermissions {
+    display: flex;
+    gap: 8px;
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: 8px;
+    justify-content: space-around;
+    margin-top: 8px;
+    border: 1px solid #eef2f7;
+}
+
+.permItem {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #475569;
+    font-weight: 700;
+}
+
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.48);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modalPanel {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    width: min(600px, 100%);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.16);
+    border: 1px solid #e2e8f0;
+}
+
+.modalTitle {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    color: #0f172a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 900;
+}
+
+.modalClose {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #64748b;
+    cursor: pointer;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    font-family: inherit;
+}
+
+.modalMeta {
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+    color: #475569;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.metaPre {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    color: #334155;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 @media (max-width: 768px) {
+    .adminContainer {
+        padding: 8px 6px 28px;
+    }
+
     .compactHeader {
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: nowrap;
         padding: 8px 10px;
         gap: 6px;
     }
@@ -104,95 +585,65 @@
         text-overflow: ellipsis;
     }
 
+    .headerActions,
+    .toolbarActions {
+        gap: 6px;
+        overflow-x: auto;
+        max-width: 100%;
+    }
+
     .btn {
         height: 32px;
         padding: 0 8px;
         font-size: 0.75rem;
-        width: auto;
-        white-space: nowrap;
     }
 
-    .tableWrapper {
+    .toolbar {
+        align-items: stretch;
+    }
+
+    .toolbarForm {
+        min-width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .textInput,
+    .selectInput {
+        flex: 1 1 140px;
+        min-width: 0;
+    }
+
+    .dateRange {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .dateInput {
+        min-width: 0;
+        width: 45%;
+    }
+
+    .tableWrapper,
+    .tableShell {
         display: none;
-        /* Hide table on mobile */
     }
 
     .cardList {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-    }
-
-    .userCard {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border: 1px solid #eef2f6;
-    }
-
-    .cardHeader {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        gap: 8px;
         margin-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 10px;
-    }
-
-    .cardEmail {
-        font-weight: 700;
-        color: #1e293b;
-        font-size: 0.95rem;
-        word-break: break-all;
-    }
-
-    .cardStatus {
-        font-size: 0.7rem;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: bold;
     }
 
     .cardGrid {
-        display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .infoGroup label {
-        display: block;
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-bottom: 4px;
-        font-weight: 600;
     }
 
     .cardActions {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-        padding-top: 15px;
+        gap: 6px;
+        margin-top: 8px;
+        padding-top: 8px;
         border-top: 1px solid #f1f5f9;
-    }
-
-    .cardPermissions {
-        display: flex;
-        gap: 15px;
-        background: #f8fafc;
-        padding: 10px;
-        border-radius: 8px;
-        justify-content: space-around;
-        margin-top: 10px;
-    }
-
-    .permItem {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.7rem;
-        color: #475569;
+        flex-wrap: wrap;
     }
 }

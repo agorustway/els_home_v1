@@ -17,6 +17,8 @@
   - 모바일 배차 현황판 중간 액션은 `통합현황/글로비스 KD 외/모비스 AS`와 `고객사/실행사/배차판 검색` 2줄로 제공.
   - 연간실적 차량별 손익은 실제 차량번호만 랭킹화하고, 빈칸/`-` 영업넘버 55,473건은 별도 품질 지표로 표시.
   - 연간실적 분석섹션 탭은 조사범위 컨트롤 아래 고정 위치로 배치해 탭 전환 시 시선 이동을 줄임.
+  - 관리자 권한/문의/활동 로그 화면은 연락처·자료실 기준 폰트/버튼/표 밀도로 맞추고 이모지 장식을 제거.
+  - 활동 로그 관리는 `/api/admin/logs` 경유로 조회·삭제하고, 정확 count 대신 추정 count+다음 페이지 감지로 병목을 줄임.
   - 선적관리 기본 조회는 최근 3개월 작업일 서버 필터를 적용해 DB 조회량을 줄임.
 
 ## ACTIVE SYSTEMS
@@ -45,6 +47,7 @@
 
 ## RECENT CHANGES
 - **v5.13.99**: 아산 연간실적 분석섹션 탭을 조사범위 바로 아래로 이동하고, 버튼 폭/높이/라벨 영역을 고정해 탭 클릭 시 컨트롤 줄이 흔들리지 않게 보정.
+- **v5.13.98**: 관리자 문의/회원 권한/활동 로그 화면을 담백한 인트라넷 톤으로 재정리하고 이모지 장식을 제거. 활동 로그 화면은 NAS 직접 호출 대신 인증된 Next 관리자 API를 사용하며 모바일 카드 뷰와 로컬 `/api/logs` 수집 fallback을 추가.
 - **v5.13.97**: 아산 연간실적 차량별 손익에서 원장 `영업넘버` 빈칸/`-` 행을 차량 랭킹에서 분리하고 `차량번호 미기재` 품질 지표로 표시. 장기 흐름 SVG 비율, 조사범위 바, 분석 섹션 탭 톤을 정리해 넓은 화면에서 그래프가 가운데만 쓰이지 않게 보정.
 - **v5.13.96**: 아산 배차 모바일 중간 액션에 현황 범위 선택 3버튼을 추가하고, 배차판 검색 버튼은 흰색 보조 톤으로 낮춤. 배차판 진입 스크롤은 상단 카드 기준으로 보정.
 - **v5.13.95**: AI 어시스턴트 삭제 시 `els_ai_sessions_cleared_at` 로컬 삭제 마커를 저장하고, 해당 시점보다 오래된 로컬/DB 대화 스냅샷은 화면에 표시하지 않도록 보강.
@@ -70,12 +73,15 @@
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanDashboard.js" "app/(main)/employees/branches/asan/page.js"`: 0 errors
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - 연간실적 화면 테스트: `조사범위 → 분석섹션 → 장기 흐름` 순서 고정 검증 추가
+- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
+- `npm.cmd run lint -- "app/(main)/admin/page.js" "app/(main)/admin/users/page.js" "app/(main)/admin/logs/page.js" "app/api/admin/logs/route.js" "app/api/logs/route.js" "utils/logger.js" "utils/logger.server.js"`: 0 errors
 - 운영 Supabase 검증: `vehiclePerformance` 80개 실제 차량, 최상위 `부산98사1786` 손익률 15.74%, 차량번호 미기재 55,473건 별도 분리
 - `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
 - 웹 디버그: 연간실적 `개요/10년 흐름/연도×월/직계약·차량/주차·요일/검증·근거` 탭 및 원장 AND 검색 `301+` 표기 확인
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanShipping.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanShippingFlow.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
 - `npm.cmd run build`: 통과 (외부 WebDAV/API sandbox EACCES 경고만 표시)
+- 로컬 HTTP 검증: `/admin/logs?debug=true` 200 응답 및 `활동 로그 관리`/`새로고침` 렌더 확인. 인앱 브라우저 로컬 접속은 `ERR_BLOCKED_BY_CLIENT`로 차단.
 - `git diff --check`: 통과
 - Supabase 검증: 368,617행, 월별 summary 불일치 0건, 2024-01/2025-01 엑셀 샘플 금액 일치
 

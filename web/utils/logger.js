@@ -27,9 +27,10 @@ export function logActivity(actionType, path, metadata = {}) {
     sessionPromise.then(async ({ data: { session } }) => {
         const user = session?.user;
         const baseUrl = process.env.NEXT_PUBLIC_ELS_BACKEND_URL || '';
+        const endpoint = baseUrl ? `${baseUrl}/api/logs` : '/api/logs';
         
         try {
-            await fetch(`${baseUrl}/api/logs`, {
+            await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

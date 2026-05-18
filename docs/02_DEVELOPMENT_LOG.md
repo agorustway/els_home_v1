@@ -13,6 +13,32 @@
 - `web/tests/asanAnnualPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
+## [2026-05-18] 관리자 페이지 톤 정리와 활동 로그 조회 경로 복구 (v5.13.98)
+### 핵심
+- 관리자 문의/회원 권한/활동 로그 화면에서 이모지성 장식과 과한 카드 여백을 제거하고, 연락처·자료실 기준의 32px 버튼, 0.78~0.82rem 표 폰트, 짙은 블루 표 헤더 톤으로 맞췄습니다.
+- 활동 로그 관리 화면이 `NEXT_PUBLIC_ELS_BACKEND_URL` 기반 `/api/logs`를 직접 호출하던 구조를 `/api/admin/logs`로 전환해 인증 쿠키가 있는 Next 서버 API를 경유하도록 복구했습니다.
+- 모바일에서 로그 테이블이 CSS로 숨겨지는데 대체 카드가 없어 빈 화면처럼 보이던 문제를 로그 카드 목록으로 보완했습니다.
+- 로그 조회 API는 서비스 롤로 조회·삭제해 RLS 삭제 정책 부재에 막히지 않게 하고, `count: estimated`와 한 건 추가 조회로 정확 count 병목을 줄였습니다.
+- 클라이언트 로그 수집 fallback용 `web/app/api/logs/route.js`를 추가하고, 서버 로그 유틸은 NAS URL이 없을 때 Supabase에 직접 기록하도록 정리했습니다.
+### 검증
+- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
+- `npm.cmd run lint -- "app/(main)/admin/page.js" "app/(main)/admin/users/page.js" "app/(main)/admin/logs/page.js" "app/api/admin/logs/route.js" "app/api/logs/route.js" "utils/logger.js" "utils/logger.server.js"`: 0 errors
+- `npm.cmd run build`: 통과. 외부 WebDAV/API 및 Google Fonts fetch는 sandbox 네트워크 EACCES 경고만 출력.
+- 로컬 HTTP 검증: `/admin/logs?debug=true` 200 응답 및 `활동 로그 관리`, `새로고침` HTML 포함 확인.
+- 인앱 브라우저 로컬 접속은 `localhost`, `127.0.0.1` 모두 `ERR_BLOCKED_BY_CLIENT`로 차단되어 HTTP 응답 검증으로 대체했습니다.
+### 변경 파일
+- `web/app/(main)/admin/page.js`
+- `web/app/(main)/admin/admin.module.css`
+- `web/app/(main)/admin/users/page.js`
+- `web/app/(main)/admin/users/users.module.css`
+- `web/app/(main)/admin/logs/page.js`
+- `web/app/api/admin/logs/route.js`
+- `web/app/api/logs/route.js`
+- `web/utils/logger.js`
+- `web/utils/logger.server.js`
+- `web/tests/adminManagementUi.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 아산 연간실적 차량 미기재 분리와 보고서 레이아웃 보정 (v5.13.97)
 ### 핵심
 - 차량별 손익에서 원장 `영업넘버`가 빈칸이거나 `-`인 행을 실제 차량 랭킹과 분리하고, `차량번호 미기재` 품질 지표로 따로 표시했습니다.
