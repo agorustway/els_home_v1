@@ -11,6 +11,10 @@
 - 원장 데이터는 물리 삭제하지 않고 현재 조회 대상만 `is_current`로 구분한다.
 
 ## 2. 현재 구현
+- 웹 `NAS 동기화` 버튼은 Core가 직접 Excel을 파싱하지 않고, `/app/volume1/docker/els_home_v1/web/scripts/import-asan-annual-performance.mjs`를 별도 Node 프로세스로 실행한다.
+- 외부 동기화는 기본 활성(`ASAN_PERFORMANCE_EXTERNAL_SYNC_ENABLED=true`)이며 `nice/ionice`, chunk size 100, `NODE_OPTIONS=--max-old-space-size=1536`을 적용한다. 작업 종료 시 프로세스 메모리는 반환되고 Core는 `cache.pop()`/`gc.collect()`만 수행한다.
+- 현재 snapshot과 파일 mtime이 같으면 `summary-only --force --snapshot-id`로 분석 summary만 갱신하고, 파일이 바뀌었거나 snapshot이 없으면 `--confirm-large-import` snapshot import를 수행한다.
+- `els-core` Docker 이미지에는 버튼 동기화용 Node.js/npm/util-linux가 포함된다. 호스트 수동 스크립트는 장애 대응/cron fallback으로 유지한다.
 - Next API: `/api/branches/asan/performance/annual`
   - `GET`: 기본 `source=supabase`로 Next 서버에서 Supabase 현재 원장 페이지 직접 조회
   - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰, NAS Core 경유
@@ -93,6 +97,7 @@
 - 연간+월별 합산은 DB view 또는 백엔드 집계 API로 분리해 웹에서 전체 원장을 직접 합산하지 않는다.
 
 ## 5. TODO
+- NAS Core 재빌드 후 웹 `NAS 동기화` 버튼으로 동일 파일 summary-only 경로와 파일 변경 snapshot-import 경로를 운영에서 확인.
 - Supabase 운영 DB에 `20260517_asan_annual_performance.sql` 적용. (완료)
 - NAS Core/Gateway 배포 후 화면의 `NAS 동기화`로 최초 백그라운드 동기화. timeout 발생 시 직접 주입 스크립트로 우회.
 - 운영 NAS에서 `/app/data/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 존재 확인.

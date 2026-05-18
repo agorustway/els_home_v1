@@ -5,6 +5,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
@@ -535,10 +536,18 @@ def register_asan_performance_routes(app, supabase, kst):
     state = {"db_available": True, "last_sync_error": None}
     sync_enabled = _env_bool("ASAN_PERFORMANCE_SYNC_ENABLED", False)
     allow_core_sync = _env_bool("ASAN_PERFORMANCE_ALLOW_CORE_SYNC", False)
+    external_sync_enabled = _env_bool("ASAN_PERFORMANCE_EXTERNAL_SYNC_ENABLED", True)
     allow_excel_fallback = _env_bool("ASAN_PERFORMANCE_ALLOW_EXCEL_FALLBACK", False)
     poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
+    external_repo_root = Path(os.environ.get("ASAN_PERFORMANCE_REPO_ROOT", "/app/volume1/docker/els_home_v1"))
+    external_node_bin = os.environ.get("ASAN_PERFORMANCE_NODE_BIN", "node")
+    external_log_dir = Path(os.environ.get("ASAN_PERFORMANCE_EXTERNAL_LOG_DIR", str(external_repo_root / "logs")))
+    external_chunk_size = str(_env_int("ASAN_PERFORMANCE_CHUNK_SIZE", 100, 20))
+    external_nice = str(_env_int("ASAN_PERFORMANCE_NICE", 10, 0))
+    external_ionice_class = str(_env_int("ASAN_PERFORMANCE_IONICE_CLASS", 2, 1))
+    external_ionice_level = str(_env_int("ASAN_PERFORMANCE_IONICE_LEVEL", 7, 0))
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
     sync_state_lock = threading.Lock()
     sync_state = {
@@ -547,6 +556,9 @@ def register_asan_performance_routes(app, supabase, kst):
         "finished_at": None,
         "last_error": None,
         "last_result": None,
+        "mode": None,
+        "pid": None,
+        "log_path": None,
     }
 
     def _sync_status():
@@ -568,13 +580,20 @@ def register_asan_performance_routes(app, supabase, kst):
                 "finished_at": None,
                 "last_error": None,
                 "last_result": None,
+                "mode": "core" if allow_core_sync else "external",
+                "pid": None,
+                "log_path": None,
             })
 
         def runner():
             result = None
             error = None
             try:
-                result = _sync(force=force, rel_path=rel_path, sheet_name=sheet_name, header_row=header_row)
+                result = (
+                    _sync(force=force, rel_path=rel_path, sheet_name=sheet_name, header_row=header_row)
+                    if allow_core_sync
+                    else _sync_external(force=force, rel_path=rel_path, sheet_name=sheet_name, header_row=header_row)
+                )
                 if not result:
                     error = state.get("last_sync_error") or "연간실적 NAS 동기화에 실패했습니다."
             except Exception as exc:
@@ -611,6 +630,140 @@ def register_asan_performance_routes(app, supabase, kst):
             )
             count += len(res.data or [])
         return count
+
+    def _read_current_meta(normalized_path, sheet_name):
+        if not supabase or not state["db_available"]:
+            return None
+        res = (
+            supabase.from_("branch_performance_files")
+            .select("file_modified_at,synced_at,row_count,current_row_count,header_row,summary,headers,sheet_name")
+            .eq("branch_id", "asan")
+            .eq("dataset_type", "annual")
+            .eq("file_path", normalized_path)
+            .eq("sheet_name", sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET)
+            .execute()
+        )
+        return res.data[0] if res.data else None
+
+    def _timestamp_close(left, right_ts):
+        try:
+            left_ts = datetime.fromisoformat(str(left).replace("Z", "+00:00")).timestamp()
+            return abs(left_ts - right_ts) < 1
+        except Exception:
+            return False
+
+    def _current_snapshot_id(meta):
+        summary = (meta or {}).get("summary") or {}
+        if isinstance(summary, str):
+            try:
+                summary = json.loads(summary)
+            except Exception:
+                summary = {}
+        return summary.get("currentSnapshotId") or summary.get("current_snapshot_id")
+
+    def _tail_log(log_path, limit=4000):
+        try:
+            text = Path(log_path).read_text(encoding="utf-8", errors="ignore")
+            return text[-limit:]
+        except Exception:
+            return ""
+
+    def _wrap_low_priority_command(command):
+        if shutil.which("ionice"):
+            return [
+                "nice", "-n", external_nice,
+                "ionice", "-c", external_ionice_class, "-n", external_ionice_level,
+                *command,
+            ]
+        if shutil.which("nice"):
+            return ["nice", "-n", external_nice, *command]
+        return command
+
+    def _sync_external(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
+        if not external_sync_enabled:
+            state["last_sync_error"] = "연간실적 외부 동기화가 비활성화되어 있습니다."
+            return None
+        if not supabase or not state["db_available"]:
+            state["last_sync_error"] = "Supabase 클라이언트가 없거나 연간실적 테이블이 비활성화되어 있습니다."
+            return None
+
+        file_path, normalized_path = _resolve_performance_file(rel_path)
+        if not file_path.exists():
+            state["last_sync_error"] = f"연간실적 엑셀 파일을 찾을 수 없습니다: {file_path}"
+            return None
+
+        script_path = external_repo_root / "web" / "scripts" / "import-asan-annual-performance.mjs"
+        if not script_path.exists():
+            state["last_sync_error"] = f"연간실적 동기화 스크립트를 찾을 수 없습니다: {script_path}"
+            return None
+        if not shutil.which(external_node_bin):
+            state["last_sync_error"] = f"연간실적 외부 동기화에 필요한 Node.js를 찾을 수 없습니다: {external_node_bin}"
+            return None
+
+        actual_sheet = sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET
+        file_stat = file_path.stat()
+        current_meta = _read_current_meta(normalized_path, actual_sheet)
+        snapshot_id = _current_snapshot_id(current_meta)
+        same_file = bool(current_meta and current_meta.get("file_modified_at") and _timestamp_close(current_meta["file_modified_at"], file_stat.st_mtime))
+        run_summary_only = bool(snapshot_id and same_file)
+        mode = "external-summary-only" if run_summary_only else "external-snapshot-import"
+
+        command = [
+            external_node_bin,
+            str(script_path),
+            "--file", str(file_path),
+            "--db-path", normalized_path,
+            "--sheet", actual_sheet,
+            "--chunk-size", external_chunk_size,
+        ]
+        if header_row:
+            command.extend(["--header-row", str(header_row)])
+        if run_summary_only:
+            command.extend(["--summary-only", "--force", "--snapshot-id", str(snapshot_id)])
+        else:
+            command.append("--confirm-large-import")
+            if force:
+                command.append("--force")
+
+        external_log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = external_log_dir / f"asan-annual-performance-web-sync-{datetime.now(kst).strftime('%Y%m%d-%H%M%S')}.log"
+        wrapped = _wrap_low_priority_command(command)
+        env = os.environ.copy()
+        env.setdefault("NODE_OPTIONS", "--max-old-space-size=1536")
+
+        app.logger.info(f"[연간실적DB] 외부 동기화 시작 mode={mode} log={log_path}")
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            proc = subprocess.Popen(
+                wrapped,
+                cwd=str(external_repo_root),
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                env=env,
+                text=True,
+            )
+            with sync_state_lock:
+                sync_state["pid"] = proc.pid
+                sync_state["mode"] = mode
+                sync_state["log_path"] = str(log_path)
+            exit_code = proc.wait()
+
+        if exit_code != 0:
+            state["last_sync_error"] = f"연간실적 외부 동기화 실패(exit={exit_code}). 로그: {log_path}\n{_tail_log(log_path)}"
+            app.logger.error(state["last_sync_error"])
+            return None
+
+        state["last_sync_error"] = None
+        cache.pop(normalized_path, None)
+        gc.collect()
+        return {
+            "mode": mode,
+            "external": True,
+            "exit_code": exit_code,
+            "log_path": str(log_path),
+            "file_modified_at": datetime.fromtimestamp(file_stat.st_mtime, tz=kst).isoformat(),
+            "synced_at": datetime.now(kst).isoformat(),
+            "summary_only": run_summary_only,
+        }
 
     def _sync(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
         if not allow_core_sync:
@@ -890,7 +1043,7 @@ def register_asan_performance_routes(app, supabase, kst):
                 if isinstance(run_async, str):
                     run_async = run_async.lower() in ("1", "true", "yes", "y")
 
-                if not allow_core_sync:
+                if not allow_core_sync and not external_sync_enabled:
                     db_data = _query(
                         rel_path=rel_path,
                         sheet_name=sheet_name,
@@ -911,6 +1064,8 @@ def register_asan_performance_routes(app, supabase, kst):
                             page_size=body.get("page_size") or request.args.get("page_size", 500),
                         )),
                     }), 409
+                if not allow_core_sync:
+                    run_async = True
 
                 if run_async:
                     started = _start_background_sync(rel_path, sheet_name, header_row, bool(force))
