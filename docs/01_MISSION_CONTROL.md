@@ -52,7 +52,7 @@
 - `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
-- NAS 확인: `els-core` 재시작 후 RSS 약 27MB 수준으로 회복, import node 프로세스 없음 확인
+- NAS 적용 확인: `/health` 정상, `els-core` 약 140MB / CPU 0.01%, import node 프로세스 없음
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

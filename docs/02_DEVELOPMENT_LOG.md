@@ -2800,6 +2800,7 @@
 - `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
 - `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
+- NAS 적용 확인: `/health` 정상, `els-core` 약 140MB / CPU 0.01%, 연간실적 import node 프로세스 없음
 ### 변경 파일
 - `docker/els-backend/asan_performance.py`
 - `docker/els-backend/app_core.py`
