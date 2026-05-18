@@ -1,3 +1,17 @@
+## [2026-05-19] 드라이버 앱 지도 자동추적 줌 보정 (v5.14.17 / APK v5.11.17)
+### 핵심
+- 드라이버 앱 지도 자동추적 중 속도에 따라 줌 레벨을 조정해 저속/시내/고속 주행 화면 밀도를 다르게 보이게 했습니다.
+- 운행 중 내 차량 마커 클릭은 자동추적을 유지하면서 내비게이션 줌을 적용합니다.
+- 전체 차량 보기는 차량 1대/다수 모두 과확대되지 않도록 최대 줌을 제한했습니다.
+- APK 버전은 `v5.11.17 / 5158`로 반영했고 캐시버스터와 배포 APK 산출물도 함께 갱신했습니다.
+### 검증
+- `node --check web/driver-src/modules/map.js`: 통과
+- APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.17`, `BUILD_CODE 5158` 확인
+### 변경 파일
+- `web/driver-src/modules/map.js`
+- Android 버전/캐시버스터/APK 산출물: `web/android/app/build.gradle`, `web/driver-src/**`, `web/public/apk/**`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 배차 모바일 날짜탭 세로 스크롤 튐 보정 (v5.14.16)
 ### 핵심
 - 중간 `통합현황/글로비스 KD 외/모비스 AS` 버튼 중 모비스 AS 전환 때 화면 위치가 튀던 원인을 날짜탭 `scrollIntoView`의 세로 스크롤 개입으로 보고 보정했습니다.
