@@ -370,6 +370,108 @@ export function simplifyRouteLocations(locations = []) {
     return simplified.length >= 2 ? simplified : points;
 }
 
+export function pathDistanceKm(points = []) {
+    let total = 0;
+    for (let i = 1; i < points.length; i += 1) {
+        const prev = points[i - 1];
+        const current = points[i];
+        const prevLat = Number(prev?.lat);
+        const prevLng = Number(prev?.lng);
+        const currLat = Number(current?.lat);
+        const currLng = Number(current?.lng);
+        if ([prevLat, prevLng, currLat, currLng].every(Number.isFinite)) {
+            total += haversineKm(prevLat, prevLng, currLat, currLng);
+        }
+    }
+    return total;
+}
+
+function pointToSegmentDistanceKm(point, a, b) {
+    const px = Number(point?.lng);
+    const py = Number(point?.lat);
+    const ax = Number(a?.lng);
+    const ay = Number(a?.lat);
+    const bx = Number(b?.lng);
+    const by = Number(b?.lat);
+    if (![px, py, ax, ay, bx, by].every(Number.isFinite)) return Infinity;
+
+    const vx = bx - ax;
+    const vy = by - ay;
+    const wx = px - ax;
+    const wy = py - ay;
+    const lenSq = vx * vx + vy * vy;
+    const t = lenSq > 0 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / lenSq)) : 0;
+    const proj = { lat: ay + t * vy, lng: ax + t * vx };
+    return haversineKm(py, px, proj.lat, proj.lng);
+}
+
+function distanceToPolylineKm(point, line = []) {
+    if (!line.length) return Infinity;
+    if (line.length === 1) return haversineKm(Number(point.lat), Number(point.lng), Number(line[0].lat), Number(line[0].lng));
+    let best = Infinity;
+    for (let i = 1; i < line.length; i += 1) {
+        best = Math.min(best, pointToSegmentDistanceKm(point, line[i - 1], line[i]));
+    }
+    return best;
+}
+
+function hasLoopExcursion(points = []) {
+    if (points.length < 8) return false;
+    const cumulative = [0];
+    for (let i = 1; i < points.length; i += 1) {
+        cumulative[i] = cumulative[i - 1] + haversineKm(points[i - 1].lat, points[i - 1].lng, points[i].lat, points[i].lng);
+    }
+
+    for (let i = 0; i < points.length - 6; i += 1) {
+        for (let j = i + 5; j < points.length; j += 1) {
+            const loopKm = cumulative[j] - cumulative[i];
+            if (loopKm < 0.45) continue;
+            const closingKm = haversineKm(points[i].lat, points[i].lng, points[j].lat, points[j].lng);
+            if (closingKm < Math.max(0.035, loopKm * 0.08)) return true;
+        }
+    }
+    return false;
+}
+
+export function validateMatchedRoute(rawPoints = [], matchedPath = [], options = {}) {
+    const raw = simplifyRouteLocations(filterRouteLocations(rawPoints));
+    const matched = (matchedPath || [])
+        .filter(Boolean)
+        .map((p) => ({ lat: Number(p.lat), lng: Number(p.lng) }))
+        .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+    if (raw.length < 2 || matched.length < 2) return { ok: true, reason: 'not_enough_points' };
+
+    const rawDistanceKm = pathDistanceKm(raw);
+    const matchedDistanceKm = Number.isFinite(Number(options.summaryDistanceM))
+        ? Number(options.summaryDistanceM) / 1000
+        : pathDistanceKm(matched);
+    const directDistanceKm = haversineKm(raw[0].lat, raw[0].lng, raw[raw.length - 1].lat, raw[raw.length - 1].lng);
+
+    if (rawDistanceKm >= 0.35
+        && matchedDistanceKm - rawDistanceKm > 0.7
+        && matchedDistanceKm > rawDistanceKm * 1.75) {
+        return { ok: false, reason: 'matched_route_too_long', rawDistanceKm, matchedDistanceKm };
+    }
+
+    if (directDistanceKm >= 0.2
+        && matchedDistanceKm > directDistanceKm * 4
+        && matchedDistanceKm - rawDistanceKm > 0.5) {
+        return { ok: false, reason: 'matched_route_excessive_detour', rawDistanceKm, matchedDistanceKm, directDistanceKm };
+    }
+
+    const offTrace = matched.reduce((count, point) => count + (distanceToPolylineKm(point, raw) > 0.35 ? 1 : 0), 0);
+    if (matched.length >= 10 && offTrace / matched.length > 0.2) {
+        return { ok: false, reason: 'matched_route_off_trace', rawDistanceKm, matchedDistanceKm, offTrace };
+    }
+
+    if (hasLoopExcursion(matched) && !hasLoopExcursion(raw)) {
+        return { ok: false, reason: 'matched_route_loop', rawDistanceKm, matchedDistanceKm };
+    }
+
+    return { ok: true, reason: 'matched_route_plausible', rawDistanceKm, matchedDistanceKm };
+}
+
 export function trimEndpointOutliers(points = []) {
     let list = points.filter((p) => isCoordinateInKorea(Number(p.lat), Number(p.lng)));
     if (list.length < 3) return list;

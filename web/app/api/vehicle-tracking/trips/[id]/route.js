@@ -231,6 +231,17 @@ export async function PATCH(request, { params }) {
             }
         }
 
+        if (oldData && action === 'complete' && oldData.status !== 'completed') {
+            await supabase.from('vehicle_trip_logs').insert({
+                trip_id: id,
+                field_name: 'status',
+                old_value: oldData.status || '-',
+                new_value: 'completed',
+                modified_by: source === 'driver_app' ? (oldData.driver_name || 'driver_app') : (source || 'web'),
+                created_at: new Date().toISOString(),
+            });
+        }
+
         // 운행 종료 시 운전원정보 자동 갱신/등록
         if (action === 'complete' && data) {
             try {

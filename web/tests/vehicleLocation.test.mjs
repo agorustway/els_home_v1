@@ -5,11 +5,13 @@ import {
   detectStaleReplayLocation,
   filterRouteLocations,
   isForwardProgressCandidate,
+  pathDistanceKm,
   prepareLiveTrips,
   sampleRouteWaypoints,
   sanitizeRecordedAt,
   shouldAcceptLocation,
   shouldStoreLocation,
+  validateMatchedRoute,
 } from '../utils/vehicleLocation.mjs';
 
 const base = '2026-05-16T00:00:00.000Z';
@@ -114,6 +116,30 @@ test('경로 매칭용 waypoint는 단지·저속 구간의 촘촘한 지그재�
   assert.equal(clean[clean.length - 1].lat, locations[locations.length - 1].lat);
   assert.ok(clean.length < locations.length);
   assert.ok(waypoints.length <= clean.length - 2);
+});
+
+test('경로조회 결과가 원시 진행보다 과도하게 돌아가면 매칭 경로를 버린다', () => {
+  const raw = [
+    { lat: 36.9000, lng: 127.0300, speed: 45, accuracy: 8, recorded_at: at(0) },
+    { lat: 36.9030, lng: 127.0304, speed: 45, accuracy: 8, recorded_at: at(30) },
+    { lat: 36.9060, lng: 127.0308, speed: 45, accuracy: 8, recorded_at: at(60) },
+  ];
+  const matchedLoop = [
+    { lat: 36.9000, lng: 127.0300 },
+    { lat: 36.9030, lng: 127.0304 },
+    { lat: 36.9030, lng: 127.0360 },
+    { lat: 36.8990, lng: 127.0360 },
+    { lat: 36.8990, lng: 127.0304 },
+    { lat: 36.9030, lng: 127.0304 },
+    { lat: 36.9060, lng: 127.0308 },
+  ];
+
+  const decision = validateMatchedRoute(raw, matchedLoop, {
+    summaryDistanceM: pathDistanceKm(matchedLoop) * 1000,
+  });
+
+  assert.equal(decision.ok, false);
+  assert.match(decision.reason, /matched_route/);
 });
 
 test('완료 마커는 남기되 같은 차량이 재운행하면 진행 중 운행을 우선한다', () => {

@@ -1,3 +1,27 @@
+## [2026-05-19] 차량위치관제 진행 중 마커 클릭 및 회전구간 루프 보정 (v5.14.15 / APK v5.11.16)
+### 분석
+- 12가0140 2026-05-19 아침 운행 2건을 확인했습니다.
+- 06:59~07:03 운행은 50개 위치 모두 물리 판정 `ok`였고, 진행 중 마커 클릭 시 상세경로/끝점 표시가 열리며 종료처럼 보이는 UX 문제가 남아 있었습니다.
+- 07:03~07:12 운행도 불가능 속도는 0건이었으나, 회전/램프 구간에서 Directions 기반 경로조회가 실제 GPS trace를 map-matching하는 것이 아니라 합법 경로를 새로 구성하면서 루프를 만들 수 있는 구조였습니다.
+### 핵심
+- 앱 지도에서 운행 중인 내 차량 마커 클릭은 더 이상 상세경로를 조회하지 않고, 자동추적을 유지한 채 줌 토글만 수행합니다.
+- Android 네이티브 서비스 `onDestroy()`는 더 이상 자동 `TRIP_END`를 전송하지 않습니다. 실제 종료점은 `endTrip()`의 명시적 종료 처리 또는 explicit final location만 남깁니다.
+- Naver Directions 결과가 원시 진행거리보다 과도하게 길거나, trace에서 벗어나거나, 자체 루프를 만들면 `matched-route` API가 해당 경로를 폐기하고 필터링된 GPS 경로로 fallback합니다.
+- 운행 완료 액션은 `vehicle_trip_logs`에 `status: driving -> completed` 기록을 남겨 다음 재현 시 클릭/종료 원인을 추적할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs`: 13개 통과
+- `npm.cmd run lint`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.16 / 5157 APK 빌드 및 배포 위치 복사 완료
+- APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.16`, `BUILD_CODE 5157` 확인
+### 변경 파일
+- `web/driver-src/modules/map.js`
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/app/api/vehicle-tracking/trips/[id]/matched-route/route.js`
+- `web/app/api/vehicle-tracking/trips/[id]/route.js`
+- `web/utils/vehicleLocation.mjs`, `web/tests/vehicleLocation.test.mjs`
+- Android 버전/캐시버스터/APK 산출물: `web/android/app/build.gradle`, `web/driver-src/**`, `web/public/apk/**`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 차량위치관제 stale GPS replay 및 운행 중 경로 표시 보정 (v5.14.14 / APK v5.11.15)
 ### 분석
 - 12가0140 2026-05-18 17시대 테스트 3건을 Supabase 원시 좌표로 확인했습니다.

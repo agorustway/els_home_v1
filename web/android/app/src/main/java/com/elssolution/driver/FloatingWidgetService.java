@@ -1078,9 +1078,8 @@ public class FloatingWidgetService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mLastLocation != null && mTripId != null) {
-            sendLocationToServerWithMarker(mLastLocation, 0, "TRIP_END");
-        }
+        // 서비스 재시작/오버레이 정리만으로 운행 종료점이 생기면 지도에서 "종료"처럼 보인다.
+        // 실제 종료 위치는 JS endTrip()의 명시적 TRIP_END 기록 또는 sendFinalLocation()만 사용한다.
         if (mWindowManager != null && mFloatingWidget != null) {
             try { mWindowManager.removeView(mFloatingWidget); } catch (Exception ignored) {}
         }

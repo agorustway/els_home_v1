@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
-import { filterRouteLocations, sampleRouteWaypoints } from '@/utils/vehicleLocation.mjs';
+import { filterRouteLocations, sampleRouteWaypoints, validateMatchedRoute } from '@/utils/vehicleLocation.mjs';
 
 export async function GET(_request, { params }) {
     const tripId = params.id;
@@ -72,6 +72,19 @@ export async function GET(_request, { params }) {
                 reason: 'naver_route_failed',
                 naverStatus: apiRes.status,
                 naverCode: data?.code,
+            });
+        }
+
+        const routeDecision = validateMatchedRoute(clean, path, {
+            summaryDistanceM: route.summary?.distance,
+        });
+        if (!routeDecision.ok) {
+            return NextResponse.json({
+                locations: clean,
+                matchedPath: clean,
+                source: 'filtered',
+                reason: routeDecision.reason,
+                rejectedMatchedRoute: routeDecision,
             });
         }
 
