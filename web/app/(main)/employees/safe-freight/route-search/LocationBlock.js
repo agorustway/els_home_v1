@@ -2,17 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styles from './route-search.module.css';
-
-const SIDO_MAP_SHORT = {
-    '서울특별시': '서울시', '인천광역시': '인천시', '부산광역시': '부산시', '대전광역시': '대전시',
-    '대구광역시': '대구시', '울산광역시': '울산시', '광주광역시': '광주시', '세종특별자치시': '세종시',
-    '경기도': '경기도', '강원도': '강원도', '충청북도': '충북', '충청남도': '충남',
-    '전라북도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주도',
-    '경기': '경기도', '강원': '강원도', '충북': '충북', '충남': '충남',
-    '전북': '전북', '전남': '전남', '경북': '경북', '경남': '경남', '제주': '제주도',
-    '서울': '서울시', '부산': '부산시', '대구': '대구시', '인천': '인천시',
-    '광주': '광주시', '대전': '대전시', '울산': '울산시', '세종': '세종시'
-};
+import { matchSafeFreightDong, resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
 
 export const TERMINAL_LIST = [
     { key: 'port_pusan_north', name: '부산북항(신선대터미널)', aliases: ['부산북항기점', '신선대', 'BPT'], r1: '부산시', r2: '남구', r3: '용당동', lat: 35.11351, lng: 129.09860 },
@@ -103,54 +93,33 @@ const LocationBlock = ({
 
     /** 행정동 매칭 헬퍼 */
     const matchDong = useCallback((sido, sigungu, dongHint, item) => {
-        const dongsInSgg = regionsData[sido]?.[sigungu];
-        const availableDongs = Array.isArray(dongsInSgg) ? dongsInSgg : (dongsInSgg ? Object.keys(dongsInSgg) : []);
-        if (availableDongs.length === 0) return '';
-        // ① 완전 일치
-        if (availableDongs.includes(dongHint)) return dongHint;
-        // ② 행정동(hDong) 매칭
-        const hMatch = item?.hDong && availableDongs.find(d => d === item.hDong);
-        if (hMatch) return hMatch;
-        // ③ 법정동(bDong) 매칭
-        const bMatch = item?.bDong && availableDongs.find(d => d === item.bDong);
-        if (bMatch) return bMatch;
-        // ④ 유사 매칭 (송도동 → 송도1동)
-        const clean = (s) => s ? s.replace(/[0-9.]/g, '').replace(/(동|읍|면)$/, '') : '';
-        const target = clean(item?.hDong || item?.bDong || dongHint);
-        if (target) {
-            const fuzzyMatch = availableDongs.find(d => clean(d).includes(target) || target.includes(clean(d)));
-            if (fuzzyMatch) return fuzzyMatch;
-        }
-        return '';
+        return matchSafeFreightDong(regionsData, sido, sigungu, [
+            item?.hDong,
+            item?.emdNm,
+            item?.bDong,
+            dongHint,
+        ]);
     }, [regionsData]);
 
     /* ─── 2번 줄: 카카오 주소 선택 → 1번줄 비움, 3번줄 행정동 표시, juso가 최우선 좌표 ─── */
     const selectJuso = useCallback((item) => {
-        const sido = SIDO_MAP_SHORT[item.siNm] || item.siNm || '';
-        const sigungu = item.sggNm || '';
-        const dong = item.hDong || item.emdNm || item.bDong || '';
-        const fullAddr = item.roadAddr || item.jibunAddr || `${sido} ${sigungu} ${dong}`;
+        const { r1, r2, r3 } = resolveSafeFreightRegion(regionsData, item);
+        const fullAddr = item.roadAddr || item.jibunAddr || `${r1} ${r2} ${r3}`.trim();
 
         // 2번 줄 입력: 1번 줄(text) 비움, juso에 주소 저장 (조회 시 최우선 좌표)
         setLocState(prev => ({
             ...prev,
             text: '',     // 1번 줄 비움
             juso: fullAddr, // 2번 줄: 이 주소가 최우선 포인트
-            r1: sido,
-            r2: sigungu,
-            r3: '',
+            r1,
+            r2,
+            r3,
             terminalKey: ''
         }));
 
-        // 비동기: 3번 줄 행정동 매칭 (표시용)
-        setTimeout(() => {
-            const matched = matchDong(sido, sigungu, dong, item);
-            setLocState(prev => ({ ...prev, r3: matched }));
-        }, 150);
-
         setJusoSearch(fullAddr); // 2번 줄에 주소 유지
         setShowJusoDropdown(false);
-    }, [regionsData, setLocState, matchDong]);
+    }, [regionsData, setLocState]);
 
     /* ─── 터미널 선택 → 행정동 드롭다운 자동 매칭 ─── */
     const handleTerminalSelect = useCallback((tKey) => {
@@ -183,7 +152,7 @@ const LocationBlock = ({
         }, 150);
 
         setJusoSearch('');
-    }, [regionsData, setLocState, matchDong]);
+    }, [setLocState, matchDong]);
 
     return (
         <div className={styles.locationBlock}>

@@ -5,6 +5,7 @@ import styles from './safe-freight.module.css';
 import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
 import RouteSearchView from './route-search/RouteSearchView';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
+import { resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
@@ -60,7 +61,6 @@ export default function SafeFreightPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [failCount, setFailCount] = useState(0);
   const otherTabDefaultsJustSet = useRef(false);
-  const skipRegionClearOnce = useRef(false);
 
   const [addressSearch, setAddressSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -102,35 +102,6 @@ export default function SafeFreightPage() {
     };
   }, [noticeModalOpen]);
 
-  // 시도 명칭 매핑 (API -> 안전운임 데이터 표준)
-  const SIDO_MAP = {
-    '서울특별시': '서울시',
-    '부산광역시': '부산시',
-    '대구광역시': '대구시',
-    '인천광역시': '인천시',
-    '광주광역시': '광주시',
-    '대전광역시': '대전시',
-    '울산광역시': '울산시',
-    '세종특별자치시': '세종시',
-    '경기도': '경기도',
-    '강원특별자치도': '강원도',
-    '강원도': '강원도',
-    '충청북도': '충북',
-    '충청남도': '충남',
-    '전라북도': '전북',
-    '전북특별자치도': '전북',
-    '전라남도': '전남',
-    '경상북도': '경북',
-    '경상남도': '경남',
-    '제주특별자치도': '제주도',
-    '제주도': '제주도',
-    // 축약형 추가 (카카오 API 등 대비)
-    '경기': '경기도', '강원': '강원도', '충북': '충북', '충남': '충남',
-    '전북': '전북', '전남': '전남', '경북': '경북', '경남': '경남', '제주': '제주도',
-    '서울': '서울시', '부산': '부산시', '대구': '대구시', '인천': '인천시',
-    '광주': '광주시', '대전': '대전시', '울산': '울산시', '세종': '세종시'
-  };
-
   const handleAddressSearch = async (val) => {
     setAddressSearch(val);
     if (!val || val.length < 2) {
@@ -160,80 +131,15 @@ export default function SafeFreightPage() {
   // (불필요한 컨테이너 이력조회 연동 로직 제거됨)
 
   const selectAddress = (item, autoRun = false) => {
-    const { siNm, sggNm, emdNm } = item;
-    if (!siNm || !emdNm) return;
+    const { r1, r2, r3 } = resolveSafeFreightRegion(regionsSource, item);
+    if (!r1 || !r2 || !r3) {
+      setToastMessage('주소는 찾았지만 안전운임 행정동과 자동 매칭하지 못했습니다. 지역을 직접 확인해주세요.');
+      setTimeout(() => setToastMessage(null), 2500);
+    }
 
-    const sido = SIDO_MAP[siNm] || siNm;
-    setRegion1(sido);
-
-    // 비동기적 상태 업데이트 연쇄 (드롭다운 의존성 때문)
-    setTimeout(() => {
-      const sgg = sggNm || '';
-      setRegion2(sgg);
-
-      setTimeout(() => {
-        // 정확한 동 매칭 시도
-        let targetDong = emdNm || '';
-
-        // 현재 선택된 모드에 맞는 지역 데이터 소스 확인
-        const currentRegions = queryType === 'other'
-          ? (options?.otherRegions?.[origin] || {})
-          : (options?.regions || {});
-
-        const dongsInSgg = currentRegions[sido]?.[sgg] || []; // Array of dongs OR Object of dongs keys? safe-freight.json structure implies array for dong list or keys if object.
-        // Based on previous code: regionsSource[region1][region2] seems to be an array or object. Let's assume list of keys or array.
-        // Actually region3List uses: (regionsSource[region1][region2] || []) which implies it's iterable.
-        // Let's verify structure: options.regions['경기도']['평택시'] is likely an ARRAY of strings based on usage.
-
-        // 데이터 구조 확인: options.regions[sido][sgg] 는 배열([]) 입니다.
-        const availableDongs = Array.isArray(dongsInSgg) ? dongsInSgg : Object.keys(dongsInSgg);
-
-        if (availableDongs.length > 0) {
-          // 1. 완전 일치 확인
-          if (availableDongs.includes(targetDong)) {
-            setRegion3(targetDong);
-          } else {
-            // 2. hDong (행정동) 매칭 시도
-            const hMatch = item.hDong && availableDongs.find(d => d === item.hDong);
-            if (hMatch) {
-              setRegion3(hMatch);
-            } else {
-              // 3. bDong (법정동) 매칭 시도
-              const bMatch = item.bDong && availableDongs.find(d => d === item.bDong);
-              if (bMatch) {
-                setRegion3(bMatch);
-              } else {
-                // 4. 유사 매칭: "신장" -> "신장1동" (앞부분 일치)
-                // 행정동명이나 법정동명 기반으로 포함 여부 확인
-                const clean = (s) => s ? s.replace(/[0-9.]/g, '').replace(/(동|읍|면)$/, '') : '';
-                const target = clean(item.hDong || item.bDong || targetDong);
-
-                let fuzzyMatch = availableDongs.find(d => clean(d).includes(target));
-
-                // [예외 처리] 안전운임 고시에는 법정동 대신 행정동(예: 온양1동)이 기준인 경우가 있음
-                if (!fuzzyMatch) {
-                  const targetStr = (item.hDong || item.bDong || targetDong).replace(/\s/g, '');
-                  if (targetStr.includes('온천동')) fuzzyMatch = availableDongs.find(d => d.includes('온양1'));
-                }
-
-                if (fuzzyMatch) {
-                  setRegion3(fuzzyMatch);
-                } else {
-                  setRegion3(''); // 매칭 실패 시 비움
-                }
-              }
-            }
-          }
-        } else {
-          setRegion3('');
-        }
-
-        if (autoRun) {
-          // 상태 업데이트 반영을 위해 미세한 지연 후 실행 트리거
-          setTimeout(() => setAutoRunCount(c => c + 1), 50);
-        }
-      }, 100);
-    }, 100);
+    setRegion1(r1);
+    setRegion2(r2);
+    setRegion3(r3);
 
     setAddressSearch(item.roadAddr || item.jibunAddr);
 
@@ -241,6 +147,10 @@ export default function SafeFreightPage() {
     setTimeout(() => {
       setShowAddressDropdown(false);
     }, 0);
+
+    if (autoRun && r1 && r2 && r3) {
+      setTimeout(() => setAutoRunCount(c => c + 1), 50);
+    }
   };
 
   useEffect(() => {
@@ -353,22 +263,6 @@ export default function SafeFreightPage() {
     return result;
   }, [options, queryType]);
 
-  useEffect(() => {
-    if ((queryType === 'other' || queryType === 'section') && skipRegionClearOnce.current) {
-      if (queryType === 'other') return;
-      skipRegionClearOnce.current = false;
-      return;
-    }
-    setRegion2('');
-    setRegion3('');
-  }, [region1, queryType]);
-  useEffect(() => {
-    if ((queryType === 'other' || queryType === 'section') && skipRegionClearOnce.current) {
-      if (queryType === 'section') skipRegionClearOnce.current = false;
-      return;
-    }
-    setRegion3('');
-  }, [region2, queryType]);
   // 기능 제거: 단순 행선지 변경 시 region3가 무조건 인주면으로 덮어씌워지는 부작용 방지
   // useEffect(() => {
   //   if (options && region1 === '충남' && region2 === '아산시' && region3 === '') {
@@ -380,7 +274,6 @@ export default function SafeFreightPage() {
     setResult(null);
     setLookupError(null);
     if (queryType === 'section') {
-      skipRegionClearOnce.current = true;
       const p = options?.periods?.find((x) => x.id === '26.02월') ? '26.02월' : options?.periods?.[0]?.id;
       if (p) setPeriod(p);
       setOrigin('[왕복] 부산신항');
@@ -389,7 +282,6 @@ export default function SafeFreightPage() {
       setRegion3('인주면');
     } else if (queryType === 'other') {
       otherTabDefaultsJustSet.current = true;
-      skipRegionClearOnce.current = true;
       // 이외구간 기본 기간: 2026년 제외, 가장 최신(예: 22.07월)
       const validPeriods = (options?.periods || []).filter(pp => {
         const y = parseInt(pp.id.split('.')[0], 10);
@@ -1148,11 +1040,31 @@ export default function SafeFreightPage() {
                           )}
                         </div>
                         <div className={styles.regionGroup}>
-                          <select className={styles.select} value={region1} onChange={(e) => setRegion1(e.target.value)} onKeyDown={handleKeyDown} aria-label="시·도">
+                          <select
+                            className={styles.select}
+                            value={region1}
+                            onChange={(e) => {
+                              setRegion1(e.target.value);
+                              setRegion2('');
+                              setRegion3('');
+                            }}
+                            onKeyDown={handleKeyDown}
+                            aria-label="시·도"
+                          >
                             <option value="">시·도</option>
                             {region1List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
-                          <select className={styles.select} value={region2} onChange={(e) => setRegion2(e.target.value)} onKeyDown={handleKeyDown} disabled={!region1} aria-label="시·군·구">
+                          <select
+                            className={styles.select}
+                            value={region2}
+                            onChange={(e) => {
+                              setRegion2(e.target.value);
+                              setRegion3('');
+                            }}
+                            onKeyDown={handleKeyDown}
+                            disabled={!region1}
+                            aria-label="시·군·구"
+                          >
                             <option value="">시·군·구</option>
                             {region2List.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>

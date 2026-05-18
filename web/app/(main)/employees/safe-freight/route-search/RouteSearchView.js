@@ -6,6 +6,8 @@ import Script from 'next/script';
 import styles from './route-search.module.css';
 import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
+import { resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
+import { findSafeFreightSectionOrigin } from '@/utils/safeFreightRouteMatch.mjs';
 import SurchargePanel from './SurchargePanel';
 
 /* ═══════════════════════════════════════════════════
@@ -158,32 +160,6 @@ function prioritizeAdminCenter(results) {
         return 0;
     });
 }
-
-/** 시도 명칭 매핑 (API → 안전운임 데이터 표준) — 구간별운임과 동일 */
-const SIDO_MAP = {
-    '서울특별시': '서울시', '부산광역시': '부산시', '대구광역시': '대구시',
-    '인천광역시': '인천시', '광주광역시': '광주시', '대전광역시': '대전시',
-    '울산광역시': '울산시', '세종특별자치시': '세종시', '경기도': '경기도',
-    '강원특별자치도': '강원도', '강원도': '강원도', '충청북도': '충북',
-    '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북',
-    '전라남도': '전남', '경상북도': '경북', '경상남도': '경남',
-    '제주특별자치도': '제주도', '제주도': '제주도',
-    '경기': '경기도', '강원': '강원도', '충북': '충북', '충남': '충남',
-    '전북': '전북', '전남': '전남', '경북': '경북', '경남': '경남', '제주': '제주도',
-    '서울': '서울시', '부산': '부산시', '대구': '대구시', '인천': '인천시',
-    '광주': '광주시', '대전': '대전시', '울산': '울산시', '세종': '세종시'
-};
-
-const SIDO_MAP_SHORT = {
-    '서울특별시': '서울시', '인천광역시': '인천시', '부산광역시': '부산시', '대전광역시': '대전시',
-    '대구광역시': '대구시', '울산광역시': '울산시', '광주광역시': '광주시', '세종특별자치시': '세종시',
-    '경기도': '경기도', '강원도': '강원도', '충청북도': '충북', '충청남도': '충남',
-    '전라북도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주도',
-    '경기': '경기도', '강원': '강원도', '충북': '충북', '충남': '충남',
-    '전북': '전북', '전남': '전남', '경북': '경북', '경남': '경남', '제주': '제주도',
-    '서울': '서울시', '부산': '부산시', '대구': '대구시', '인천': '인천시',
-    '광주': '광주시', '대전': '대전시', '울산': '울산시', '세종': '세종시'
-};
 
 /* ═══════════════════════════════════════════════════
    메인 컴포넌트
@@ -626,9 +602,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                 const data = await res.json();
                 if (data.result) {
                     const r = data.result;
-                    r1 = SIDO_MAP_SHORT[r.region_1depth_name] || r.region_1depth_name;
-                    r2 = r.region_2depth_name;
-                    r3 = r.region_3depth_name;
+                    const resolved = resolveSafeFreightRegion(regionsData, {
+                        siNm: r.region_1depth_name,
+                        sggNm: r.region_2depth_name,
+                        emdNm: r.region_3depth_name,
+                        hDong: r.region_3depth_name,
+                    });
+                    r1 = resolved.r1;
+                    r2 = resolved.r2;
+                    r3 = resolved.r3;
                 }
             } catch (e) {
                 console.warn('coord2region check failed:', e);
@@ -674,7 +656,7 @@ export default function RouteSearchView({ options, period, onBack }) {
         if (item.lng && item.lat) {
             panToLocation(item.lng, item.lat, 15);
         }
-    }, [panToLocation]);
+    }, [panToLocation, regionsData]);
 
 
 
@@ -847,9 +829,15 @@ export default function RouteSearchView({ options, period, onBack }) {
                         const data = await res.json();
                         if (data.result) {
                             const r = data.result;
-                            finalLoc.r1 = SIDO_MAP_SHORT[r.region_1depth_name] || r.region_1depth_name;
-                            finalLoc.r2 = r.region_2depth_name;
-                            finalLoc.r3 = r.region_3depth_name;
+                            const resolved = resolveSafeFreightRegion(regionsData, {
+                                siNm: r.region_1depth_name,
+                                sggNm: r.region_2depth_name,
+                                emdNm: r.region_3depth_name,
+                                hDong: r.region_3depth_name,
+                            });
+                            finalLoc.r1 = resolved.r1;
+                            finalLoc.r2 = resolved.r2;
+                            finalLoc.r3 = resolved.r3;
                         }
                     } catch (e) {
                         console.warn('coord2region in resolveCoords failed:', e);
@@ -1259,22 +1247,8 @@ export default function RouteSearchView({ options, period, onBack }) {
             console.log('Fare Lookup Start - Terminal Check:', termClean);
             if (!termClean) continue;
 
-            // 왕복/일반 기점 찾기
-            const possibleOrigins = originsList.filter(o => {
-                const cleanId = o.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                const termCleanVariant = termClean.replace('인천항국제여객', '인천국제여객');
-                return termClean.includes(cleanId) || termCleanVariant.includes(cleanId) || cleanId.includes(termClean) || cleanId.includes(termCleanVariant);
-            });
-            // 일치하는 항목 중 길이가 긴(구체적인) 명칭 우선 정렬
-            possibleOrigins.sort((a, b) => {
-                const cleanA = a.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                const cleanB = b.id.replace(/\[.*?\]\s*/g, '').replace(/\s/g, '');
-                return cleanB.length - cleanA.length;
-            });
-            let matchedOrigin = possibleOrigins.length > 0 ? possibleOrigins[0] : null;
-            
-            const roundOrigin = possibleOrigins.find(o => o.id.includes('[왕복]'));
-            if (roundOrigin) matchedOrigin = roundOrigin;
+            // 왕복/일반 기점 찾기: 터미널 키를 우선 사용해 인천항/인천국제여객 같은 포함관계 오매칭을 막는다.
+            const matchedOrigin = findSafeFreightSectionOrigin(originsList, termObj);
 
             // 행선지 후보들
             const allLocs = routeLocs.filter(p => p.r1 && p.r2 && p.r3);
