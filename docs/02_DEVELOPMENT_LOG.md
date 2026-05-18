@@ -1,3 +1,16 @@
+## [2026-05-18] 전용 배포 Docker 타임아웃 확대 (v5.13.103)
+### 핵심
+- NAS 메모리/스왑 압박 중 `docker-compose up`이 Docker API 60초 응답 제한에 걸려 `Read timed out`으로 보이는 문제를 줄였습니다.
+- `deploy-bot.sh`, `deploy-core.sh`에 `COMPOSE_HTTP_TIMEOUT=600`, `DOCKER_CLIENT_TIMEOUT=600` 기본값을 추가했습니다.
+- 실제 이번 배포 후 `/health`에서 `max_drivers=2`, `ELS_DRIVER_STAGGER_SEQUENCE=0,60` 적용을 확인했습니다.
+### 검증
+- `C:\Program Files\Git\bin\bash.exe -n scripts/deploy-bot.sh`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts/deploy-core.sh`: 통과
+### 변경 파일
+- `scripts/deploy-bot.sh`
+- `scripts/deploy-core.sh`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] Bot/Core 전용 배포 스크립트 비대화형 정리 (v5.13.102)
 ### 핵심
 - `deploy-bot.sh`와 `deploy-core.sh`도 통합 배포 스크립트처럼 Docker/Compose 절대 경로와 Docker PATH를 주입하도록 맞췄습니다.

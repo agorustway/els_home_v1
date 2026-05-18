@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.13.102 / APK v5.11.12)
+# ELS MISSION CONTROL (v5.13.103 / APK v5.11.12)
 
-> 최신 업데이트: `deploy-bot.sh`와 `deploy-core.sh`를 비대화형 sudo/PATH 고정 방식으로 정리하고, 마지막 로그 확인이 무한 follow로 붙잡히지 않도록 보강했습니다.
+> 최신 업데이트: NAS 리소스 압박 시 Docker recreate가 60초 타임아웃으로 가짜 실패하지 않도록 Bot/Core 전용 배포 스크립트의 Compose/Docker 타임아웃을 600초로 늘렸습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.13.102
+- **웹 버전**: v5.13.103
 - **APK 버전**: v5.11.12
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS 백엔드, 웹은 조회·편집 UI와 Supabase 인증 중심.
 - **이번 변경 핵심**:
@@ -23,6 +23,7 @@
   - NAS `els-bot`은 메모리 여유 확보를 위해 `ELS_MAX_DRIVERS=2`, `ELS_BATCH_MAX_WORKERS=2`로 운영.
   - 데몬 정지 시 등록 워커가 0개여도 설정된 `drission_port_32000+` 잔여 Chrome을 포트 기준으로 정리.
   - Bot/Core 전용 배포는 `scripts/deploy-bot.sh`, `scripts/deploy-core.sh`로 수행하며, Docker 경로와 sudo 동작을 비대화형 기준으로 고정.
+  - NAS 부하 상황의 Docker API 지연을 고려해 전용 배포 스크립트는 `COMPOSE_HTTP_TIMEOUT=600`, `DOCKER_CLIENT_TIMEOUT=600` 기본값을 사용.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -49,6 +50,7 @@
 - [ ] Next: 사용자별 접근 권한 분리 및 최종 인트라넷 이관
 
 ## RECENT CHANGES
+- **v5.13.103**: NAS 메모리/스왑 압박 중 `docker-compose up`이 기본 60초 HTTP 타임아웃으로 끊기는 문제를 줄이기 위해 Bot/Core 전용 배포 스크립트에 Compose/Docker 클라이언트 타임아웃 600초 기본값을 추가.
 - **v5.13.102**: `deploy-bot.sh`와 `deploy-core.sh`에 `set -e`, Docker/Compose 절대 경로, `sudo -n`, Docker PATH 주입을 적용하고, 마지막 로그 확인을 `logs --tail 80`으로 바꿔 배포 스크립트가 종료되도록 정리.
 - **v5.13.101**: `stop-daemon` 이후 pool은 비었지만 Chrome 프로세스가 남는 상황을 줄이기 위해, `DriverPool.clear()`가 등록 워커 포트와 설정된 기본 포트 범위를 함께 정리하도록 보강.
 - **v5.13.100**: NAS 스왑 압박 완화를 위해 `els-bot` Selenium 워커/배치 병렬도를 2개로 낮추고, 후발 워커 기동 기준을 1개 준비 후 60초 간격으로 조정.

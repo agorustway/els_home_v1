@@ -9,6 +9,8 @@ DOCKER_BIN="${DOCKER_BIN:-/usr/local/bin/docker}"
 COMPOSE_BIN="${COMPOSE_BIN:-/usr/local/bin/docker-compose}"
 SUDO_BIN="${SUDO_BIN:-sudo -n}"
 DOCKER_PATH="${DOCKER_PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}}"
+export COMPOSE_HTTP_TIMEOUT="${COMPOSE_HTTP_TIMEOUT:-600}"
+export DOCKER_CLIENT_TIMEOUT="${DOCKER_CLIENT_TIMEOUT:-600}"
 
 # 1. Sync source from origin/main.
 /opt/bin/git fetch origin main
