@@ -5,6 +5,7 @@ dns_fix.apply_dns_patch()
 import os
 import sys
 import json
+import gc
 import threading
 import time
 import logging
@@ -113,6 +114,32 @@ def get_asan_dispatch_settings(force=False):
         raise
 
 
+def _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+    """컨테이너 재시작 직후 캐시가 비어도 DB가 최신이면 대용량 엑셀 파싱을 건너뛴다."""
+    if not supabase:
+        return False
+    try:
+        res = (
+            supabase.from_("branch_dispatch")
+            .select("file_modified_at")
+            .eq("branch_id", "asan")
+            .eq("type", dtype)
+            .order("file_modified_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        db_mtime = (res.data or [{}])[0].get("file_modified_at")
+        if not db_mtime:
+            return False
+        db_ts = datetime.fromisoformat(str(db_mtime).replace("Z", "+00:00")).timestamp()
+        if abs(db_ts - mtime_ts) < 1:
+            last_mtime_cache[dtype] = mtime
+            return True
+    except Exception as exc:
+        app.logger.warning(f"[자동동기화] {dtype} DB 파일수정일 확인 실패: {exc}")
+    return False
+
+
 def sync_asan_dispatch_python(force=False):
     global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
     if not supabase: return
@@ -158,6 +185,11 @@ def sync_asan_dispatch_python(force=False):
             if not force and cache_mtime == mtime:
                 continue
 
+            if not force and not cache_mtime and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+                dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
+                app.logger.info(f"[자동동기화] {dtype} DB 최신 상태 확인, 컨테이너 재시작 후 최초 전체 파싱 생략")
+                continue
+
             if cache_mtime:
                 app.logger.info(f"[자동동기화] {dtype} 파일 변경 감지: 이전={cache_mtime}, 현재={mtime}")
             else:
@@ -186,6 +218,12 @@ def sync_asan_dispatch_python(force=False):
             valid_dates = []
             
             # 엑셀 읽기
+            xl = None
+            wb_comments = None
+            df = None
+            data_df = None
+            rows = None
+            comments_dict = None
             try:
                 # [v5.10.6] 엔진 명시 및 최적화
                 xl = pd.ExcelFile(temp_path, engine='openpyxl')
@@ -194,7 +232,6 @@ def sync_asan_dispatch_python(force=False):
                 
                 # [v5.10.15] 메모 추출용 워크북은 파일당 1회만 로드 (루프 밖)
                 import openpyxl as _openpyxl
-                wb_comments = None
                 try:
                     wb_comments = _openpyxl.load_workbook(temp_path, data_only=True, keep_vba=False)
                 except Exception as e:
@@ -302,6 +339,11 @@ def sync_asan_dispatch_python(force=False):
                                 time.sleep(1) # 1초 대기 후 재시도
                         else:
                             app.logger.error(f"[자동동기화] {dtype} 시트 '{sheet_name}' 최종 저장 실패.")
+                    df = None
+                    data_df = None
+                    rows = None
+                    comments_dict = None
+                    gc.collect()
                 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
                 last_mtime_cache[dtype] = mtime
@@ -340,6 +382,23 @@ def sync_asan_dispatch_python(force=False):
                         os.remove(temp_path)
                 except Exception as e:
                     app.logger.warning(f"[자동동기화] {dtype} 임시 파일 삭제 실패: {e}")
+                try:
+                    if wb_comments:
+                        wb_comments.close()
+                except Exception:
+                    pass
+                try:
+                    if xl:
+                        xl.close()
+                except Exception:
+                    pass
+                xl = None
+                wb_comments = None
+                df = None
+                data_df = None
+                rows = None
+                comments_dict = None
+                gc.collect()
 
     except Exception as e:
         app.logger.error(f"[자동동기화] 전체 프로세스 에러: {e}", exc_info=True)
@@ -889,6 +948,9 @@ def sync_asan_shipping_python(force=False, rel_path=None):
     mtime_ts = file_stat.st_mtime
     file_modified_at = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
     file_signature = (mtime_ts, file_stat.st_size)
+    parsed = None
+    rows = None
+    payload = None
 
     try:
         meta_res = supabase.from_("branch_shipping_files").select("file_modified_at").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
@@ -943,7 +1005,7 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             "synced_at": datetime.now(KST).isoformat()
         }, on_conflict="branch_id,file_path").execute()
 
-        shipping_cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "file_modified_at": file_modified_at}}
+        shipping_cache.pop(normalized_path, None)
         shipping_sync_gate.mark_synced(normalized_path, file_signature)
         app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행, 삭제 archive {archived_count}행)")
         return {"file_modified_at": file_modified_at, "archived_count": archived_count}
@@ -954,6 +1016,11 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         else:
             app.logger.error(f"[선적관리DB] 동기화 실패: {e}", exc_info=True)
         return None
+    finally:
+        parsed = None
+        rows = None
+        payload = None
+        gc.collect()
 
 def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key="", sort_dir="asc", date_col="", months=""):
     if not supabase or not shipping_db_available:
@@ -1113,15 +1180,26 @@ def get_asan_shipping():
             return jsonify({"data": {**cached["data"], "source": "excel-cache"}})
 
         parsed = parse_asan_shipping_excel(file_path)
-        
-        res = {
-            **parsed,
-            "file_modified_at": datetime.fromtimestamp(mtime, tz=KST).isoformat(),
-            "source": "excel-cache"
-        }
-        
-        shipping_cache[normalized_path] = {"mtime": mtime, "data": res}
-        return jsonify({"data": res})
+        try:
+            page_num = max(1, int(page or 1))
+            page_limit = max(1, min(10000, int(page_size or 5000)))
+            start = (page_num - 1) * page_limit
+            end = start + page_limit
+            all_rows = parsed.get("data") or []
+            res = {
+                **parsed,
+                "data": all_rows[start:end],
+                "file_modified_at": datetime.fromtimestamp(mtime, tz=KST).isoformat(),
+                "source": "excel-cache",
+                "total": len(all_rows),
+                "page": page_num,
+                "page_size": page_limit,
+            }
+            shipping_cache.pop(normalized_path, None)
+            return jsonify({"data": res})
+        finally:
+            parsed = None
+            gc.collect()
         
     except Exception as e:
         app.logger.error(f"선적관리 파싱 오류: {e}")

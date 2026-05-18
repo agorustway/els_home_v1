@@ -2789,3 +2789,21 @@
 - **Redirect 대응**: `elssolution.com` (non-www) 통일로 307 리다이렉트 시 Body 유실 방지.
 
 *(v4.9 이전의 상세 기록은 Git History 참조)*
+## [2026-05-18] NAS core 대용량 엑셀 파싱 메모리 보호 (v5.14.00)
+### 핵심
+- `els-core`가 연간실적 36만 행 원장과 배차/선적 엑셀 파싱 결과를 메모리에 오래 들고 있던 문제를 차단했습니다.
+- 연간실적 core 자동 동기화와 엑셀 직접 조회는 기본 비활성화하고, 운영 기본 경로를 NAS 직접 주입 스크립트로 고정했습니다.
+- 선적관리 sync/엑셀 fallback은 `shipping_cache`에 전체 원장을 저장하지 않고 페이지 단위 응답만 반환한 뒤 참조를 비웁니다.
+- 배차판 sync는 컨테이너 재시작 직후 DB 파일수정일이 최신이면 최초 전체 파싱을 생략하고, 실제 파싱 완료 후 workbook/DataFrame/rows/comments 참조를 해제합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web/tests/asanDashboardView.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 0 errors
+- `python -m py_compile docker/els-backend/asan_performance.py docker/els-backend/app_core.py docker/els-backend/app.py`: 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `docker/els-backend/app_core.py`
+- `docker/els-backend/app.py`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`

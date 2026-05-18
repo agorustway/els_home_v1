@@ -30,6 +30,13 @@ def _env_int(name, default, minimum=0):
         return default
 
 
+def _env_bool(name, default=False):
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def _normalize_performance_path(rel_path=None):
     raw = str(rel_path or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH).strip()
     raw = raw.replace("\\", "/")
@@ -526,6 +533,9 @@ def _search_filter_value(term):
 def register_asan_performance_routes(app, supabase, kst):
     cache = {}
     state = {"db_available": True, "last_sync_error": None}
+    sync_enabled = _env_bool("ASAN_PERFORMANCE_SYNC_ENABLED", False)
+    allow_core_sync = _env_bool("ASAN_PERFORMANCE_ALLOW_CORE_SYNC", False)
+    allow_excel_fallback = _env_bool("ASAN_PERFORMANCE_ALLOW_EXCEL_FALLBACK", False)
     poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
@@ -603,6 +613,12 @@ def register_asan_performance_routes(app, supabase, kst):
         return count
 
     def _sync(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
+        if not allow_core_sync:
+            state["last_sync_error"] = (
+                "연간실적 대용량 NAS 동기화는 core 메모리 보호를 위해 비활성화되어 있습니다. "
+                "scripts/import-asan-annual-performance.sh를 사용하세요."
+            )
+            return None
         if not supabase or not state["db_available"]:
             state["last_sync_error"] = "Supabase 클라이언트가 없거나 연간실적 테이블이 비활성화되어 있습니다."
             return None
@@ -722,15 +738,14 @@ def register_asan_performance_routes(app, supabase, kst):
                 "synced_at": now_iso,
             }, on_conflict="branch_id,dataset_type,file_path,sheet_name").execute()
 
-            cache[normalized_path] = {"mtime": mtime_ts, "data": {**parsed, "summary": summary, "file_modified_at": file_modified_at}}
             sync_gate.mark_synced(normalized_path, file_signature)
             state["last_sync_error"] = None
-            gc.collect()
+            cache.pop(normalized_path, None)
             app.logger.info(
                 f"[연간실적DB] 동기화 완료: {normalized_path} "
                 f"({len(rows)}행, 신규/변경 {len(insert_payload)}행, 유지 {unchanged_count}행, 종료 {superseded_count + removed_count}행)"
             )
-            return {
+            result = {
                 "file_modified_at": file_modified_at,
                 "synced_at": now_iso,
                 "inserted_count": len(insert_payload),
@@ -742,6 +757,9 @@ def register_asan_performance_routes(app, supabase, kst):
                 "sheet_name": actual_sheet,
                 "header_row": actual_header_row,
             }
+            del rows, parsed, insert_payload, current_by_index, new_hash_by_index
+            gc.collect()
+            return result
         except Exception as exc:
             if "branch_performance_" in str(exc) or "relation" in str(exc).lower():
                 state["db_available"] = False
@@ -852,7 +870,10 @@ def register_asan_performance_routes(app, supabase, kst):
                 app.logger.error(f"[연간실적DB 스케줄러] 에러: {exc}")
                 time.sleep(poll_seconds)
 
-    threading.Thread(target=_scheduler, daemon=True).start()
+    if sync_enabled:
+        threading.Thread(target=_scheduler, daemon=True).start()
+    else:
+        app.logger.info("[스케줄러] 아산 연간실적 core 자동 동기화 비활성화 (NAS 스크립트 전용)")
 
     @app.route("/api/branches/asan/performance/annual", methods=["GET", "POST"])
     def asan_annual_performance():
@@ -868,6 +889,28 @@ def register_asan_performance_routes(app, supabase, kst):
                 run_async = body.get("async", False)
                 if isinstance(run_async, str):
                     run_async = run_async.lower() in ("1", "true", "yes", "y")
+
+                if not allow_core_sync:
+                    db_data = _query(
+                        rel_path=rel_path,
+                        sheet_name=sheet_name,
+                        page=body.get("page") or request.args.get("page", 1),
+                        page_size=body.get("page_size") or request.args.get("page_size", 500),
+                        search=(body.get("search") or request.args.get("search") or "").strip(),
+                        search_mode=(body.get("search_mode") or request.args.get("search_mode") or "or").strip(),
+                        sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
+                        sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
+                    )
+                    return jsonify({
+                        "ok": False,
+                        "error": "연간실적 NAS 동기화는 core 메모리 보호를 위해 비활성화되어 있습니다. NAS에서 scripts/import-asan-annual-performance.sh를 실행하세요.",
+                        "data": _attach_sync_status(db_data or _empty_supabase_data(
+                            rel_path=rel_path,
+                            sheet_name=sheet_name,
+                            page=body.get("page") or request.args.get("page", 1),
+                            page_size=body.get("page_size") or request.args.get("page_size", 500),
+                        )),
+                    }), 409
 
                 if run_async:
                     started = _start_background_sync(rel_path, sheet_name, header_row, bool(force))
@@ -941,6 +984,12 @@ def register_asan_performance_routes(app, supabase, kst):
                     ))
                 })
 
+            if not allow_excel_fallback:
+                return jsonify({
+                    "error": "연간실적 대용량 엑셀 직접 조회는 core 메모리 보호를 위해 비활성화되어 있습니다.",
+                    "source": "excel-disabled",
+                }), 409
+
             file_path, normalized_path = _resolve_performance_file(rel_path)
             if not file_path.exists():
                 return jsonify({
@@ -959,17 +1008,25 @@ def register_asan_performance_routes(app, supabase, kst):
                 sheet_name=sheet_name,
                 header_row=request.args.get("header_row"),
             )
+            page = max(1, int(request.args.get("page", 1) or 1))
+            page_size = max(1, min(500, int(request.args.get("page_size", 100) or 100)))
+            start = (page - 1) * page_size
+            end = start + page_size
+            total_rows = len(parsed["data"])
             summary = _build_performance_summary(parsed["headers"], parsed["data"])
             data = {
                 **parsed,
+                "data": parsed["data"][start:end],
                 "summary": summary,
                 "file_modified_at": datetime.fromtimestamp(mtime, tz=kst).isoformat(),
                 "source": "excel-cache",
-                "total": len(parsed["data"]),
-                "page": 1,
-                "page_size": len(parsed["data"]),
+                "total": total_rows,
+                "page": page,
+                "page_size": page_size,
             }
-            cache[normalized_path] = {"mtime": mtime, "data": data}
+            cache.pop(normalized_path, None)
+            del parsed
+            gc.collect()
             return jsonify({"data": _attach_sync_status(data)})
         except Exception as exc:
             app.logger.error(f"연간실적 처리 오류: {exc}", exc_info=True)
