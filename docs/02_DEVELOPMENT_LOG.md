@@ -1,3 +1,15 @@
+## [2026-05-18] 안전운임 구간조회 탭 위치 조정 (v5.14.11)
+### 핵심
+- 안전운임 상단 탭 순서를 `구간별운임 → 거리별운임 → 구간조회 → 이외구간`으로 바꿨습니다.
+- `이외구간`은 고시 외 구간 성격이므로, 일반 경로/운임 조회인 `구간조회`를 먼저 보이도록 정리했습니다.
+### 검증
+- `node --test web/tests/safeFreightTabOrder.test.mjs`: 1개 통과
+- `npm.cmd run lint -- "app/(main)/employees/safe-freight/page.js" "tests/safeFreightTabOrder.test.mjs"`: 0 errors, 기존 warning 4건
+### 변경 파일
+- `web/app/(main)/employees/safe-freight/page.js`
+- `web/tests/safeFreightTabOrder.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-18] 안전운임 주소 행정동 자동선택 및 인천국제여객 구간운임 보정 (v5.14.10)
 ### 핵심
 - 기본 안전운임 조회에서 주소 검색 결과를 `setTimeout` 연쇄로 시도·시군구·행정동에 넣던 구조를 제거하고, 안전운임 데이터의 지역 키 기준으로 한 번에 정규화하도록 공통 유틸을 추가했습니다.

@@ -773,6 +773,25 @@ export default function SafeFreightPage() {
       ? inputKm && parseInt(inputKm, 10) >= 1
       : origin && region1 && region2 && region3;
 
+  const renderQueryTypeTab = (t) => (
+    <button
+      key={t.id}
+      type="button"
+      className={
+        t.id === 'other'
+          ? (view === 'default' && queryType === t.id ? styles.tabActiveRed : styles.tabRed)
+          : (view === 'default' && queryType === t.id ? styles.tabActive : styles.tab)
+      }
+      onClick={() => { setView('default'); setQueryType(t.id); }}
+    >
+      <span className={styles.tabLabel}>
+        {t.label}
+        {t.yearNote && <span className={styles.yearNote}> ({t.yearNote})</span>}
+      </span>
+      <span className={styles.tabDesc}>{t.desc}</span>
+    </button>
+  );
+
   if (loading) { // Check initial loading
     return (
       <div className={styles.page}>
@@ -797,25 +816,8 @@ export default function SafeFreightPage() {
       </div>
 
       <div className={styles.tabs}>
-        {/* 구간별운임 → 거리별운임 → 이외구간 */}
-        {QUERY_TYPES.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={
-              t.id === 'other'
-                ? (view === 'default' && queryType === t.id ? styles.tabActiveRed : styles.tabRed)
-                : (view === 'default' && queryType === t.id ? styles.tabActive : styles.tab)
-            }
-            onClick={() => { setView('default'); setQueryType(t.id); }}
-          >
-            <span className={styles.tabLabel}>
-              {t.label}
-              {t.yearNote && <span className={styles.yearNote}> ({t.yearNote})</span>}
-            </span>
-            <span className={styles.tabDesc}>{t.desc}</span>
-          </button>
-        ))}
+        {/* 구간별운임 → 거리별운임 → 구간조회 → 이외구간 */}
+        {QUERY_TYPES.filter((t) => t.id !== 'other').map(renderQueryTypeTab)}
 
         {/* 구간조회 (네이버 지도) */}
         <button
@@ -830,6 +832,8 @@ export default function SafeFreightPage() {
           <span className={styles.tabLabel}>구간조회</span>
           <span className={styles.tabDesc}>지도 기반 경로/운임 조회</span>
         </button>
+
+        {QUERY_TYPES.filter((t) => t.id === 'other').map(renderQueryTypeTab)}
 
         {/* 관련 법령·고시 안내 */}
         <button

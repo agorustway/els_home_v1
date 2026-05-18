@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.14.10 / APK v5.11.14)
+# ELS MISSION CONTROL (v5.14.11 / APK v5.11.14)
 
-> 최신 업데이트: 안전운임 주소 검색의 행정동 자동선택과 인천국제여객 구간운임 매칭을 보정했습니다.
+> 최신 업데이트: 안전운임 상단 탭에서 `구간조회`를 `이외구간`보다 앞에 배치했습니다.
 
 ## CURRENT STATUS
 - **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
-- **웹 버전**: v5.14.10
+- **웹 버전**: v5.14.11
 - **APK 버전**: v5.11.14
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 안전운임 상단 탭 순서를 `구간별운임 → 거리별운임 → 구간조회 → 이외구간`으로 정리.
   - 안전운임 주소 검색은 안전운임 데이터 키 기준으로 시도·시군구·행정동을 한 번에 정규화하고, 지도 경로조회는 터미널 키 기반으로 인천국제여객 구간운임을 우선 매칭.
   - 연간실적 core 자동 동기화와 대용량 엑셀 직접 조회는 기본 비활성화. NAS 직접 주입 스크립트만 운영 기본 경로.
   - 연간실적 sync 경로는 완료 후 `cache.pop(...)`, 대형 row/payload/hash 참조 해제, `gc.collect()` 수행.
@@ -50,6 +51,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.11**: 안전운임 탭 렌더 순서를 조정해 지도 기반 `구간조회` 버튼을 `이외구간` 앞에 배치.
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
 - **v5.14.09**: 차량 위치 관제에서 `TRIP_END` 저품질/불가능 좌표는 마지막 정상점으로 수렴시키고, 앱 지도는 GPS 공백 중 짧은 예측 이동만 표시. 터널 출구 후보는 방향·속도상 맞을 때만 실제 경로로 연결. 완료 마커는 유지하되 동일 차량 재운행 시 진행 중 운행이 우선 표시되도록 보강.
 - **v5.14.08**: `NAS 동기화` 버튼을 외부 Node importer 백그라운드 작업으로 연결. Core 메모리에 workbook/row를 남기지 않고, 동일 파일은 `summary-only`, 변경 파일은 snapshot import로 처리하도록 구성. Core Docker 이미지에 Node.js/npm/util-linux를 추가.
@@ -69,6 +71,7 @@
 - **v5.13.98**: 관리자 문의/회원권한/활동로그 화면을 인트라넷 톤으로 재정리하고 로그 조회 경로를 `/api/admin/logs`로 복구.
 
 ## VERIFICATION
+- `node --test web/tests/safeFreightTabOrder.test.mjs`: 1개 통과
 - `node --test web/tests/safeFreightRegion.test.mjs`: 4개 통과
 - 안전운임 로컬 브라우저 확인: `[왕복] 인천국제여객 → 경기도 화성시 마도면` 구간운임 26.02월 42km / 안전운임 333,600원 표시 확인
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
