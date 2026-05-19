@@ -1,3 +1,17 @@
+## [2026-05-19] 아산 월별·일별 트리 금액 헤더 추가 (v5.14.32)
+### 핵심
+- 월별·일별 트리에서 금액 컬럼 위에 제목행이 없어 청구/하불/손익/건수 의미를 바로 알기 어려웠습니다.
+- 트리 상단에 `월/일`, `청구`, `하불`, `손익`, `건수` 헤더를 추가하고 모바일 폭에서도 같은 컬럼 그리드를 유지하게 했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 분석 범위/트리/세분화 보강 (v5.14.31)
 ### 핵심
 - 월간 `아산매출보고서` 표는 기본 선택을 개별 월이 아니라 `전체`로 두고, 월별 버튼으로 특정 월 범위를 볼 수 있게 했습니다.

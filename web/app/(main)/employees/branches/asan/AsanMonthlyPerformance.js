@@ -762,6 +762,13 @@ export default function AsanMonthlyPerformance() {
                             <div className={styles.emptyPanel}>일별 원장 데이터를 아직 도출하지 못했습니다. 원본에 작업일자 컬럼이 있으면 동기화 후 자동 집계됩니다.</div>
                         ) : (
                             <div className={styles.dailyTree}>
+                                <div className={styles.dailyTreeHead}>
+                                    <span>월/일</span>
+                                    <span>청구</span>
+                                    <span>하불</span>
+                                    <span>손익</span>
+                                    <span>건수</span>
+                                </div>
                                 {dailyTree.map(item => (
                                     <div className={styles.dailyTreeGroup} key={item.period}>
                                         <button type="button" className={styles.dailyMonthRow} onClick={() => toggleDailyMonth(item.period)}>

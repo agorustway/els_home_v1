@@ -2099,6 +2099,30 @@
     padding: 7px 8px 8px;
 }
 
+.dailyTreeHead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 116px repeat(3, minmax(100px, 1fr)) 58px;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    border-bottom: 1px solid #cbd5e1;
+    background: #f8fafc;
+}
+
+.dailyTreeHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-align: right;
+}
+
+.dailyTreeHead span:first-child {
+    text-align: left;
+}
+
 .dailyTreeGroup {
     border-bottom: 1px solid #f1f5f9;
 }
@@ -2627,6 +2651,7 @@
         border-radius: 6px;
     }
 
+    .dailyTreeHead,
     .dailyMonthRow,
     .dailyRow {
         grid-template-columns: 92px repeat(3, minmax(84px, 1fr)) 48px;

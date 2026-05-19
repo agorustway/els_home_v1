@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.31 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.32 / APK v5.11.17)
 
-> 최신 업데이트: 아산 월간실적 보고서/트리/세분화 분석과 테이블 내부 스크롤을 보강했습니다.
+> 최신 업데이트: 아산 월별·일별 트리에 금액 제목열을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.31
+- **웹 버전**: v5.14.32
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -12,7 +12,7 @@
   - 아산 월간/연간실적 화면은 별도 `source=status` polling으로 NAS 백그라운드 동기화 상태를 페이지 재진입 후에도 표시한다.
   - 아산 월간실적 NAS importer는 공용 summary helper를 top-level로 사용해 `diff-current` 중단을 방지한다.
   - 아산 월간실적 본문은 월별 파일 슬롯 대신 `아산매출보고서` 표를 우선 표시한다.
-  - 월간 보고서는 기본 `전체` 범위로 합산 표시하고, 월별/일별 트리와 청구처·작업지·운송사·구분·픽업·포트 breakdown을 제공한다.
+  - 월간 보고서는 기본 `전체` 범위로 합산 표시하고, 월별/일별 트리는 청구·하불·손익·건수 제목열과 함께 표시한다.
   - 월별 파일공간/경로/시트/제목행은 설정 모달에서만 관리하고, 저장 후 동기화한다.
   - 월별 보고서 표에서 거래처별 순매출/순매입/매출이익, 계산서 매출/매입/이익, 이월 매출/매입/차익을 도출.
   - 월간 원장 summary에는 월별/일별 흐름과 이월 합계를 함께 저장해 화면 분석에 사용.
@@ -49,6 +49,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.32**: 월별·일별 트리 금액 컬럼 위에 `월/일`, `청구`, `하불`, `손익`, `건수` 헤더를 추가해 숫자 의미가 즉시 보이도록 보정했다.
 - **v5.14.31**: 월간실적 보고서 표 기본값을 `전체`로 변경하고 월별 범위 버튼으로 전환하게 했다. 월별 성과 아래에는 접힘/펼침 트리로 일별 원장을 표시하며, 청구처/작업지/운송사(명의)/구분/청구픽업/포트 등 테이블에서 도출 가능한 breakdown을 청구·하불·손익·건수 패널로 보여준다. 월간/연간 테이블은 화면 안쪽에 세로/가로 스크롤이 먼저 보이도록 높이를 고정했다.
 - **v5.14.30**: 월간/연간실적 `NAS 동기화`가 백그라운드로 계속 진행 중일 때 페이지를 나갔다 돌아오면 로컬 상태가 끊겨 진행중 표시가 사라질 수 있던 문제를 수정. `source=status` 조회는 NAS Core로 직접 프록시하고, 화면은 진입 시/진행 중 5초마다 상태만 polling해 `동기화 진행중`, 시작/완료 시각을 유지한다.
 - **v5.14.29**: 연간실적 `NAS 동기화` POST가 백그라운드 작업 시작 직후 NAS Core `_query()`로 원장 count/페이지를 다시 읽으며 timeout을 노출하던 문제를 수정. 동기화 응답은 `sync_only` 메타만 반환하고 프론트는 기존 화면 데이터를 덮어쓰지 않는다. 중복된 `10년 흐름` 분석 탭은 개요의 장기 흐름 그래프로 통합했다.
@@ -73,6 +74,8 @@
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
 
 ## VERIFICATION
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
 - `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
 - `npm.cmd run lint -- lib/asan-branch-db.js app/api/branches/asan/performance/monthly/route.js app/api/branches/asan/performance/annual/route.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
