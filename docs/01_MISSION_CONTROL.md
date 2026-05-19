@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.73 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.74 / APK v5.11.23)
 
-> 최신 업데이트: 월간실적 `보고서 표 없음` 배너를 제거해 원장 기준 분석 화면이 불필요한 경고 없이 보이게 했습니다.
+> 최신 업데이트: 실적관리 하위 전페이지 테이블류에 하단 가로 슬라이드와 Galaxy S24급 모바일 폭 보정을 적용했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.73
+- **웹 버전**: v5.14.74
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -26,6 +26,7 @@
   - 연간실적 개요는 고마진→저마진→손실 순으로 리스크 카드를 정리하고, 주차 분석은 제거해 요일별 매출·손익·건수 다이어그램에 집중한다.
   - 종합실적은 전체/연도별/월별/일별 선택 기준으로 연간+월간 Supabase summary를 재집계하고, KPI·흐름도·추세·연도 매트릭스·계약/차량 집중도·원장 신뢰도·청구처/지급처 고저마진을 같은 선택 범위로 표시한다.
   - 월간실적 보고서 표 전용파서는 엑셀 상단 raw preview를 함께 스캔하고, `순매출·순매입·계산서·이월` 표가 신뢰 조건을 충족할 때만 월간 총액 기준으로 사용한다. 표가 없을 때는 메인 분석 화면에 경고 배너를 띄우지 않는다.
+  - 종합/월간/연간 실적관리의 차트형 표, 세분화 표, 원장 테이블, 보고서 표, 이월/히트맵 표는 모두 화면 안쪽 하단 슬라이더로 가로 이동하고 430px 이하 모바일에서 버튼·카드·테이블 높이를 압축한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -61,8 +62,10 @@
 - [x] v5.14.71: 연간실적 장기/직계약 그래프 콜아웃과 요일 분석 재구성
 - [x] v5.14.72: 월간실적 보고서 표 전용파서 raw preview 복원과 총액 덮어쓰기 안전장치
 - [x] v5.14.73: 월간실적 보고서 표 없음 배너 제거
+- [x] v5.14.74: 실적관리 하위 페이지 테이블 하단 슬라이드와 모바일 폭 보정
 
 ## RECENT CHANGES
+- **v5.14.74**: 종합/월간/연간 실적관리에서 테이블형 영역이 브라우저 폭을 넘을 때 화면 안쪽 하단 슬라이더로 이동하도록 공통 스크롤 스타일을 확장했다. 요약 추세, 세분화, 차량성과, 보고서 표, 월/일 흐름, 히트맵, 이월 청구처 표까지 같은 스크롤바 규칙을 적용했고, Galaxy S24급 폭에서는 카드·버튼·원장 테이블 높이를 더 촘촘하게 조정했다.
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
 - **v5.14.72**: 월간실적 보고서 표 전용파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview에서 `순매출/순매입/계산서/이월` 표를 복원한다. 파서 결과에는 `quality.primaryReady`를 붙여 완전 표만 월간 총액 기준으로 승격하고, 부분 표는 보조 표시로 남겨 원장 누적값을 덮어쓰지 않게 했다.
 - **v5.14.71**: 연간실적 원장 장기 흐름 그래프와 우리 직계약차량 흐름 그래프의 SVG 비율을 고정하고, 최고 매출·최고 손익·최저 손익·최근 포인트와 평균선 라벨을 추가했다. 개요 리스크 카드는 `고마진 항목 → 저마진 주의 → 손실 항목` 순서로 바꿨고, `주차·요일` 분석은 `요일` 분석으로 단순화해 요일별 매출·손익·건수 다이어그램과 집중/주의 요약만 표시한다.
@@ -82,9 +85,10 @@
 - **v5.14.56**: 종합실적 탭을 준비중 placeholder에서 연간+월간 합산 대시보드로 교체했다. `/api/branches/asan/performance/summary`는 annual current summary와 monthly diff-current summary를 `page_size=1`로 읽어 합산하고, 화면은 통합 매출/손익/손익률/매입률/최근월, 합산 흐름도, 최근 12개월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도만 압축 표시한다. 실제 DB 기준 합산값은 매출 196,151,544,233.1원, 손익률 10.68%, 응답 34.6KB로 확인했다.
 - **v5.14.55**: 운영 DB에 `marker_type` 컬럼이 없어도 `method=TRIP_END/TRIP_START`를 명시 마커로 인식하게 서버/앱 경로 필터를 통일했다. 2026-05-19 KST 데이터 재분석 결과 194서2632는 raw/server/app clean 모두 18:54:32 TRIP_END까지 보존된다. 운행 중 위치보기는 matched-route/complete 호출 없이 실시간 위치만 보도록 회귀 테스트를 추가했고, PiP는 운행 ID를 서비스 시작 즉시 저장하며 Android 12+ auto-enter를 설정한다. APK v5.11.20.
 ## VERIFICATION
-- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
 - `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
+- 로컬 브라우저 자동화는 dev 페이지가 응답을 오래 잡아 스크린샷까지 안정적으로 완료하지 못함. CSS 구조 검증은 테스트와 빌드로 보완.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

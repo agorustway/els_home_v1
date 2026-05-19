@@ -562,6 +562,12 @@
     position: relative;
     min-width: 0;
     overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 4px;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .summaryTrendSvg {
@@ -866,6 +872,13 @@
 .summarySourceRows {
     display: grid;
     gap: 4px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .summarySourceHead,
@@ -874,6 +887,7 @@
     grid-template-columns: 76px minmax(100px, 1fr) 64px 94px 112px;
     align-items: center;
     gap: 7px;
+    min-width: 540px;
 }
 
 .summarySourceHead {
@@ -1624,8 +1638,13 @@
 }
 
 .heatmap {
+    max-width: 100%;
     overflow: auto;
     padding: 8px;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .heatHead,
@@ -1823,6 +1842,11 @@
     flex-direction: column;
     padding: 7px 9px 9px;
     overflow-x: auto;
+    max-width: 100%;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .vehicleQualityStrip {
@@ -2522,11 +2546,26 @@
     padding: 7px 9px 8px;
 }
 
+.monthChart {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
 .timeFlowChart {
     display: flex;
     flex-direction: column;
     gap: 3px;
     padding: 7px 9px 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .timeFlowHeaderRow,
@@ -2746,8 +2785,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    height: clamp(240px, calc(100dvh - 300px), 680px);
-    max-height: calc(100dvh - 300px);
+    height: clamp(260px, calc(100dvh - 290px), 700px);
+    max-height: min(700px, calc(100dvh - 290px));
     min-height: 0;
     flex: 1 1 auto;
     overflow: hidden;
@@ -2806,14 +2845,18 @@
 .tableScroll {
     min-height: 0;
     flex: 1 1 auto;
+    max-width: 100%;
     overflow-x: auto;
     overflow-y: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
     scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
     overscroll-behavior: contain;
     padding-bottom: 2px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: #fff;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tableScroll::-webkit-scrollbar {
@@ -2821,13 +2864,56 @@
     height: 12px;
 }
 
+.summaryTrendChart::-webkit-scrollbar,
+.summarySourceRows::-webkit-scrollbar,
+.heatmap::-webkit-scrollbar,
+.vehicleProfitTable::-webkit-scrollbar,
+.monthChart::-webkit-scrollbar,
+.timeFlowChart::-webkit-scrollbar,
+.vehicleInsightRows::-webkit-scrollbar,
+.monthlyReportScroll::-webkit-scrollbar,
+.dimensionRows::-webkit-scrollbar,
+.carryoverClientRows::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
 .tableScroll::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.summaryTrendChart::-webkit-scrollbar-track,
+.summarySourceRows::-webkit-scrollbar-track,
+.heatmap::-webkit-scrollbar-track,
+.vehicleProfitTable::-webkit-scrollbar-track,
+.monthChart::-webkit-scrollbar-track,
+.timeFlowChart::-webkit-scrollbar-track,
+.vehicleInsightRows::-webkit-scrollbar-track,
+.monthlyReportScroll::-webkit-scrollbar-track,
+.dimensionRows::-webkit-scrollbar-track,
+.carryoverClientRows::-webkit-scrollbar-track {
     border-radius: 999px;
     background: #e2e8f0;
 }
 
 .tableScroll::-webkit-scrollbar-thumb {
     border: 3px solid #f8fafc;
+    border-radius: 999px;
+    background: #94a3b8;
+}
+
+.summaryTrendChart::-webkit-scrollbar-thumb,
+.summarySourceRows::-webkit-scrollbar-thumb,
+.heatmap::-webkit-scrollbar-thumb,
+.vehicleProfitTable::-webkit-scrollbar-thumb,
+.monthChart::-webkit-scrollbar-thumb,
+.timeFlowChart::-webkit-scrollbar-thumb,
+.vehicleInsightRows::-webkit-scrollbar-thumb,
+.monthlyReportScroll::-webkit-scrollbar-thumb,
+.dimensionRows::-webkit-scrollbar-thumb,
+.carryoverClientRows::-webkit-scrollbar-thumb {
+    border: 2px solid #f8fafc;
     border-radius: 999px;
     background: #94a3b8;
 }
@@ -3790,8 +3876,14 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    max-width: 100%;
     padding: 8px;
     box-sizing: border-box;
+    overflow-x: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .vehicleInsightHead,
@@ -3800,6 +3892,7 @@
     grid-template-columns: 26px minmax(180px, 1.05fr) minmax(140px, 1fr) 110px 160px;
     align-items: center;
     gap: 8px;
+    min-width: 760px;
 }
 
 .vehicleInsightHead {
@@ -3962,8 +4055,14 @@
 }
 
 .monthlyReportScroll {
-    overflow: auto;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
     border-top: 1px solid #0f172a;
+    -webkit-overflow-scrolling: touch;
 }
 
 .monthlyReportTable {
@@ -4153,9 +4252,14 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
-    padding: 0 8px 9px;
+    padding: 0 8px 11px;
     overflow-x: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .dimensionHead,
@@ -4251,8 +4355,13 @@
 .carryoverClientRows {
     display: flex;
     flex-direction: column;
+    max-width: 100%;
     overflow-x: auto;
     padding: 0 8px 8px;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .carryoverClientHead,
@@ -4410,6 +4519,7 @@
     .summarySourceHead,
     .summarySourceRow {
         grid-template-columns: 72px minmax(92px, 1fr) 58px 82px;
+        min-width: 500px;
     }
 
     .summarySourceHead span:nth-child(5),
@@ -4513,6 +4623,7 @@
     .vehicleInsightHead,
     .vehicleInsightRow {
         grid-template-columns: 24px minmax(132px, 1fr) minmax(100px, 0.8fr) 96px;
+        min-width: 560px;
     }
 
     .vehicleInsightHead span:nth-child(5),
@@ -4623,12 +4734,16 @@
     }
 
     .tableArea {
-        height: clamp(220px, calc(100dvh - 230px), 560px);
-        max-height: calc(100dvh - 230px);
+        height: clamp(250px, calc(100dvh - 220px), 620px);
+        max-height: min(620px, calc(100dvh - 220px));
     }
 
     .tableScroll {
         min-height: 180px;
+    }
+
+    .monthlyReportScroll {
+        max-height: min(62dvh, 560px);
     }
 }
 
@@ -4647,8 +4762,11 @@
     }
 
     .summaryKpiGrid,
-    .summarySignalGrid,
     .summaryYearMatrix {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .summarySignalGrid {
         grid-template-columns: 1fr;
     }
 
@@ -4701,8 +4819,8 @@
     }
 
     .tableArea {
-        height: clamp(220px, calc(100dvh - 210px), 520px);
-        max-height: calc(100dvh - 210px);
+        height: clamp(260px, calc(100dvh - 190px), 560px);
+        max-height: min(560px, calc(100dvh - 190px));
     }
 
     .summaryFormulaStrip {
@@ -4719,12 +4837,15 @@
 
     .summarySourceHead,
     .summarySourceRow {
-        grid-template-columns: 68px minmax(90px, 1fr) 54px;
+        grid-template-columns: 68px minmax(96px, 1fr) 54px 82px 104px;
+        min-width: 520px;
     }
 
     .summarySourceHead span:nth-child(4),
-    .summarySourceRow b {
-        display: none;
+    .summarySourceHead span:nth-child(5),
+    .summarySourceRow b,
+    .summarySourceRow small {
+        display: block;
     }
 
     .segmented {
@@ -4869,14 +4990,15 @@
 
     .vehicleInsightHead,
     .vehicleInsightRow {
-        grid-template-columns: 24px minmax(150px, 1fr) 92px;
+        grid-template-columns: 24px minmax(150px, 1fr) minmax(96px, 0.85fr) 92px 118px;
+        min-width: 620px;
     }
 
     .vehicleInsightHead span:nth-child(3),
     .vehicleInsightHead span:nth-child(5),
     .vehicleInsightRow i,
     .vehicleInsightRow small {
-        display: none;
+        display: block;
     }
 
     .monthlySettingsRow {
@@ -4892,6 +5014,15 @@
 
     .dimensionSummary {
         grid-template-columns: 1fr;
+    }
+
+    .dimensionHead,
+    .dimensionRow {
+        min-width: 640px;
+    }
+
+    .monthlyReportTable {
+        min-width: 920px;
     }
 
     .carryoverClientTitle {
@@ -4945,5 +5076,108 @@
 
     .metricLegend {
         gap: 7px;
+    }
+}
+
+@media (max-width: 430px) {
+    .container {
+        gap: 7px;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .topBar,
+    .commandPanel,
+    .summaryPanel,
+    .panel,
+    .detectPanel {
+        border-radius: 7px;
+    }
+
+    .topBar {
+        padding: 7px;
+    }
+
+    .title {
+        font-size: 0.98rem;
+    }
+
+    .metaLine {
+        gap: 4px;
+        font-size: 0.66rem;
+    }
+
+    .segmented button,
+    .ghostBtn,
+    .smallActiveBtn,
+    .primaryBtn,
+    .smallBtn,
+    .loadMoreBtn,
+    .browseBtn,
+    .saveBtn,
+    .cancelBtn {
+        height: 30px;
+        padding: 0 7px;
+        font-size: 0.68rem;
+    }
+
+    .summaryKpiCard {
+        min-height: 74px;
+        padding: 7px;
+    }
+
+    .summaryKpiCard span,
+    .summaryKpiCard em {
+        font-size: 0.63rem;
+    }
+
+    .summaryKpiCard strong {
+        font-size: 0.96rem;
+    }
+
+    .tableToolbar {
+        align-items: stretch;
+        padding: 7px;
+    }
+
+    .searchInput {
+        width: 100%;
+    }
+
+    .rowCount {
+        width: 100%;
+    }
+
+    .tableArea {
+        height: clamp(300px, calc(100dvh - 170px), 580px);
+        max-height: min(580px, calc(100dvh - 170px));
+    }
+
+    .dataTable {
+        min-width: max(100%, 900px);
+    }
+
+    .dataTable th,
+    .dataTable td,
+    .monthlyReportTable th,
+    .monthlyReportTable td {
+        padding: 6px 8px;
+        font-size: 0.68rem;
+    }
+
+    .dimensionRows,
+    .vehicleInsightRows,
+    .vehicleProfitTable,
+    .monthlyReportScroll,
+    .summarySourceRows,
+    .heatmap,
+    .monthChart,
+    .timeFlowChart,
+    .carryoverClientRows {
+        padding-bottom: 12px;
+    }
+
+    .vehicleInsightHead,
+    .vehicleInsightRow {
+        min-width: 620px;
     }
 }

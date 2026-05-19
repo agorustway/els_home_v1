@@ -334,12 +334,16 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /2027-03/);
   assert.match(component, /buildMonthlyPerformanceFileSlots/);
   const css = read('web/app/(main)/employees/branches/asan/annualPerformance.module.css');
-  assert.match(css, /\.tableArea\s*{[\s\S]*height: clamp\(240px, calc\(100dvh - 300px\), 680px\)/);
+  assert.match(css, /\.tableArea\s*{[\s\S]*height: clamp\(260px, calc\(100dvh - 290px\), 700px\)/);
   assert.match(css, /\.tableArea\s*{[\s\S]*overflow: hidden/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*overflow-x: auto/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
   assert.match(css, /\.tableScroll::-webkit-scrollbar\s*{[\s\S]*height: 12px/);
   assert.match(css, /\.tableScroll::-webkit-scrollbar-thumb\s*{[\s\S]*background: #94a3b8/);
+  assert.match(css, /\.monthlyReportScroll\s*{[\s\S]*overflow-x: auto/);
+  assert.match(css, /\.vehicleInsightRows\s*{[\s\S]*overflow-x: auto/);
+  assert.match(css, /\.summarySourceRows\s*{[\s\S]*overflow-x: auto/);
+  assert.match(css, /\.carryoverClientRows\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
   assert.match(css, /\.dataTable\s*{[\s\S]*width: max-content/);
   assert.match(css, /\.analytics\s*{[\s\S]*grid-template-columns: repeat\(auto-fit/);
   assert.match(css, /minmax\(min\(100%, 640px\), 1fr\)/);
@@ -348,6 +352,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.doesNotMatch(css, /\.dailyTree\s*{/);
   assert.match(css, /\.dimensionPanel\s*{[\s\S]*width: 100%/);
   assert.match(css, /\.dimensionRows\s*{[\s\S]*width: 100%/);
+  assert.match(css, /\.dimensionRows\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
   assert.match(css, /\.weekdayPanel\s*{[\s\S]*order: 62/);
   assert.match(css, /\.weekdayCard i/);
   assert.match(css, /\.dimensionPanel\s*{[\s\S]*order: 61/);
@@ -378,6 +383,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.vehicleInsightHead/);
   assert.match(css, /\.vehicleInsightRow/);
   assert.match(css, /grid-template-columns: 26px minmax\(180px, 1\.05fr\)/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.tableArea\s*{[\s\S]*height: clamp\(300px, calc\(100dvh - 170px\), 580px\)/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.vehicleInsightHead,\s*\.vehicleInsightRow\s*{[\s\S]*min-width: 620px/);
   assert.doesNotMatch(css, /\.dailyMonthRow/);
   assert.match(css, /\.dimensionRows/);
 });

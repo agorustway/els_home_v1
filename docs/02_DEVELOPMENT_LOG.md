@@ -1,3 +1,20 @@
+## [2026-05-20] 아산 실적관리 테이블 하단 슬라이드와 모바일 보정 (v5.14.74)
+### 핵심
+- 종합실적/월간실적/연간실적 공용 CSS에서 테이블형 영역의 가로 overflow를 화면 안쪽 하단 슬라이더로 통일했습니다.
+- 요약 추세 차트, 세분화 표, 차량성과 표, 월/일 흐름 표, 보고서 표, 원장 테이블, 히트맵, 이월 청구처 표까지 스크롤바 색상·gutter·터치 스크롤을 같은 규칙으로 맞췄습니다.
+- Galaxy S24급 430px 이하 폭에서는 KPI 카드, 버튼, 검색줄, 원장 테이블 높이와 셀 패딩을 더 촘촘하게 조정해 모바일에서 테이블이 화면 밖으로 밀려 보이지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
+- 로컬 브라우저 자동화는 dev 페이지가 응답을 오래 잡아 스크린샷 검증까지 안정적으로 완료하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산 월간실적 보고서 표 없음 배너 제거 (v5.14.73)
 ### 핵심
 - 월간실적 분석 화면에서 `reportTableReady=false`일 때 표시하던 `보고서 표 없음 · 원장 기준 분석 중` 노란 배너를 제거했습니다.
