@@ -2222,13 +2222,33 @@
 }
 
 .monthlyTrendAxis {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
+    display: grid;
+    align-items: center;
+    gap: 3px;
     margin-top: 2px;
     color: #64748b;
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 900;
+    text-align: center;
+}
+
+.monthlyTrendAxis span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.monthlyTrendAxis span:first-child {
+    text-align: left;
+}
+
+.monthlyTrendAxis span:last-child {
+    text-align: right;
+}
+
+.monthlyTrendAxisBlank {
+    visibility: hidden;
 }
 
 .monthlyTrendStats {

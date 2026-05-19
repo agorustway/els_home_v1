@@ -168,11 +168,17 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /분석 기준/);
   assert.match(component, /월별 선택/);
   assert.match(component, /일별 선택/);
+  assert.match(component, /if \(!item \|\| typeof item !== 'object'\) return false/);
+  assert.match(component, /function metricSeries\(item = \{\}, field\)/);
+  assert.match(component, /metricSeries\(item, 'monthly'\)\.find/);
+  assert.match(component, /metricSeries\(item, 'daily'\)\.find/);
   assert.match(component, /changeAnalysisScope/);
   assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableMonths\.length\}/);
   assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableDays\.length\}/);
   assert.match(component, /MonthlyLedgerFlowChart/);
   assert.match(component, /월별 누적 흐름/);
+  assert.match(component, /axisLabels\.map/);
+  assert.match(component, /gridTemplateColumns: `repeat\(\$\{Math\.max\(1, series\.length\)\}, minmax\(0, 1fr\)\)`/);
   assert.match(component, /MetricDonut/);
   assert.match(component, /월간 실적 인포그래픽/);
   assert.match(component, /최고 청구월/);
@@ -202,6 +208,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.monthlyTrendPanel\s*{[\s\S]*order: 8/);
   assert.match(css, /\.analysisScopeButtons button:disabled/);
   assert.match(css, /\.monthlyTrendSvg\s*{[\s\S]*width: 100%/);
+  assert.match(css, /\.monthlyTrendAxis\s*{[\s\S]*display: grid/);
   assert.match(css, /\.monthlyTrendStats\s*{[\s\S]*grid-template-columns: repeat\(2/);
   assert.match(css, /\.monthlyInfographicGrid/);
   assert.match(css, /\.metricDonut/);

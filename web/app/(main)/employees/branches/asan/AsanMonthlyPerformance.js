@@ -100,12 +100,20 @@ function profitRate(item = {}) {
 }
 
 function isMetricActive(item = {}) {
+    if (!item || typeof item !== 'object') return false;
     return Boolean(
         safeNumber(item.rowCount)
         || safeNumber(item.revenue)
         || safeNumber(item.purchase)
         || safeNumber(item.profit),
     );
+}
+
+function metricSeries(item = {}, field) {
+    const value = item?.[field];
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object') return Object.values(value);
+    return EMPTY_LIST;
 }
 
 function sumMetricItems(items = []) {
@@ -167,13 +175,13 @@ function scopedMetricFromSeries(item = {}, metric = {}, totalForShare = 0) {
 
 function findScopedMetric(item = {}, scope, selectedMonth, selectedDay) {
     if (scope === ANALYSIS_SCOPE_MONTH) {
-        return (item.monthly || []).find(metric => metric.period === selectedMonth) || null;
+        return metricSeries(item, 'monthly').find(metric => metric.period === selectedMonth) || null;
     }
     if (scope === ANALYSIS_SCOPE_DAY) {
-        const dailyMetric = (item.daily || []).find(metric => metric.date === selectedDay);
+        const dailyMetric = metricSeries(item, 'daily').find(metric => metric.date === selectedDay);
         if (dailyMetric) return dailyMetric;
         const dayMonth = String(selectedDay || '').slice(0, 7);
-        return (item.monthly || []).find(metric => metric.period === dayMonth) || null;
+        return metricSeries(item, 'monthly').find(metric => metric.period === dayMonth) || null;
     }
     return item;
 }
@@ -421,6 +429,11 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
     const recentDeltaRate = previous?.revenue ? (recentDelta / Math.abs(previous.revenue)) * 100 : 0;
     const lastIdx = Math.max(0, series.length - 1);
     const grid = [0.25, 0.5, 0.75].map(ratio => pad.top + chartH * ratio);
+    const axisStep = series.length <= 8 ? 1 : Math.ceil(series.length / 7);
+    const axisLabels = series.map((item, idx) => ({
+        period: item.period,
+        visible: idx === 0 || idx === series.length - 1 || idx % axisStep === 0,
+    }));
 
     return (
         <section className={`${styles.panel} ${styles.monthlyTrendPanel}`}>
@@ -469,9 +482,19 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
                                 </g>
                             )}
                         </svg>
-                        <div className={styles.monthlyTrendAxis}>
-                            <span>{start}</span>
-                            <span>{end}</span>
+                        <div
+                            className={styles.monthlyTrendAxis}
+                            style={{ gridTemplateColumns: `repeat(${Math.max(1, series.length)}, minmax(0, 1fr))` }}
+                        >
+                            {axisLabels.map((item, idx) => (
+                                <span
+                                    key={`${item.period}-${idx}`}
+                                    className={!item.visible ? styles.monthlyTrendAxisBlank : ''}
+                                    aria-hidden={!item.visible}
+                                >
+                                    {item.visible ? item.period : ''}
+                                </span>
+                            ))}
                         </div>
                     </div>
                     <div className={styles.monthlyTrendStats}>

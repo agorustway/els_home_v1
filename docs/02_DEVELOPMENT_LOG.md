@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 범위 전환 오류/월 라벨 보정 (v5.14.41)
+### 핵심
+- 월별/일별 선택 시 세분화 항목 중 해당 범위 데이터가 없는 항목이 `null`로 들어오며 렌더링을 중단시키던 문제를 수정했습니다.
+- 세부 항목의 `monthly`/`daily` 시리즈를 배열뿐 아니라 객체 형태도 안전하게 읽도록 보강했습니다.
+- 월별 누적 흐름 그래프는 시작/끝 월만 표시하지 않고 포인트 위치 기준으로 중간 월 라벨도 표시합니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 그래프/분석범위 안정화 (v5.14.40)
 ### 핵심
 - 월간실적 `월별 누적 흐름`을 연간용 대형 그래프 스타일에서 분리하고, 월간 전용 카드형 스파크라인과 2×2 요약칩으로 다시 구성했습니다.
