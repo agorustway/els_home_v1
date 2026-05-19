@@ -110,6 +110,24 @@ class TestElsBotLogic(unittest.TestCase):
         page.handle_alert.assert_called_with(accept=True, timeout=0.05)
 
     @patch('els_bot.time.sleep', return_value=None)
+    def test_close_modals_detects_account_locked_alert(self, _sleep):
+        page = MagicMock()
+        page.handle_alert.return_value = False
+        page.run_js.return_value = ""
+        page.html = ""
+        page.ele.return_value = None
+        popup = MagicMock()
+        popup.text = "로그인을 5회 이상 실패하여 정지된 계정입니다. 임시비밀번호를 발급 받으시기 바랍니다."
+        confirm = MagicMock()
+        popup.ele.return_value = confirm
+        page.eles.return_value = [popup]
+
+        result = close_modals(page)
+
+        self.assertEqual(result, "LOGIN_ACCOUNT_LOCKED")
+        confirm.click.assert_called_with(by_js=True)
+
+    @patch('els_bot.time.sleep', return_value=None)
     def test_solve_input_verifies_value_before_search(self, _sleep):
         input_ele = MagicMock()
         input_ele.run_js.return_value = "MSKU5071276"

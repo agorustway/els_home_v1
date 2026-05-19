@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.79 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.80 / APK v5.11.23)
 
-> 최신 업데이트: ELS Bot 03:00 일일 리셋을 공통 워밍업 경로로 합쳐 메뉴 진입 실패 재시도를 보강했습니다.
+> 최신 업데이트: ETrans 5회 실패 계정 잠금 팝업을 치명 인증 오류로 감지하고 자동 로그인 재시도를 중단하도록 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.79
+- **웹 버전**: v5.14.80
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -12,7 +12,7 @@
   - AI/API 단건 컨테이너 조회는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot 준비를 트리거한다.
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
   - Bot 운영 워커는 2개 유지하며 도커 재기동/리셋 이후에도 저장 계정 기반 자동 복구 흐름을 유지한다.
-  - 03:00 일일 리셋은 공통 bot warmup 경로를 사용해 메뉴 진입 타임아웃 등 일시 실패를 워커별 3회 재시도한다.
+  - 03:00 일일 리셋은 공통 bot warmup 경로를 사용해 메뉴 진입 타임아웃 등 일시 실패를 워커별 3회 재시도하고, 계정 잠금/비밀번호 오류는 즉시 재시도 중단한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 체크된 파일 중 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
@@ -24,7 +24,7 @@
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
 | Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 자동 워밍업 |
-| ELS Bot | 정상 | Selenium 워커 2개, 기동 워밍업 및 수동 정지 지원 |
+| ELS Bot | 계정 확인 필요 | Selenium 워커 2개, 기동 워밍업 및 수동 정지 지원. ETrans 계정 잠금 감지 시 자동 재시도 차단 |
 | Android 드라이버 앱 | 정상 | APK v5.11.23 빌드 완료 |
 
 ## INTRANET UI 기준
@@ -58,8 +58,10 @@
 - [x] v5.14.77: 월간실적 파일 설정창 업무용 라벨과 기간 요약 정리
 - [x] v5.14.78: 월간실적 기준연도 변경 시 이월 슬롯 판정 보정
 - [x] v5.14.79: ELS Bot 03:00 일일 리셋 워밍업 재시도 보강
+- [x] v5.14.80: ELS Bot 계정 잠금 팝업 감지와 자동 재시도 차단
 
 ## RECENT CHANGES
+- **v5.14.80**: ETrans 로그인 팝업의 `로그인을 5회 이상 실패하여 정지된 계정`/`임시비밀번호` 문구를 `LOGIN_ACCOUNT_LOCKED`로 분리했다. 저장 계정 워밍업은 이 인증 오류를 만나면 실패 횟수를 잠금 상태로 표시하고 추가 자동 로그인 시도를 중단한다.
 - **v5.14.79**: ELS Bot 03:00 일일 리셋이 별도 단발 로그인 스레드를 직접 만들던 흐름을 공통 `_start_login_pool(... force_restart=True)` 경로로 합쳤다. 기존 워커를 강제 정리한 뒤 저장 계정으로 백그라운드 워밍업을 시작하고, 메뉴 진입 타임아웃 같은 일시 실패는 워커별 최대 3회 재시도한다.
 - **v5.14.78**: 월간실적 파일 설정에서 기준연도를 바꾸거나 월 목록을 재생성할 때 본연도 12개월이 `이월`로 잘못 분류되지 않도록 슬롯 정규화 기준을 선택한 기준연도에 맞췄다. 저장 슬롯에 `carryover` 값이 있으면 그 값을 우선하고, 없을 때만 선택 기준연도로 보정한다.
 - **v5.14.77**: 월간실적 파일 설정 모달에서 내부 토큰 `__first__` 노출을 없애고 `첫 번째 시트` 선택으로 바꿨다. `제목행`은 `표 제목 행`으로 풀어 설명하고, 비워두면 자동 감지된다는 안내를 붙였다. 기준연도와 정리기간은 각각 12개월 기본 구간과 다음해 이월 정리 월로 표시하며, 현재 파일 공간/기준연도 구간/정리기간 구간 요약 카드를 추가했다.
@@ -73,6 +75,7 @@
 - **v5.14.69**: 선적관리 설정에 `컨테이너 자동조회` 체크박스를 추가해 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`로 저장한다. 봇 데몬 일일 리셋은 03:00, NAS Core 자동조회는 03:10 실행으로 맞췄고, 전체 선적관리 컨테이너 중 최신 이력구분이 `적하`인 건은 제외한다. 자동조회 중 어떤 이유든 `ERROR` 10건에 도달하면 설정을 OFF로 저장하고 남은 조회를 중단한다.
 
 ## VERIFICATION
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control`: 31개 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
 - `python -m py_compile docker/els-backend/asan_performance.py`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과

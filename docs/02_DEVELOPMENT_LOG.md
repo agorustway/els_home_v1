@@ -1,3 +1,18 @@
+## [2026-05-20] ELS Bot 계정 잠금 감지와 자동 재시도 차단 (v5.14.80)
+### 핵심
+- NAS `els-bot` 로그인 실패 스크린샷에서 ETrans가 `로그인을 5회 이상 실패하여 정지된 계정입니다. 비밀번호 찾기를 통해 본인인증 후 임시비밀번호를 발급 받으시기 바랍니다.` 팝업을 띄운 것을 확인했습니다.
+- 기존 `close_modals()`는 해당 문구가 `로그인`을 포함한다는 이유로 세션 만료 팝업으로 먼저 판정할 수 있어, 계정 잠금 상태를 명확히 구분하지 못했습니다.
+- 계정 잠금 문구를 `LOGIN_ACCOUNT_LOCKED`로 분리하고, `_start_login_pool()`이 계정 잠금/비밀번호 오류 메시지를 받으면 추가 자동 로그인 재시도를 즉시 중단하도록 했습니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_bot.py elsbot\els_web_runner_daemon.py`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control`: 31개 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `elsbot/els_bot.py`
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_els_bot_logic.py`, `elsbot/tests/test_daemon_stop_control.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] ELS Bot 03:00 일일 리셋 워밍업 재시도 보강 (v5.14.79)
 ### 핵심
 - 03:00 일일 리셋 로그에서 기존 세션은 유효하지만 `컨테이너이동현황` 메뉴 진입이 1회 타임아웃으로 끝나는 사례를 확인했습니다.

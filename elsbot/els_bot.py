@@ -16,6 +16,7 @@ CONFIG_FILE = os.path.join(os.path.dirname(__file__), "els_config.json")
 NO_DATA_MESSAGES = ["데이터가 없습니다", "내역이 없습니다", "존재하지 않습니다", "데이터가 없음", "데이터가없음", "결과가 없습니다", "데이터가 존재하지 않습니다"]
 HISTORY_KEYWORDS = ("수입", "수출", "반입", "반출", "양하", "적하")
 REQUIRED_INPUT_MESSAGES = ("필수 입력", "필수입력", "입력 항목", "입력항목")
+ACCOUNT_LOCK_MESSAGES = ("로그인을 5회 이상", "정지된 계정", "임시비밀번호")
 
 _ISO6346_CHAR_MAP = {
     'A': 10, 'B': 12, 'C': 13, 'D': 14, 'E': 15, 'F': 16, 'G': 17, 'H': 18, 'I': 19, 'J': 20,
@@ -50,6 +51,9 @@ def is_no_data_text(text):
 
 def is_required_input_text(text):
     return any(msg in str(text or "") for msg in REQUIRED_INPUT_MESSAGES)
+
+def is_account_locked_text(text):
+    return any(msg in str(text or "") for msg in ACCOUNT_LOCK_MESSAGES)
 
 def is_retryable_result_rows(rows):
     """조회 자체가 불확실한 실패인지 판단한다. 검증된 NODATA/번호 오류는 재조회하지 않는다."""
@@ -386,6 +390,23 @@ def close_modals(page, u_id=None, u_pw=None):
         html = page.html
         if any(msg in html for msg in ["Session이 종료", "세션이 만료", "로그아웃 되었습니다", "다시 로그인"]):
             return "SESSION_EXPIRED"
+        if is_account_locked_text(html):
+            confirm_btn = page.ele('text:확인', timeout=0.2) or page.ele('css:button[class*="w2modal_btn"]', timeout=0.2)
+            if confirm_btn:
+                confirm_btn.click(by_js=True)
+                time.sleep(1)
+            return "LOGIN_ACCOUNT_LOCKED"
+
+        # 계정 잠김 팝업은 "로그인" 문구도 포함하므로 세션 만료 판정보다 먼저 처리한다.
+        popups = page.eles('css:.w2modal_popup, .w2modal_lay', timeout=0.1)
+        for p in popups:
+            txt = str(p.text or "")
+            if is_account_locked_text(txt):
+                confirm_btn = p.ele('text:확인') or p.ele('css:button[class*="w2modal_btn"]')
+                if confirm_btn:
+                    confirm_btn.click(by_js=True)
+                    time.sleep(1)
+                return "LOGIN_ACCOUNT_LOCKED"
 
         # [v4.5.3] 최상위 로그인 팝업(#mf_wfm_top_loginPopup) 처리
         # 스크린샷1과 같이 팝업 내 아이디/비번 입력창이 뜨는 경우 직접 로그인 시도
@@ -423,13 +444,20 @@ def close_modals(page, u_id=None, u_pw=None):
         # 로그인 팝업이 떠 있는지 확인 (이미 세션 만료됨)
         modal_titles = page.eles('css:.w2modal_title', timeout=0.1)
         for title in modal_titles:
-            if "로그인" in title.text:
+            title_text = str(title.text or "")
+            if is_account_locked_text(title_text):
+                confirm_btn = title.ele('text:확인') or title.ele('css:button[class*="w2modal_btn"]')
+                if confirm_btn:
+                    confirm_btn.click(by_js=True)
+                    time.sleep(1)
+                return "LOGIN_ACCOUNT_LOCKED"
+            if "로그인" in title_text:
                 return "SESSION_EXPIRED"
 
         # [v4.4.41] 중복 로그인 또는 활동 확인 팝업 처리
-        popups = page.eles('css:.w2modal_popup, .w2modal_lay', timeout=0.1)
         for p in popups:
-            txt = p.text
+            txt = str(p.text or "")
+
             if "활동확인" in txt or "활동 확인" in txt:
                 confirm_btn = p.ele('text:확인') or p.ele('text:활동확인')
                 if confirm_btn:
@@ -1036,6 +1064,9 @@ def login_and_prepare(u_id, u_pw, log_callback=None, show_browser=False, port=92
                 modal_status = close_modals(page)
                 if modal_status == "LOGIN_FAILED_CREDENTIALS":
                     fail_reason = "로그인 실패: 아이디 또는 비밀번호 오류"
+                    break
+                if modal_status == "LOGIN_ACCOUNT_LOCKED":
+                    fail_reason = "로그인 실패: 계정 잠금(5회 이상 실패/임시비밀번호 필요)"
                     break
                 
                 if is_session_valid(page):

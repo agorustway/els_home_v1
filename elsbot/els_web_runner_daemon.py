@@ -365,6 +365,19 @@ pool = DriverPool()
 def is_query_screen_ready(driver, timeout=0.2):
     return is_container_query_screen_ready(driver, timeout=timeout)
 
+def _is_auth_failure_message(message):
+    text = str(message or "")
+    return any(token in text for token in (
+        "LOGIN_FAILED_CREDENTIALS",
+        "LOGIN_ACCOUNT_LOCKED",
+        "아이디 또는 비밀번호",
+        "비밀번호 오류",
+        "계정 잠금",
+        "정지된 계정",
+        "로그인을 5회 이상",
+        "임시비밀번호",
+    ))
+
 def _bool_env(name, default=False):
     raw = os.environ.get(name)
     if raw is None:
@@ -435,6 +448,7 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
         login_generation = pool.generation
 
     pool.add_log(f"🚀 [bot-warmup] {source} 트리거로 '{u_id}' 계정 세션 준비 시작")
+    fatal_error = {"message": None}
 
     def _do_login(idx, generation=login_generation):
         try:
@@ -484,7 +498,15 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                         success = True
                         break
                     else:
-                        pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {res[1]}")
+                        failure_message = str(res[1] or "로그인 실패")
+                        pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {failure_message}")
+                        if _is_auth_failure_message(failure_message):
+                            with pool.lock:
+                                pool.consecutive_login_failures = max(pool.consecutive_login_failures, 5)
+                                pool.last_failure_time = time.time()
+                            fatal_error["message"] = failure_message
+                            pool.add_log(f"🛑 [인증중단] {failure_message} → 추가 자동 로그인 시도를 중지합니다.")
+                            break
                 except Exception as e:
                     pool.add_log(f"🔥 브라우저 #{idx+1} 예외 발생 ({retry}/3): {e}")
 
@@ -522,6 +544,8 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
             break
         time.sleep(1)
 
+    if fatal_error["message"]:
+        return {"ok": False, "error": fatal_error["message"], "log": list(pool.log_buffer)}
     return {"ok": False, "error": "초기 세션 확보 실패 (시간 초과 또는 올인원 로그인 실패)", "log": list(pool.log_buffer)}
 
 def _trigger_saved_warmup(source="manual", wait_for_ready=False):

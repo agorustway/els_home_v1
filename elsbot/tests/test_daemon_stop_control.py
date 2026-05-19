@@ -279,6 +279,31 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertEqual(len(pool.drivers), 1)
         pool.clear()
 
+    def test_start_login_pool_stops_retry_on_account_lock(self):
+        with patch.dict(os.environ, {"ELS_MAX_DRIVERS": "1"}):
+            pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
+        pool.wait_unless_cancelled = lambda seconds, generation=None: True
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(
+                self.daemon,
+                "login_and_prepare",
+                return_value=(None, "로그인 실패: 계정 잠금(5회 이상 실패/임시비밀번호 필요)"),
+            ) as login_mock:
+                result = self.daemon._start_login_pool(
+                    "ELSUSER",
+                    "ELSPW",
+                    wait_for_ready=True,
+                    wait_timeout=2,
+                    source="test",
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("계정 잠금", result["error"])
+        self.assertEqual(login_mock.call_count, 1)
+        self.assertGreaterEqual(pool.consecutive_login_failures, 5)
+
     def test_daily_reset_uses_force_restart_warmup(self):
         pool = self.daemon.DriverPool()
         pool.current_user = {"id": "ELSUSER", "pw": "ELSPW", "show_browser": False}
