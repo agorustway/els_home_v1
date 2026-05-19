@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.75 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.76 / APK v5.11.23)
 
-> 최신 업데이트: 컨테이너 이력조회 Bot 자동 워밍업과 수동 BOT 정지 버튼을 추가했습니다.
+> 최신 업데이트: 월간실적 NAS 자동 감지를 추가해 마지막 체크 파일은 1분, 이전 파일은 2분 간격으로 DB 누적 동기화합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.75
+- **웹 버전**: v5.14.76
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -12,6 +12,9 @@
   - AI/API 단건 컨테이너 조회는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot 준비를 트리거한다.
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
   - Bot 운영 워커는 2개 유지하며 도커 재기동/리셋 이후에도 저장 계정 기반 자동 복구 흐름을 유지한다.
+  - 월간실적 자동 감지는 체크된 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인하고 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
+  - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
+  - NAS 배포 스크립트는 전체/CORE/BOT 모두 이미지 빌드와 고정 이름 컨테이너 제거를 분리해 docker-compose v1 재생성 충돌을 피한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -49,8 +52,10 @@
 - [x] v5.14.73: 월간실적 보고서 표 없음 배너 제거
 - [x] v5.14.74: 실적관리 하위 페이지 테이블 하단 슬라이드와 모바일 폭 보정
 - [x] v5.14.75: 컨테이너 Bot 자동 워밍업과 수동 정지 버튼
+- [x] v5.14.76: 월간실적 NAS 파일 자동 감지와 종합실적 동기화 완료 후 새로고침
 
 ## RECENT CHANGES
+- **v5.14.76**: NAS Core에 월간실적 자동 감지 스케줄러를 추가했다. 체크된 월간 파일 중 마지막 활성 파일은 60초, 이전 파일은 120초 간격으로 mtime/DB meta를 확인하고 변경 감지 시 해당 파일만 `files_only` 외부 importer로 순차 동기화한다. 수동 동기화는 기존처럼 체크된 15개 슬롯을 즉시 순차 처리하며, 종합실적은 연간/월간 동기화가 끝난 것을 감지하면 Supabase summary를 다시 읽는다. NAS 배포 스크립트도 빌드/컨테이너 제거/재기동 단계로 분리했다.
 - **v5.14.75**: `els-bot` 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀을 백그라운드 워밍업한다. 단건 컨테이너 API는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot을 준비시키고, 컨테이너 이력조회 화면에는 `BOT 정지` 버튼을 추가해 조회·워커·로그인 상태를 수동 종료할 수 있게 했다.
 - **v5.14.74**: 종합/월간/연간 실적관리에서 테이블형 영역이 브라우저 폭을 넘을 때 화면 안쪽 하단 슬라이더로 이동하도록 공통 스크롤 스타일을 확장했다. 요약 추세, 세분화, 차량성과, 보고서 표, 월/일 흐름, 히트맵, 이월 청구처 표까지 같은 스크롤바 규칙을 적용했고, Galaxy S24급 폭에서는 카드·버튼·원장 테이블 높이를 더 촘촘하게 조정했다.
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
@@ -60,17 +65,18 @@
 - **v5.14.69**: 선적관리 설정에 `컨테이너 자동조회` 체크박스를 추가해 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`로 저장한다. 봇 데몬 일일 리셋은 03:00, NAS Core 자동조회는 03:10 실행으로 맞췄고, 전체 선적관리 컨테이너 중 최신 이력구분이 `적하`인 건은 제외한다. 자동조회 중 어떤 이유든 `ERROR` 10건에 도달하면 설정을 OFF로 저장하고 남은 조회를 중단한다.
 
 ## VERIFICATION
-- `node --test tests/containerHistoryBotControl.test.mjs tests/containerInput.test.mjs`: 6개 통과
-- `python -X utf8 -m py_compile elsbot/els_web_runner_daemon.py docker/els-backend/app_bot.py`: 통과
-- `python -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 13개 통과
-- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js" "tests/containerHistoryBotControl.test.mjs"`: 에러 없음, 기존 이미지/Hook 경고 5건 유지
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `python -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
+- `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
-- 컨테이너 Bot 자동 워밍업/수동 정지 변경은 로컬 검증 완료. NAS 배포 시 다른 스레드의 도커 2컨테이너 조정과 충돌 없이 병합 필요.
+- 월간실적 자동 감지 변경은 로컬 검증 완료. NAS 전체 재배포 후 `/api/branches/asan/performance/monthly?source=status`의 `monthly_auto_status`로 첫 동작 확인 예정.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

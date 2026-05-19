@@ -1,3 +1,38 @@
+## [2026-05-20] 아산 월간실적 NAS 자동 감지와 종합실적 갱신 (v5.14.76)
+### 핵심
+- NAS Core에 월간실적 파일 자동 감지 스케줄러를 추가했습니다. 체크된 월간 파일 중 마지막 활성 파일은 60초, 이전 활성 파일은 120초 간격으로 mtime/size와 DB 파일 메타를 비교합니다.
+- 변경이 안정화된 파일만 `files_only` 월간 동기화로 넘겨 외부 Node importer가 해당 월 파일만 `dataset_type=monthly` 누적 원장에 반영하게 했습니다. 수동 동기화는 기존처럼 체크된 월 파일 전체를 순차 처리합니다.
+- 연간실적은 기존 자동 스케줄러와 snapshot/diff 원장 정책을 유지합니다. 파일 변경 시 기존 DB 자료를 삭제하지 않고 현재 스냅샷과 과거 상태를 누적 관리합니다.
+- 종합실적 화면은 연간/월간 동기화 상태 조회를 별도로 폴링하고, 동기화가 끝나면 Supabase summary를 다시 읽습니다. 상태 조회 실패는 무시해 NAS가 끊겨도 저장된 DB 화면 조회가 유지되게 했습니다.
+- NAS 전체/CORE/BOT 배포 스크립트는 docker-compose v1에서 고정 `container_name` 재생성 충돌이 나지 않도록 이미지 빌드, 기존 컨테이너 제거, `--no-build` 재기동 순서로 분리했습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 24개 통과
+- `python -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `node --check "web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `scripts/nas-deploy.sh`, `scripts/deploy-core.sh`, `scripts/deploy-bot.sh`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-20] NAS 도커 재생성 rename 충돌 방지
+### 핵심
+- NAS `deploy-bot.sh` 실행 중 Docker Compose v1이 `container_name`이 고정된 `els-bot`을 recreate 하면서 `Renaming a container with the same name as its current name` 오류를 냈습니다.
+- `nas-deploy.sh`는 이미지 빌드를 먼저 수행한 뒤 `els-gateway/els-core/els-bot` 기존 컨테이너를 `docker rm -f`로 제거하고, `--no-build --force-recreate --remove-orphans`로 재기동하도록 순서를 바꿨습니다.
+- 같은 rename 충돌이 재발하지 않도록 `deploy-bot.sh`, `deploy-core.sh`도 `build -> 기존 컨테이너 제거 -> --no-build up` 순서로 맞췄습니다.
+### 검증
+- `C:\Program Files\Git\bin\bash.exe -n scripts\nas-deploy.sh`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts\deploy-bot.sh`: 통과
+- `C:\Program Files\Git\bin\bash.exe -n scripts\deploy-core.sh`: 통과
+### 변경 파일
+- `scripts/nas-deploy.sh`
+- `scripts/deploy-bot.sh`
+- `scripts/deploy-core.sh`
+
 ## [2026-05-20] 컨테이너 Bot 자동 워밍업과 수동 정지 버튼 (v5.14.75)
 ### 핵심
 - `els-bot` 데몬에 저장 계정 기반 `/warmup` 흐름을 추가해, 도커 컨테이너 기동 직후 Selenium 풀을 백그라운드에서 준비하도록 했습니다.

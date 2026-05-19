@@ -177,17 +177,46 @@ def _monthly_files_from_payload(body):
                 continue
         by_period[period] = item
 
-    slots = []
-    for period in _monthly_periods(base_year, extra_months=extra_months):
-        override = by_period.get(period["period"], {})
+    def build_slot(period, override=None):
+        override = override or {}
         path = override.get("path") or _default_monthly_performance_path(period["year"], period["month"])
-        slots.append({
+        return {
             **period,
             "enabled": override.get("enabled", True) is not False,
             "path": _normalize_performance_path(path),
             "sheet_name": override.get("sheet_name") or override.get("sheetName") or FIRST_SHEET_TOKEN,
             "header_row": override.get("header_row") or override.get("headerRow"),
-        })
+        }
+
+    if body.get("files_only") and incoming:
+        slots = []
+        try:
+            parent_year = int(base_year)
+        except (TypeError, ValueError):
+            parent_year = datetime.now().year
+        for item in incoming:
+            if not isinstance(item, dict):
+                continue
+            period_text = str(item.get("period") or "").strip()
+            try:
+                year = int(item.get("year") or period_text[:4])
+                month = int(item.get("month") or period_text[5:7])
+            except (TypeError, ValueError):
+                continue
+            if month < 1 or month > 12:
+                continue
+            period = {
+                "year": year,
+                "month": month,
+                "period": f"{year}-{month:02d}",
+                "carryover": year > parent_year,
+            }
+            slots.append(build_slot(period, item))
+        return slots
+
+    slots = []
+    for period in _monthly_periods(base_year, extra_months=extra_months):
+        slots.append(build_slot(period, by_period.get(period["period"], {})))
     return slots
 
 
@@ -617,6 +646,12 @@ def register_asan_performance_routes(app, supabase, kst):
     poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
+    monthly_auto_sync_enabled = _env_bool("ASAN_MONTHLY_PERFORMANCE_AUTO_SYNC_ENABLED", True)
+    monthly_auto_active_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_ACTIVE_POLL_SECONDS", 60, 30)
+    monthly_auto_stale_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_STALE_POLL_SECONDS", 120, 60)
+    monthly_auto_tick_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_TICK_SECONDS", 15, 5)
+    monthly_auto_start_hour = _env_int("ASAN_MONTHLY_PERFORMANCE_SYNC_START_HOUR", 6, 0)
+    monthly_auto_end_hour = _env_int("ASAN_MONTHLY_PERFORMANCE_SYNC_END_HOUR", 23, 0)
     external_repo_root = Path(os.environ.get("ASAN_PERFORMANCE_REPO_ROOT", "/app/volume1/docker/els_home_v1"))
     external_node_bin = os.environ.get("ASAN_PERFORMANCE_NODE_BIN", "node")
     external_log_dir = Path(os.environ.get("ASAN_PERFORMANCE_EXTERNAL_LOG_DIR", str(external_repo_root / "logs")))
@@ -625,6 +660,7 @@ def register_asan_performance_routes(app, supabase, kst):
     external_ionice_class = str(_env_int("ASAN_PERFORMANCE_IONICE_CLASS", 2, 1))
     external_ionice_level = str(_env_int("ASAN_PERFORMANCE_IONICE_LEVEL", 7, 0))
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
+    monthly_auto_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
     sync_state_lock = threading.Lock()
     sync_state = {
         "running": False,
@@ -647,6 +683,25 @@ def register_asan_performance_routes(app, supabase, kst):
         "pid": None,
         "log_path": None,
     }
+    monthly_slot_state_lock = threading.Lock()
+    monthly_slot_state = {
+        "base_year": datetime.now(kst).year,
+        "extra_months": DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS,
+        "files": [],
+        "updated_at": None,
+    }
+    monthly_auto_state_lock = threading.Lock()
+    monthly_auto_last_checked = {}
+    monthly_auto_state = {
+        "enabled": bool(monthly_auto_sync_enabled and external_sync_enabled),
+        "active_poll_seconds": monthly_auto_active_seconds,
+        "stale_poll_seconds": monthly_auto_stale_seconds,
+        "last_checked_at": None,
+        "last_started_at": None,
+        "last_target": None,
+        "last_result": None,
+        "last_error": None,
+    }
 
     def _sync_status():
         with sync_state_lock:
@@ -661,10 +716,55 @@ def register_asan_performance_routes(app, supabase, kst):
         with monthly_sync_state_lock:
             return dict(monthly_sync_state)
 
+    def _monthly_auto_status():
+        with monthly_auto_state_lock:
+            return dict(monthly_auto_state)
+
     def _attach_monthly_sync_status(data):
         payload = dict(data or {})
         payload["sync_status"] = _monthly_sync_status()
+        payload["monthly_auto_status"] = _monthly_auto_status()
         return payload
+
+    def _remember_monthly_slots(body):
+        if not isinstance(body, dict):
+            return
+        slots = _monthly_files_from_payload(body)
+        if not slots:
+            return
+        with monthly_slot_state_lock:
+            monthly_slot_state.update({
+                "base_year": body.get("base_year") or body.get("year") or monthly_slot_state.get("base_year"),
+                "extra_months": body.get("extra_months", monthly_slot_state.get("extra_months")),
+                "files": slots,
+                "updated_at": datetime.now(kst).isoformat(),
+            })
+
+    def _monthly_scheduler_body():
+        with monthly_slot_state_lock:
+            files = list(monthly_slot_state.get("files") or [])
+            base_year = monthly_slot_state.get("base_year") or datetime.now(kst).year
+            extra_months = monthly_slot_state.get("extra_months", DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS)
+        if not files:
+            return {
+                "base_year": base_year,
+                "extra_months": extra_months,
+            }
+        return {
+            "base_year": base_year,
+            "extra_months": extra_months,
+            "files": files,
+        }
+
+    def _monthly_enabled_slots(body=None):
+        return [slot for slot in _monthly_files_from_payload(body or _monthly_scheduler_body()) if slot.get("enabled", True)]
+
+    def _monthly_slot_key(slot):
+        return f"{slot.get('period')}::{slot.get('path')}::{slot.get('sheet_name') or FIRST_SHEET_TOKEN}"
+
+    def _update_monthly_auto_state(**patch):
+        with monthly_auto_state_lock:
+            monthly_auto_state.update(patch)
 
     def _start_background_sync(rel_path, sheet_name, header_row, force):
         with sync_state_lock:
@@ -740,6 +840,11 @@ def register_asan_performance_routes(app, supabase, kst):
                         "last_error": error,
                         "last_result": result,
                     })
+                if isinstance(body, dict) and body.get("files_only"):
+                    _update_monthly_auto_state(
+                        last_result="failed" if error else "synced",
+                        last_error=error,
+                    )
 
         threading.Thread(target=runner, daemon=True).start()
         return True
@@ -764,19 +869,27 @@ def register_asan_performance_routes(app, supabase, kst):
             count += len(res.data or [])
         return count
 
-    def _read_current_meta(normalized_path, sheet_name):
+    def _read_performance_file_meta(dataset_type, normalized_path, sheet_name=None):
         if not supabase or not state["db_available"]:
             return None
-        res = (
+        query = (
             supabase.from_("branch_performance_files")
             .select("file_modified_at,synced_at,row_count,current_row_count,header_row,summary,headers,sheet_name")
             .eq("branch_id", "asan")
-            .eq("dataset_type", "annual")
+            .eq("dataset_type", dataset_type)
             .eq("file_path", normalized_path)
-            .eq("sheet_name", sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET)
-            .execute()
         )
+        if sheet_name and sheet_name != FIRST_SHEET_TOKEN:
+            query = query.eq("sheet_name", sheet_name)
+        res = query.limit(1).execute()
         return res.data[0] if res.data else None
+
+    def _read_current_meta(normalized_path, sheet_name):
+        return _read_performance_file_meta(
+            "annual",
+            normalized_path,
+            sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET,
+        )
 
     def _timestamp_close(left, right_ts):
         try:
@@ -784,6 +897,52 @@ def register_asan_performance_routes(app, supabase, kst):
             return abs(left_ts - right_ts) < 1
         except Exception:
             return False
+
+    def _monthly_slot_file_status(slot):
+        file_path, normalized_path = _resolve_performance_file(slot.get("path"))
+        target = {
+            "period": slot.get("period"),
+            "path": normalized_path,
+            "sheet_name": slot.get("sheet_name") or FIRST_SHEET_TOKEN,
+        }
+        if not file_path.exists():
+            return {
+                "ready": False,
+                "reason": "missing",
+                "target": target,
+                "checked_paths": _performance_candidate_paths(slot.get("path"))[:6],
+            }
+
+        file_stat = file_path.stat()
+        signature = (
+            file_stat.st_mtime,
+            file_stat.st_size,
+            str(slot.get("header_row") or "auto"),
+            str(slot.get("sheet_name") or FIRST_SHEET_TOKEN),
+        )
+        meta = _read_performance_file_meta(
+            "monthly",
+            normalized_path,
+            slot.get("sheet_name") if slot.get("sheet_name") != FIRST_SHEET_TOKEN else None,
+        )
+        if meta and meta.get("file_modified_at") and _timestamp_close(meta["file_modified_at"], file_stat.st_mtime):
+            monthly_auto_gate.mark_synced(_monthly_slot_key(slot), signature)
+            return {
+                "ready": False,
+                "reason": "db-current",
+                "target": target,
+                "file_modified_at": datetime.fromtimestamp(file_stat.st_mtime, tz=kst).isoformat(),
+                "synced_at": meta.get("synced_at"),
+            }
+
+        decision = monthly_auto_gate.check(_monthly_slot_key(slot), signature, force=False)
+        return {
+            "ready": decision.ready,
+            "reason": decision.reason,
+            "target": target,
+            "file_modified_at": datetime.fromtimestamp(file_stat.st_mtime, tz=kst).isoformat(),
+            "previous_file_modified_at": meta.get("file_modified_at") if meta else None,
+        }
 
     def _current_snapshot_id(meta):
         summary = (meta or {}).get("summary") or {}
@@ -1299,10 +1458,109 @@ def register_asan_performance_routes(app, supabase, kst):
                 app.logger.error(f"[연간실적DB 스케줄러] 에러: {exc}")
                 time.sleep(poll_seconds)
 
+    def _monthly_auto_scheduler():
+        enabled = bool(monthly_auto_sync_enabled and external_sync_enabled)
+        if not enabled:
+            app.logger.info("[스케줄러] 아산 월간실적 자동 감지 비활성화")
+            _update_monthly_auto_state(enabled=False)
+            return
+
+        _update_monthly_auto_state(enabled=True)
+        app.logger.info(
+            "[스케줄러] 아산 월간실적 자동 감지 시작 "
+            f"(latest={monthly_auto_active_seconds}s, previous={monthly_auto_stale_seconds}s)"
+        )
+        while True:
+            try:
+                now = datetime.now(kst)
+                now_ts = time.time()
+                in_window = monthly_auto_start_hour <= now.hour <= monthly_auto_end_hour
+                if not in_window:
+                    time.sleep(monthly_auto_tick_seconds)
+                    continue
+
+                if _monthly_sync_status().get("running"):
+                    time.sleep(monthly_auto_tick_seconds)
+                    continue
+
+                enabled_slots = _monthly_enabled_slots()
+                if not enabled_slots:
+                    _update_monthly_auto_state(
+                        last_checked_at=now.isoformat(),
+                        last_result="no-enabled-slots",
+                        last_error=None,
+                    )
+                    time.sleep(monthly_auto_tick_seconds)
+                    continue
+
+                latest_enabled_key = _monthly_slot_key(enabled_slots[-1])
+                due_slot = None
+                for slot in reversed(enabled_slots):
+                    key = _monthly_slot_key(slot)
+                    interval = monthly_auto_active_seconds if key == latest_enabled_key else monthly_auto_stale_seconds
+                    last_checked = monthly_auto_last_checked.get(key)
+                    if last_checked is None:
+                        if key != latest_enabled_key:
+                            monthly_auto_last_checked[key] = now_ts
+                            continue
+                        due_slot = slot
+                        break
+                    if now_ts - last_checked >= interval:
+                        due_slot = slot
+                        break
+
+                if not due_slot:
+                    time.sleep(monthly_auto_tick_seconds)
+                    continue
+
+                due_key = _monthly_slot_key(due_slot)
+                monthly_auto_last_checked[due_key] = now_ts
+                status = _monthly_slot_file_status(due_slot)
+                _update_monthly_auto_state(
+                    last_checked_at=now.isoformat(),
+                    last_target=status.get("target"),
+                    last_result=status.get("reason"),
+                    last_error=None,
+                )
+                if not status.get("ready"):
+                    time.sleep(monthly_auto_tick_seconds)
+                    continue
+
+                body = {
+                    "files_only": True,
+                    "base_year": due_slot.get("year"),
+                    "extra_months": 0,
+                    "files": [due_slot],
+                }
+                started = _start_monthly_background_sync(body, False)
+                auto_state_patch = {
+                    "last_target": status.get("target"),
+                    "last_result": "started" if started else "already-running",
+                    "last_error": None,
+                }
+                if started:
+                    auto_state_patch["last_started_at"] = now.isoformat()
+                _update_monthly_auto_state(**auto_state_patch)
+                if started:
+                    app.logger.info(
+                        f"[월간실적DB 자동감지] 변경 감지: {due_slot.get('period')} "
+                        f"{status.get('target', {}).get('path')} ({status.get('reason')})"
+                    )
+                time.sleep(monthly_auto_tick_seconds)
+            except Exception as exc:
+                _update_monthly_auto_state(
+                    last_checked_at=datetime.now(kst).isoformat(),
+                    last_error=str(exc),
+                )
+                app.logger.error(f"[월간실적DB 자동감지] 에러: {exc}", exc_info=True)
+                time.sleep(monthly_auto_tick_seconds)
+
     if sync_enabled:
         threading.Thread(target=_scheduler, daemon=True).start()
     else:
         app.logger.info("[스케줄러] 아산 연간실적 core 자동 동기화 비활성화 (NAS 스크립트 전용)")
+
+    threading.Thread(target=_monthly_auto_scheduler, daemon=True).start()
 
     @app.route("/api/branches/asan/performance/monthly", methods=["GET", "POST"])
     def asan_monthly_performance():
@@ -1325,6 +1583,7 @@ def register_asan_performance_routes(app, supabase, kst):
             run_async = body.get("async", True)
             if isinstance(run_async, str):
                 run_async = run_async.lower() in ("1", "true", "yes", "y")
+            _remember_monthly_slots(body)
 
             if not external_sync_enabled:
                 return jsonify({

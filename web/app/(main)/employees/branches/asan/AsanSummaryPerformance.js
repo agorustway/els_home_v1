@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatPerformanceAmount } from '@/utils/asanPerformanceView.mjs';
 import { buildScopedAsanPerformanceSummary } from '@/utils/asanPerformanceSummary.mjs';
 import styles from './annualPerformance.module.css';
@@ -518,6 +518,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
     const [selectedYear, setSelectedYear] = useState('');
     const [selectedMonth, setSelectedMonth] = useState('');
     const [selectedDayKey, setSelectedDayKey] = useState('');
+    const syncStateRef = useRef({ annual: false, monthly: false });
 
     const loadSummary = useCallback(async () => {
         const started = performance.now();
@@ -542,6 +543,38 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
     useEffect(() => {
         loadSummary();
     }, [loadSummary]);
+
+    const checkSyncAndReload = useCallback(async () => {
+        try {
+            const [annualResult, monthlyResult] = await Promise.allSettled([
+                fetch('/api/branches/asan/performance/annual?source=status&page_size=1', { cache: 'no-store' }),
+                fetch(`/api/branches/asan/performance/monthly?${new URLSearchParams({
+                    source: 'status',
+                    year: String(DEFAULT_SUMMARY_YEAR),
+                    extra_months: String(DEFAULT_EXTRA_MONTHS),
+                }).toString()}`, { cache: 'no-store' }),
+            ]);
+            let shouldReload = false;
+            for (const [key, result] of [['annual', annualResult], ['monthly', monthlyResult]]) {
+                if (result.status !== 'fulfilled' || !result.value?.ok) continue;
+                const json = await result.value.json().catch(() => null);
+                const status = json?.data?.sync_status || {};
+                const running = Boolean(status.running);
+                const wasRunning = Boolean(syncStateRef.current[key]);
+                if (wasRunning && !running && !status.last_error) shouldReload = true;
+                syncStateRef.current[key] = running;
+            }
+            if (shouldReload) loadSummary();
+        } catch {
+            // NAS 상태 조회 실패는 종합실적 DB 조회를 막지 않는다.
+        }
+    }, [loadSummary]);
+
+    useEffect(() => {
+        checkSyncAndReload();
+        const timer = window.setInterval(checkSyncAndReload, 15000);
+        return () => window.clearInterval(timer);
+    }, [checkSyncAndReload]);
 
     const baseSummary = payload?.summary || null;
     const scopeOptions = baseSummary?.scopeOptions || {};
