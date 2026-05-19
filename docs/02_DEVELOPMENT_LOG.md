@@ -1,3 +1,39 @@
+## [2026-05-19] 아산 월간실적 분석 기준/마감월 흐름 정리 (v5.14.39)
+### 핵심
+- 월간실적 분석 상단에 `전체`, `월별 선택`, `일별 선택` 기준을 추가해 아래 KPI/트리/세분화 데이터의 범위를 먼저 확인하게 했습니다.
+- 월별 성과 흐름은 파일 마감월만 사용하게 보정해 작업일자·이월 영향으로 `2025-12`가 첫 행에 끼던 문제를 제거했습니다.
+- 상단에는 월별 누적 라인 차트를 추가하고 KPI 카드에는 청구 대비 비중을 읽는 소형 도넛을 넣었습니다.
+- 구성 분석은 의미가 겹치던 `직계약 전체`/`ELS솔루션 명의 전체`를 제거하고 `ELS직계약차량`, `외부/타운송사` 두 축만 남겼습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --check web\scripts\import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 연간실적 레이아웃 월간 그리드 영향 분리 (v5.14.38)
+### 핵심
+- 월간실적 카드 그리드용으로 바뀐 공통 `.analytics` 스타일이 연간실적에도 적용되어 연간 리포트가 가로 컬럼으로 찢어지던 문제를 수정했습니다.
+- 연간실적 컴포넌트에 `annualAnalytics` 전용 클래스를 추가하고, 해당 컨테이너만 세로 flex 흐름을 사용하게 분리했습니다.
+- 월간실적 반응형 카드 그리드는 유지하면서 연간실적은 상단 리포트, 조사범위, 분석섹션, 장기흐름, KPI/근거 카드가 위에서 아래로 이어지게 했습니다.
+### 검증
+- `node --test --test-name-pattern "화면은 분석/테이블" web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 반응형 카드 그리드 전환 (v5.14.37)
 ### 핵심
 - 월간실적 분석 화면을 고정 폭 세로 나열에서 반응형 카드 그리드로 바꿨습니다.

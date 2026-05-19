@@ -20,6 +20,9 @@ const SEARCH_DEBOUNCE_MS = 700;
 const DEFAULT_MONTHLY_BASE_YEAR = 2026;
 const DEFAULT_MONTHLY_RANGE_HINT = '2026-01 ~ 2027-03';
 const REPORT_ALL_KEY = 'all';
+const ANALYSIS_SCOPE_ALL = 'all';
+const ANALYSIS_SCOPE_MONTH = 'month';
+const ANALYSIS_SCOPE_DAY = 'day';
 const REPORT_METRIC_KEYS = [
     'netRevenue',
     'netPurchase',
@@ -96,6 +99,24 @@ function profitRate(item = {}) {
     return revenue ? (safeNumber(item.profit) / revenue) * 100 : 0;
 }
 
+function isMetricActive(item = {}) {
+    return Boolean(
+        safeNumber(item.rowCount)
+        || safeNumber(item.revenue)
+        || safeNumber(item.purchase)
+        || safeNumber(item.profit),
+    );
+}
+
+function sumMetricItems(items = []) {
+    return (items || []).reduce((sum, item) => ({
+        revenue: sum.revenue + safeNumber(item.revenue),
+        purchase: sum.purchase + safeNumber(item.purchase),
+        profit: sum.profit + safeNumber(item.profit),
+        rowCount: sum.rowCount + safeNumber(item.rowCount),
+    }), { revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+}
+
 function maxBy(items = [], key) {
     return (items || []).reduce((best, item) => (
         !best || safeNumber(item?.[key]) > safeNumber(best?.[key]) ? item : best
@@ -117,6 +138,75 @@ function metricDelta(current, previous, key) {
         amount,
         rate: base ? (amount / base) * 100 : 0,
     };
+}
+
+function previousMetricItem(items = [], current = null, keyField = 'period') {
+    if (!current) return null;
+    const currentKey = String(current[keyField] || '');
+    const index = (items || []).findIndex(item => String(item?.[keyField] || '') === currentKey);
+    return index > 0 ? items[index - 1] : null;
+}
+
+function scopedMetricFromSeries(item = {}, metric = {}, totalForShare = 0) {
+    const revenue = safeNumber(metric.revenue);
+    const purchase = safeNumber(metric.purchase);
+    const profit = safeNumber(metric.profit);
+    return {
+        ...item,
+        ...metric,
+        label: item.label || metric.label || item.name,
+        name: item.name || metric.name || item.label,
+        revenue,
+        purchase,
+        profit,
+        rowCount: safeNumber(metric.rowCount),
+        profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+        revenueShare: totalForShare ? Math.round((revenue / totalForShare) * 10000) / 100 : 0,
+    };
+}
+
+function findScopedMetric(item = {}, scope, selectedMonth, selectedDay) {
+    if (scope === ANALYSIS_SCOPE_MONTH) {
+        return (item.monthly || []).find(metric => metric.period === selectedMonth) || null;
+    }
+    if (scope === ANALYSIS_SCOPE_DAY) {
+        const dailyMetric = (item.daily || []).find(metric => metric.date === selectedDay);
+        if (dailyMetric) return dailyMetric;
+        const dayMonth = String(selectedDay || '').slice(0, 7);
+        return (item.monthly || []).find(metric => metric.period === dayMonth) || null;
+    }
+    return item;
+}
+
+function scopeMetricList(items = [], scope, selectedMonth, selectedDay, totalForShare = 0, limit = 999) {
+    const list = (items || []).map((item) => {
+        if (scope === ANALYSIS_SCOPE_ALL) return item;
+        const metric = findScopedMetric(item, scope, selectedMonth, selectedDay);
+        return metric ? scopedMetricFromSeries(item, metric, totalForShare) : null;
+    }).filter(isMetricActive);
+    return list
+        .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
+        .slice(0, limit);
+}
+
+function normalizeStrategicSegment(segment = {}) {
+    if (segment.key === 'own_direct') {
+        return { ...segment, label: 'ELS직계약차량', name: 'ELS직계약차량' };
+    }
+    if (segment.key === 'external_carrier') {
+        return { ...segment, label: '외부/타운송사', name: '외부/타운송사' };
+    }
+    return null;
+}
+
+function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, totalForShare = 0) {
+    if (scope === ANALYSIS_SCOPE_ALL) return sections;
+    return sections
+        .map(section => ({
+            ...section,
+            items: scopeMetricList(section.items || [], scope, selectedMonth, selectedDay, totalForShare, 60),
+        }))
+        .filter(section => section.items.length);
 }
 
 function normalizeSlot(slot) {
@@ -280,6 +370,104 @@ function groupDailyByMonth(monthly = [], daily = []) {
     return Array.from(map.values()).sort((a, b) => String(a.period).localeCompare(String(b.period)));
 }
 
+function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
+    const size = 52;
+    const radius = 22;
+    const circumference = 2 * Math.PI * radius;
+    const ratioValue = Math.max(0, Math.min(1, Math.abs(safeNumber(value)) / Math.max(1, Math.abs(safeNumber(max)))));
+    const offset = circumference * (1 - ratioValue);
+    return (
+        <svg className={`${styles.metricDonut} ${styles[`metricDonut_${tone}`] || ''}`} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+            <circle cx="26" cy="26" r={radius} className={styles.metricDonutTrack} />
+            <circle
+                cx="26"
+                cy="26"
+                r={radius}
+                className={styles.metricDonutValue}
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+            />
+        </svg>
+    );
+}
+
+function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
+    const series = (items || []).filter(isMetricActive);
+    const width = 1400;
+    const height = 238;
+    const pad = { left: 56, right: 34, top: 26, bottom: 38 };
+    const chartW = width - pad.left - pad.right;
+    const chartH = height - pad.top - pad.bottom;
+    const maxValue = Math.max(1, ...series.flatMap(item => [Math.abs(safeNumber(item.revenue)), Math.abs(safeNumber(item.purchase)), Math.abs(safeNumber(item.profit))]));
+    const xAt = idx => pad.left + (series.length <= 1 ? 0 : (idx / (series.length - 1)) * chartW);
+    const yAt = value => pad.top + chartH - (safeNumber(value) / maxValue) * chartH;
+    const toPoints = field => series.map((item, idx) => `${xAt(idx).toFixed(1)},${yAt(item[field]).toFixed(1)}`).join(' ');
+    const revenuePoints = toPoints('revenue');
+    const purchasePoints = toPoints('purchase');
+    const profitPoints = toPoints('profit');
+    const start = series[0]?.period || '-';
+    const end = series[series.length - 1]?.period || '-';
+    const high = maxBy(series, 'revenue');
+    const last = series[series.length - 1] || null;
+    const grid = [0.25, 0.5, 0.75, 1].map(ratio => ({
+        y: pad.top + chartH - chartH * ratio,
+        value: maxValue * ratio,
+    }));
+
+    return (
+        <section className={`${styles.marketFlowPanel} ${styles.monthlyTrendPanel}`}>
+            <div className={styles.marketFlowHeader}>
+                <div>
+                    <h3>월별 누적 흐름</h3>
+                    <span>{start} ~ {end} · {scopeLabel} · 마감월 기준</span>
+                </div>
+                <div className={styles.marketFlowLegend}>
+                    <span><i className={styles.revenueDot} />청구</span>
+                    <span><i className={styles.purchaseDot} />하불</span>
+                    <span><i className={styles.profitDot} />손익</span>
+                </div>
+            </div>
+            {series.length < 2 ? (
+                <div className={styles.emptyPanel}>월별 추세를 그릴 마감월 데이터가 부족합니다.</div>
+            ) : (
+                <>
+                    <div className={styles.marketFlowChartWrap}>
+                        <svg
+                            className={styles.marketFlowSvg}
+                            viewBox={`0 0 ${width} ${height}`}
+                            preserveAspectRatio="none"
+                            role="img"
+                            aria-label="월별 누적 흐름 차트"
+                        >
+                            {grid.map(item => (
+                                <g key={item.y}>
+                                    <line x1={pad.left} x2={pad.left + chartW} y1={item.y} y2={item.y} className={styles.marketGridLine} />
+                                    <text x={pad.left - 8} y={item.y + 3} className={styles.marketAxisText} textAnchor="end">{formatPerformanceAmount(item.value)}</text>
+                                </g>
+                            ))}
+                            <polyline points={revenuePoints} className={styles.marketRevenueLine} />
+                            <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
+                            <polyline points={profitPoints} className={styles.marketProfitLine} />
+                            {series.map((item, idx) => {
+                                const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 8)) === 0;
+                                return showTick ? (
+                                    <text key={item.period} x={xAt(idx)} y={height - 14} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
+                                ) : null;
+                            })}
+                        </svg>
+                    </div>
+                    <div className={styles.marketFlowStats}>
+                        <div><span>최고 청구월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
+                        <div><span>최근 마감월</span><strong>{last?.period || '-'}</strong><em>{last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
+                        <div><span>누적 청구</span><strong>{formatPerformanceAmount(sumMetricItems(series).revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}개월</em></div>
+                        <div><span>누적 손익</span><strong>{formatPerformanceAmount(sumMetricItems(series).profit)}</strong><em>마감월 누적</em></div>
+                    </div>
+                </>
+            )}
+        </section>
+    );
+}
+
 export default function AsanMonthlyPerformance() {
     const [baseYear, setBaseYear] = useState(DEFAULT_MONTHLY_BASE_YEAR);
     const [extraMonths, setExtraMonths] = useState(DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS);
@@ -293,6 +481,9 @@ export default function AsanMonthlyPerformance() {
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('analytics');
     const [selectedReportPeriod, setSelectedReportPeriod] = useState(REPORT_ALL_KEY);
+    const [analysisScope, setAnalysisScope] = useState(ANALYSIS_SCOPE_ALL);
+    const [selectedAnalysisMonth, setSelectedAnalysisMonth] = useState('');
+    const [selectedAnalysisDay, setSelectedAnalysisDay] = useState('');
     const [expandedDailyMonths, setExpandedDailyMonths] = useState(new Set());
     const [activeDimensionKey, setActiveDimensionKey] = useState('');
     const [searchInput, setSearchInput] = useState('');
@@ -468,8 +659,6 @@ export default function AsanMonthlyPerformance() {
         allReport ? [{ period: REPORT_ALL_KEY, label: '전체' }, ...monthlyReports.map(report => ({ period: report.period, label: report.period }))] : []
     ), [allReport, monthlyReports]);
     const dimensionSections = useMemo(() => normalizeDimensionSections(summary.breakdowns || []), [summary.breakdowns]);
-    const activeDimension = dimensionSections.find(section => section.key === activeDimensionKey) || dimensionSections[0] || null;
-    const dailyTree = useMemo(() => groupDailyByMonth(monthly, daily), [daily, monthly]);
     const totalRows = Number(payload?.total ?? rows.length) || 0;
     const loadedRows = rows.length;
     const canLoadMore = payload?.source === 'supabase' && loadedRows < totalRows;
@@ -478,41 +667,83 @@ export default function AsanMonthlyPerformance() {
         const hidden = hiddenCols instanceof Set ? hiddenCols : new Set(hiddenCols || []);
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
     }, [colOrder, headers, hiddenCols]);
-    const chartMax = getPerformanceChartMax(monthly, ['revenue', 'purchase', 'profit']);
+    const availableMonths = useMemo(() => monthly.filter(isMetricActive), [monthly]);
+    const availableDays = useMemo(() => daily.filter(isMetricActive), [daily]);
+    const scopedMonthly = useMemo(() => {
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) return monthly.filter(item => item.period === selectedAnalysisMonth && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_DAY) {
+            const dayMonth = String(selectedAnalysisDay || '').slice(0, 7);
+            return monthly.filter(item => item.period === dayMonth && isMetricActive(item));
+        }
+        return monthly.filter(isMetricActive);
+    }, [analysisScope, monthly, selectedAnalysisDay, selectedAnalysisMonth]);
+    const scopedDaily = useMemo(() => {
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) return daily.filter(item => (item.period || String(item.date || '').slice(0, 7)) === selectedAnalysisMonth && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_DAY) return daily.filter(item => item.date === selectedAnalysisDay && isMetricActive(item));
+        return daily.filter(isMetricActive);
+    }, [analysisScope, daily, selectedAnalysisDay, selectedAnalysisMonth]);
     const monthRange = monthly.length ? `${monthly[0].period} ~ ${monthly[monthly.length - 1].period}` : DEFAULT_MONTHLY_RANGE_HINT;
+    const scopedMonthRange = scopedMonthly.length ? `${scopedMonthly[0].period} ~ ${scopedMonthly[scopedMonthly.length - 1].period}` : monthRange;
     const totalRevenue = safeNumber(summary.totalRevenue);
     const totalPurchase = safeNumber(summary.totalPurchase);
     const totalProfit = safeNumber(summary.totalProfit);
     const totalProfitRate = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
+    const analysisRows = safeNumber(summary.analysisRows) || totalRows;
+    const scopedTotals = analysisScope === ANALYSIS_SCOPE_ALL
+        ? { revenue: totalRevenue, purchase: totalPurchase, profit: totalProfit, rowCount: analysisRows }
+        : sumMetricItems(analysisScope === ANALYSIS_SCOPE_DAY ? scopedDaily : scopedMonthly);
+    const scopeRevenue = safeNumber(scopedTotals.revenue);
+    const scopePurchase = safeNumber(scopedTotals.purchase);
+    const scopeProfit = safeNumber(scopedTotals.profit);
+    const scopeRows = safeNumber(scopedTotals.rowCount);
+    const scopeProfitRate = scopeRevenue ? (scopeProfit / scopeRevenue) * 100 : 0;
+    const selectedScopePeriod = analysisScope === ANALYSIS_SCOPE_MONTH
+        ? selectedAnalysisMonth
+        : (analysisScope === ANALYSIS_SCOPE_DAY ? String(selectedAnalysisDay || '').slice(0, 7) : '');
     const selectedReport = selectedReportPeriod === REPORT_ALL_KEY
         ? allReport
         : (monthlyReports.find(item => item.period === selectedReportPeriod) || allReport || monthlyReports[monthlyReports.length - 1] || null);
     const reportGroups = Array.isArray(selectedReport?.groups) ? selectedReport.groups : EMPTY_LIST;
     const reportTotals = selectedReport?.totals || {};
-    const carryover = selectedReport?.carryover || summary.carryover || {};
-    const carryoverRevenue = safeNumber(carryover.revenue);
-    const carryoverPurchase = safeNumber(carryover.purchase);
-    const carryoverProfit = safeNumber(carryover.profit);
+    const reportCarryover = selectedReport?.carryover || summary.carryover || {};
+    const scopeReport = selectedScopePeriod ? monthlyReports.find(report => report.period === selectedScopePeriod) : null;
+    const scopeCarryover = analysisScope === ANALYSIS_SCOPE_ALL
+        ? (allReport?.carryover || summary.carryover || {})
+        : (analysisScope === ANALYSIS_SCOPE_MONTH ? (scopeReport?.carryover || {}) : {});
+    const carryoverRevenue = safeNumber(scopeCarryover.revenue);
+    const reportCarryoverRevenue = safeNumber(reportCarryover.revenue);
     const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
     const reportTitleText = selectedReportPeriod === REPORT_ALL_KEY ? '매출보고서' : formatReportTitle(selectedReport?.period || selectedReportPeriod);
     const reportColumnCount = reportGroups.length + 3;
-    const diagramMax = Math.max(1, Math.abs(totalRevenue), Math.abs(totalPurchase), Math.abs(totalProfit), Math.abs(carryoverRevenue));
-    const topDimensionItem = activeDimension?.items?.[0] || null;
+    const diagramMax = Math.max(1, Math.abs(scopeRevenue), Math.abs(scopePurchase), Math.abs(scopeProfit), Math.abs(carryoverRevenue));
     const reportTableReady = Boolean(selectedReport && reportGroups.length);
-    const analysisRows = safeNumber(summary.analysisRows) || totalRows;
-    const activeMonths = monthly.filter(item => safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)).length;
-    const latestMonth = [...monthly].reverse().find(item => safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)) || null;
-    const previousMonth = latestMonth ? [...monthly].reverse().find(item => item.period !== latestMonth.period && (safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))) || null : null;
-    const bestRevenueMonth = maxBy(monthly, 'revenue');
-    const bestProfitMonth = maxBy(monthly, 'profit');
-    const bestProfitDay = maxBy(daily, 'profit');
+    const activeMonths = scopedMonthly.length;
+    const latestMonth = [...scopedMonthly].reverse().find(isMetricActive) || null;
+    const previousMonth = previousMetricItem(scopedMonthly, latestMonth, 'period');
+    const bestRevenueMonth = maxBy(scopedMonthly, 'revenue');
+    const bestProfitMonth = maxBy(scopedMonthly, 'profit');
+    const bestProfitDay = maxBy(scopedDaily, 'profit');
     const revenueDelta = metricDelta(latestMonth, previousMonth, 'revenue');
-    const avgRevenuePerJob = analysisRows ? totalRevenue / analysisRows : 0;
-    const carryoverRate = totalRevenue ? (carryoverRevenue / totalRevenue) * 100 : 0;
-    const segmentItems = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
-    const topVehicles = Array.isArray(summary.vehiclePerformance) ? summary.vehiclePerformance.slice(0, 5) : EMPTY_LIST;
-    const segmentMax = Math.max(1, ...segmentItems.map(item => Math.abs(safeNumber(item.revenue))));
+    const avgRevenuePerJob = scopeRows ? scopeRevenue / scopeRows : 0;
+    const carryoverRate = scopeRevenue ? (carryoverRevenue / scopeRevenue) * 100 : 0;
+    const segmentItems = (Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST)
+        .map(normalizeStrategicSegment)
+        .filter(Boolean);
+    const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue, 2);
+    const scopedDimensionSections = useMemo(() => (
+        scopeDimensionSections(dimensionSections, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue)
+    ), [analysisScope, dimensionSections, scopeRevenue, selectedAnalysisDay, selectedAnalysisMonth]);
+    const activeDimension = scopedDimensionSections.find(section => section.key === activeDimensionKey) || scopedDimensionSections[0] || null;
+    const topDimensionItem = activeDimension?.items?.[0] || null;
+    const dailyTree = useMemo(() => groupDailyByMonth(scopedMonthly, scopedDaily), [scopedDaily, scopedMonthly]);
+    const topVehicles = scopeMetricList(Array.isArray(summary.vehiclePerformance) ? summary.vehiclePerformance : EMPTY_LIST, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue, 5);
+    const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
     const vehicleMax = Math.max(1, ...topVehicles.map(item => Math.abs(safeNumber(item.revenue))));
+    const chartMax = getPerformanceChartMax(scopedMonthly, ['revenue', 'purchase', 'profit']);
+    const scopeLabel = analysisScope === ANALYSIS_SCOPE_MONTH
+        ? `월별 ${selectedAnalysisMonth || '-'}`
+        : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${selectedAnalysisDay || '-'}` : '전체');
+    const scopeBasisLabel = analysisScope === ANALYSIS_SCOPE_DAY ? '작업일자' : '마감월';
 
     useEffect(() => {
         if (!monthlyReports.length) {
@@ -525,11 +756,25 @@ export default function AsanMonthlyPerformance() {
     }, [monthlyReports, selectedReportPeriod]);
 
     useEffect(() => {
-        if (!dimensionSections.length) return;
-        if (!activeDimensionKey || !dimensionSections.some(section => section.key === activeDimensionKey)) {
-            setActiveDimensionKey(dimensionSections[0].key);
+        const latest = availableMonths[availableMonths.length - 1]?.period || '';
+        if (latest && (!selectedAnalysisMonth || !availableMonths.some(item => item.period === selectedAnalysisMonth))) {
+            setSelectedAnalysisMonth(latest);
         }
-    }, [activeDimensionKey, dimensionSections]);
+    }, [availableMonths, selectedAnalysisMonth]);
+
+    useEffect(() => {
+        const latest = availableDays[availableDays.length - 1]?.date || '';
+        if (latest && (!selectedAnalysisDay || !availableDays.some(item => item.date === selectedAnalysisDay))) {
+            setSelectedAnalysisDay(latest);
+        }
+    }, [availableDays, selectedAnalysisDay]);
+
+    useEffect(() => {
+        if (!scopedDimensionSections.length) return;
+        if (!activeDimensionKey || !scopedDimensionSections.some(section => section.key === activeDimensionKey)) {
+            setActiveDimensionKey(scopedDimensionSections[0].key);
+        }
+    }, [activeDimensionKey, scopedDimensionSections]);
 
     const renderReportRow = (label, metricKey, rateKey = '') => (
         <tr key={label}>
@@ -706,57 +951,117 @@ export default function AsanMonthlyPerformance() {
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
                 <div className={styles.analytics}>
+                    <section className={`${styles.panel} ${styles.analysisScopePanel}`}>
+                        <div className={styles.analysisScopeTitle}>
+                            <span>분석 기준</span>
+                            <strong>{scopeLabel}</strong>
+                            <em>{scopeRows.toLocaleString('ko-KR')}건 · {scopeBasisLabel} 기준</em>
+                        </div>
+                        <div className={styles.analysisScopeButtons}>
+                            <button
+                                type="button"
+                                className={analysisScope === ANALYSIS_SCOPE_ALL ? styles.analysisScopeActive : ''}
+                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_ALL)}
+                            >
+                                전체
+                            </button>
+                            <button
+                                type="button"
+                                className={analysisScope === ANALYSIS_SCOPE_MONTH ? styles.analysisScopeActive : ''}
+                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_MONTH)}
+                            >
+                                월별 선택
+                            </button>
+                            <button
+                                type="button"
+                                className={analysisScope === ANALYSIS_SCOPE_DAY ? styles.analysisScopeActive : ''}
+                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_DAY)}
+                            >
+                                일별 선택
+                            </button>
+                        </div>
+                        <div className={styles.analysisScopeSelects}>
+                            <select
+                                aria-label="분석 월 선택"
+                                value={selectedAnalysisMonth || availableMonths[availableMonths.length - 1]?.period || ''}
+                                onChange={e => {
+                                    setSelectedAnalysisMonth(e.target.value);
+                                    setAnalysisScope(ANALYSIS_SCOPE_MONTH);
+                                }}
+                            >
+                                {availableMonths.map(item => <option key={item.period} value={item.period}>{item.period}</option>)}
+                            </select>
+                            <select
+                                aria-label="분석 일 선택"
+                                value={selectedAnalysisDay || availableDays[availableDays.length - 1]?.date || ''}
+                                onChange={e => {
+                                    setSelectedAnalysisDay(e.target.value);
+                                    setAnalysisScope(ANALYSIS_SCOPE_DAY);
+                                }}
+                            >
+                                {availableDays.map(item => <option key={item.date} value={item.date}>{item.date}</option>)}
+                            </select>
+                        </div>
+                    </section>
+
+                    <MonthlyLedgerFlowChart items={scopedMonthly} scopeLabel={scopeLabel} />
+
                     <section className={`${styles.panel} ${styles.monthlySummaryPanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>월간 실적 인포그래픽</h3>
-                            <span>{monthRange}</span>
+                            <span>{scopedMonthRange}</span>
                         </div>
                         <div className={styles.monthlyInfographicGrid}>
                             <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={scopeRevenue} max={diagramMax} tone="revenue" />
                                 <span>청구</span>
-                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
-                                <em>{analysisRows.toLocaleString('ko-KR')}건</em>
-                                <i style={{ width: metricWidth(totalRevenue, diagramMax) }} />
+                                <strong>{formatPerformanceAmount(scopeRevenue)}</strong>
+                                <em>{scopeRows.toLocaleString('ko-KR')}건</em>
+                                <i style={{ width: metricWidth(scopeRevenue, diagramMax) }} />
                             </div>
                             <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={scopePurchase} max={scopeRevenue || diagramMax} tone="purchase" />
                                 <span>하불</span>
-                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
-                                <em>청구 대비 {formatPercent(totalRevenue ? (totalPurchase / totalRevenue) * 100 : 0, 1)}</em>
-                                <i style={{ width: metricWidth(totalPurchase, diagramMax) }} />
+                                <strong>{formatPerformanceAmount(scopePurchase)}</strong>
+                                <em>청구 대비 {formatPercent(scopeRevenue ? (scopePurchase / scopeRevenue) * 100 : 0, 1)}</em>
+                                <i style={{ width: metricWidth(scopePurchase, diagramMax) }} />
                             </div>
                             <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={scopeProfit} max={scopeRevenue || diagramMax} tone="profit" />
                                 <span>손익</span>
-                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
-                                <em>{formatPercent(totalProfitRate, 2)}</em>
-                                <i style={{ width: metricWidth(totalProfit, diagramMax) }} />
+                                <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
+                                <em>{formatPercent(scopeProfitRate, 2)}</em>
+                                <i style={{ width: metricWidth(scopeProfit, diagramMax) }} />
                             </div>
                             <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={carryoverRevenue} max={scopeRevenue || diagramMax} tone="carryover" />
                                 <span>이월</span>
                                 <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
                                 <em>청구 대비 {formatPercent(carryoverRate, 1)}</em>
                                 <i style={{ width: metricWidth(carryoverRevenue, diagramMax) }} />
                             </div>
                             <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={avgRevenuePerJob} max={Math.max(1, scopeRevenue)} tone="revenue" />
                                 <span>건당 청구</span>
                                 <strong>{formatPerformanceAmount(avgRevenuePerJob)}</strong>
                                 <em>{activeMonths.toLocaleString('ko-KR')}개월 집계</em>
-                                <i style={{ width: metricWidth(avgRevenuePerJob, Math.max(1, totalRevenue), 6) }} />
+                                <i style={{ width: metricWidth(avgRevenuePerJob, Math.max(1, scopeRevenue), 6) }} />
                             </div>
                         </div>
                         <div className={styles.performanceFunnel}>
                             <div>
                                 <span>청구</span>
-                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
+                                <strong>{formatPerformanceAmount(scopeRevenue)}</strong>
                             </div>
                             <b>→</b>
                             <div>
                                 <span>하불</span>
-                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
+                                <strong>{formatPerformanceAmount(scopePurchase)}</strong>
                             </div>
                             <b>→</b>
                             <div>
                                 <span>손익</span>
-                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
+                                <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
                             </div>
                         </div>
                         <div className={styles.monthlyInsightStrip}>
@@ -790,19 +1095,19 @@ export default function AsanMonthlyPerformance() {
                         </section>
                     )}
 
-                    {segmentItems.length > 0 && (
+                    {scopedSegmentItems.length > 0 && (
                         <section className={`${styles.panel} ${styles.segmentInsightPanel}`}>
                             <div className={styles.panelHeader}>
                                 <h3>구성 분석</h3>
-                                <span>계약·운영 구분 기준</span>
+                                <span>ELS직계약차량 · 외부/타운송사</span>
                             </div>
                             <div className={styles.segmentInsightGrid}>
-                                {segmentItems.slice(0, 4).map(segment => (
+                                {scopedSegmentItems.map(segment => (
                                     <button
                                         key={segment.key || segment.label}
                                         type="button"
                                         className={styles.segmentInsightCard}
-                                        onClick={() => openDetailSearch([segment.label || segment.name], 'and')}
+                                        onClick={() => openDetailSearch((segment.filterTerms || []).length ? segment.filterTerms : [segment.label || segment.name], 'and')}
                                     >
                                         <span>{segment.label || segment.name}</span>
                                         <strong>{formatPerformanceAmount(segment.revenue)}</strong>
@@ -817,10 +1122,10 @@ export default function AsanMonthlyPerformance() {
                     <section className={`${styles.panel} ${styles.monthPanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>월별 성과 흐름</h3>
-                            <span>{monthRange}</span>
+                            <span>{scopedMonthRange} · 마감월 기준</span>
                         </div>
                         <div className={styles.monthChart}>
-                            {monthly.length === 0 ? (
+                            {scopedMonthly.length === 0 ? (
                                 <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
                             ) : (
                                 <>
@@ -832,7 +1137,7 @@ export default function AsanMonthlyPerformance() {
                                         <span>손익액</span>
                                         <span>률</span>
                                     </div>
-                                    {monthly.map(item => (
+                                    {scopedMonthly.map(item => (
                                         <div className={styles.monthRow} key={item.period}>
                                             <span>{item.period}</span>
                                             <span className={styles.inlineBar}><i style={{ width: `${Math.max(2, Math.min(100, Math.abs(safeNumber(item.revenue)) / chartMax * 100))}%` }} /></span>
@@ -850,7 +1155,7 @@ export default function AsanMonthlyPerformance() {
                     <section className={`${styles.panel} ${styles.dailyTreePanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>월별·일별 트리</h3>
-                            <span>{daily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
+                            <span>{scopedDaily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
                         </div>
                         {dailyTree.length === 0 ? (
                             <div className={styles.emptyPanel}>일별 원장 데이터를 아직 도출하지 못했습니다. 원본에 작업일자 컬럼이 있으면 동기화 후 자동 집계됩니다.</div>
@@ -894,23 +1199,23 @@ export default function AsanMonthlyPerformance() {
                     <section className={`${styles.panel} ${styles.dimensionPanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>세분화 분석</h3>
-                            <span>청구·하불·손익·건수 기준</span>
+                            <span>{scopeLabel} · 청구·하불·손익·건수 기준</span>
                         </div>
                         <div className={styles.dimensionDiagram}>
                             <div>
                                 <span>청구</span>
-                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
-                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalRevenue) / diagramMax * 100))}%` }} />
+                                <strong>{formatPerformanceAmount(scopeRevenue)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopeRevenue) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
                                 <span>하불</span>
-                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
-                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalPurchase) / diagramMax * 100))}%` }} />
+                                <strong>{formatPerformanceAmount(scopePurchase)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopePurchase) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
                                 <span>손익</span>
-                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
-                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalProfit) / diagramMax * 100))}%` }} />
+                                <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopeProfit) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
                                 <span>이월</span>
@@ -918,12 +1223,12 @@ export default function AsanMonthlyPerformance() {
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(carryoverRevenue) / diagramMax * 100))}%` }} />
                             </div>
                         </div>
-                        {dimensionSections.length === 0 ? (
+                        {scopedDimensionSections.length === 0 ? (
                             <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 청구처, 작업지, 운송사, 구분, 픽업, 포트 컬럼이 있으면 동기화 후 자동 분석됩니다.</div>
                         ) : (
                             <>
                                 <div className={styles.dimensionTabs}>
-                                    {dimensionSections.map(section => (
+                                    {scopedDimensionSections.map(section => (
                                         <button
                                             key={section.key}
                                             type="button"
@@ -1048,7 +1353,7 @@ export default function AsanMonthlyPerformance() {
                                 <span>순매출 {formatPerformanceAmount(safeNumber(reportTotals.netRevenue) || totalRevenue)}</span>
                                 <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
                                 <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
-                                <span>이월금액 {formatPerformanceAmount(carryoverRevenue)}</span>
+                                <span>이월금액 {formatPerformanceAmount(reportCarryoverRevenue)}</span>
                                 <span>손익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
                             </div>
                         </section>

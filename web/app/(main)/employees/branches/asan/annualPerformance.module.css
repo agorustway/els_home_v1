@@ -167,6 +167,16 @@
     min-width: 0;
 }
 
+.annualAnalytics {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.annualAnalytics > * {
+    flex: 0 0 auto;
+}
+
 .commandPanel {
     display: grid;
     grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.8fr);
@@ -540,7 +550,8 @@
 }
 
 .marketRevenueLine,
-.marketPurchaseLine {
+.marketPurchaseLine,
+.marketProfitLine {
     fill: none;
     stroke-width: 3;
     stroke-linecap: round;
@@ -553,6 +564,10 @@
 
 .marketPurchaseLine {
     stroke: #d97706;
+}
+
+.marketProfitLine {
+    stroke: #2563eb;
 }
 
 .marketRevenueAvgLine,
@@ -1192,6 +1207,7 @@
 }
 
 .monthPanel {
+    order: 40;
     width: 100%;
     box-sizing: border-box;
 }
@@ -1936,6 +1952,8 @@
 }
 
 .monthlySummaryPanel,
+.analysisScopePanel,
+.monthlyTrendPanel,
 .segmentInsightPanel,
 .vehicleInsightPanel,
 .reportNoticePanel {
@@ -1944,27 +1962,139 @@
     overflow: hidden;
 }
 
-.monthlySummaryPanel,
-.reportNoticePanel,
-.monthlyReportSheet {
+.analysisScopePanel {
+    order: 5;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.65fr) minmax(280px, 1fr) minmax(280px, 0.8fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+.analysisScopeTitle {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 8px;
+}
+
+.analysisScopeTitle span,
+.analysisScopeTitle em {
+    color: #64748b;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.analysisScopeTitle strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analysisScopeTitle em {
     grid-column: 1 / -1;
 }
 
-.segmentInsightPanel,
-.dimensionPanel {
-    grid-column: span 2;
+.analysisScopeButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.analysisScopeButtons button {
+    height: 27px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.analysisScopeActive {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.analysisScopeSelects {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.analysisScopeSelects select {
+    min-width: 0;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.monthlyTrendPanel {
+    order: 8;
+    grid-column: 1 / -1;
+}
+
+.monthlySummaryPanel {
+    order: 10;
+    grid-column: 1 / -1;
+}
+
+.reportNoticePanel {
+    order: 20;
+    grid-column: 1 / -1;
+}
+
+.segmentInsightPanel {
+    order: 30;
+    grid-column: 1 / -1;
+}
+
+.vehicleInsightPanel {
+    order: 45;
 }
 
 .dailyTreePanel {
+    order: 60;
+    grid-column: 1 / -1;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
 }
 
 .dimensionPanel {
+    order: 50;
+    grid-column: 1 / -1;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+}
+
+.monthlyReportSheet {
+    order: 70;
+    grid-column: 1 / -1;
+}
+
+@media (min-width: 1240px) {
+    .monthPanel,
+    .vehicleInsightPanel {
+        grid-column: span 2;
+    }
 }
 
 .monthlyInfographicGrid {
@@ -1976,11 +2106,16 @@
 
 .monthlyInfoCard,
 .segmentInsightCard {
+    position: relative;
     min-width: 0;
     padding: 8px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background: #fff;
+}
+
+.monthlyInfoCard {
+    padding-right: 66px;
 }
 
 .monthlyInfoCard span,
@@ -2026,6 +2161,42 @@
     margin-top: 7px;
     border-radius: 999px;
     background: #0f766e;
+}
+
+.metricDonut {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 46px;
+    height: 46px;
+    transform: rotate(-90deg);
+}
+
+.metricDonutTrack,
+.metricDonutValue {
+    fill: none;
+    stroke-width: 6;
+}
+
+.metricDonutTrack {
+    stroke: #e2e8f0;
+}
+
+.metricDonutValue {
+    stroke: #0f766e;
+    stroke-linecap: round;
+}
+
+.metricDonut_purchase .metricDonutValue {
+    stroke: #d97706;
+}
+
+.metricDonut_profit .metricDonutValue {
+    stroke: #2563eb;
+}
+
+.metricDonut_carryover .metricDonutValue {
+    stroke: #7c3aed;
 }
 
 .performanceFunnel {
@@ -2739,6 +2910,7 @@
 
     .commandPanel,
     .commandNotes,
+    .analysisScopePanel,
     .scopePanel,
     .kpiGrid,
     .changeGrid,
@@ -2778,9 +2950,14 @@
     }
 
     .monthlySummaryPanel,
+    .analysisScopePanel,
+    .monthlyTrendPanel,
     .reportNoticePanel,
     .segmentInsightPanel,
+    .monthPanel,
+    .vehicleInsightPanel,
     .dimensionPanel,
+    .dailyTreePanel,
     .monthlyReportSheet {
         grid-column: 1 / -1;
     }
@@ -2941,6 +3118,12 @@
 
     .scopePanel {
         align-items: stretch;
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .analysisScopeButtons,
+    .analysisScopeSelects {
         display: grid;
         grid-template-columns: 1fr;
     }

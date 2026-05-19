@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.37 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.39 / APK v5.11.17)
 
-> 최신 업데이트: 아산 월간실적 분석 화면을 반응형 카드 그리드로 재배치했습니다.
+> 최신 업데이트: 아산 월간실적 분석 기준/마감월 흐름/구성 분석을 관리자 관점으로 정리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.37
+- **웹 버전**: v5.14.39
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -11,8 +11,10 @@
   - 아산 연간실적 통합 원장 조회와 NAS 동기화 응답은 `snapshot_id,row_index`/메타 기반으로 처리해 Supabase statement timeout을 피한다.
   - 아산 월간/연간실적 화면은 별도 `source=status` polling으로 NAS 백그라운드 동기화 상태를 페이지 재진입 후에도 표시한다.
   - 아산 월간실적 NAS importer는 공용 summary helper를 top-level로 사용해 `diff-current` 중단을 방지한다.
-  - 아산 월간실적 본문은 인포그래픽/구성분석/월별흐름을 카드 그리드로 배치하고, `아산매출보고서` 표는 감지됐을 때만 표시한다.
-  - 월간 보고서는 기본 `전체` 범위로 합산 표시하고, 월별/일별 트리와 세분화 분석은 해상도에 따라 1~N열로 재배치한다.
+  - 아산 월간실적 본문은 분석 기준(전체/월별/일별), 월별 누적 라인차트, 도넛 KPI, 구성/세분화/트리 카드 순서로 표시한다.
+  - 월간 보고서는 마감월 기준 흐름만 월별 성과에 반영하고, 작업일자 기준 일별 데이터는 월별·일별 트리에서 분리 표시한다.
+  - 구성 분석은 `ELS직계약차량`과 `외부/타운송사`만 유지해 직계약 전체 중복 의미를 제거한다.
+  - 연간실적 분석 화면은 `annualAnalytics` 전용 세로 레이아웃을 사용해 월간실적 카드 그리드와 분리한다.
   - 월별 파일공간/경로/시트/제목행은 설정 모달에서만 관리하고, 저장 후 동기화한다.
   - 월별 보고서 표에서 거래처별 순매출/순매입/매출이익, 계산서 매출/매입/이익, 이월 매출/매입/차익을 도출.
   - 월간 원장 summary에는 월별/일별 흐름과 이월 합계를 함께 저장해 화면 분석에 사용.
@@ -50,6 +52,8 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.39**: 월간실적 분석 상단에 `전체/월별 선택/일별 선택` 기준을 추가하고, 월별 누적 흐름을 주식 차트형 라인 그래프로 올렸다. 월별 성과는 파일 마감월만 사용해 이월/작업일자 때문에 2025-12가 끼지 않게 했고, KPI 카드에는 도넛 비중을 넣었다. 구성 분석은 `ELS직계약차량`과 `외부/타운송사` 두 축만 남겼다.
+- **v5.14.38**: 월간실적 반응형 카드 그리드가 공통 `.analytics` 스타일로 연간실적까지 적용되어 연간 리포트가 가로로 찢어지던 문제를 수정. 연간 컴포넌트는 `annualAnalytics` 전용 flex column 흐름을 덧붙여 상단 리포트, 조사범위, 분석섹션, 장기흐름, KPI/근거 카드가 다시 세로로 이어지게 했다.
 - **v5.14.37**: 월간실적 분석 섹션을 고정 폭 세로 나열에서 반응형 카드 그리드로 변경. 인포그래픽은 전체 행을 사용하고 구성/세분화는 넓은 화면에서 2칸, 월별 흐름·트리·차량 TOP은 카드 단위로 자동 배치되며 모바일에서는 1열로 떨어진다.
 - **v5.14.36**: 월간실적 `월별·일별 트리`와 `세분화 분석`은 내부 표만 좁아지고 외곽 패널이 화면 끝까지 벌어져 튀어나온 것처럼 보이던 문제를 보정. 트리 패널은 696px, 세분화 패널은 980px 안쪽으로 외곽선과 헤더까지 함께 묶었다.
 - **v5.14.35**: 월간실적 분석 첫 화면을 원본 보고서 표 중심에서 인포그래픽 중심으로 재배치. 표 미감지 시 큰 빈 보고서 박스를 제거하고 얇은 상태 줄만 표시하며, 청구/하불/손익/이월/건당 청구 KPI, 청구→하불→손익 흐름, 최고 청구월/손익월/손익일/최근월 증감, 계약·운영 구분 구성 분석, 차량 성과 TOP을 추가했다.
@@ -67,21 +71,16 @@
 - **v5.14.22**: 아산 월간실적 동기화를 `diff-current` 누적형으로 전환. 파일이 교체되면 같은 파일/시트/행의 해시를 비교해 변경 행만 신규 current로 추가하고 기존 행은 `superseded_by_excel`, 사라진 행은 `removed_from_excel`로 종료한다. 월간 조회도 `currentSnapshotId` 단일 스냅샷이 아니라 `is_current=true` 원장을 읽도록 보정했다.
 - **v5.14.21**: 아산 배차판 RAG를 `web/utils/asanDispatchRag.mjs`로 분리. Supabase `branch_dispatch`의 헤더와 셀 패턴에서 도표형 스키마(오더 컬럼, 픽업지역/상차지 컬럼, 메모/시간 컬럼)를 동적으로 추론하고, `이지1.대신3` 같은 지역칸 업체·대수와 메모 시간 필터를 서버에서 구조화해 주입한다.
 - **v5.14.20**: 아산 월간실적 화면/API/Core 동기화를 추가. 2026년 기준 2027년 3월까지 15개 파일 슬롯을 만들고, 각 월 파일의 첫 번째 시트를 `dataset_type=monthly`로 Supabase에 적재한다. 월별 보고서 표, 일별 흐름, 이월금액을 분석 화면에 표시하고 파일 설정 저장 시 자동 동기화한다.
-- **v5.14.19**: 아산 연간실적 조사범위 날짜 선택은 `직접` 모드에서만 활성화하고, 전체/최근 기간 프리셋에서는 잠금 상태로 표시하도록 보정.
-- **v5.14.17**: 드라이버 앱 지도 자동추적/내 차량 클릭은 속도 기반 줌을 적용하고 전체 차량 보기 최대 줌을 제한. APK v5.11.17 / 5158 산출물 반영.
-- **v5.14.16**: 아산 배차 모바일 범위 전환 시 날짜탭 자동 가운데 맞춤이 세로 스크롤을 끌어내리지 않도록 수평 스크롤 전용으로 변경. 첫 진입 상단 위치도 유지.
-- **v5.14.15**: 12가0140 2026-05-19 06:59/07:03 운행을 재분석. 원시 좌표는 불가능 속도 0건이나 진행 중 마커 클릭이 상세경로/끝점으로 오해될 수 있어 내 차량 마커 클릭은 추적/줌만 수행하도록 변경. Android 서비스 `onDestroy`의 자동 `TRIP_END` 전송을 제거하고, Naver Directions 결과가 원시 진행 대비 과도하게 길거나 trace 밖/루프면 필터 경로로 대체. 운행 완료 액션 로그도 남김. APK v5.11.16 / 5157 빌드.
-- **v5.14.14**: 12가0140 2026-05-18 17시대 테스트 3건 기준으로 GPS 튐을 재분석. 1번은 좌표 자체보다 촘촘한 전경 샘플/도로 매칭 과신 문제, 2·3번은 `android_bg` 캐시 좌표 재등장으로 확인. 서버 stale replay 필터, Android 네이티브 전송 전 물리 필터와 `recorded_at`, 경로 waypoint 단순화, 운행 중 현재점 표시를 적용. APK v5.11.15 / 5156 빌드.
-
 ## VERIFICATION
-- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
-- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
-- `npm.cmd run lint -- lib/asan-branch-db.js app/api/branches/asan/performance/monthly/route.js app/api/branches/asan/performance/annual/route.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
-- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --check web\scripts\import-asan-annual-performance.mjs`: 통과
+- `node --test --test-name-pattern "화면은 분석/테이블" web/tests/asanAnnualPerformance.test.mjs`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
 - `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js app/api/branches/asan/performance/monthly/route.js app/api/branches/asan/performance/annual/route.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
 - `npm.cmd run lint -- scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
 - Supabase 직접 조회: annual snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7` 301행 즉시 반환
 - `git diff --check`: 통과

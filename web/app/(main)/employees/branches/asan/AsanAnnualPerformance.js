@@ -1048,7 +1048,7 @@ export default function AsanAnnualPerformance() {
             {loading && !payload ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
-                <div className={styles.analytics}>
+                <div className={`${styles.analytics} ${styles.annualAnalytics}`}>
                     <section className={styles.commandPanel}>
                         <div className={styles.commandMain}>
                             <div className={styles.commandTitleRow}>

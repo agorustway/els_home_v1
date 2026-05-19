@@ -556,28 +556,14 @@ function createAdvancedAccumulator(headers) {
   const segmentDefs = [
     {
       key: 'own_direct',
-      label: '우리 직계약차량',
+      label: 'ELS직계약차량',
       description: '운송사(명의)가 ELS솔루션이고 계약이 직계약인 원장 행만 별도 집계합니다.',
       filterTerms: ['ELS솔루션', '직계약'],
       match: ({ carrier, contract }) => carrier === 'ELS솔루션' && contract.includes('직계약'),
     },
     {
-      key: 'own_total',
-      label: 'ELS솔루션 명의 전체',
-      description: '운송사(명의)가 ELS솔루션인 전체 물량입니다. 외부 운송사 비교와 분리합니다.',
-      filterTerms: ['ELS솔루션'],
-      match: ({ carrier }) => carrier === 'ELS솔루션',
-    },
-    {
-      key: 'direct_total',
-      label: '직계약 전체',
-      description: '계약 컬럼에 직계약이 포함된 전체 행입니다. ELS솔루션 명의와 외부 명의를 함께 포함합니다.',
-      filterTerms: ['직계약'],
-      match: ({ contract }) => contract.includes('직계약'),
-    },
-    {
       key: 'external_carrier',
-      label: '외부/타 운송사',
+      label: '외부/타운송사',
       description: '운송사(명의)가 비어 있지 않고 ELS솔루션이 아닌 행입니다.',
       filterTerms: [],
       match: ({ carrier }) => Boolean(carrier) && carrier !== 'ELS솔루션',
@@ -730,7 +716,7 @@ function createAdvancedAccumulator(headers) {
         rounded.topPickups = finalizeTop(segment.topPickups);
         return rounded;
       }).sort((a, b) => {
-        const order = ['own_direct', 'own_total', 'direct_total', 'external_carrier'];
+        const order = ['own_direct', 'external_carrier'];
         return order.indexOf(a.key) - order.indexOf(b.key);
       }),
       vehiclePerformance: Array.from(vehicles.values()).map((vehicle) => {
