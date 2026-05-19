@@ -1,3 +1,17 @@
+## [2026-05-20] 아산 월간실적 보고서 표 없음 배너 제거 (v5.14.73)
+### 핵심
+- 월간실적 분석 화면에서 `reportTableReady=false`일 때 표시하던 `보고서 표 없음 · 원장 기준 분석 중` 노란 배너를 제거했습니다.
+- 보고서 표 파서와 `monthlyReport` 표 렌더링 조건은 유지해, 표가 잡히면 보고서 표를 보여주고 표가 없으면 원장 기준 분석 화면만 조용히 표시합니다.
+- 테스트는 문구가 더 이상 렌더링되지 않는 쪽으로 갱신했습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산 월간실적 보고서 표 전용파서 개선 (v5.14.72)
 ### 핵심
 - 월간실적 보고서 표 파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview 240행에서도 `순매출/순매입/계산서/이월` 표를 탐지합니다.

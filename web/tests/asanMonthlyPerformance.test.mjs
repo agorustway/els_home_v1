@@ -210,7 +210,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /IN\/OUT-BOUND/);
   assert.match(component, /단위 : 원/);
   assert.match(component, /이월/);
-  assert.match(component, /보고서 표 없음 · 원장 기준 분석 중/);
+  assert.doesNotMatch(component, /보고서 표 없음 · 원장 기준 분석 중/);
   assert.match(component, /REPORT_ALL_KEY/);
   assert.match(component, /if \(period === REPORT_ALL_KEY\) return '매출보고서'/);
   assert.match(component, /selectedReportPeriod === REPORT_ALL_KEY \? '매출보고서'/);
@@ -328,7 +328,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.doesNotMatch(component, /showAllVehicles/);
   assert.doesNotMatch(component, /setShowAllVehicles/);
   assert.match(component, /reportTableReady/);
-  assert.match(component, /보고서 표 없음 · 원장 기준 분석 중/);
+  assert.doesNotMatch(component, /보고서 표 없음 · 원장 기준 분석 중/);
   assert.match(component, /이월금액/);
   assert.match(component, /selectedReportPeriod/);
   assert.match(component, /2027-03/);
@@ -372,7 +372,6 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.monthlyInfographicGrid/);
   assert.match(css, /\.metricDonut/);
   assert.match(css, /\.monthlyTrendProfitLine/);
-  assert.match(css, /\.reportNoticePanel/);
   assert.match(css, /@media \(min-width: 1240px\)[\s\S]*\.dimensionPanel\s*{[\s\S]*grid-column: span 1/);
   assert.match(css, /\.compositionCardBody\s*{[\s\S]*display: flex/);
   assert.match(css, /\.segmentInsightGrid/);
