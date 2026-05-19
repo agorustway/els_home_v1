@@ -19,6 +19,28 @@ const PAGE_SIZE = 300;
 const SEARCH_DEBOUNCE_MS = 700;
 const DEFAULT_MONTHLY_BASE_YEAR = 2026;
 const DEFAULT_MONTHLY_RANGE_HINT = '2026-01 ~ 2027-03';
+const REPORT_ALL_KEY = 'all';
+const REPORT_METRIC_KEYS = [
+    'netRevenue',
+    'netPurchase',
+    'netProfit',
+    'invoiceRevenue',
+    'invoicePurchase',
+    'invoiceProfit',
+    'carryoverRevenue',
+    'carryoverPurchase',
+    'carryoverProfit',
+];
+const DIMENSION_HINTS = [
+    { key: 'client', label: '청구처별', words: ['청구처', '거래처', '화주'] },
+    { key: 'work_site', label: '작업지별', words: ['작업지', '상차', '하차'] },
+    { key: 'carrier', label: '운송사(명의)별', words: ['운송사', '명의'] },
+    { key: 'category', label: '구분별', words: ['구분', '계약'] },
+    { key: 'pickup', label: '청구픽업별', words: ['픽업', '청구픽업'] },
+    { key: 'port', label: '포트별', words: ['포트', 'port'] },
+    { key: 'route', label: '노선별', words: ['노선', '구간'] },
+    { key: 'vehicle', label: '차량별', words: ['영업넘버', '차량'] },
+];
 const EMPTY_LIST = Object.freeze([]);
 
 function fmtTs(value) {
@@ -119,6 +141,120 @@ function formatReportTitle(period) {
     return `${formatReportPeriod(period)} 아산매출보고서`;
 }
 
+function roundMoney(value) {
+    return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function finalizeReportMetric(metric) {
+    const next = { ...metric };
+    if (!next.netProfit && (next.netRevenue || next.netPurchase)) next.netProfit = next.netRevenue - next.netPurchase;
+    if (!next.invoiceProfit && (next.invoiceRevenue || next.invoicePurchase)) next.invoiceProfit = next.invoiceRevenue - next.invoicePurchase;
+    next.carryoverProfit = next.carryoverRevenue - next.carryoverPurchase;
+    next.netProfitRate = next.netRevenue ? (next.netProfit / next.netRevenue) * 100 : 0;
+    next.invoiceProfitRate = next.invoiceRevenue ? (next.invoiceProfit / next.invoiceRevenue) * 100 : 0;
+    REPORT_METRIC_KEYS.forEach((key) => { next[key] = roundMoney(next[key]); });
+    next.netProfitRate = Math.round(next.netProfitRate * 100) / 100;
+    next.invoiceProfitRate = Math.round(next.invoiceProfitRate * 100) / 100;
+    return next;
+}
+
+function aggregateMonthlyReports(reports = []) {
+    const validReports = (reports || []).filter(report => Array.isArray(report.groups) && report.groups.length);
+    if (!validReports.length) return null;
+
+    const groups = new Map();
+    const totals = { name: '매출합계' };
+    const carryover = { revenue: 0, purchase: 0, profit: 0 };
+    REPORT_METRIC_KEYS.forEach((key) => { totals[key] = 0; });
+
+    validReports.forEach((report) => {
+        (report.groups || []).forEach((group) => {
+            const name = group.name || '미분류';
+            if (!groups.has(name)) {
+                const seed = { name };
+                REPORT_METRIC_KEYS.forEach((key) => { seed[key] = 0; });
+                groups.set(name, seed);
+            }
+            const bucket = groups.get(name);
+            REPORT_METRIC_KEYS.forEach((key) => { bucket[key] += safeNumber(group[key]); });
+        });
+
+        REPORT_METRIC_KEYS.forEach((key) => { totals[key] += safeNumber(report.totals?.[key]); });
+        carryover.revenue += safeNumber(report.carryover?.revenue);
+        carryover.purchase += safeNumber(report.carryover?.purchase);
+        carryover.profit += safeNumber(report.carryover?.profit);
+    });
+
+    if (!totals.netRevenue) totals.netRevenue = Array.from(groups.values()).reduce((sum, item) => sum + safeNumber(item.netRevenue), 0);
+    if (!totals.netPurchase) totals.netPurchase = Array.from(groups.values()).reduce((sum, item) => sum + safeNumber(item.netPurchase), 0);
+    if (!totals.invoiceRevenue) totals.invoiceRevenue = Array.from(groups.values()).reduce((sum, item) => sum + safeNumber(item.invoiceRevenue), 0);
+    if (!totals.invoicePurchase) totals.invoicePurchase = Array.from(groups.values()).reduce((sum, item) => sum + safeNumber(item.invoicePurchase), 0);
+    totals.carryoverRevenue = carryover.revenue;
+    totals.carryoverPurchase = carryover.purchase;
+    totals.carryoverProfit = carryover.profit || carryover.revenue - carryover.purchase;
+
+    return {
+        period: REPORT_ALL_KEY,
+        groups: Array.from(groups.values()).map(finalizeReportMetric).sort((a, b) => Math.abs(safeNumber(b.netRevenue)) - Math.abs(safeNumber(a.netRevenue))),
+        totals: finalizeReportMetric(totals),
+        carryover: {
+            revenue: roundMoney(carryover.revenue),
+            purchase: roundMoney(carryover.purchase),
+            profit: roundMoney(carryover.profit || carryover.revenue - carryover.purchase),
+        },
+        hasReportRows: true,
+    };
+}
+
+function normalizeDimensionSections(breakdowns = []) {
+    const sections = (breakdowns || [])
+        .filter(section => Array.isArray(section.items) && section.items.length)
+        .map(section => ({ ...section, label: section.column || '분류별' }));
+    const selected = [];
+    const used = new Set();
+
+    DIMENSION_HINTS.forEach((hint) => {
+        const match = sections.find((section, idx) => !used.has(idx) && hint.words.some(word => String(section.column || '').toLowerCase().includes(String(word).toLowerCase())));
+        if (!match) return;
+        const idx = sections.indexOf(match);
+        used.add(idx);
+        selected.push({ ...match, key: hint.key, label: hint.label });
+    });
+
+    sections.forEach((section, idx) => {
+        if (used.has(idx)) return;
+        selected.push({ ...section, key: `extra_${idx}`, label: `${section.column}별` });
+    });
+
+    return selected.slice(0, 10);
+}
+
+function groupDailyByMonth(monthly = [], daily = []) {
+    const map = new Map();
+    monthly.forEach((item) => {
+        map.set(item.period, { ...item, days: [] });
+    });
+    daily.forEach((item) => {
+        const period = item.period || String(item.date || '').slice(0, 7);
+        if (!period) return;
+        if (!map.has(period)) {
+            const [yearText, monthText] = period.split('-');
+            map.set(period, {
+                period,
+                year: Number(yearText),
+                month: Number(monthText),
+                revenue: 0,
+                purchase: 0,
+                profit: 0,
+                rowCount: 0,
+                days: [],
+            });
+        }
+        map.get(period).days.push(item);
+    });
+    return Array.from(map.values()).sort((a, b) => String(a.period).localeCompare(String(b.period)));
+}
+
 export default function AsanMonthlyPerformance() {
     const [baseYear, setBaseYear] = useState(DEFAULT_MONTHLY_BASE_YEAR);
     const [extraMonths, setExtraMonths] = useState(DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS);
@@ -131,7 +267,9 @@ export default function AsanMonthlyPerformance() {
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('analytics');
-    const [selectedReportPeriod, setSelectedReportPeriod] = useState('');
+    const [selectedReportPeriod, setSelectedReportPeriod] = useState(REPORT_ALL_KEY);
+    const [expandedDailyMonths, setExpandedDailyMonths] = useState(new Set());
+    const [activeDimensionKey, setActiveDimensionKey] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchMode, setSearchMode] = useState('or');
@@ -146,6 +284,7 @@ export default function AsanMonthlyPerformance() {
     const [browserLoading, setBrowserLoading] = useState(false);
     const [browseTargetIndex, setBrowseTargetIndex] = useState(null);
     const requestIdRef = useRef(0);
+    const syncWasRunningRef = useRef(false);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -172,12 +311,21 @@ export default function AsanMonthlyPerformance() {
         writePrefs(prefs);
     }, [baseYear, colOrder, extraMonths, fileSlots, hiddenCols, payload?.headers]);
 
+    const applySyncStatus = useCallback((status) => {
+        if (!status) return { running: false, finished: false };
+        const running = Boolean(status.running);
+        const finished = syncWasRunningRef.current && !running;
+        syncWasRunningRef.current = running;
+        setSyncStatus(status);
+        setSyncing(running);
+        if (!running && status.last_error) setError(status.last_error);
+        return { running, finished };
+    }, []);
+
     const applyPayload = useCallback((nextPayload, options = {}) => {
         if (!nextPayload) return;
         if (nextPayload.sync_status) {
-            setSyncStatus(nextPayload.sync_status);
-            setSyncing(Boolean(nextPayload.sync_status.running));
-            if (!nextPayload.sync_status.running && nextPayload.sync_status.last_error) setError(nextPayload.sync_status.last_error);
+            applySyncStatus(nextPayload.sync_status);
         }
         if (options.append) {
             setPayload(prev => ({
@@ -198,7 +346,7 @@ export default function AsanMonthlyPerformance() {
             setColOrder(reconciled.colOrder);
             setHiddenCols(reconciled.hiddenCols);
         }
-    }, []);
+    }, [applySyncStatus]);
 
     const fetchData = useCallback(async (options = {}) => {
         const page = options.page || 1;
@@ -255,13 +403,34 @@ export default function AsanMonthlyPerformance() {
         fetchData({ page: 1, search: searchTerm, searchMode, quiet: Boolean(payload) });
     }, [searchTerm, searchMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const fetchSyncStatus = useCallback(async () => {
+        try {
+            const params = new URLSearchParams({
+                source: 'status',
+                year: String(baseYear),
+                extra_months: String(extraMonths),
+            });
+            const res = await fetch(`/api/branches/asan/performance/monthly?${params.toString()}`, { cache: 'no-store' });
+            const json = await readPerformanceJson(res, '월간실적 동기화 상태 조회 실패');
+            return applySyncStatus(json.data?.sync_status);
+        } catch (err) {
+            if (syncWasRunningRef.current) setError(err.message || '월간실적 동기화 상태 조회 실패');
+            return null;
+        }
+    }, [applySyncStatus, baseYear, extraMonths]);
+
+    useEffect(() => {
+        fetchSyncStatus();
+    }, [fetchSyncStatus]);
+
     useEffect(() => {
         if (!syncing) return undefined;
-        const timer = setInterval(() => {
-            fetchData({ page: 1, quiet: true });
+        const timer = setInterval(async () => {
+            const statusResult = await fetchSyncStatus();
+            if (statusResult?.finished) fetchData({ page: 1, quiet: true });
         }, 5000);
         return () => clearInterval(timer);
-    }, [fetchData, syncing]);
+    }, [fetchData, fetchSyncStatus, syncing]);
 
     const headers = useMemo(() => (Array.isArray(payload?.headers) ? payload.headers : []), [payload]);
     const rows = useMemo(() => (Array.isArray(payload?.data) ? payload.data : []), [payload]);
@@ -269,6 +438,13 @@ export default function AsanMonthlyPerformance() {
     const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
     const daily = Array.isArray(summary.daily) ? summary.daily : EMPTY_LIST;
     const monthlyReports = Array.isArray(summary.monthlyReports) ? summary.monthlyReports : EMPTY_LIST;
+    const allReport = useMemo(() => aggregateMonthlyReports(monthlyReports), [monthlyReports]);
+    const reportOptions = useMemo(() => (
+        allReport ? [{ period: REPORT_ALL_KEY, label: '전체' }, ...monthlyReports.map(report => ({ period: report.period, label: report.period }))] : []
+    ), [allReport, monthlyReports]);
+    const dimensionSections = useMemo(() => normalizeDimensionSections(summary.breakdowns || []), [summary.breakdowns]);
+    const activeDimension = dimensionSections.find(section => section.key === activeDimensionKey) || dimensionSections[0] || null;
+    const dailyTree = useMemo(() => groupDailyByMonth(monthly, daily), [daily, monthly]);
     const totalRows = Number(payload?.total ?? rows.length) || 0;
     const loadedRows = rows.length;
     const canLoadMore = payload?.source === 'supabase' && loadedRows < totalRows;
@@ -283,26 +459,37 @@ export default function AsanMonthlyPerformance() {
     const totalPurchase = safeNumber(summary.totalPurchase);
     const totalProfit = safeNumber(summary.totalProfit);
     const totalProfitRate = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
-    const selectedReport = monthlyReports.find(item => item.period === selectedReportPeriod) || monthlyReports[monthlyReports.length - 1] || null;
+    const selectedReport = selectedReportPeriod === REPORT_ALL_KEY
+        ? allReport
+        : (monthlyReports.find(item => item.period === selectedReportPeriod) || allReport || monthlyReports[monthlyReports.length - 1] || null);
     const reportGroups = Array.isArray(selectedReport?.groups) ? selectedReport.groups : EMPTY_LIST;
     const reportTotals = selectedReport?.totals || {};
     const carryover = selectedReport?.carryover || summary.carryover || {};
     const carryoverRevenue = safeNumber(carryover.revenue);
     const carryoverPurchase = safeNumber(carryover.purchase);
     const carryoverProfit = safeNumber(carryover.profit);
-    const latestDaily = daily.slice(-31);
-    const reportPeriodText = formatReportPeriod(selectedReport?.period || selectedReportPeriod);
+    const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
+    const reportTitleText = selectedReport?.period === REPORT_ALL_KEY ? `${monthRange} 아산매출보고서` : formatReportTitle(selectedReport?.period || selectedReportPeriod);
     const reportColumnCount = reportGroups.length + 3;
+    const diagramMax = Math.max(1, Math.abs(totalRevenue), Math.abs(totalPurchase), Math.abs(totalProfit), Math.abs(carryoverRevenue));
+    const topDimensionItem = activeDimension?.items?.[0] || null;
 
     useEffect(() => {
         if (!monthlyReports.length) {
-            if (selectedReportPeriod) setSelectedReportPeriod('');
+            if (selectedReportPeriod !== REPORT_ALL_KEY) setSelectedReportPeriod(REPORT_ALL_KEY);
             return;
         }
-        if (!selectedReportPeriod || !monthlyReports.some(item => item.period === selectedReportPeriod)) {
-            setSelectedReportPeriod(monthlyReports[monthlyReports.length - 1].period || '');
+        if (!selectedReportPeriod || (selectedReportPeriod !== REPORT_ALL_KEY && !monthlyReports.some(item => item.period === selectedReportPeriod))) {
+            setSelectedReportPeriod(REPORT_ALL_KEY);
         }
     }, [monthlyReports, selectedReportPeriod]);
+
+    useEffect(() => {
+        if (!dimensionSections.length) return;
+        if (!activeDimensionKey || !dimensionSections.some(section => section.key === activeDimensionKey)) {
+            setActiveDimensionKey(dimensionSections[0].key);
+        }
+    }, [activeDimensionKey, dimensionSections]);
 
     const renderReportRow = (label, metricKey, rateKey = '') => (
         <tr key={label}>
@@ -314,6 +501,15 @@ export default function AsanMonthlyPerformance() {
             <td>{rateKey ? formatPercent(reportTotals[rateKey], 2) : ''}</td>
         </tr>
     );
+
+    const toggleDailyMonth = (period) => {
+        setExpandedDailyMonths(prev => {
+            const next = new Set(prev);
+            if (next.has(period)) next.delete(period);
+            else next.add(period);
+            return next;
+        });
+    };
 
     const syncNow = async ({ force = true, nextSlots = fileSlots, nextBaseYear = baseYear, nextExtraMonths = extraMonths } = {}) => {
         setSyncing(true);
@@ -440,6 +636,8 @@ export default function AsanMonthlyPerformance() {
                         <span>{totalRowsLabel}행</span>
                         <span>동기화 {fmtTs(payload?.synced_at)}</span>
                         {syncStatus?.running && <span className={styles.syncBadge}>동기화 진행중</span>}
+                        {syncStatus?.running && syncStatus.started_at && <span>시작 {fmtTs(syncStatus.started_at)}</span>}
+                        {syncStatus?.finished_at && !syncStatus.running && <span>완료 {fmtTs(syncStatus.finished_at)}</span>}
                     </div>
                 </div>
                 <div className={styles.actions}>
@@ -462,24 +660,24 @@ export default function AsanMonthlyPerformance() {
                     <section className={styles.monthlyReportSheet}>
                         <div className={styles.reportSheetTop}>
                             <div>
-                                <h3>{formatReportTitle(selectedReport?.period || selectedReportPeriod)}</h3>
+                                <h3>{reportTitleText}</h3>
                                 <strong>통합 <span>IN/OUT-BOUND</span></strong>
                             </div>
                             <div>
-                                <span>{DEFAULT_MONTHLY_RANGE_HINT}</span>
+                                <span>{monthRange || DEFAULT_MONTHLY_RANGE_HINT}</span>
                                 <b>단위 : 원</b>
                             </div>
                         </div>
-                        {monthlyReports.length > 0 && (
+                        {reportOptions.length > 0 && (
                             <div className={styles.reportPeriodTabs}>
-                                {monthlyReports.map(report => (
+                                {reportOptions.map(report => (
                                     <button
                                         key={report.period}
                                         type="button"
-                                        className={selectedReport?.period === report.period ? styles.reportPeriodActive : ''}
+                                        className={selectedReportPeriod === report.period ? styles.reportPeriodActive : ''}
                                         onClick={() => setSelectedReportPeriod(report.period)}
                                     >
-                                        {report.period}
+                                        {report.label}
                                     </button>
                                 ))}
                             </div>
@@ -557,23 +755,115 @@ export default function AsanMonthlyPerformance() {
 
                     <section className={styles.panel}>
                         <div className={styles.panelHeader}>
-                            <h3>일별 데이터</h3>
-                            <span>{latestDaily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
+                            <h3>월별·일별 트리</h3>
+                            <span>{daily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
                         </div>
-                        {latestDaily.length === 0 ? (
+                        {dailyTree.length === 0 ? (
                             <div className={styles.emptyPanel}>일별 원장 데이터를 아직 도출하지 못했습니다. 원본에 작업일자 컬럼이 있으면 동기화 후 자동 집계됩니다.</div>
                         ) : (
-                            <div className={styles.dailyList}>
-                                {latestDaily.map(item => (
-                                    <div className={styles.dailyRow} key={item.date}>
-                                        <span>{item.date}</span>
-                                        <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                        <em>{formatPerformanceAmount(item.purchase)}</em>
-                                        <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
-                                        <small>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</small>
+                            <div className={styles.dailyTree}>
+                                {dailyTree.map(item => (
+                                    <div className={styles.dailyTreeGroup} key={item.period}>
+                                        <button type="button" className={styles.dailyMonthRow} onClick={() => toggleDailyMonth(item.period)}>
+                                            <span>{expandedDailyMonths.has(item.period) ? '접기' : '펼치기'} {item.period}</span>
+                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                            <em>{formatPerformanceAmount(item.purchase)}</em>
+                                            <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
+                                            <small>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</small>
+                                        </button>
+                                        {expandedDailyMonths.has(item.period) && (
+                                            <div className={styles.dailyList}>
+                                                {(item.days || []).map(day => (
+                                                    <div className={styles.dailyRow} key={day.date}>
+                                                        <span>{day.date}</span>
+                                                        <strong>{formatPerformanceAmount(day.revenue)}</strong>
+                                                        <em>{formatPerformanceAmount(day.purchase)}</em>
+                                                        <b className={safeNumber(day.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(day.profit)}</b>
+                                                        <small>{safeNumber(day.rowCount).toLocaleString('ko-KR')}건</small>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
+                        )}
+                    </section>
+
+                    <section className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h3>세분화 분석</h3>
+                            <span>청구·하불·손익·건수 기준</span>
+                        </div>
+                        <div className={styles.dimensionDiagram}>
+                            <div>
+                                <span>청구</span>
+                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalRevenue) / diagramMax * 100))}%` }} />
+                            </div>
+                            <div>
+                                <span>하불</span>
+                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalPurchase) / diagramMax * 100))}%` }} />
+                            </div>
+                            <div>
+                                <span>손익</span>
+                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(totalProfit) / diagramMax * 100))}%` }} />
+                            </div>
+                            <div>
+                                <span>이월</span>
+                                <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(carryoverRevenue) / diagramMax * 100))}%` }} />
+                            </div>
+                        </div>
+                        {dimensionSections.length === 0 ? (
+                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 청구처, 작업지, 운송사, 구분, 픽업, 포트 컬럼이 있으면 동기화 후 자동 분석됩니다.</div>
+                        ) : (
+                            <>
+                                <div className={styles.dimensionTabs}>
+                                    {dimensionSections.map(section => (
+                                        <button
+                                            key={section.key}
+                                            type="button"
+                                            className={activeDimension?.key === section.key ? styles.dimensionTabActive : ''}
+                                            onClick={() => setActiveDimensionKey(section.key)}
+                                        >
+                                            {section.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className={styles.dimensionSummary}>
+                                    <span>대표 항목</span>
+                                    <strong>{topDimensionItem?.name || '-'}</strong>
+                                    <em>{topDimensionItem ? `${formatPerformanceAmount(topDimensionItem.revenue)} · ${safeNumber(topDimensionItem.rowCount).toLocaleString('ko-KR')}건` : '-'}</em>
+                                </div>
+                                <div className={styles.dimensionRows}>
+                                    <div className={styles.dimensionHead}>
+                                        <span>항목</span>
+                                        <span>청구</span>
+                                        <span>하불</span>
+                                        <span>손익</span>
+                                        <span>건수</span>
+                                        <span>률</span>
+                                    </div>
+                                    {(activeDimension?.items || []).slice(0, 12).map(item => (
+                                        <button
+                                            type="button"
+                                            className={styles.dimensionRow}
+                                            key={`${activeDimension.key}-${item.name}`}
+                                            onClick={() => openDetailSearch([item.name], 'and')}
+                                        >
+                                            <span>{item.name || '미분류'}</span>
+                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                            <em>{formatPerformanceAmount(item.purchase)}</em>
+                                            <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
+                                            <small>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</small>
+                                            <i>{formatPercent(item.profitRate ?? profitRate(item), 1)}</i>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
                         )}
                     </section>
 

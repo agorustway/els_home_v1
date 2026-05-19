@@ -575,6 +575,7 @@ export default function AsanAnnualPerformance() {
     const [browserLoading, setBrowserLoading] = useState(false);
     const [elapsed, setElapsed] = useState('');
     const requestIdRef = useRef(0);
+    const syncWasRunningRef = useRef(false);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -599,14 +600,23 @@ export default function AsanAnnualPerformance() {
         writePrefs(prefs);
     }, [selectedPath, sheetName, headerRow, colOrder, hiddenCols, payload?.headers]);
 
+    const applySyncStatus = useCallback((status) => {
+        if (!status) return { running: false, finished: false };
+        const running = Boolean(status.running);
+        const finished = syncWasRunningRef.current && !running;
+        syncWasRunningRef.current = running;
+        setSyncStatus(status);
+        setSyncing(running);
+        if (!running && status.last_error) {
+            setError(status.last_error);
+        }
+        return { running, finished };
+    }, []);
+
     const applyPayload = useCallback((nextPayload, options = {}) => {
         if (!nextPayload) return;
         if (nextPayload.sync_status) {
-            setSyncStatus(nextPayload.sync_status);
-            setSyncing(Boolean(nextPayload.sync_status.running));
-            if (!nextPayload.sync_status.running && nextPayload.sync_status.last_error) {
-                setError(nextPayload.sync_status.last_error);
-            }
+            applySyncStatus(nextPayload.sync_status);
         }
         if (nextPayload.sync_only) {
             setPayload(prev => prev || nextPayload);
@@ -632,7 +642,7 @@ export default function AsanAnnualPerformance() {
             setColOrder(reconciled.colOrder);
             setHiddenCols(reconciled.hiddenCols);
         }
-    }, []);
+    }, [applySyncStatus]);
 
     const fetchData = useCallback(async (options = {}) => {
         const page = options.page || 1;
@@ -687,6 +697,30 @@ export default function AsanAnnualPerformance() {
         if (!selectedPath) return;
         fetchData();
     }, [selectedPath, sheetName, headerRow, fetchData]);
+
+    const fetchSyncStatus = useCallback(async () => {
+        if (!selectedPath) return null;
+        try {
+            const params = new URLSearchParams({
+                source: 'status',
+                path: normalizePerformancePath(selectedPath),
+                sheet_name: sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
+                page: '1',
+                page_size: '1',
+            });
+            if (headerRow) params.set('header_row', String(headerRow));
+            const res = await fetch(`/api/branches/asan/performance/annual?${params.toString()}`, { cache: 'no-store' });
+            const json = await readPerformanceJson(res, '연간실적 동기화 상태 조회 실패');
+            return applySyncStatus(json.data?.sync_status);
+        } catch (err) {
+            if (syncWasRunningRef.current) setError(err.message || '연간실적 동기화 상태 조회 실패');
+            return null;
+        }
+    }, [applySyncStatus, headerRow, selectedPath, sheetName]);
+
+    useEffect(() => {
+        fetchSyncStatus();
+    }, [fetchSyncStatus]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -903,11 +937,12 @@ export default function AsanAnnualPerformance() {
 
     useEffect(() => {
         if (!syncing) return undefined;
-        const timer = setInterval(() => {
-            fetchData({ page: 1, quiet: true });
+        const timer = setInterval(async () => {
+            const statusResult = await fetchSyncStatus();
+            if (statusResult?.finished) fetchData({ page: 1, quiet: true });
         }, 5000);
         return () => clearInterval(timer);
-    }, [syncing, fetchData]);
+    }, [syncing, fetchData, fetchSyncStatus]);
 
     const loadNextPage = () => {
         if (!canLoadMore || loadingMore) return;
@@ -993,6 +1028,7 @@ export default function AsanAnnualPerformance() {
                         <span>{payload?.source || '대기'}</span>
                         <span>{totalRowsLabel}행</span>
                         {syncStatus?.running && <span className={styles.syncBadge}>동기화 진행중</span>}
+                        {syncStatus?.running && syncStatus.started_at && <span>시작 {fmtTs(syncStatus.started_at)}</span>}
                         {syncStatus?.finished_at && !syncStatus.running && <span>동기화 {fmtTs(syncStatus.finished_at)}</span>}
                     </div>
                 </div>

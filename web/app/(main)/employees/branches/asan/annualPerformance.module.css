@@ -1630,7 +1630,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-height: 0;
+    height: calc(100vh - 212px);
+    min-height: 420px;
     flex: 1;
 }
 
@@ -1686,6 +1687,7 @@
 
 .tableScroll {
     min-height: 0;
+    max-height: calc(100vh - 292px);
     flex: 1;
     overflow: auto;
     border: 1px solid #cbd5e1;
@@ -2088,22 +2090,53 @@
 .dailyList {
     display: flex;
     flex-direction: column;
-    padding: 8px;
+    padding: 0 8px 8px 28px;
 }
 
-.dailyRow {
-    display: grid;
-    grid-template-columns: 96px repeat(3, minmax(100px, 1fr)) 54px;
-    align-items: center;
-    gap: 6px;
-    min-height: 30px;
+.dailyTree {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 8px 8px;
+}
+
+.dailyTreeGroup {
     border-bottom: 1px solid #f1f5f9;
 }
 
-.dailyRow:last-child {
+.dailyTreeGroup:last-child {
     border-bottom: 0;
 }
 
+.dailyRow {
+    border-top: 1px solid #f1f5f9;
+}
+
+.dailyMonthRow,
+.dailyRow {
+    display: grid;
+    grid-template-columns: 116px repeat(3, minmax(100px, 1fr)) 58px;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+}
+
+.dailyMonthRow {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.dailyMonthRow:hover {
+    background: #f8fafc;
+}
+
+.dailyMonthRow span,
+.dailyMonthRow strong,
+.dailyMonthRow em,
+.dailyMonthRow b,
+.dailyMonthRow small,
 .dailyRow span,
 .dailyRow strong,
 .dailyRow em,
@@ -2115,11 +2148,184 @@
     font-weight: 850;
 }
 
+.dailyMonthRow strong,
+.dailyMonthRow em,
+.dailyMonthRow b,
+.dailyMonthRow small,
 .dailyRow strong,
 .dailyRow em,
 .dailyRow b,
 .dailyRow small {
     text-align: right;
+}
+
+.dimensionDiagram {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.dimensionDiagram div {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.dimensionDiagram span,
+.dimensionDiagram strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dimensionDiagram span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.dimensionDiagram strong {
+    margin: 3px 0 5px;
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 950;
+}
+
+.dimensionDiagram i {
+    display: block;
+    height: 7px;
+    border-radius: 999px;
+    background: #0f766e;
+}
+
+.dimensionTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 8px 0;
+}
+
+.dimensionTabs button {
+    height: 25px;
+    padding: 0 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.dimensionTabActive {
+    border-color: #0f766e !important;
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.dimensionSummary {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    margin: 8px;
+    padding: 7px 8px;
+    border: 1px solid #ccfbf1;
+    border-radius: 6px;
+    background: #f0fdfa;
+}
+
+.dimensionSummary span,
+.dimensionSummary em {
+    color: #0f766e;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.dimensionSummary strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dimensionRows {
+    display: flex;
+    flex-direction: column;
+    padding: 0 8px 9px;
+    overflow-x: auto;
+}
+
+.dimensionHead,
+.dimensionRow {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) 100px 100px 100px 58px 54px;
+    align-items: center;
+    gap: 7px;
+    min-width: 680px;
+}
+
+.dimensionHead {
+    min-height: 26px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.dimensionHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-align: right;
+}
+
+.dimensionHead span:first-child {
+    text-align: left;
+}
+
+.dimensionRow {
+    width: 100%;
+    min-height: 29px;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.dimensionRow:hover {
+    background: #f8fafc;
+}
+
+.dimensionRow span,
+.dimensionRow strong,
+.dimensionRow em,
+.dimensionRow b,
+.dimensionRow small,
+.dimensionRow i {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.dimensionRow span {
+    text-align: left;
 }
 
 .monthlyModal {
@@ -2421,9 +2627,15 @@
         border-radius: 6px;
     }
 
+    .dailyMonthRow,
     .dailyRow {
         grid-template-columns: 92px repeat(3, minmax(84px, 1fr)) 48px;
         min-width: 560px;
+    }
+
+    .dimensionDiagram,
+    .dimensionSummary {
+        grid-template-columns: 1fr;
     }
 
     .kpi {

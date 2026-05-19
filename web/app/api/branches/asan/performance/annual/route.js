@@ -8,6 +8,13 @@ export const revalidate = 0;
 export async function GET(req) {
     const url = new URL(req.url);
     const source = (url.searchParams.get('source') || 'supabase').toLowerCase();
+    if (source === 'excel' || source === 'status') {
+        if (process.env.ELS_BACKEND_URL) {
+            return proxyToBackend(req, '/api/branches/asan/performance/annual');
+        }
+        return NextResponse.json({ error: 'ELS_BACKEND_URL 미설정 또는 연간실적 동기화 상태 조회 실패' }, { status: 500 });
+    }
+
     if (source !== 'excel') {
         try {
             const data = await queryAsanAnnualPerformanceFromSupabase(url.searchParams);
@@ -17,9 +24,6 @@ export async function GET(req) {
         }
     }
 
-    if (process.env.ELS_BACKEND_URL) {
-        return proxyToBackend(req, '/api/branches/asan/performance/annual');
-    }
     return NextResponse.json({ error: 'ELS_BACKEND_URL 미설정 또는 연간실적 DB 조회 실패' }, { status: 500 });
 }
 

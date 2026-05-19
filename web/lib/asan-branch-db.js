@@ -1119,6 +1119,9 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
         monthlyFileCount: metas.length,
         monthlyFileSlots,
         monthlyReports: monthlyReports.sort((a, b) => String(a.period || '').localeCompare(String(b.period || ''))),
+        breakdowns: mergeBreakdowns(metas, totalRevenue),
+        strategicSegments: mergeStrategicSegments(metas, totalRevenue),
+        vehiclePerformance: mergeVehiclePerformance(metas, totalRevenue),
         carryover: {
             revenue: Math.round(carryover.revenue * 100) / 100,
             purchase: Math.round(carryover.purchase * 100) / 100,

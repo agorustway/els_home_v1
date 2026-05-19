@@ -1,3 +1,46 @@
+## [2026-05-19] 아산 월간실적 분석 범위/트리/세분화 보강 (v5.14.31)
+### 핵심
+- 월간 `아산매출보고서` 표는 기본 선택을 개별 월이 아니라 `전체`로 두고, 월별 버튼으로 특정 월 범위를 볼 수 있게 했습니다.
+- 월별 성과 아래 일별 원장은 월별로 접힌 트리 구조로 표시하고, 월을 펼치면 해당 월의 일별 청구/하불/손익/건수를 볼 수 있게 했습니다.
+- 월간 Supabase summary에 `breakdowns`, `strategicSegments`, `vehiclePerformance` 병합을 추가해 청구처, 작업지, 운송사(명의), 구분, 청구픽업, 포트 등 테이블 컬럼 기반 세분화 분석을 화면에서 바로 쓸 수 있게 했습니다.
+- 세분화 패널에는 청구/하불/손익/이월 분해 다이어그램과 차원별 청구·하불·손익·건수·손익률 표를 추가했습니다. 항목 클릭 시 테이블 AND 검색으로 근거 원장까지 이동합니다.
+- 월간/연간 테이블 영역은 `100vh` 기준 내부 높이를 잡아 가로/세로 스크롤바가 브라우저 화면 안에 먼저 보이도록 조정했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js app/api/branches/asan/performance/monthly/route.js app/api/branches/asan/performance/annual/route.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 실적관리 동기화 상태 재진입 유지 (v5.14.30)
+### 핵심
+- 월간/연간실적 `NAS 동기화`는 NAS Core 백그라운드 작업으로 계속 돌 수 있지만, 화면을 떠났다가 돌아오면 React 로컬 `syncing` 상태가 초기화되어 진행중 표시가 사라질 수 있었습니다.
+- Next API에 `source=status` 조회를 추가해 월간/연간 상태 요청은 Supabase 원장 조회가 아니라 NAS Core로 직접 프록시합니다.
+- 연간 NAS Core는 `source=status`일 때 원장/엑셀을 다시 읽지 않고 `_sync_only_data()` + `sync_status`만 반환합니다.
+- 월간/연간 화면은 진입 시 상태를 확인하고, 진행 중이면 5초마다 상태만 polling해 `동기화 진행중`, 시작/완료 시각을 유지합니다. 완료 전환을 감지하면 Supabase 데이터를 조용히 새로고침합니다.
+### 검증
+- `node --check web\app\api\branches\asan\performance\monthly\route.js`: 통과
+- `node --check web\app\api\branches\asan\performance\annual\route.js`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- app/api/branches/asan/performance/monthly/route.js app/api/branches/asan/performance/annual/route.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/performance/monthly/route.js`
+- `web/app/api/branches/asan/performance/annual/route.js`
+- `docker/els-backend/asan_performance.py`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 연간실적 NAS 동기화 응답 경량화 (v5.14.29)
 ### 핵심
 - 연간실적 `NAS 동기화` 버튼이 백그라운드 importer를 시작한 뒤 NAS Core `_query()`로 36만 행 원장을 다시 count/조회하며 `statement timeout`을 화면에 노출하던 문제를 수정했습니다.

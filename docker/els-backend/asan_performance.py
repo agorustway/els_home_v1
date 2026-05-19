@@ -1418,6 +1418,17 @@ def register_asan_performance_routes(app, supabase, kst):
             rel_path = request.args.get("path") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH
             sheet_name = request.args.get("sheet_name") or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET
             source = (request.args.get("source", "supabase") or "supabase").lower()
+            if source == "status":
+                return jsonify({
+                    "data": _attach_sync_status(_sync_only_data(
+                        rel_path=rel_path,
+                        sheet_name=sheet_name,
+                        page=request.args.get("page", 1),
+                        page_size=request.args.get("page_size", 1),
+                        source="core-sync-status",
+                    ))
+                })
+
             if source != "excel":
                 db_data = _query(
                     rel_path=rel_path,
