@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS,
     FIRST_SHEET_TOKEN,
@@ -46,6 +46,28 @@ const DIMENSION_HINTS = [
 ];
 const EMPTY_LIST = Object.freeze([]);
 
+class MonthlyAnalysisErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.resetKey !== prevProps.resetKey && this.state.hasError) {
+            this.setState({ hasError: false });
+        }
+    }
+
+    render() {
+        if (this.state.hasError) return this.props.fallback;
+        return this.props.children;
+    }
+}
+
 function fmtTs(value) {
     if (!value) return '-';
     const date = new Date(value);
@@ -87,6 +109,13 @@ function safeNumber(value) {
     return Number.isFinite(number) ? number : 0;
 }
 
+function safeObjectList(value) {
+    const list = Array.isArray(value)
+        ? value
+        : (value && typeof value === 'object' ? Object.values(value) : EMPTY_LIST);
+    return list.filter(item => item && typeof item === 'object');
+}
+
 function formatPercent(value, digits = 1) {
     return `${(Number(value) || 0).toLocaleString('ko-KR', {
         minimumFractionDigits: digits,
@@ -110,14 +139,11 @@ function isMetricActive(item = {}) {
 }
 
 function metricSeries(item = {}, field) {
-    const value = item?.[field];
-    if (Array.isArray(value)) return value;
-    if (value && typeof value === 'object') return Object.values(value);
-    return EMPTY_LIST;
+    return safeObjectList(item?.[field]);
 }
 
 function sumMetricItems(items = []) {
-    return (items || []).reduce((sum, item) => ({
+    return safeObjectList(items).reduce((sum, item) => ({
         revenue: sum.revenue + safeNumber(item.revenue),
         purchase: sum.purchase + safeNumber(item.purchase),
         profit: sum.profit + safeNumber(item.profit),
@@ -126,7 +152,7 @@ function sumMetricItems(items = []) {
 }
 
 function maxBy(items = [], key) {
-    return (items || []).reduce((best, item) => (
+    return safeObjectList(items).reduce((best, item) => (
         !best || safeNumber(item?.[key]) > safeNumber(best?.[key]) ? item : best
     ), null);
 }
@@ -151,8 +177,9 @@ function metricDelta(current, previous, key) {
 function previousMetricItem(items = [], current = null, keyField = 'period') {
     if (!current) return null;
     const currentKey = String(current[keyField] || '');
-    const index = (items || []).findIndex(item => String(item?.[keyField] || '') === currentKey);
-    return index > 0 ? items[index - 1] : null;
+    const list = safeObjectList(items);
+    const index = list.findIndex(item => String(item?.[keyField] || '') === currentKey);
+    return index > 0 ? list[index - 1] : null;
 }
 
 function scopedMetricFromSeries(item = {}, metric = {}, totalForShare = 0) {
@@ -187,7 +214,7 @@ function findScopedMetric(item = {}, scope, selectedMonth, selectedDay) {
 }
 
 function scopeMetricList(items = [], scope, selectedMonth, selectedDay, totalForShare = 0, limit = 999) {
-    const list = (items || []).map((item) => {
+    const list = safeObjectList(items).map((item) => {
         if (scope === ANALYSIS_SCOPE_ALL) return item;
         const metric = findScopedMetric(item, scope, selectedMonth, selectedDay);
         return metric ? scopedMetricFromSeries(item, metric, totalForShare) : null;
@@ -208,8 +235,11 @@ function normalizeStrategicSegment(segment = {}) {
 }
 
 function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, totalForShare = 0) {
-    if (scope === ANALYSIS_SCOPE_ALL) return sections;
-    return sections
+    const safeSections = safeObjectList(sections)
+        .map(section => ({ ...section, items: safeObjectList(section.items) }))
+        .filter(section => section.items.length);
+    if (scope === ANALYSIS_SCOPE_ALL) return safeSections;
+    return safeSections
         .map(section => ({
             ...section,
             items: scopeMetricList(section.items || [], scope, selectedMonth, selectedDay, totalForShare, 60),
@@ -282,7 +312,7 @@ function finalizeReportMetric(metric) {
 }
 
 function aggregateMonthlyReports(reports = []) {
-    const validReports = (reports || []).filter(report => Array.isArray(report.groups) && report.groups.length);
+    const validReports = safeObjectList(reports).filter(report => Array.isArray(report.groups) && report.groups.length);
     if (!validReports.length) return null;
 
     const groups = new Map();
@@ -330,9 +360,9 @@ function aggregateMonthlyReports(reports = []) {
 }
 
 function normalizeDimensionSections(breakdowns = []) {
-    const sections = (breakdowns || [])
-        .filter(section => Array.isArray(section.items) && section.items.length)
-        .map(section => ({ ...section, label: section.column || '분류별' }));
+    const sections = safeObjectList(breakdowns)
+        .map(section => ({ ...section, items: safeObjectList(section.items), label: section.column || '분류별' }))
+        .filter(section => section.items.length);
     const selected = [];
     const used = new Set();
 
@@ -354,10 +384,10 @@ function normalizeDimensionSections(breakdowns = []) {
 
 function groupDailyByMonth(monthly = [], daily = []) {
     const map = new Map();
-    monthly.forEach((item) => {
+    safeObjectList(monthly).forEach((item) => {
         map.set(item.period, { ...item, days: [] });
     });
-    daily.forEach((item) => {
+    safeObjectList(daily).forEach((item) => {
         const period = item.period || String(item.date || '').slice(0, 7);
         if (!period) return;
         if (!map.has(period)) {
@@ -696,9 +726,9 @@ export default function AsanMonthlyPerformance() {
     const headers = useMemo(() => (Array.isArray(payload?.headers) ? payload.headers : []), [payload]);
     const rows = useMemo(() => (Array.isArray(payload?.data) ? payload.data : []), [payload]);
     const summary = payload?.summary || {};
-    const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
-    const daily = Array.isArray(summary.daily) ? summary.daily : EMPTY_LIST;
-    const monthlyReports = Array.isArray(summary.monthlyReports) ? summary.monthlyReports : EMPTY_LIST;
+    const monthly = safeObjectList(summary.monthly);
+    const daily = safeObjectList(summary.daily);
+    const monthlyReports = safeObjectList(summary.monthlyReports);
     const allReport = useMemo(() => aggregateMonthlyReports(monthlyReports), [monthlyReports]);
     const reportOptions = useMemo(() => (
         allReport ? [{ period: REPORT_ALL_KEY, label: '전체' }, ...monthlyReports.map(report => ({ period: report.period, label: report.period }))] : []
@@ -714,19 +744,27 @@ export default function AsanMonthlyPerformance() {
     }, [colOrder, headers, hiddenCols]);
     const availableMonths = useMemo(() => monthly.filter(isMetricActive), [monthly]);
     const availableDays = useMemo(() => daily.filter(isMetricActive), [daily]);
+    const fallbackAnalysisMonthValue = availableMonths[availableMonths.length - 1]?.period || '';
+    const fallbackAnalysisDayValue = availableDays[availableDays.length - 1]?.date || '';
+    const activeAnalysisMonthValue = availableMonths.some(item => item.period === selectedAnalysisMonth)
+        ? selectedAnalysisMonth
+        : fallbackAnalysisMonthValue;
+    const activeAnalysisDayValue = availableDays.some(item => item.date === selectedAnalysisDay)
+        ? selectedAnalysisDay
+        : fallbackAnalysisDayValue;
     const scopedMonthly = useMemo(() => {
-        if (analysisScope === ANALYSIS_SCOPE_MONTH) return monthly.filter(item => item.period === selectedAnalysisMonth && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) return monthly.filter(item => item.period === activeAnalysisMonthValue && isMetricActive(item));
         if (analysisScope === ANALYSIS_SCOPE_DAY) {
-            const dayMonth = String(selectedAnalysisDay || '').slice(0, 7);
+            const dayMonth = String(activeAnalysisDayValue || '').slice(0, 7);
             return monthly.filter(item => item.period === dayMonth && isMetricActive(item));
         }
         return monthly.filter(isMetricActive);
-    }, [analysisScope, monthly, selectedAnalysisDay, selectedAnalysisMonth]);
+    }, [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, monthly]);
     const scopedDaily = useMemo(() => {
-        if (analysisScope === ANALYSIS_SCOPE_MONTH) return daily.filter(item => (item.period || String(item.date || '').slice(0, 7)) === selectedAnalysisMonth && isMetricActive(item));
-        if (analysisScope === ANALYSIS_SCOPE_DAY) return daily.filter(item => item.date === selectedAnalysisDay && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) return daily.filter(item => (item.period || String(item.date || '').slice(0, 7)) === activeAnalysisMonthValue && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_DAY) return daily.filter(item => item.date === activeAnalysisDayValue && isMetricActive(item));
         return daily.filter(isMetricActive);
-    }, [analysisScope, daily, selectedAnalysisDay, selectedAnalysisMonth]);
+    }, [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, daily]);
     const monthRange = monthly.length ? `${monthly[0].period} ~ ${monthly[monthly.length - 1].period}` : DEFAULT_MONTHLY_RANGE_HINT;
     const scopedMonthRange = scopedMonthly.length ? `${scopedMonthly[0].period} ~ ${scopedMonthly[scopedMonthly.length - 1].period}` : monthRange;
     const totalRevenue = safeNumber(summary.totalRevenue);
@@ -743,8 +781,8 @@ export default function AsanMonthlyPerformance() {
     const scopeRows = safeNumber(scopedTotals.rowCount);
     const scopeProfitRate = scopeRevenue ? (scopeProfit / scopeRevenue) * 100 : 0;
     const selectedScopePeriod = analysisScope === ANALYSIS_SCOPE_MONTH
-        ? selectedAnalysisMonth
-        : (analysisScope === ANALYSIS_SCOPE_DAY ? String(selectedAnalysisDay || '').slice(0, 7) : '');
+        ? activeAnalysisMonthValue
+        : (analysisScope === ANALYSIS_SCOPE_DAY ? String(activeAnalysisDayValue || '').slice(0, 7) : '');
     const selectedReport = selectedReportPeriod === REPORT_ALL_KEY
         ? allReport
         : (monthlyReports.find(item => item.period === selectedReportPeriod) || allReport || monthlyReports[monthlyReports.length - 1] || null);
@@ -771,31 +809,30 @@ export default function AsanMonthlyPerformance() {
     const revenueDelta = metricDelta(latestMonth, previousMonth, 'revenue');
     const avgRevenuePerJob = scopeRows ? scopeRevenue / scopeRows : 0;
     const carryoverRate = scopeRevenue ? (carryoverRevenue / scopeRevenue) * 100 : 0;
-    const segmentItems = (Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST)
+    const segmentItems = safeObjectList(summary.strategicSegments)
         .map(normalizeStrategicSegment)
         .filter(Boolean);
-    const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue, 2);
+    const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 2);
     const scopedDimensionSections = useMemo(() => (
-        scopeDimensionSections(dimensionSections, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue)
-    ), [analysisScope, dimensionSections, scopeRevenue, selectedAnalysisDay, selectedAnalysisMonth]);
+        scopeDimensionSections(dimensionSections, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue)
+    ), [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, dimensionSections, scopeRevenue]);
     const activeDimension = scopedDimensionSections.find(section => section.key === activeDimensionKey) || scopedDimensionSections[0] || null;
     const topDimensionItem = activeDimension?.items?.[0] || null;
     const dailyTree = useMemo(() => groupDailyByMonth(scopedMonthly, scopedDaily), [scopedDaily, scopedMonthly]);
-    const topVehicles = scopeMetricList(Array.isArray(summary.vehiclePerformance) ? summary.vehiclePerformance : EMPTY_LIST, analysisScope, selectedAnalysisMonth, selectedAnalysisDay, scopeRevenue, 5);
+    const topVehicles = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 5);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
     const vehicleMax = Math.max(1, ...topVehicles.map(item => Math.abs(safeNumber(item.revenue))));
     const chartMax = getPerformanceChartMax(scopedMonthly, ['revenue', 'purchase', 'profit']);
     const scopeLabel = analysisScope === ANALYSIS_SCOPE_MONTH
-        ? `월별 ${selectedAnalysisMonth || '-'}`
-        : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${selectedAnalysisDay || '-'}` : '전체');
+        ? `월별 ${activeAnalysisMonthValue || '-'}`
+        : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${activeAnalysisDayValue || '-'}` : '전체');
     const scopeBasisLabel = analysisScope === ANALYSIS_SCOPE_DAY ? '작업일자' : '마감월';
-    const activeAnalysisMonthValue = selectedAnalysisMonth || availableMonths[availableMonths.length - 1]?.period || '';
-    const activeAnalysisDayValue = selectedAnalysisDay || availableDays[availableDays.length - 1]?.date || '';
+    const analysisResetKey = `${analysisScope}:${activeAnalysisMonthValue}:${activeAnalysisDayValue}:${totalRows}:${payload?.synced_at || ''}`;
     const changeAnalysisScope = (nextScope) => {
         if (nextScope === ANALYSIS_SCOPE_MONTH && !activeAnalysisMonthValue) return;
         if (nextScope === ANALYSIS_SCOPE_DAY && !activeAnalysisDayValue) return;
-        if (nextScope === ANALYSIS_SCOPE_MONTH && !selectedAnalysisMonth) setSelectedAnalysisMonth(activeAnalysisMonthValue);
-        if (nextScope === ANALYSIS_SCOPE_DAY && !selectedAnalysisDay) setSelectedAnalysisDay(activeAnalysisDayValue);
+        if (nextScope === ANALYSIS_SCOPE_MONTH) setSelectedAnalysisMonth(activeAnalysisMonthValue);
+        if (nextScope === ANALYSIS_SCOPE_DAY) setSelectedAnalysisDay(activeAnalysisDayValue);
         setAnalysisScope(nextScope);
     };
 
@@ -965,7 +1002,8 @@ export default function AsanMonthlyPerformance() {
     };
 
     const openDetailSearch = (terms = [], mode = 'and') => {
-        const text = terms.map(term => String(term || '').trim()).filter(Boolean).join(', ');
+        const list = Array.isArray(terms) ? terms : [terms];
+        const text = list.map(term => String(term || '').trim()).filter(Boolean).join(', ');
         if (!text) return;
         setSearchMode(mode);
         setSearchInput(text);
@@ -1004,7 +1042,15 @@ export default function AsanMonthlyPerformance() {
             {loading && !payload ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
-                <div className={styles.analytics}>
+                <MonthlyAnalysisErrorBoundary
+                    resetKey={analysisResetKey}
+                    fallback={(
+                        <div className={styles.emptyState}>
+                            월간실적 분석 화면을 다시 정리하는 중입니다. 전체 기준으로 돌아가거나 NAS 동기화 후 다시 시도해 주세요.
+                        </div>
+                    )}
+                >
+                    <div className={styles.analytics}>
                     <section className={`${styles.panel} ${styles.analysisScopePanel}`}>
                         <div className={styles.analysisScopeTitle}>
                             <span>분석 기준</span>
@@ -1417,7 +1463,8 @@ export default function AsanMonthlyPerformance() {
                         </section>
                     )}
 
-                </div>
+                    </div>
+                </MonthlyAnalysisErrorBoundary>
             ) : (
                 <div className={styles.tableArea}>
                     <div className={styles.tableToolbar}>

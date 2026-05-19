@@ -168,10 +168,18 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /분석 기준/);
   assert.match(component, /월별 선택/);
   assert.match(component, /일별 선택/);
+  assert.match(component, /class MonthlyAnalysisErrorBoundary extends React\.Component/);
+  assert.match(component, /resetKey=\{analysisResetKey\}/);
+  assert.match(component, /function safeObjectList\(value\)/);
+  assert.match(component, /const monthly = safeObjectList\(summary\.monthly\)/);
+  assert.match(component, /const daily = safeObjectList\(summary\.daily\)/);
+  assert.match(component, /const monthlyReports = safeObjectList\(summary\.monthlyReports\)/);
   assert.match(component, /if \(!item \|\| typeof item !== 'object'\) return false/);
   assert.match(component, /function metricSeries\(item = \{\}, field\)/);
   assert.match(component, /metricSeries\(item, 'monthly'\)\.find/);
   assert.match(component, /metricSeries\(item, 'daily'\)\.find/);
+  assert.match(component, /const activeAnalysisMonthValue = availableMonths\.some/);
+  assert.match(component, /scopeMetricList\(segmentItems, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue/);
   assert.match(component, /changeAnalysisScope/);
   assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableMonths\.length\}/);
   assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableDays\.length\}/);

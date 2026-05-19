@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 범위 전환 데이터 정규화 (v5.14.42)
+### 핵심
+- 월별/일별 선택 시 화면에 쓰는 `monthly`, `daily`, `monthlyReports`, `breakdowns`, `strategicSegments`, `vehiclePerformance`를 모두 안전한 객체 배열로 정규화했습니다.
+- 선택 월/일은 실제 옵션에 존재하는 값만 사용하게 바꿔, 오래된 상태값이 남아도 빈 범위로 렌더링하지 않도록 했습니다.
+- 월간 분석 내부 오류 경계를 추가해 분석 카드 일부에서 예외가 나도 앱 전체 오류 페이지로 번지지 않게 했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+- `npm.cmd run dev -- -p 3010`: Next dev 컴파일은 되었으나 sandbox 네트워크 제한으로 외부 weather/news fetch가 `EACCES`를 내며 실제 브라우저 클릭 검증은 완료하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 범위 전환 오류/월 라벨 보정 (v5.14.41)
 ### 핵심
 - 월별/일별 선택 시 세분화 항목 중 해당 범위 데이터가 없는 항목이 `null`로 들어오며 렌더링을 중단시키던 문제를 수정했습니다.
