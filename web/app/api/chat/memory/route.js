@@ -30,13 +30,11 @@ export async function GET(request) {
         }
 
         if (data && !hasUserConversation(data.messages || [])) {
-            const updatedAtTime = data.updated_at ? Date.parse(data.updated_at) : NaN;
-            if (Number.isFinite(updatedAtTime) && Date.now() - updatedAtTime > 30000) {
-                await admin
-                    .from('ai_chat_memory')
-                    .delete()
-                    .eq('email', user.email);
-            }
+            return NextResponse.json({
+                messages: [],
+                cleared: true,
+                clearedAt: data.updated_at || null,
+            });
         }
 
         return NextResponse.json({ messages: data?.messages || [] });
@@ -123,7 +121,6 @@ export async function DELETE(request) {
         }
 
         const admin = await createAdminClient();
-        const purgeOnly = new URL(request.url).searchParams.get('purge') === '1';
         const { data, error } = await admin
             .from('ai_chat_memory')
             .delete()
@@ -131,10 +128,6 @@ export async function DELETE(request) {
             .select('email');
 
         if (error) throw error;
-
-        if (purgeOnly) {
-            return NextResponse.json({ success: true, deleted: data?.length || 0, purged: true });
-        }
 
         const deletedAt = new Date().toISOString();
         const { error: markerError } = await admin

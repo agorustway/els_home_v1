@@ -1,3 +1,19 @@
+## [2026-05-19] AI 어시스턴트 전체 삭제 유령 목록 재등장 차단 (v5.14.24)
+### 핵심
+- 전체 삭제 후 10초 뒤 `purge=1` 검증 삭제가 DB의 빈 삭제마커까지 지우면서, 늦게 도착한 예전 자동저장 POST가 옛 대화 목록을 다시 살릴 수 있던 원인을 확인했습니다.
+- `/api/chat/memory`는 사용자 대화 내용은 빈 배열로 비우되, `updated_at` 삭제마커를 유지하고 GET 응답에 `clearedAt`을 내려줍니다.
+- AI 대화 화면은 서버 `clearedAt`을 받으면 `els_ai_sessions_cleared_at`을 갱신하고 로컬 `els_ai_sessions`를 제거해, 로컬 캐시에 남은 옛 목록도 즉시 무효화합니다.
+- 삭제 후 검증 재시도는 더 이상 tombstone을 purge하지 않고 빈 삭제마커를 재확인하는 방식으로 바꿨습니다.
+### 검증
+- `node --test web/tests/chatMemory.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" app/api/chat/memory/route.js utils/chatMemory.mjs tests/chatMemory.test.mjs`: 0 errors, 기존 warning 8건
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/api/chat/memory/route.js`
+- `web/tests/chatMemory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 연간실적 다중 파일 통합 조회 (v5.14.23)
 ### 핵심
 - 연간실적 조회 API에 `aggregate=all` 모드를 추가했습니다.

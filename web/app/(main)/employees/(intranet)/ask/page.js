@@ -247,6 +247,14 @@ export default function AskPage() {
         return null;
     }, []);
 
+    const applyHistoryClearedMarker = useCallback((clearedAt) => {
+        if (!clearedAt) return;
+        try {
+            localStorage.setItem(LS_CLEAR_KEY, clearedAt);
+            localStorage.removeItem(LS_KEY);
+        } catch {}
+    }, []);
+
     const deleteSession = async (id) => {
         if (!window.confirm('이 대화 기록을 삭제하시겠습니까?')) return;
         const remaining = sessions.filter(s => s.id !== id);
@@ -340,7 +348,7 @@ export default function AskPage() {
         [
             { delay: 600, purge: false },
             { delay: 2000, purge: false },
-            { delay: 10000, purge: true }
+            { delay: 10000, purge: false }
         ].forEach(({ delay, purge }) => {
             window.setTimeout(() => {
                 if (!memoryDeleteLockRef.current) return;
@@ -418,6 +426,14 @@ export default function AskPage() {
                 if (res.ok) {
                     const data = await res.json();
                     let raw = data.messages || [];
+                    if (data.clearedAt) {
+                        applyHistoryClearedMarker(data.clearedAt);
+                        if (!shouldUsePersistedSessions({ sessions: finalSessions || [], clearedAt: data.clearedAt })) {
+                            finalSessions = null;
+                            setSessions([]);
+                            setActiveId('');
+                        }
+                    }
                     if (raw.length > 0 && raw[0].id && raw[0].messages) {
                         const clearedAt = readHistoryClearedAt();
                         if (shouldUsePersistedSessions({ sessions: raw, clearedAt })) {
@@ -429,8 +445,8 @@ export default function AskPage() {
                                 saveToLocal(raw);
                             }
                         } else if (clearedAt) {
-                            deleteRemoteMemory({ purge: true }).catch((e) => {
-                                console.warn('[ELS-AI] 삭제 마커 이후 DB 잔여 대화 purge 실패:', e.message);
+                            deleteRemoteMemory().catch((e) => {
+                                console.warn('[ELS-AI] 삭제 마커 이후 DB 잔여 대화 정리 실패:', e.message);
                             });
                         }
                     }
@@ -444,7 +460,7 @@ export default function AskPage() {
             setIsLoaded(true);
         };
         loadMemory();
-    }, [deleteRemoteMemory, loadFromLocal, readHistoryClearedAt, saveToLocal]);
+    }, [applyHistoryClearedMarker, deleteRemoteMemory, loadFromLocal, readHistoryClearedAt, saveToLocal]);
 
     // ─── 세션 저장: localStorage 즉시 + DB 디바운스 ──────────────────
     sessionsRef.current = sessions;
