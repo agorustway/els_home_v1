@@ -483,6 +483,12 @@ function addMetric(map, key, seed, revenue, purchase, profit, rowCount = 1) {
   return item;
 }
 
+function finalizeSeries(map, roundItem, limit = 9999, sorter = null) {
+  const list = Array.from(map.values()).map(item => roundItem({ ...item }));
+  if (sorter) list.sort(sorter);
+  return list.slice(0, limit);
+}
+
 function headerIndex(headers, words, exact = '') {
   if (exact) {
     const exactIdx = headers.findIndex(header => String(header || '').trim() === exact);
@@ -686,13 +692,9 @@ function createAdvancedAccumulator(headers) {
   }
 
   function finish(roundItem, totalRevenue) {
-    const finalizeSeries = (map, limit = 9999, sorter = null) => {
-      const list = Array.from(map.values()).map(item => roundItem({ ...item }));
-      if (sorter) list.sort(sorter);
-      return list.slice(0, limit);
-    };
     const finalizeTop = map => finalizeSeries(
       map,
+      roundItem,
       12,
       (a, b) => Math.abs(b.revenue) - Math.abs(a.revenue),
     ).map((item) => ({
@@ -702,9 +704,9 @@ function createAdvancedAccumulator(headers) {
     }));
 
     return {
-      daily: finalizeSeries(daily, 400, (a, b) => a.date.localeCompare(b.date)),
-      weekly: finalizeSeries(weekly, 620, (a, b) => a.weekStart.localeCompare(b.weekStart)),
-      weekday: finalizeSeries(weekday, 7, (a, b) => a.day - b.day),
+      daily: finalizeSeries(daily, roundItem, 400, (a, b) => a.date.localeCompare(b.date)),
+      weekly: finalizeSeries(weekly, roundItem, 620, (a, b) => a.weekStart.localeCompare(b.weekStart)),
+      weekday: finalizeSeries(weekday, roundItem, 7, (a, b) => a.day - b.day),
       strategicSegments: Array.from(segments.values()).map((segment) => {
         const rounded = roundItem({
           key: segment.key,
@@ -718,9 +720,9 @@ function createAdvancedAccumulator(headers) {
         });
         rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
         rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
-        rounded.yearly = finalizeSeries(segment.yearly, 40, (a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR'));
-        rounded.monthly = finalizeSeries(segment.monthly, 240, (a, b) => a.period.localeCompare(b.period));
-        rounded.weekday = finalizeSeries(segment.weekday, 7, (a, b) => a.day - b.day);
+        rounded.yearly = finalizeSeries(segment.yearly, roundItem, 40, (a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR'));
+        rounded.monthly = finalizeSeries(segment.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
+        rounded.weekday = finalizeSeries(segment.weekday, roundItem, 7, (a, b) => a.day - b.day);
         rounded.topWorkSites = finalizeTop(segment.topWorkSites);
         rounded.topClients = finalizeTop(segment.topClients);
         rounded.topRoutes = finalizeTop(segment.topRoutes);
@@ -743,7 +745,7 @@ function createAdvancedAccumulator(headers) {
         });
         rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
         rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
-        rounded.monthly = finalizeSeries(vehicle.monthly, 240, (a, b) => a.period.localeCompare(b.period));
+        rounded.monthly = finalizeSeries(vehicle.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
         return rounded;
       }).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue)).slice(0, 80),
       vehicleDataQuality: {
@@ -761,7 +763,7 @@ function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, ro
       const rounded = roundItem(item);
       rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
       rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
-      rounded.monthly = finalizeSeries(item.monthly, 240, (a, b) => a.period.localeCompare(b.period));
+      rounded.monthly = finalizeSeries(item.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
       return rounded;
     });
     items.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));

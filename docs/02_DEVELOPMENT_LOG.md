@@ -1,3 +1,21 @@
+## [2026-05-19] 아산 월간실적 NAS 동기화 helper 스코프 수정 (v5.14.28)
+### 원인
+- NAS 월간실적 동기화 로그에서 1~4월 파일 모두 Excel 파싱 후 `ReferenceError: finalizeSeries is not defined`로 실패했습니다.
+- `finalizeBreakdowns()`는 summary 하위 월별 breakdown을 마감할 때 `finalizeSeries()`를 호출하지만, 해당 helper가 `createAdvancedAccumulator().finish()` 내부 지역 함수로만 선언되어 월간 `diff-current` importer 경로에서 접근할 수 없었습니다.
+### 조치
+- `finalizeSeries(map, roundItem, ...)`를 top-level 공용 helper로 올렸습니다.
+- advanced summary와 breakdown summary 모두 같은 helper를 사용하게 바꾸고, 월간 테스트에 helper 스코프 회귀 검사를 추가했습니다.
+### 검증
+- NAS 로그 확인: `/volume1/docker/els_home_v1/logs/asan-monthly-performance-web-sync-20260519-133214.log`
+- `node --check web\scripts\import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 연간실적 통합 조회 timeout 최적화 (v5.14.27)
 ### 핵심
 - 연간실적 `aggregate=all` 조회가 Supabase에서 36만 행 current snapshot을 읽을 때 `year_value/month_value` 정렬을 타며 statement timeout이 나던 문제를 보정했습니다.
