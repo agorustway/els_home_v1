@@ -850,6 +850,41 @@ def _shipping_apply_month_filter(q, headers, date_col, months):
     keys = [key for item in ranges for key in item["keys"]]
     return q.or_(filters), resolved_col, keys
 
+def _shipping_rows_query(normalized_path, headers, search_terms, date_col, months, count=None):
+    if count:
+        q = supabase.from_("branch_shipping_rows").select("row_values,row_index", count=count)
+    else:
+        q = supabase.from_("branch_shipping_rows").select("row_values,row_index")
+    q = q.eq("branch_id", "asan").eq("file_path", normalized_path)
+    if len(search_terms) == 1:
+        q = q.ilike("search_text", f"%{_shipping_search_filter_value(search_terms[0])}%")
+    elif search_terms:
+        filters = ",".join(f"search_text.ilike.%{_shipping_search_filter_value(term)}%" for term in search_terms)
+        q = q.or_(filters)
+    return _shipping_apply_month_filter(q, headers, date_col, months)
+
+def _shipping_fetch_rows_in_chunks(query_factory, start, end, chunk_size=1000):
+    rows = []
+    total = None
+    cursor = max(0, int(start or 0))
+    final_end = max(cursor, int(end or cursor))
+
+    while cursor <= final_end:
+        chunk_end = min(final_end, cursor + chunk_size - 1)
+        q, _, _ = query_factory(count="exact" if total is None else None)
+        rows_res = q.order("row_index", desc=False).range(cursor, chunk_end).execute()
+        chunk_rows = rows_res.data or []
+        rows.extend(chunk_rows)
+
+        if total is None and rows_res.count is not None:
+            total = rows_res.count
+            final_end = min(final_end, max(0, total - 1))
+        if not chunk_rows or (total is None and len(chunk_rows) < (chunk_end - cursor + 1)):
+            break
+        cursor = chunk_end + 1
+
+    return rows, total
+
 def _shipping_sort_value(value):
     s = str(value if value is not None else "").strip()
     if not s:
@@ -1078,20 +1113,17 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
     sort_desc = str(sort_dir or "asc").lower() == "desc"
     sort_idx = headers.index(sort_key) if sort_key in headers else -1
 
-    q = supabase.from_("branch_shipping_rows").select("row_values,row_index", count="exact").eq("branch_id", "asan").eq("file_path", normalized_path)
     search_terms = _shipping_search_terms(search)
-    if len(search_terms) == 1:
-        q = q.ilike("search_text", f"%{_shipping_search_filter_value(search_terms[0])}%")
-    elif search_terms:
-        filters = ",".join(f"search_text.ilike.%{_shipping_search_filter_value(term)}%" for term in search_terms)
-        q = q.or_(filters)
-    q, resolved_date_col, filtered_months = _shipping_apply_month_filter(q, headers, date_col, months)
+    def query_factory(count=None):
+        return _shipping_rows_query(normalized_path, headers, search_terms, date_col, months, count=count)
+
+    _, resolved_date_col, filtered_months = query_factory()
 
     if sort_idx >= 0:
-        rows_res = q.order("row_index", desc=False).range(0, 9999).execute()
+        fetched_rows, total_count = _shipping_fetch_rows_in_chunks(query_factory, 0, 9999)
         sortable = []
         blanks = []
-        for item in (rows_res.data or []):
+        for item in fetched_rows:
             row = item.get("row_values") or []
             sort_value = _shipping_sort_value(row[sort_idx] if sort_idx < len(row) else "")
             if sort_value is None:
@@ -1102,15 +1134,14 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
         ordered_rows = ([item for _, item in sortable] + blanks) if sort_desc else (blanks + [item for _, item in sortable])
         page_rows = ordered_rows[start:end + 1]
     else:
-        rows_res = q.order("row_index", desc=False).range(start, end).execute()
-        page_rows = rows_res.data or []
+        page_rows, total_count = _shipping_fetch_rows_in_chunks(query_factory, start, end)
 
     return {
         "headers": headers,
         "data": [r.get("row_values") for r in page_rows],
         "file_modified_at": meta.get("file_modified_at"),
         "synced_at": meta.get("synced_at"),
-        "total": rows_res.count if rows_res.count is not None else meta.get("row_count", 0),
+        "total": total_count if total_count is not None else meta.get("row_count", 0),
         "page": page,
         "page_size": page_size,
         "sort_key": sort_key if sort_idx >= 0 else "",

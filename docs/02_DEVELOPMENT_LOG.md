@@ -1,3 +1,35 @@
+## [2026-05-19] 아산 월간실적 분석 화면 안정화/인포그래픽 보강 (v5.14.35)
+### 핵심
+- 월간실적 분석 첫 화면에서 원본 매출보고서 표가 크게 먼저 나오고, 표 미감지 시 빈 영역이 화면을 차지해 전체 구성이 어지러워지는 문제를 정리했습니다.
+- 상단을 청구·하불·손익·이월·건당 청구 KPI와 청구→하불→손익 흐름, 최고 청구월/손익월/손익일/최근월 증감 인포그래픽으로 재배치했습니다.
+- 계약·운영 구분 구성 분석과 차량 성과 TOP을 추가하고, 기존 월별 흐름/월별·일별 트리/세분화 분석은 아래에서 이어 보이게 했습니다.
+- 매출보고서 원본 표는 감지됐을 때만 아래에 표시하고, 감지되지 않으면 얇은 상태 줄로만 안내합니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 선적관리 1,000건 제한 청크 조회 보정 (v5.14.34)
+### 핵심
+- NAS 원본 `2026_자체보관리스트.xlsx`에는 2026-05-18 작업일 81건이 존재하지만, 화면/API는 Supabase range 한 번에 1,000건만 받아 첫 페이지 뒤쪽 57건이 누락되는 상태였습니다.
+- Next 직조회(`web/lib/asan-branch-db.js`)와 NAS Core(`docker/els-backend/app.py`, `app_core.py`) 모두 row 조회를 1,000건 단위 청크로 반복해 `page_size=10000` 요청 시 실제 전체 1,057건을 반환하게 했습니다.
+- 정렬도 첫 1,000건만 정렬하지 않고 청크로 모은 전체 조회분을 정렬한 뒤 페이지를 잘라 반환합니다.
+### 검증
+- NAS 원본 엑셀 직접 확인: 2026-05-18 작업일 81건, 2026-05-19 작업일 0건.
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app.py docker\els-backend\app_core.py`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 트리 폭/전체 제목 보정 (v5.14.33)
 ### 핵심
 - 월별·일별 트리와 세분화 분석이 와이드 모니터 전체 폭을 사용해 제목과 값 사이가 너무 멀어지는 문제를 보정했습니다.

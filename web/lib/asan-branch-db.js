@@ -12,6 +12,7 @@ const ANNUAL_AGGREGATE_PATH = '/아산지점/B_총무/C_마감/연간실적-통�
 const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
 const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
+const SUPABASE_RANGE_CHUNK_SIZE = 1000;
 
 let adminClient;
 
@@ -182,15 +183,64 @@ function applySearch(query, search, mode = 'or') {
     return query;
 }
 
-async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+function buildShippingRowsQuery(supabase, {
+    normalizedPath,
+    headers,
+    search,
+    searchMode,
+    dateCol,
+    months,
+    count,
+}) {
+    const selectOptions = count ? { count } : undefined;
+    let query = supabase
+        .from('branch_shipping_rows')
+        .select('row_values,row_index', selectOptions)
+        .eq('branch_id', 'asan')
+        .eq('file_path', normalizedPath);
+    query = applySearch(query, search, searchMode);
+    const dateFilter = applyDateMonthFilter(query, { headers, dateCol, months });
+    return { query: dateFilter.query, dateFilter };
+}
+
+async function fetchRowsInChunks(buildQuery, start, end, chunkSize = SUPABASE_RANGE_CHUNK_SIZE) {
+    const rows = [];
+    let total = null;
+    let cursor = Math.max(0, start);
+    let finalEnd = Math.max(cursor, end);
+
+    while (cursor <= finalEnd) {
+        const chunkEnd = Math.min(finalEnd, cursor + chunkSize - 1);
+        const { query } = buildQuery({ count: total == null ? 'exact' : undefined });
+        const { data, count, error } = await query
+            .order('row_index', { ascending: true })
+            .range(cursor, chunkEnd);
+        if (error) throw new Error(error.message);
+
+        const chunkRows = data || [];
+        rows.push(...chunkRows);
+
+        if (total == null && count != null) {
+            total = count;
+            finalEnd = Math.min(finalEnd, Math.max(0, count - 1));
+        }
+        if (chunkRows.length === 0 || (total == null && chunkRows.length < chunkEnd - cursor + 1)) {
+            break;
+        }
+        cursor = chunkEnd + 1;
+    }
+
+    return { rows, total };
+}
+
+async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
 
     if (sortIdx >= 0) {
-        const { data, count, error } = await query.order('row_index', { ascending: true }).range(0, maxSortRows);
-        if (error) throw new Error(error.message);
+        const { rows: data, total } = await fetchRowsInChunks(buildQuery, 0, maxSortRows);
 
         const sortable = [];
         const blanks = [];
@@ -205,23 +255,21 @@ async function getPagedRows({ query, headers, page, pageSize, sortKey, sortDir, 
         const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
         return {
             rows: ordered.slice(start, end + 1),
-            total: count ?? ordered.length,
+            total: total ?? ordered.length,
             sortKey,
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }
 
-    const { data, count, error } = await query.order('row_index', { ascending: true }).range(start, end + 1);
-    if (error) throw new Error(error.message);
-    const rows = data || [];
+    const { rows, total } = await fetchRowsInChunks(buildQuery, start, end + 1);
     const hasMore = rows.length > pageSize;
     const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
     const loadedThrough = start + pageRows.length;
     const fallbackCount = Math.max(Number(fallbackTotal) || 0, loadedThrough + (hasMore ? 1 : 0));
     return {
         rows: pageRows,
-        total: count ?? fallbackCount,
-        totalEstimated: count == null && hasMore && !(Number(fallbackTotal) || 0),
+        total: total ?? fallbackCount,
+        totalEstimated: total == null && hasMore && !(Number(fallbackTotal) || 0),
         sortKey: '',
         sortDir: sortDesc ? 'desc' : 'asc',
     };
@@ -253,17 +301,19 @@ export async function queryAsanShippingFromSupabase(searchParams) {
     }
 
     const headers = Array.isArray(meta.headers) ? meta.headers : [];
-    let query = supabase
-        .from('branch_shipping_rows')
-        .select('row_values,row_index', { count: 'exact' })
-        .eq('branch_id', 'asan')
-        .eq('file_path', normalizedPath);
-    query = applySearch(query, search, searchMode);
-    const dateFilter = applyDateMonthFilter(query, { headers, dateCol, months });
-    query = dateFilter.query;
+    const buildQuery = (options = {}) => buildShippingRowsQuery(supabase, {
+        normalizedPath,
+        headers,
+        search,
+        searchMode,
+        dateCol,
+        months,
+        count: options.count,
+    });
+    const { dateFilter } = buildQuery();
 
     const paged = await getPagedRows({
-        query,
+        buildQuery,
         headers,
         page,
         pageSize,
