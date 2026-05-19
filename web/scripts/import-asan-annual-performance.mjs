@@ -434,7 +434,7 @@ function yearFromHeader(header) {
   return match ? Number(match[1]) : null;
 }
 
-const BREAKDOWN_COLUMN_PRIORITY = ['작업지', '청구처', '운송사', '노선', '구분', '계약', '픽업', '포트', '하차', '지급처', '지역', '매출'];
+const BREAKDOWN_COLUMN_PRIORITY = ['매출', '지역', '청구픽업', '픽업', '포트명', '포트', '선적', '선사', '모선', '라인', '노선', '계산서', '작업지', '청구처', '운송사', '구분', '계약', '하차', '지급처'];
 const BREAKDOWN_COLUMN_WORDS = BREAKDOWN_COLUMN_PRIORITY;
 
 function breakdownPriority(header) {

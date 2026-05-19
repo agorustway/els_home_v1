@@ -1,3 +1,17 @@
+## [2026-05-19] 아산 연간실적 계약/차량 흐름 그래프 해석 보강 (v5.14.52)
+### 핵심
+- `계약/차량` 탭의 월별 흐름 차트가 매출/손익 선만 보여 의미가 부족하던 문제를 보강했습니다.
+- 매출 평균선, 손익 평균선, 최고 매출월, 최고 손익월, 최근월 포인트를 SVG 안에 표시했습니다.
+- 차트 아래에는 최근월/최고 매출월/최고 손익월/평균 손익률 요약 카드를 추가해 그래프 해석 근거를 바로 보게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" tests/asanAnnualPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] 아산 월간실적 선택 범위 집계 통일 (v5.14.50)
 ### 핵심
 - `월별 누적 흐름`은 `누적`, `월간 실적 인포그래픽`은 `실적 인포그래픽`으로 제목을 정리했습니다.
@@ -3605,6 +3619,20 @@
 - **Redirect 대응**: `elssolution.com` (non-www) 통일로 307 리다이렉트 시 Body 유실 방지.
 
 *(v4.9 이전의 상세 기록은 Git History 참조)*
+
+## [2026-05-19] 아산 월간실적 세분화 축/차량 TOP 헤더 보강 (v5.14.51)
+### 핵심
+- 월간실적 세분화 분석 탭을 `매출`, `지역`, `청구픽업`, `포트명`, `선적`, `이월(청구처기준)`, `계산서` 순서로 재구성했습니다.
+- 매출/계산서는 월간 보고서 그룹값에서, 이월은 청구처별 이월값에서 세분화 섹션을 합성해 기존 큰 이월 별도 표를 탭 안으로 흡수했습니다.
+- 차량 성과 TOP 행에 `순위`, `차량번호`, `비중`, `청구액`, `손익·건수` 헤더를 추가해 금액 의미가 바로 보이도록 했습니다.
+- 세분화 패널은 요일별 카드 바로 위 라인에 맞추고, 상단 요약 막대는 카드형 박스 대신 얇은 지표 스트립으로 줄였습니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (정적 생성 중 외부 WebDAV/원격 fetch는 sandbox 네트워크 제한으로 비치명 경고 출력)
+
 ## [2026-05-18] NAS core 대용량 엑셀 파싱 메모리 보호 (v5.14.00)
 ### 핵심
 - `els-core`가 연간실적 36만 행 원장과 배차/선적 엑셀 파싱 결과를 메모리에 오래 들고 있던 문제를 차단했습니다.

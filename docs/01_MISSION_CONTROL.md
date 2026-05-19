@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.50 / APK v5.11.18)
+# ELS MISSION CONTROL (v5.14.52 / APK v5.11.18)
 
-> 최신 업데이트: 아산 월간실적 분석 기준별 집계 단위를 통일했습니다.
+> 최신 업데이트: 아산 연간실적 계약/차량 월별 흐름 그래프에 평균선과 근거 포인트를 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.50
+- **웹 버전**: v5.14.52
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.18
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -16,6 +16,8 @@
   - Android PiP를 Manifest/MainActivity에 복구하고, 설정 화면에 권한 설정/점검 버튼을 추가했다.
   - 선적관리 컨테이너 조회는 `조회 멈춤`으로 봇 중지 신호와 브라우저 요청 중단을 함께 처리하고, `ERROR` 행의 사유를 화면에 요약 표시한다.
   - 월간실적은 전체/월별/주간/일별 선택 기준에 맞춰 누적·실적 인포그래픽·세분화·차량 성과를 같은 범위 데이터로 집계한다.
+  - 월간실적 세분화는 `매출/지역/청구픽업/포트명/선적/이월(청구처기준)/계산서` 축을 우선 표시하고, 차량 TOP에는 금액 컬럼 제목을 노출한다.
+  - 연간실적 계약/차량 월별 흐름은 매출/손익 선, 평균선, 최고/최근 포인트, 평균 손익률 요약을 함께 표시한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -42,6 +44,8 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.52**: 연간실적 `계약/차량`의 월별 흐름 차트에 매출 평균선/손익 평균선, 최고 매출월/최고 손익월/최근월 포인트, 평균 손익률 요약 카드를 추가했다. 작은 라인 그래프만으로 의미를 해석하기 어렵던 문제를 줄이고, 같은 원장 summary 기반이라는 근거 문구는 유지했다.
+- **v5.14.51**: 월간실적 세분화 분석 축을 `매출/지역/청구픽업/포트명/선적/이월(청구처기준)/계산서` 순서로 재구성했다. 매출·계산서는 월간 보고서 그룹값에서, 이월은 청구처 기준 이월값에서 탭을 만들고, 큰 이월 별도 표는 탭 안으로 합쳐 세분화 패널 높이를 줄였다. `차량 성과 TOP`에는 `순위/차량번호/비중/청구액/손익·건수` 헤더를 추가했다.
 - **v5.14.50**: 월간실적 `월별 누적 흐름` 제목을 `누적`, `월간 실적 인포그래픽` 제목을 `실적 인포그래픽`으로 정리했다. 전체/월별/주간/일별 선택 시 누적 그래프, KPI, 성과 흐름, 세분화, 차량 TOP이 같은 선택 범위 데이터를 쓰도록 `scopeFlowItems` 기준으로 통일하고, 세분화/구성/차량 항목에도 일별 시리즈를 누적 저장해 일별 선택에서 월별 fallback이 섞이지 않게 했다.
 - **v5.14.49**: 선적관리 컨테이너 조회 중 `조회 멈춤` 버튼을 노출해 `/api/els/stop-daemon` 중지 요청과 `AbortController` 요청 중단을 함께 수행한다. 중단 시 완료/실패/미조회 건수를 분리해 남기고, 조회 실패는 봇이 반환한 `ERROR` 행의 사유를 집계해 상태줄에 표시한다.
 - **v5.14.48**: 차량 위치관제 active 조회를 운행별 최신 좌표 기반으로 바꿔 정차/저속 마지막 좌표가 사라지는 문제를 막았다. 앱 지도는 운행 중 상세보기 경로 표시를 중지하고 완료 후에만 전체 경로를 보여준다. 자동추적 카메라, 내 위치 우선순위, 차량/시작/종료 마커 z-index, 모바일 웹 전체지도/상세 패널, Android PiP/권한 설정 버튼을 함께 보정했다. APK v5.11.18 빌드 완료.
@@ -62,9 +66,9 @@
 ## VERIFICATION
 - `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
 - `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (정적 생성 중 외부 WebDAV/원격 fetch는 sandbox 네트워크 제한으로 비치명 경고 출력)
 - `node --test web\tests\vehicleLocation.test.mjs`: 14개 통과
 - `npm.cmd run lint`: 통과
-- `npm.cmd run build`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.18 (5159) 빌드/배포 복사/내부 버전 검증 통과
 - 2026-05-19 오후 데이터 재분석: 12가0140, 194서2632 모두 cleanLastAt이 TRIP_END까지 보존됨
 - Browser 플러그인은 기존 3000 탭이 응답 불능으로 전환된 뒤 `No active Codex browser pane available` 상태라 시각 자동화는 완료하지 못함. 3001 dev HTTP 200 및 production build로 대체 검증.

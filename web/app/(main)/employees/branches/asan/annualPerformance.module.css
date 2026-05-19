@@ -660,6 +660,8 @@
 
 .trendLegend {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 10px;
 }
 
@@ -701,6 +703,84 @@
 
 .profitLine {
     stroke: #2563eb;
+}
+
+.trendAvgRevenueLine,
+.trendAvgProfitLine {
+    stroke-width: 1.6;
+    stroke-dasharray: 6 5;
+}
+
+.trendAvgRevenueLine {
+    stroke: #14b8a6;
+}
+
+.trendAvgProfitLine {
+    stroke: #60a5fa;
+}
+
+.trendRevenuePoint,
+.trendProfitPoint,
+.trendRecentPoint {
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.trendRevenuePoint {
+    fill: #0f766e;
+}
+
+.trendProfitPoint {
+    fill: #2563eb;
+}
+
+.trendRecentPoint {
+    fill: #0f766e;
+}
+
+.trendMarkerLabel {
+    fill: #334155;
+    stroke: #fff;
+    stroke-width: 3px;
+    paint-order: stroke;
+    font-size: 11px;
+    font-weight: 950;
+}
+
+.trendSummaryGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px 9px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.trendSummaryGrid div {
+    min-width: 0;
+    padding: 6px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.trendSummaryGrid span,
+.trendSummaryGrid em {
+    display: block;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.trendSummaryGrid strong {
+    display: block;
+    margin: 2px 0;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .trendFoot {
@@ -2129,7 +2209,7 @@
 }
 
 .dimensionPanel {
-    order: 50;
+    order: 61;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -2142,7 +2222,7 @@
 
 @media (min-width: 1240px) {
     .dimensionPanel {
-        grid-column: span 2;
+        grid-column: span 1;
     }
 }
 
@@ -2580,11 +2660,34 @@
     box-sizing: border-box;
 }
 
+.vehicleInsightHead,
 .vehicleInsightRow {
     display: grid;
     grid-template-columns: 26px 120px minmax(160px, 1fr) 110px 160px;
     align-items: center;
     gap: 8px;
+}
+
+.vehicleInsightHead {
+    min-height: 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.vehicleInsightHead span {
+    min-width: 0;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vehicleInsightHead span:nth-child(n + 4) {
+    text-align: right;
+}
+
+.vehicleInsightRow {
     min-height: 31px;
     border: 0;
     border-bottom: 1px solid #f1f5f9;
@@ -2906,25 +3009,27 @@
 .dimensionDiagram {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 7px;
+    gap: 6px;
     width: 100%;
     box-sizing: border-box;
-    padding: 8px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
+    padding: 6px 8px 3px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
 }
 
 .dimensionDiagram div {
+    display: grid;
+    grid-template-columns: auto minmax(72px, 1fr);
+    gap: 2px 8px;
+    align-items: center;
     min-width: 0;
-    padding: 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    background: #fff;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .dimensionDiagram span,
 .dimensionDiagram strong {
-    display: block;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2938,15 +3043,17 @@
 }
 
 .dimensionDiagram strong {
-    margin: 3px 0 5px;
+    margin: 0;
     color: #0f172a;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 950;
+    text-align: right;
 }
 
 .dimensionDiagram i {
     display: block;
-    height: 7px;
+    grid-column: 1 / -1;
+    height: 4px;
     border-radius: 999px;
     background: #0f766e;
 }
@@ -3327,10 +3434,12 @@
         white-space: normal;
     }
 
+    .vehicleInsightHead,
     .vehicleInsightRow {
         grid-template-columns: 24px 96px minmax(100px, 1fr) 96px;
     }
 
+    .vehicleInsightHead span:nth-child(5),
     .vehicleInsightRow small {
         display: none;
     }
@@ -3356,6 +3465,10 @@
     }
 
     .marketFlowStats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .trendSummaryGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -3521,6 +3634,10 @@
         grid-template-columns: 1fr;
     }
 
+    .trendSummaryGrid {
+        grid-template-columns: 1fr;
+    }
+
     .monthlyTrendHeader {
         align-items: stretch;
         flex-direction: column;
@@ -3549,10 +3666,12 @@
         grid-template-columns: 1fr;
     }
 
+    .vehicleInsightHead,
     .vehicleInsightRow {
         grid-template-columns: 24px 86px minmax(92px, 1fr);
     }
 
+    .vehicleInsightHead span:nth-child(4),
     .vehicleInsightRow em {
         display: none;
     }
@@ -3571,7 +3690,10 @@
         min-width: 560px;
     }
 
-    .dimensionDiagram,
+    .dimensionDiagram {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .dimensionSummary {
         grid-template-columns: 1fr;
     }

@@ -37,10 +37,14 @@ const REPORT_METRIC_KEYS = [
     'carryoverProfit',
 ];
 const DIMENSION_HINTS = [
-    { key: 'client', label: '청구처별', words: ['청구처', '거래처', '화주'] },
-    { key: 'work_site', label: '작업지별', words: ['작업지', '상차', '하차'] },
-    { key: 'payee', label: '지급처별', words: ['지급처', '운송사', '명의'] },
+    { key: 'sales', label: '매출', words: ['매출', '순매출', '운송수입', '청구금액'] },
+    { key: 'region', label: '지역', words: ['지역', '권역', '구간'] },
+    { key: 'billing_pickup', label: '청구픽업', words: ['청구픽업', '청구 픽업', '픽업'] },
+    { key: 'port', label: '포트명', words: ['포트명', '포트', 'port', 'pod', 'pol'] },
+    { key: 'shipping', label: '선적', words: ['선적', '선사', '선명', '모선', '노선', 'line', '라인'] },
+    { key: 'invoice', label: '계산서', words: ['계산서'] },
 ];
+const DIMENSION_ORDER = ['sales', 'region', 'billing_pickup', 'port', 'shipping', 'carryover_client', 'invoice'];
 const EMPTY_LIST = Object.freeze([]);
 
 class MonthlyAnalysisErrorBoundary extends React.Component {
@@ -118,6 +122,11 @@ function formatPercent(value, digits = 1) {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
     })}%`;
+}
+
+function formatDimensionCount(item = {}) {
+    const count = safeNumber(item.rowCount);
+    return count ? `${count.toLocaleString('ko-KR')}건` : '-';
 }
 
 function profitRate(item = {}) {
@@ -395,6 +404,97 @@ function normalizeDimensionSections(breakdowns = []) {
     });
 
     return selected;
+}
+
+function buildReportDimensionSection(report = null, config = {}) {
+    const groups = safeObjectList(report?.groups);
+    if (!groups.length) return null;
+    const {
+        key,
+        label,
+        revenueKey,
+        purchaseKey,
+        profitKey,
+        rateKey,
+    } = config;
+    const totalRevenue = safeNumber(report?.totals?.[revenueKey])
+        || groups.reduce((sum, group) => sum + safeNumber(group[revenueKey]), 0);
+    const items = groups.map((group) => {
+        const revenue = safeNumber(group[revenueKey]);
+        const purchase = safeNumber(group[purchaseKey]);
+        const profit = safeNumber(group[profitKey] || revenue - purchase);
+        return {
+            name: group.name || '미분류',
+            revenue,
+            purchase,
+            profit,
+            rowCount: safeNumber(group.rowCount),
+            profitRate: safeNumber(group[rateKey]) || (revenue ? Math.round((profit / revenue) * 10000) / 100 : 0),
+            revenueShare: totalRevenue ? Math.round((revenue / totalRevenue) * 10000) / 100 : 0,
+        };
+    }).filter(isMetricActive).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
+    if (!items.length) return null;
+    return { key, label, column: label, items };
+}
+
+function buildReportDimensionSections(report = null) {
+    return [
+        buildReportDimensionSection(report, {
+            key: 'sales',
+            label: '매출',
+            revenueKey: 'netRevenue',
+            purchaseKey: 'netPurchase',
+            profitKey: 'netProfit',
+            rateKey: 'netProfitRate',
+        }),
+        buildReportDimensionSection(report, {
+            key: 'invoice',
+            label: '계산서',
+            revenueKey: 'invoiceRevenue',
+            purchaseKey: 'invoicePurchase',
+            profitKey: 'invoiceProfit',
+            rateKey: 'invoiceProfitRate',
+        }),
+    ].filter(Boolean);
+}
+
+function buildCarryoverDimensionSection(items = []) {
+    const rows = safeObjectList(items);
+    if (!rows.length) return null;
+    const totalRevenue = rows.reduce((sum, item) => sum + safeNumber(item.carryoverRevenue), 0);
+    const mapped = rows.map((item) => {
+        const revenue = safeNumber(item.carryoverRevenue);
+        const purchase = safeNumber(item.carryoverPurchase);
+        const profit = safeNumber(item.carryoverProfit || revenue - purchase);
+        return {
+            name: item.name || '미분류',
+            revenue,
+            purchase,
+            profit,
+            rowCount: 0,
+            profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+            revenueShare: totalRevenue ? Math.round((revenue / totalRevenue) * 10000) / 100 : 0,
+        };
+    }).filter(isMetricActive).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
+    if (!mapped.length) return null;
+    return {
+        key: 'carryover_client',
+        label: '이월(청구처기준)',
+        column: '이월(청구처기준)',
+        items: mapped,
+    };
+}
+
+function mergeDimensionSections(baseSections = [], reportSections = [], carryoverSection = null) {
+    const byKey = new Map();
+    safeObjectList(baseSections).forEach((section) => {
+        if (section.key) byKey.set(section.key, section);
+    });
+    safeObjectList(reportSections).forEach((section) => {
+        if (section.key) byKey.set(section.key, section);
+    });
+    if (carryoverSection?.key) byKey.set(carryoverSection.key, carryoverSection);
+    return DIMENSION_ORDER.map(key => byKey.get(key)).filter(Boolean);
 }
 
 function groupDailyByMonth(monthly = [], daily = []) {
@@ -950,7 +1050,9 @@ export default function AsanMonthlyPerformance() {
     const carryoverRevenue = safeNumber(scopeCarryover.revenue);
     const carryoverClientReport = analysisScope === ANALYSIS_SCOPE_ALL ? allReport : (scopeReport || null);
     const carryoverClientItems = useMemo(() => carryoverClientItemsFromReport(carryoverClientReport), [carryoverClientReport]);
-    const carryoverClientMax = Math.max(1, ...carryoverClientItems.map(item => Math.abs(item.carryoverRevenue)));
+    const reportDimensionSource = analysisScope === ANALYSIS_SCOPE_ALL ? allReport : (analysisScope === ANALYSIS_SCOPE_MONTH ? scopeReport : null);
+    const reportDimensionSections = useMemo(() => buildReportDimensionSections(reportDimensionSource), [reportDimensionSource]);
+    const carryoverDimensionSection = useMemo(() => buildCarryoverDimensionSection(carryoverClientItems), [carryoverClientItems]);
     const reportCarryoverRevenue = safeNumber(reportCarryover.revenue);
     const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
     const reportTitleText = selectedReportPeriod === REPORT_ALL_KEY ? '매출보고서' : formatReportTitle(selectedReport?.period || selectedReportPeriod);
@@ -997,9 +1099,12 @@ export default function AsanMonthlyPerformance() {
         .map(normalizeStrategicSegment)
         .filter(Boolean);
     const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 2);
-    const scopedDimensionSections = useMemo(() => (
+    const scopedBreakdownDimensionSections = useMemo(() => (
         scopeDimensionSections(dimensionSections, analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue)
     ), [activeAnalysisDay, activeAnalysisMonthValue, activeAnalysisWeek, analysisScope, dimensionSections, scopeRevenue]);
+    const scopedDimensionSections = useMemo(() => (
+        mergeDimensionSections(scopedBreakdownDimensionSections, reportDimensionSections, carryoverDimensionSection)
+    ), [carryoverDimensionSection, reportDimensionSections, scopedBreakdownDimensionSections]);
     const activeDimension = scopedDimensionSections.find(section => section.key === activeDimensionKey) || scopedDimensionSections[0] || null;
     const activeDimensionItems = safeObjectList(activeDimension?.items);
     const activeDimensionExpanded = Boolean(activeDimension?.key && expandedDimensionKeys.has(activeDimension.key));
@@ -1601,7 +1706,7 @@ export default function AsanMonthlyPerformance() {
                             </div>
                         </div>
                         {scopedDimensionSections.length === 0 ? (
-                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 청구처, 작업지, 지급처 컬럼이 있으면 동기화 후 자동 분석됩니다.</div>
+                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 매출, 지역, 청구픽업, 포트명, 선적, 이월(청구처기준), 계산서 데이터를 동기화 후 자동 분석합니다.</div>
                         ) : (
                             <>
                                 <div className={styles.dimensionTabs}>
@@ -1619,7 +1724,7 @@ export default function AsanMonthlyPerformance() {
                                 <div className={styles.dimensionSummary}>
                                     <span>대표 항목</span>
                                     <strong>{topDimensionItem?.name || '-'}</strong>
-                                    <em>{topDimensionItem ? `${formatPerformanceAmount(topDimensionItem.revenue)} · ${safeNumber(topDimensionItem.rowCount).toLocaleString('ko-KR')}건` : '-'}</em>
+                                    <em>{topDimensionItem ? `${formatPerformanceAmount(topDimensionItem.revenue)} · ${formatDimensionCount(topDimensionItem)}` : '-'}</em>
                                 </div>
                                 <div className={styles.dimensionRows}>
                                     <div className={styles.dimensionHead}>
@@ -1641,39 +1746,12 @@ export default function AsanMonthlyPerformance() {
                                             <strong>{formatPerformanceAmount(item.revenue)}</strong>
                                             <em>{formatPerformanceAmount(item.purchase)}</em>
                                             <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
-                                            <small>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</small>
+                                            <small>{formatDimensionCount(item)}</small>
                                             <i>{formatPercent(item.profitRate ?? profitRate(item), 1)}</i>
                                         </button>
                                     ))}
                                 </div>
                             </>
-                        )}
-                        {carryoverClientItems.length > 0 && (
-                            <div className={styles.carryoverClientPanel}>
-                                <div className={styles.carryoverClientTitle}>
-                                    <strong>청구처 이월</strong>
-                                    <span>{analysisScope === ANALYSIS_SCOPE_ALL ? '전체' : (selectedScopePeriod || '-')} · 청구처 기준</span>
-                                </div>
-                                <div className={styles.carryoverClientRows}>
-                                    <div className={styles.carryoverClientHead}>
-                                        <span>청구처</span>
-                                        <span>이월청구</span>
-                                        <span>이월하불</span>
-                                        <span>차액</span>
-                                    </div>
-                                    {carryoverClientItems.map(item => (
-                                        <div className={styles.carryoverClientRow} key={item.name}>
-                                            <span>{item.name}</span>
-                                            <strong>
-                                                {formatPerformanceAmount(item.carryoverRevenue)}
-                                                <i style={{ width: metricWidth(item.carryoverRevenue, carryoverClientMax) }} />
-                                            </strong>
-                                            <em>{formatPerformanceAmount(item.carryoverPurchase)}</em>
-                                            <b className={item.carryoverProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.carryoverProfit)}</b>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
                         )}
                     </section>
 
@@ -1690,6 +1768,13 @@ export default function AsanMonthlyPerformance() {
                                 <span>{showAllVehicles ? `전체 ${scopedVehicleItems.length.toLocaleString('ko-KR')}대` : `상위 ${visibleVehicles.length.toLocaleString('ko-KR')}대`} · 청구액 기준</span>
                             </div>
                             <div className={styles.vehicleInsightRows}>
+                                <div className={styles.vehicleInsightHead}>
+                                    <span>순위</span>
+                                    <span>차량번호</span>
+                                    <span>비중</span>
+                                    <span>청구액</span>
+                                    <span>손익·건수</span>
+                                </div>
                                 {visibleVehicles.map((vehicle, idx) => (
                                     <button
                                         key={vehicle.vehicleNo || vehicle.name || idx}

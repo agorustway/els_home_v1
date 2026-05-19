@@ -444,19 +444,24 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
     const width = 720;
     const height = 168;
     const padX = 24;
-    const revenuePoints = series.map((item, idx) => {
-        const x = series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2);
-        const y = 18 + (1 - (safeNumber(item.revenue) / maxRevenue)) * 74;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    const profitPoints = series.map((item, idx) => {
-        const x = series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2);
-        const y = 118 - (safeNumber(item.profit) / maxProfit) * 42;
-        return `${x.toFixed(1)},${Math.max(76, Math.min(154, y)).toFixed(1)}`;
-    }).join(' ');
+    const xAt = idx => (series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2));
+    const revenueY = value => 18 + (1 - (safeNumber(value) / maxRevenue)) * 74;
+    const profitY = value => Math.max(76, Math.min(154, 118 - (safeNumber(value) / maxProfit) * 42));
+    const revenuePoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${revenueY(item.revenue).toFixed(1)}`).join(' ');
+    const profitPoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${profitY(item.profit).toFixed(1)}`).join(' ');
     const first = series[0]?.period || series[0]?.weekStart || series[0]?.year || '-';
     const last = series[series.length - 1]?.period || series[series.length - 1]?.weekStart || series[series.length - 1]?.year || '-';
     const recent = series[series.length - 1] || null;
+    const totalRevenue = sumField(series, 'revenue');
+    const totalProfit = sumField(series, 'profit');
+    const avgRevenue = series.length ? totalRevenue / series.length : 0;
+    const avgProfit = series.length ? totalProfit / series.length : 0;
+    const avgProfitRate = rate(totalProfit, totalRevenue, 2);
+    const highRevenue = series.reduce((best, item) => (!best || safeNumber(item.revenue) > safeNumber(best.revenue) ? item : best), null);
+    const highProfit = series.reduce((best, item) => (!best || safeNumber(item.profit) > safeNumber(best.profit) ? item : best), null);
+    const highRevenueIndex = Math.max(0, series.indexOf(highRevenue));
+    const highProfitIndex = Math.max(0, series.indexOf(highProfit));
+    const recentIndex = Math.max(0, series.length - 1);
 
     return (
         <div className={styles.trendCard}>
@@ -468,6 +473,8 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
                 <div className={styles.trendLegend}>
                     <span><i className={styles.revenueDot} />매출</span>
                     <span><i className={styles.profitDot} />손익</span>
+                    <span><i className={styles.avgRevenueDot} />매출 평균</span>
+                    <span><i className={styles.avgProfitDot} />손익 평균</span>
                 </div>
             </div>
             {series.length < 2 ? (
@@ -477,11 +484,40 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
                     <svg className={styles.trendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 차트`}>
                         <line x1="20" y1="92" x2="700" y2="92" className={styles.axisLine} />
                         <line x1="20" y1="118" x2="700" y2="118" className={styles.zeroLine} />
+                        <line x1="20" y1={revenueY(avgRevenue)} x2="700" y2={revenueY(avgRevenue)} className={styles.trendAvgRevenueLine} />
+                        <line x1="20" y1={profitY(avgProfit)} x2="700" y2={profitY(avgProfit)} className={styles.trendAvgProfitLine} />
                         <polyline points={revenuePoints} className={styles.revenueLine} />
                         <polyline points={profitPoints} className={styles.profitLine} />
+                        {highRevenue && (
+                            <g>
+                                <circle cx={xAt(highRevenueIndex)} cy={revenueY(highRevenue.revenue)} r="5" className={styles.trendRevenuePoint}>
+                                    <title>{`${highRevenue.period || highRevenue.weekStart || highRevenue.year} 최고 매출 ${formatPerformanceAmount(highRevenue.revenue)}`}</title>
+                                </circle>
+                                <text x={xAt(highRevenueIndex)} y={Math.max(14, revenueY(highRevenue.revenue) - 9)} className={styles.trendMarkerLabel} textAnchor="middle">최고</text>
+                            </g>
+                        )}
+                        {highProfit && (
+                            <circle cx={xAt(highProfitIndex)} cy={profitY(highProfit.profit)} r="4.5" className={styles.trendProfitPoint}>
+                                <title>{`${highProfit.period || highProfit.weekStart || highProfit.year} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
+                            </circle>
+                        )}
+                        {recent && (
+                            <g>
+                                <circle cx={xAt(recentIndex)} cy={revenueY(recent.revenue)} r="4.5" className={styles.trendRecentPoint}>
+                                    <title>{`${recent.period || recent.weekStart || recent.year} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 손익 ${formatPerformanceAmount(recent.profit)}`}</title>
+                                </circle>
+                                <text x={Math.min(width - 28, xAt(recentIndex) - 10)} y={revenueY(recent.revenue) - 10} className={styles.trendMarkerLabel} textAnchor="end">최근</text>
+                            </g>
+                        )}
                     </svg>
+                    <div className={styles.trendSummaryGrid}>
+                        <div><span>최근월</span><strong>{recent?.period || recent?.weekStart || recent?.year}</strong><em>매출 {formatPerformanceAmount(recent?.revenue)}</em></div>
+                        <div><span>최고 매출월</span><strong>{highRevenue?.period || highRevenue?.weekStart || highRevenue?.year}</strong><em>{formatPerformanceAmount(highRevenue?.revenue)}</em></div>
+                        <div><span>최고 손익월</span><strong>{highProfit?.period || highProfit?.weekStart || highProfit?.year}</strong><em>{formatPerformanceAmount(highProfit?.profit)}</em></div>
+                        <div><span>평균 손익률</span><strong>{formatPercent(avgProfitRate, 2)}</strong><em>기간 평균선 기준</em></div>
+                    </div>
                     <div className={styles.trendFoot}>
-                        <span>최근 {recent?.period || recent?.weekStart || recent?.year}: 매출 {formatPerformanceAmount(recent?.revenue)}, 손익 {formatPerformanceAmount(recent?.profit)}</span>
+                        <span>월평균 매출 {formatPerformanceAmount(avgRevenue)}, 월평균 손익 {formatPerformanceAmount(avgProfit)}</span>
                         <span>원장 summary 기반, 금액은 원 단위 집계 후 화면에서 축약 표시</span>
                     </div>
                 </>
