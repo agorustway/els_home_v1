@@ -8,6 +8,8 @@ DOCKER_BIN="${DOCKER_BIN:-/usr/local/bin/docker}"
 COMPOSE_BIN="${COMPOSE_BIN:-/usr/local/bin/docker-compose}"
 SUDO_BIN="${SUDO_BIN:-sudo -n}"
 DOCKER_PATH="${DOCKER_PATH:-/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}}"
+export COMPOSE_HTTP_TIMEOUT="${COMPOSE_HTTP_TIMEOUT:-600}"
+export DOCKER_CLIENT_TIMEOUT="${DOCKER_CLIENT_TIMEOUT:-600}"
 
 # 1. 소스코드 동기화
 /opt/bin/git fetch origin main
@@ -53,10 +55,23 @@ EOF
 
 
 # 3. 전체 서비스 빌드 및 재실행
-echo ">>> 전 서비스 빌드 및 재가동..."
-$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --build --force-recreate
+echo ">>> 전 서비스 이미지 빌드..."
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml build
 
-# 3. 정리
+# docker-compose v1 + container_name 조합에서 recreate rename이 꼬이는 경우가 있어
+# 빌드를 먼저 끝낸 뒤 기존 고정 이름 컨테이너만 제거하고 --no-build로 재기동한다.
+echo ">>> 기존 고정 이름 컨테이너 정리..."
+for NAME in els-gateway els-core els-bot; do
+    if $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" container inspect "$NAME" >/dev/null 2>&1; then
+        echo " - remove $NAME"
+        $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" rm -f "$NAME"
+    fi
+done
+
+echo ">>> 전 서비스 재가동..."
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --no-build --force-recreate --remove-orphans
+
+# 4. 정리
 $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" system prune -f
 $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" builder prune -f
 echo "✅ 통합 배포 완료! (기존 포트 2929 게이트웨이 생존 확인)"

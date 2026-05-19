@@ -34,9 +34,18 @@ EOF
     echo "docker/.env synced (GEMINI_API_KEY: $([ -n "$G_KEY" ] && echo "YES" || echo "NO"))"
 fi
 
-# 3. Rebuild/recreate only els-core. Bot service stays up.
-echo ">>> Rebuild and recreate els-core..."
-$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --build --force-recreate els-core
+# 3. Build first, then remove the fixed-name container before recreate.
+# docker-compose v1 can fail with "Renaming a container with the same name" when container_name is fixed.
+echo ">>> Build els-core image..."
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml build els-core
+
+echo ">>> Remove existing els-core container..."
+if $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" container inspect els-core >/dev/null 2>&1; then
+    $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" rm -f els-core
+fi
+
+echo ">>> Recreate els-core..."
+$SUDO_BIN PATH="$DOCKER_PATH" "$COMPOSE_BIN" -f docker/docker-compose.yml up -d --no-build --force-recreate els-core
 
 # 4. Cleanup and show a bounded log tail.
 $SUDO_BIN PATH="$DOCKER_PATH" "$DOCKER_BIN" system prune -f
