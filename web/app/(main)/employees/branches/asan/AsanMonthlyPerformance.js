@@ -309,6 +309,30 @@ function vehicleDisplayName(vehicle = {}) {
     return vehicleNo || carrier || '-';
 }
 
+function summarizeMonthlySlots(slots = []) {
+    const normalized = safeObjectList(slots).map(normalizeSlot);
+    const active = normalized.filter(slot => slot.enabled);
+    const main = normalized.filter(slot => !slot.carryover);
+    const carryover = normalized.filter(slot => slot.carryover);
+    const range = normalized.length
+        ? `${normalized[0].period} ~ ${normalized[normalized.length - 1].period}`
+        : '-';
+    const mainRange = main.length
+        ? `${main[0].period} ~ ${main[main.length - 1].period}`
+        : '-';
+    const carryoverRange = carryover.length
+        ? `${carryover[0].period} ~ ${carryover[carryover.length - 1].period}`
+        : '없음';
+    return {
+        activeCount: active.length,
+        carryoverCount: carryover.length,
+        totalCount: normalized.length,
+        range,
+        mainRange,
+        carryoverRange,
+    };
+}
+
 function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, selectedWeek, totalForShare = 0) {
     const safeSections = safeObjectList(sections)
         .map(section => ({ ...section, items: safeObjectList(section.items) }))
@@ -333,7 +357,7 @@ function normalizeSlot(slot) {
         carryover: Boolean(slot.carryover || year > DEFAULT_MONTHLY_BASE_YEAR),
         enabled: slot.enabled !== false,
         path: normalizePerformancePath(slot.path || ''),
-        sheetName: slot.sheetName || slot.sheet_name || FIRST_SHEET_TOKEN,
+        sheetName: slot.sheetName ?? slot.sheet_name ?? FIRST_SHEET_TOKEN,
         headerRow: slot.headerRow || slot.header_row || '',
     };
 }
@@ -1078,6 +1102,10 @@ export default function AsanMonthlyPerformance() {
     const headers = useMemo(() => (Array.isArray(payload?.headers) ? payload.headers : []), [payload]);
     const rows = useMemo(() => (Array.isArray(payload?.data) ? payload.data : []), [payload]);
     const summary = payload?.summary || {};
+    const settingsSlotSummary = useMemo(() => summarizeMonthlySlots(fileSlots), [fileSlots]);
+    const settingsPreviewSummary = useMemo(() => (
+        summarizeMonthlySlots(buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }))
+    ), [baseYear, extraMonths]);
     const monthly = safeObjectList(summary.monthly);
     const daily = safeObjectList(summary.daily);
     const monthlyReports = safeObjectList(summary.monthlyReports);
@@ -1988,30 +2016,90 @@ export default function AsanMonthlyPerformance() {
                 <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
                     <div className={`${styles.modal} ${styles.monthlyModal}`}>
                         <h2>월간실적 파일 설정</h2>
+                        <div className={styles.monthlySettingsGuide}>
+                            <strong>기준연도 12개월 + 정리기간 파일을 월별로 연결합니다.</strong>
+                            <span>읽을 시트는 기본값이 첫 번째 시트입니다. 표 제목 행은 엑셀에서 컬럼명이 있는 줄 번호이며, 비워두면 자동으로 찾습니다.</span>
+                        </div>
                         <div className={styles.formGrid}>
                             <div className={styles.formGroup}>
-                                <label>기준연도</label>
+                                <label>기준연도 <span>1월~12월</span></label>
                                 <input value={baseYear} onChange={e => setBaseYear(e.target.value.replace(/[^\d]/g, ''))} className={styles.pathInput} />
+                                <small>{baseYear || DEFAULT_MONTHLY_BASE_YEAR}년 실적 파일 12개월을 기본으로 만듭니다.</small>
                             </div>
                             <div className={styles.formGroup}>
-                                <label>정리기간</label>
+                                <label>정리기간 <span>다음해 추가월</span></label>
                                 <input value={extraMonths} onChange={e => setExtraMonths(e.target.value.replace(/[^\d]/g, ''))} className={styles.pathInput} />
+                                <small>현재 값 {extraMonths || 0}: 다음해 {settingsPreviewSummary.carryoverRange}까지 이월 정리 파일을 추가합니다.</small>
+                            </div>
+                        </div>
+                        <div className={styles.monthlySettingsSummary}>
+                            <div>
+                                <span>현재 파일 공간</span>
+                                <strong>{settingsSlotSummary.range}</strong>
+                                <em>{settingsSlotSummary.activeCount}/{settingsSlotSummary.totalCount}개월 사용</em>
+                            </div>
+                            <div>
+                                <span>기준연도 구간</span>
+                                <strong>{settingsPreviewSummary.mainRange}</strong>
+                                <em>기본 12개월</em>
+                            </div>
+                            <div>
+                                <span>정리기간 구간</span>
+                                <strong>{settingsPreviewSummary.carryoverRange}</strong>
+                                <em>{settingsPreviewSummary.carryoverCount}개월 이월 정리</em>
                             </div>
                         </div>
                         <div className={styles.modalFooter}>
-                            <button onClick={regenerateSlots} className={styles.ghostBtn}>기본 경로 재생성</button>
+                            <button onClick={regenerateSlots} className={styles.ghostBtn}>연도/정리기간으로 월 목록 다시 만들기</button>
                         </div>
                         <div className={styles.monthlySettingsList}>
+                            <div className={styles.monthlySettingsHeader}>
+                                <span>사용 월</span>
+                                <span>월 파일 경로</span>
+                                <span>읽을 시트</span>
+                                <span>표 제목 행</span>
+                                <span>파일 찾기</span>
+                            </div>
                             {fileSlots.map((slot, idx) => (
                                 <div className={styles.monthlySettingsRow} key={slot.period}>
                                     <label>
                                         <input type="checkbox" checked={slot.enabled} onChange={e => updateSlot(idx, { enabled: e.target.checked })} />
                                         {slot.period}{slot.carryover ? ' 이월' : ''}
                                     </label>
-                                    <input value={slot.path} onChange={e => updateSlot(idx, { path: e.target.value })} className={styles.pathInput} />
-                                    <input value={slot.sheetName} onChange={e => updateSlot(idx, { sheetName: e.target.value || FIRST_SHEET_TOKEN })} className={styles.shortInput} />
-                                    <input value={slot.headerRow} onChange={e => updateSlot(idx, { headerRow: e.target.value.replace(/[^\d]/g, '') })} placeholder="제목행" className={styles.shortInput} />
-                                    <button onClick={() => openBrowser(idx)} className={styles.browseBtn}>찾기</button>
+                                    <input
+                                        value={slot.path}
+                                        onChange={e => updateSlot(idx, { path: e.target.value })}
+                                        className={styles.pathInput}
+                                        aria-label={`${slot.period} 월 파일 경로`}
+                                    />
+                                    <div className={styles.sheetControl}>
+                                        <select
+                                            value={slot.sheetName === FIRST_SHEET_TOKEN ? FIRST_SHEET_TOKEN : 'custom'}
+                                            onChange={e => updateSlot(idx, { sheetName: e.target.value === FIRST_SHEET_TOKEN ? FIRST_SHEET_TOKEN : '' })}
+                                            aria-label={`${slot.period} 읽을 시트`}
+                                        >
+                                            <option value={FIRST_SHEET_TOKEN}>첫 번째 시트</option>
+                                            <option value="custom">시트명 직접 입력</option>
+                                        </select>
+                                        {slot.sheetName !== FIRST_SHEET_TOKEN && (
+                                            <input
+                                                value={slot.sheetName}
+                                                onChange={e => updateSlot(idx, { sheetName: e.target.value || FIRST_SHEET_TOKEN })}
+                                                placeholder="시트명"
+                                                className={styles.sheetNameInput}
+                                                aria-label={`${slot.period} 시트명`}
+                                            />
+                                        )}
+                                    </div>
+                                    <input
+                                        value={slot.headerRow}
+                                        onChange={e => updateSlot(idx, { headerRow: e.target.value.replace(/[^\d]/g, '') })}
+                                        placeholder="자동"
+                                        title="엑셀 표 컬럼명이 있는 행 번호입니다. 비워두면 자동으로 찾습니다."
+                                        className={styles.shortInput}
+                                        aria-label={`${slot.period} 표 제목 행`}
+                                    />
+                                    <button onClick={() => openBrowser(idx)} className={styles.browseBtn}>월 파일명 찾기</button>
                                 </div>
                             ))}
                         </div>

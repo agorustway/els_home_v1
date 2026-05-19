@@ -1,22 +1,41 @@
+## [2026-05-20] 아산 월간실적 파일 설정창 업무용 정리 (v5.14.77)
+### 핵심
+- 월간실적 파일 설정 모달에서 내부 저장값 `__first__`를 화면에 그대로 보이지 않게 하고, 사용자가 이해할 수 있는 `첫 번째 시트` 선택으로 표시했습니다.
+- `제목행`은 `표 제목 행`으로 바꾸고, 엑셀 컬럼명이 있는 행 번호이며 비워두면 자동 감지된다는 설명을 붙였습니다.
+- `기준연도`는 1월~12월 기본 파일 구간, `정리기간`은 다음해 이월 정리용 추가 월이라는 의미가 보이도록 설명과 기간 요약 카드를 추가했습니다.
+- 월별 행에는 `사용 월 / 월 파일 경로 / 읽을 시트 / 표 제목 행 / 파일 찾기` 제목줄을 붙이고, 버튼은 `월 파일명 찾기`로 바꿨습니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산 월간실적 NAS 자동 감지와 종합실적 갱신 (v5.14.76)
 ### 핵심
-- NAS Core에 월간실적 파일 자동 감지 스케줄러를 추가했습니다. 체크된 월간 파일 중 마지막 활성 파일은 60초, 이전 활성 파일은 120초 간격으로 mtime/size와 DB 파일 메타를 비교합니다.
+- NAS Core에 월간실적 파일 자동 감지 스케줄러를 추가했습니다. 연간/월간 감지는 기본 24시간으로 두고, 체크된 월간 파일 중 마지막 활성 파일은 60초, 이전 활성 파일은 120초 간격으로 mtime/size와 DB 파일 메타를 비교합니다.
 - 변경이 안정화된 파일만 `files_only` 월간 동기화로 넘겨 외부 Node importer가 해당 월 파일만 `dataset_type=monthly` 누적 원장에 반영하게 했습니다. 수동 동기화는 기존처럼 체크된 월 파일 전체를 순차 처리합니다.
 - 연간실적은 기존 자동 스케줄러와 snapshot/diff 원장 정책을 유지합니다. 파일 변경 시 기존 DB 자료를 삭제하지 않고 현재 스냅샷과 과거 상태를 누적 관리합니다.
+- 월간 파일 설정 모달은 기준연도 12개월과 다음해 정리기간 파일을 분리해 설명하고, 사용 월 수/기간 요약, 첫 번째 시트/직접 시트명, 제목행 자동 탐지를 명확히 선택할 수 있게 다듬었습니다.
 - 종합실적 화면은 연간/월간 동기화 상태 조회를 별도로 폴링하고, 동기화가 끝나면 Supabase summary를 다시 읽습니다. 상태 조회 실패는 무시해 NAS가 끊겨도 저장된 DB 화면 조회가 유지되게 했습니다.
 - NAS 전체/CORE/BOT 배포 스크립트는 docker-compose v1에서 고정 `container_name` 재생성 충돌이 나지 않도록 이미지 빌드, 기존 컨테이너 제거, `--no-build` 재기동 순서로 분리했습니다.
 ### 검증
 - `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 24개 통과
 - `python -m py_compile docker/els-backend/asan_performance.py`: 통과
 - `node --check "web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js"`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
 - `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
 - `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
 ### 변경 파일
 - `docker/els-backend/asan_performance.py`
 - `scripts/nas-deploy.sh`, `scripts/deploy-core.sh`, `scripts/deploy-bot.sh`
-- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
-- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`, `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ## [2026-05-20] NAS 도커 재생성 rename 충돌 방지

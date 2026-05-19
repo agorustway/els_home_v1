@@ -3017,6 +3017,20 @@
     font-weight: 900;
 }
 
+.formGroup label span {
+    margin-left: 4px;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.formGroup small {
+    color: #64748b;
+    font-size: 0.69rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
 .pathRow {
     display: flex;
     gap: 6px;
@@ -4436,6 +4450,71 @@
     width: min(1120px, 96vw);
 }
 
+.monthlySettingsGuide {
+    display: grid;
+    gap: 4px;
+    margin: 4px 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 7px;
+    background: #eff6ff;
+}
+
+.monthlySettingsGuide strong {
+    color: #1e3a8a;
+    font-size: 0.82rem;
+    font-weight: 950;
+}
+
+.monthlySettingsGuide span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.45;
+}
+
+.monthlySettingsSummary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 8px 0 4px;
+}
+
+.monthlySettingsSummary div {
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+
+.monthlySettingsSummary span,
+.monthlySettingsSummary strong,
+.monthlySettingsSummary em {
+    display: block;
+}
+
+.monthlySettingsSummary span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.monthlySettingsSummary strong {
+    margin-top: 4px;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
+}
+
+.monthlySettingsSummary em {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 800;
+}
+
 .monthlySettingsList {
     display: flex;
     flex-direction: column;
@@ -4445,9 +4524,20 @@
     padding: 6px 2px;
 }
 
+.monthlySettingsHeader {
+    display: grid;
+    grid-template-columns: 96px minmax(320px, 1fr) minmax(150px, 180px) 88px 110px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 4px 2px;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+}
+
 .monthlySettingsRow {
     display: grid;
-    grid-template-columns: 96px minmax(260px, 1fr) 80px 72px 58px;
+    grid-template-columns: 96px minmax(320px, 1fr) minmax(150px, 180px) 88px 110px;
     align-items: center;
     gap: 6px;
 }
@@ -4460,6 +4550,27 @@
     font-size: 0.72rem;
     font-weight: 900;
     white-space: nowrap;
+}
+
+.sheetControl {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.sheetControl select,
+.sheetNameInput {
+    width: 100%;
+    height: 28px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 800;
 }
 
 .shortInput {
@@ -4553,6 +4664,14 @@
 
     .monthlySlotGrid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .monthlySettingsSummary {
+        grid-template-columns: 1fr;
+    }
+
+    .monthlySettingsHeader {
+        display: none;
     }
 
     .reportSheetTop {

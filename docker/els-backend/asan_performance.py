@@ -644,13 +644,15 @@ def register_asan_performance_routes(app, supabase, kst):
     external_sync_enabled = _env_bool("ASAN_PERFORMANCE_EXTERNAL_SYNC_ENABLED", True)
     allow_excel_fallback = _env_bool("ASAN_PERFORMANCE_ALLOW_EXCEL_FALLBACK", False)
     poll_seconds = _env_int("ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60)
+    sync_start_hour = _env_int("ASAN_PERFORMANCE_SYNC_START_HOUR", 0, 0)
+    sync_end_hour = _env_int("ASAN_PERFORMANCE_SYNC_END_HOUR", 23, 0)
     quiet_seconds = _env_int("ASAN_PERFORMANCE_SYNC_QUIET_SECONDS", 10, 0)
     retry_seconds = _env_int("ASAN_PERFORMANCE_SYNC_RETRY_SECONDS", 180, 30)
     monthly_auto_sync_enabled = _env_bool("ASAN_MONTHLY_PERFORMANCE_AUTO_SYNC_ENABLED", True)
     monthly_auto_active_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_ACTIVE_POLL_SECONDS", 60, 30)
     monthly_auto_stale_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_STALE_POLL_SECONDS", 120, 60)
     monthly_auto_tick_seconds = _env_int("ASAN_MONTHLY_PERFORMANCE_TICK_SECONDS", 15, 5)
-    monthly_auto_start_hour = _env_int("ASAN_MONTHLY_PERFORMANCE_SYNC_START_HOUR", 6, 0)
+    monthly_auto_start_hour = _env_int("ASAN_MONTHLY_PERFORMANCE_SYNC_START_HOUR", 0, 0)
     monthly_auto_end_hour = _env_int("ASAN_MONTHLY_PERFORMANCE_SYNC_END_HOUR", 23, 0)
     external_repo_root = Path(os.environ.get("ASAN_PERFORMANCE_REPO_ROOT", "/app/volume1/docker/els_home_v1"))
     external_node_bin = os.environ.get("ASAN_PERFORMANCE_NODE_BIN", "node")
@@ -696,6 +698,8 @@ def register_asan_performance_routes(app, supabase, kst):
         "enabled": bool(monthly_auto_sync_enabled and external_sync_enabled),
         "active_poll_seconds": monthly_auto_active_seconds,
         "stale_poll_seconds": monthly_auto_stale_seconds,
+        "start_hour": monthly_auto_start_hour,
+        "end_hour": monthly_auto_end_hour,
         "last_checked_at": None,
         "last_started_at": None,
         "last_target": None,
@@ -1446,7 +1450,7 @@ def register_asan_performance_routes(app, supabase, kst):
         while True:
             try:
                 now = datetime.now(kst)
-                if 6 <= now.hour <= 23:
+                if sync_start_hour <= now.hour <= sync_end_hour:
                     _start_background_sync(
                         DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH,
                         DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET,
