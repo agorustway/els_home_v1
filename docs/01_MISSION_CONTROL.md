@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.24 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.25 / APK v5.11.17)
 
-> 최신 업데이트: AI 어시스턴트 대화 전체 삭제 후 옛 목록이 재등장하는 삭제마커 소실 문제를 보강했습니다.
+> 최신 업데이트: 아산 연간/월간실적 DB 조회가 NAS 빌드 상태에 끌려가지 않도록 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.24
+- **웹 버전**: v5.14.25
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -15,6 +15,7 @@
   - 월간 원장 summary에는 월별/일별 흐름과 이월 합계를 함께 저장해 화면 분석에 사용.
   - 월간 원장은 같은 파일/시트/행 기준으로 변경 행만 신규 current로 추가하고 기존 행은 종료해 누적 보존.
   - 연간실적 화면은 2015~2025 기존 파일과 2026 이후 분할 파일을 `annual` current snapshots 통합 조회로 합산한다.
+  - 연간/월간실적 GET은 Supabase DB 조회 실패 시 NAS 프록시로 우회하지 않고 JSON 오류를 반환해 Docker 빌드 중 화면 장애 전파를 막는다.
   - 아산 배차판 RAG는 `branch_dispatch` 헤더/셀 패턴으로 오더·픽업지역·메모시간 스키마를 먼저 만든 뒤 답변한다.
   - AI 어시스턴트 대화 삭제는 DB 빈 삭제마커를 유지해 늦은 자동저장이 옛 목록을 되살리지 못하게 한다.
   - 선적관리 수동 동기화는 파일 변경 시에만 재적재하고, Core는 이미 동기화 중이면 중복 파싱을 건너뜀.
@@ -45,6 +46,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.25**: 아산 연간실적 통합 조회의 `allMetasHaveSnapshot` 스코프 오류를 수정해 `aggregate=all`이 Supabase current snapshots를 정상 조회하게 했다. 연간/월간실적 GET에서 DB 조회 예외가 나도 NAS 프록시로 떨어지지 않도록 바꿔, NAS Docker 빌드 중에는 DB 직조회 화면이 NAS 상태에 끌려가지 않게 했다. 운영 DB 확인 결과 annual 메타 1개/368,617행은 존재하고, monthly 메타는 아직 0개라 월간은 최초 동기화 전 상태다.
 - **v5.14.24**: AI 어시스턴트 전체 삭제 후 10초 뒤 purge가 삭제마커까지 제거해, 늦게 도착한 옛 자동저장이 대화 목록을 되살릴 수 있던 문제를 보강. 서버는 빈 삭제마커와 `clearedAt`을 유지하고, 클라이언트는 이를 받으면 로컬 옛 목록도 무효화한다.
 - **v5.14.23**: 아산 연간실적 GET 조회에 `aggregate=all` 통합 모드를 추가. 파일 설정/동기화 대상은 선택 파일로 유지하면서, 화면 분석·테이블은 `dataset_type=annual`의 모든 파일 메타에서 `currentSnapshotId`를 모아 합산 조회한다. 2015~2025 대용량 파일을 보존하고 2026 이후 새 연간 파일을 별도 동기화해도 웹은 전체 기간을 하나의 연간 원장처럼 표시한다.
 - **v5.14.22**: 아산 월간실적 동기화를 `diff-current` 누적형으로 전환. 파일이 교체되면 같은 파일/시트/행의 해시를 비교해 변경 행만 신규 current로 추가하고 기존 행은 `superseded_by_excel`, 사라진 행은 `removed_from_excel`로 종료한다. 월간 조회도 `currentSnapshotId` 단일 스냅샷이 아니라 `is_current=true` 원장을 읽도록 보정했다.
@@ -62,6 +64,8 @@
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
 
 ## VERIFICATION
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- app/api/branches/asan/performance/annual/route.js app/api/branches/asan/performance/monthly/route.js lib/asan-branch-db.js tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
 - `node --test web/tests/chatMemory.test.mjs`: 8개 통과
 - `npm.cmd run lint -- "app/(main)/employees/(intranet)/ask/page.js" app/api/chat/memory/route.js utils/chatMemory.mjs tests/chatMemory.test.mjs`: 0 errors, 기존 warning 8건
 - `git diff --check`: 통과

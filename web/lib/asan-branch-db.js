@@ -676,7 +676,6 @@ async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSi
 
 function mergeAnnualSummaries(metas) {
     const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
-    const allMetasHaveSnapshot = snapshotIds.length === metas.length;
     const totalRows = metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
     const analysisRows = metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).analysisRows || meta.current_row_count || meta.row_count), 0);
     const totalRevenue = roundMetric(metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).totalRevenue), 0));
@@ -810,6 +809,7 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
     }
 
     const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
+    const allMetasHaveSnapshot = snapshotIds.length === metas.length;
     const metaBySnapshot = new Map();
     for (const meta of metas) {
         const snapshotId = summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId;

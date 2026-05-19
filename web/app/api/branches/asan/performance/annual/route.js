@@ -13,9 +13,7 @@ export async function GET(req) {
             const data = await queryAsanAnnualPerformanceFromSupabase(url.searchParams);
             return NextResponse.json({ data });
         } catch (error) {
-            if (!process.env.ELS_BACKEND_URL) {
-                return NextResponse.json({ error: error.message || '연간실적 DB 조회 실패' }, { status: 500 });
-            }
+            return NextResponse.json({ error: error.message || '연간실적 DB 조회 실패' }, { status: 500 });
         }
     }
 

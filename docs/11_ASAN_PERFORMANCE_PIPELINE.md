@@ -18,6 +18,7 @@
 - Next API: `/api/branches/asan/performance/annual`
   - `GET`: 기본 `source=supabase`로 Next 서버에서 Supabase 현재 원장 페이지 직접 조회
   - `GET aggregate=all`: `dataset_type=annual` 파일 메타 전체의 `currentSnapshotId`를 모아 통합 원장처럼 조회. 화면 기본값이며 2015~2025 기존 파일과 2026 이후 분할 파일을 합산한다.
+  - `GET source=supabase` 조회 실패는 NAS로 우회하지 않고 JSON 오류를 반환한다. NAS Docker 빌드/재시작 중에도 DB 직조회 화면이 NAS 상태에 끌려가지 않게 하기 위함이다.
   - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰, NAS Core 경유
   - `POST async=true`: NAS 엑셀 동기화를 백그라운드로 시작하고 현재 Supabase 조회값과 `sync_status` 반환
   - `POST async=false`: 운영 점검용 동기 처리
@@ -106,7 +107,7 @@
 - `실적관리 > 월간실적` 화면은 `NAS 동기화` 버튼과 파일 설정 `저장 후 동기화`를 제공한다.
 - importer는 월별 보고서 표의 `순매출/순매입/매출이익`, `매출(계산서)/매입(계산서)/매출이익(계산서)`, `매출/매입 이월` 행을 인식해 거래처별 보고서 summary를 만든다.
 - 원장 행은 파일월 기준 월별 흐름과 작업일자 기준 일별 흐름을 함께 집계한다. 화면은 이 summary로 `월별 보고서`, `일별 데이터`, `이월금액`을 표시한다.
-- Next API는 `/api/branches/asan/performance/monthly`이며 GET은 Supabase monthly dataset을 직접 조회하고, POST는 NAS Core 백그라운드 동기화로 프록시한다.
+- Next API는 `/api/branches/asan/performance/monthly`이며 GET은 Supabase monthly dataset을 직접 조회하고, POST는 NAS Core 백그라운드 동기화로 프록시한다. GET 조회 실패는 NAS로 우회하지 않고 JSON 오류를 반환한다.
 - diff-current 월간 메타가 있는 경우 Next 조회는 `summary.currentSnapshotId`가 아니라 `is_current=true` 기준으로 각 월 파일의 최신 원장을 읽는다.
 - NAS Core는 존재하지 않는 미래/정리기간 파일은 실패가 아니라 `missing` skip으로 기록하고, 존재하는 파일만 순차 적재한다.
 - 연간+월별 합산은 DB view 또는 백엔드 집계 API로 분리해 웹에서 전체 원장을 직접 합산하지 않는다. 2026년 마감 후 월간 누적 원장에서 연간 형식과 호환되는 컬럼만 이관하는 기능은 별도 승인 워크플로우로 설계한다.

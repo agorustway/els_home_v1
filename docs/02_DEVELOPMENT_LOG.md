@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 실적관리 DB 조회 NAS 우회 차단 (v5.14.25)
+### 핵심
+- 연간실적 `aggregate=all` 조회에서 `allMetasHaveSnapshot` 변수가 잘못된 스코프에 있어 런타임 예외가 날 수 있던 문제를 수정했습니다.
+- 연간/월간실적 GET은 `source=supabase` 기본 조회에서 예외가 나도 NAS 프록시로 우회하지 않고 JSON 오류를 반환합니다. 이로써 NAS Docker 빌드 중에도 DB 직조회 화면이 NAS 상태에 끌려가지 않습니다.
+- 운영 DB를 확인한 결과 annual 메타는 1개, 현재 스냅샷 368,617행이 존재합니다. monthly 메타는 아직 0개라 월간실적은 최초 동기화 전 상태입니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- app/api/branches/asan/performance/annual/route.js app/api/branches/asan/performance/monthly/route.js lib/asan-branch-db.js tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/performance/annual/route.js`
+- `web/app/api/branches/asan/performance/monthly/route.js`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] AI 어시스턴트 전체 삭제 유령 목록 재등장 차단 (v5.14.24)
 ### 핵심
 - 전체 삭제 후 10초 뒤 `purge=1` 검증 삭제가 DB의 빈 삭제마커까지 지우면서, 늦게 도착한 예전 자동저장 POST가 옛 대화 목록을 다시 살릴 수 있던 원인을 확인했습니다.

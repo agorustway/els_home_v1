@@ -24,11 +24,14 @@ function read(relPath) {
 
 test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', () => {
   const source = read('web/app/api/branches/asan/performance/annual/route.js');
+  const monthlyRoute = read('web/app/api/branches/asan/performance/monthly/route.js');
   const dbReader = read('web/lib/asan-branch-db.js');
   assert.match(source, /queryAsanAnnualPerformanceFromSupabase/);
   assert.match(source, /source !== 'excel'[\s\S]*queryAsanAnnualPerformanceFromSupabase\(url\.searchParams\)/);
   assert.match(source, /proxyToBackend\(req, '\/api\/branches\/asan\/performance\/annual'\)/);
   assert.match(source, /dynamic = 'force-dynamic'/);
+  assert.doesNotMatch(source, /source !== 'excel'[\s\S]*if \(!process\.env\.ELS_BACKEND_URL\)/);
+  assert.doesNotMatch(monthlyRoute, /source !== 'excel'[\s\S]*if \(!process\.env\.ELS_BACKEND_URL\)/);
   assert.match(dbReader, /branch_performance_files/);
   assert.match(dbReader, /branch_performance_rows/);
   assert.match(dbReader, /source: 'supabase-empty'/);
@@ -38,6 +41,7 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.match(dbReader, /ANNUAL_SOURCE_FILE_HEADER/);
   assert.match(dbReader, /annual\.allCurrentSnapshots/);
   assert.match(dbReader, /currentSnapshotIds/);
+  assert.match(dbReader, /const allMetasHaveSnapshot = snapshotIds\.length === metas\.length/);
   assert.match(dbReader, /String\(mode \|\| ''\)\.toLowerCase\(\) === 'and'/);
   assert.match(dbReader, /nextQuery\.ilike\('search_text'/);
   assert.match(dbReader, /totalEstimated/);
