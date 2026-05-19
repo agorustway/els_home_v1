@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.77 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.78 / APK v5.11.23)
 
-> 최신 업데이트: 월간실적 파일 설정창을 업무용 설명과 기간 요약 중심으로 정리했습니다.
+> 최신 업데이트: 월간실적 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞췄습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.77
+- **웹 버전**: v5.14.78
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -13,7 +13,7 @@
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
   - Bot 운영 워커는 2개 유지하며 도커 재기동/리셋 이후에도 저장 계정 기반 자동 복구 흐름을 유지한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 체크된 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
-  - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내한다.
+  - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
   - NAS 배포 스크립트는 전체/CORE/BOT 모두 이미지 빌드와 고정 이름 컨테이너 제거를 분리해 docker-compose v1 재생성 충돌을 피한다.
 
@@ -55,8 +55,10 @@
 - [x] v5.14.75: 컨테이너 Bot 자동 워밍업과 수동 정지 버튼
 - [x] v5.14.76: 월간실적 NAS 파일 자동 감지와 종합실적 동기화 완료 후 새로고침
 - [x] v5.14.77: 월간실적 파일 설정창 업무용 라벨과 기간 요약 정리
+- [x] v5.14.78: 월간실적 기준연도 변경 시 이월 슬롯 판정 보정
 
 ## RECENT CHANGES
+- **v5.14.78**: 월간실적 파일 설정에서 기준연도를 바꾸거나 월 목록을 재생성할 때 본연도 12개월이 `이월`로 잘못 분류되지 않도록 슬롯 정규화 기준을 선택한 기준연도에 맞췄다. 저장 슬롯에 `carryover` 값이 있으면 그 값을 우선하고, 없을 때만 선택 기준연도로 보정한다.
 - **v5.14.77**: 월간실적 파일 설정 모달에서 내부 토큰 `__first__` 노출을 없애고 `첫 번째 시트` 선택으로 바꿨다. `제목행`은 `표 제목 행`으로 풀어 설명하고, 비워두면 자동 감지된다는 안내를 붙였다. 기준연도와 정리기간은 각각 12개월 기본 구간과 다음해 이월 정리 월로 표시하며, 현재 파일 공간/기준연도 구간/정리기간 구간 요약 카드를 추가했다.
 - **v5.14.76**: NAS Core에 월간실적 자동 감지 스케줄러를 추가했다. 연간/월간 감지는 기본 24시간으로 두고, 체크된 월간 파일 중 마지막 활성 파일은 60초, 이전 파일은 120초 간격으로 mtime/DB meta를 확인한다. 변경 감지 시 해당 파일만 `files_only` 외부 importer로 순차 동기화한다. 수동 동기화는 기존처럼 체크된 15개 슬롯을 즉시 순차 처리하며, 월간 파일 설정 모달은 기준연도/정리기간/시트/제목행 의미를 명확히 보여준다. 종합실적은 연간/월간 동기화가 끝난 것을 감지하면 Supabase summary를 다시 읽는다. NAS 배포 스크립트도 빌드/컨테이너 제거/재기동 단계로 분리했다.
 - **v5.14.75**: `els-bot` 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀을 백그라운드 워밍업한다. 단건 컨테이너 API는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot을 준비시키고, 컨테이너 이력조회 화면에는 `BOT 정지` 버튼을 추가해 조회·워커·로그인 상태를 수동 종료할 수 있게 했다.
@@ -71,8 +73,9 @@
 - `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
 - `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
-- `python -m py_compile docker/els-backend/asan_performance.py`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
 - `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
 - `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
 

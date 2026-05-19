@@ -346,15 +346,20 @@ function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay
         .filter(section => section.items.length);
 }
 
-function normalizeSlot(slot) {
+function normalizeSlot(slot, baseYear = DEFAULT_MONTHLY_BASE_YEAR) {
     const year = Number.parseInt(slot.year, 10);
     const month = Number.parseInt(slot.month, 10);
     const period = slot.period || `${year}-${String(month).padStart(2, '0')}`;
+    const parsedBaseYear = Number.parseInt(baseYear, 10);
+    const basisYear = Number.isFinite(parsedBaseYear) ? parsedBaseYear : DEFAULT_MONTHLY_BASE_YEAR;
+    const carryover = typeof slot.carryover === 'boolean'
+        ? slot.carryover
+        : year > basisYear;
     return {
         year,
         month,
         period,
-        carryover: Boolean(slot.carryover || year > DEFAULT_MONTHLY_BASE_YEAR),
+        carryover,
         enabled: slot.enabled !== false,
         path: normalizePerformancePath(slot.path || ''),
         sheetName: slot.sheetName ?? slot.sheet_name ?? FIRST_SHEET_TOKEN,
@@ -365,7 +370,7 @@ function normalizeSlot(slot) {
 function mergeSavedSlots(baseYear, extraMonths, savedSlots = []) {
     const savedByPeriod = new Map((savedSlots || []).map(item => [item.period, item]));
     return buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }).map((slot) => (
-        normalizeSlot({ ...slot, ...(savedByPeriod.get(slot.period) || {}) })
+        normalizeSlot({ ...slot, ...(savedByPeriod.get(slot.period) || {}) }, baseYear)
     ));
 }
 
@@ -1405,13 +1410,13 @@ export default function AsanMonthlyPerformance() {
     };
 
     const regenerateSlots = () => {
-        const nextSlots = buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }).map(normalizeSlot);
+        const nextSlots = buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }).map(slot => normalizeSlot(slot, baseYear));
         setFileSlots(nextSlots);
     };
 
     const updateSlot = (idx, patch) => {
         setFileSlots(prev => prev.map((slot, slotIdx) => (
-            slotIdx === idx ? normalizeSlot({ ...slot, ...patch }) : slot
+            slotIdx === idx ? normalizeSlot({ ...slot, ...patch }, baseYear) : slot
         )));
     };
 

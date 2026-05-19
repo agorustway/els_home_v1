@@ -214,7 +214,11 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /function summarizeMonthlySlots/);
   assert.match(component, /settingsSlotSummary/);
   assert.match(component, /settingsPreviewSummary/);
+  assert.match(component, /function normalizeSlot\(slot, baseYear = DEFAULT_MONTHLY_BASE_YEAR\)/);
+  assert.match(component, /const basisYear = Number\.isFinite\(parsedBaseYear\) \? parsedBaseYear : DEFAULT_MONTHLY_BASE_YEAR/);
+  assert.match(component, /typeof slot\.carryover === 'boolean'/);
   assert.match(component, /sheetName: slot\.sheetName \?\? slot\.sheet_name \?\? FIRST_SHEET_TOKEN/);
+  assert.match(component, /normalizeSlot\(\{ \.\.\.slot, \.\.\.patch \}, baseYear\)/);
   assert.match(component, /저장 후 동기화/);
   assert.match(component, /saveSettingsAndSync/);
   assert.doesNotMatch(component, /월별 파일 공간/);

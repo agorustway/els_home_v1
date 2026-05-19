@@ -1,12 +1,30 @@
+## [2026-05-20] 월간실적 기준연도별 이월 슬롯 판정 보정 (v5.14.78)
+### 핵심
+- 월간실적 파일 설정에서 기준연도를 2027년 등으로 바꿀 때 본연도 12개월이 `이월`로 표시될 수 있는 정규화 기준을 보정했습니다.
+- 저장 슬롯에 `carryover` 값이 있으면 그 값을 우선하고, 값이 없을 때만 선택한 기준연도를 기준으로 다음해 슬롯을 이월로 판정합니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산 월간실적 파일 설정창 업무용 정리 (v5.14.77)
 ### 핵심
 - 월간실적 파일 설정 모달에서 내부 저장값 `__first__`를 화면에 그대로 보이지 않게 하고, 사용자가 이해할 수 있는 `첫 번째 시트` 선택으로 표시했습니다.
 - `제목행`은 `표 제목 행`으로 바꾸고, 엑셀 컬럼명이 있는 행 번호이며 비워두면 자동 감지된다는 설명을 붙였습니다.
 - `기준연도`는 1월~12월 기본 파일 구간, `정리기간`은 다음해 이월 정리용 추가 월이라는 의미가 보이도록 설명과 기간 요약 카드를 추가했습니다.
+- 기준연도를 바꿨을 때 본연도 12개월이 이월 슬롯으로 오판되지 않도록 이월 판정은 선택한 기준연도와 슬롯 자체의 `carryover` 값을 우선하도록 정리했습니다.
 - 월별 행에는 `사용 월 / 월 파일 경로 / 읽을 시트 / 표 제목 행 / 파일 찾기` 제목줄을 붙이고, 버튼은 `월 파일명 찾기`로 바꿨습니다.
 ### 검증
 - `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
 - `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
 - `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
 ### 변경 파일
