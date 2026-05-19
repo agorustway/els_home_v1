@@ -22,7 +22,9 @@ const DEFAULT_MONTHLY_RANGE_HINT = '2026-01 ~ 2027-03';
 const REPORT_ALL_KEY = 'all';
 const ANALYSIS_SCOPE_ALL = 'all';
 const ANALYSIS_SCOPE_MONTH = 'month';
+const ANALYSIS_SCOPE_WEEK = 'week';
 const ANALYSIS_SCOPE_DAY = 'day';
+const WEEKDAY_LABELS = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
 const REPORT_METRIC_KEYS = [
     'netRevenue',
     'netPurchase',
@@ -200,23 +202,47 @@ function scopedMetricFromSeries(item = {}, metric = {}, totalForShare = 0) {
     };
 }
 
-function findScopedMetric(item = {}, scope, selectedMonth, selectedDay) {
+function findScopedMetric(item = {}, scope, selectedMonth, selectedDay, selectedWeek) {
     if (scope === ANALYSIS_SCOPE_MONTH) {
         return metricSeries(item, 'monthly').find(metric => metric.period === selectedMonth) || null;
     }
+    if (scope === ANALYSIS_SCOPE_WEEK) {
+        const weekDates = selectedWeek?.dateSet;
+        const weekDateOnly = selectedWeek?.dateOnlySet;
+        const dailyMetrics = metricSeries(item, 'daily').filter((metric) => {
+            const date = String(metric.date || '').trim();
+            if (!date) return false;
+            const period = String(metric.period || selectedWeek?.period || '').trim();
+            return weekDates?.has(`${period}::${date}`) || (!metric.period && weekDateOnly?.has(date));
+        });
+        if (dailyMetrics.length) {
+            return {
+                ...sumMetricItems(dailyMetrics),
+                period: selectedWeek?.period,
+                date: selectedWeek?.key,
+                label: selectedWeek?.label,
+            };
+        }
+        return metricSeries(item, 'monthly').find(metric => metric.period === selectedWeek?.period) || null;
+    }
     if (scope === ANALYSIS_SCOPE_DAY) {
-        const dailyMetric = metricSeries(item, 'daily').find(metric => metric.date === selectedDay);
+        const selectedDate = typeof selectedDay === 'object' ? selectedDay?.date : selectedDay;
+        const selectedPeriod = typeof selectedDay === 'object' ? selectedDay?.period : String(selectedDay || '').slice(0, 7);
+        const dailyMetric = metricSeries(item, 'daily').find(metric => (
+            metric.date === selectedDate
+            && (!metric.period || !selectedPeriod || metric.period === selectedPeriod)
+        ));
         if (dailyMetric) return dailyMetric;
-        const dayMonth = String(selectedDay || '').slice(0, 7);
+        const dayMonth = selectedPeriod || String(selectedDate || '').slice(0, 7);
         return metricSeries(item, 'monthly').find(metric => metric.period === dayMonth) || null;
     }
     return item;
 }
 
-function scopeMetricList(items = [], scope, selectedMonth, selectedDay, totalForShare = 0, limit = 999) {
+function scopeMetricList(items = [], scope, selectedMonth, selectedDay, selectedWeek, totalForShare = 0, limit = 999) {
     const list = safeObjectList(items).map((item) => {
         if (scope === ANALYSIS_SCOPE_ALL) return item;
-        const metric = findScopedMetric(item, scope, selectedMonth, selectedDay);
+        const metric = findScopedMetric(item, scope, selectedMonth, selectedDay, selectedWeek);
         return metric ? scopedMetricFromSeries(item, metric, totalForShare) : null;
     }).filter(isMetricActive);
     return list
@@ -234,7 +260,7 @@ function normalizeStrategicSegment(segment = {}) {
     return null;
 }
 
-function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, totalForShare = 0) {
+function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, selectedWeek, totalForShare = 0) {
     const safeSections = safeObjectList(sections)
         .map(section => ({ ...section, items: safeObjectList(section.items) }))
         .filter(section => section.items.length);
@@ -242,7 +268,7 @@ function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay
     return safeSections
         .map(section => ({
             ...section,
-            items: scopeMetricList(section.items || [], scope, selectedMonth, selectedDay, totalForShare, 60),
+            items: scopeMetricList(section.items || [], scope, selectedMonth, selectedDay, selectedWeek, totalForShare, 60),
         }))
         .filter(section => section.items.length);
 }
@@ -385,10 +411,11 @@ function normalizeDimensionSections(breakdowns = []) {
 function groupDailyByMonth(monthly = [], daily = []) {
     const map = new Map();
     safeObjectList(monthly).forEach((item) => {
-        map.set(item.period, { ...item, days: [] });
+        const period = String(item.period || '').trim();
+        if (period && isMetricActive(item)) map.set(period, { ...item, period, days: [], fromMonthly: true });
     });
     safeObjectList(daily).forEach((item) => {
-        const period = item.period || String(item.date || '').slice(0, 7);
+        const period = String(item.period || '').trim();
         if (!period) return;
         if (!map.has(period)) {
             const [yearText, monthText] = period.split('-');
@@ -401,11 +428,115 @@ function groupDailyByMonth(monthly = [], daily = []) {
                 profit: 0,
                 rowCount: 0,
                 days: [],
+                fromMonthly: false,
             });
         }
-        map.get(period).days.push(item);
+        const bucket = map.get(period);
+        bucket.days.push(item);
+        if (!bucket.fromMonthly) {
+            bucket.revenue += safeNumber(item.revenue);
+            bucket.purchase += safeNumber(item.purchase);
+            bucket.profit += safeNumber(item.profit);
+            bucket.rowCount += safeNumber(item.rowCount);
+        }
     });
-    return Array.from(map.values()).sort((a, b) => String(a.period).localeCompare(String(b.period)));
+    return Array.from(map.values())
+        .filter(item => isMetricActive(item) || safeObjectList(item.days).some(isMetricActive))
+        .map(item => ({
+            ...item,
+            fromMonthly: undefined,
+            days: safeObjectList(item.days).sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
+        }))
+        .sort((a, b) => String(a.period).localeCompare(String(b.period)));
+}
+
+function normalizeDailyOption(item = {}, index = 0) {
+    const date = String(item.date || '').trim();
+    const period = String(item.period || '').trim();
+    const scopeKey = `${period || '마감월미지정'}::${date || index}`;
+    return {
+        ...item,
+        date,
+        period,
+        scopeKey,
+        label: period && date ? `${period} · ${date}` : (date || period || `일자 ${index + 1}`),
+    };
+}
+
+function buildWeekBuckets(daily = []) {
+    const byPeriod = new Map();
+    safeObjectList(daily).filter(isMetricActive).map(normalizeDailyOption).forEach((item) => {
+        if (!item.period || !item.date) return;
+        if (!byPeriod.has(item.period)) byPeriod.set(item.period, []);
+        byPeriod.get(item.period).push(item);
+    });
+
+    const buckets = [];
+    Array.from(byPeriod.entries())
+        .sort(([left], [right]) => left.localeCompare(right))
+        .forEach(([period, days]) => {
+            const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+            sortedDays.forEach((day, index) => {
+                const weekIndex = Math.floor(index / 7) + 1;
+                const key = `${period}-W${String(weekIndex).padStart(2, '0')}`;
+                let bucket = buckets.find(item => item.key === key);
+                if (!bucket) {
+                    bucket = {
+                        key,
+                        period,
+                        weekIndex,
+                        label: `${period} ${weekIndex}주차`,
+                        revenue: 0,
+                        purchase: 0,
+                        profit: 0,
+                        rowCount: 0,
+                        days: [],
+                        dateSet: new Set(),
+                        dateOnlySet: new Set(),
+                    };
+                    buckets.push(bucket);
+                }
+                bucket.days.push(day);
+                bucket.dateSet.add(day.scopeKey);
+                bucket.dateOnlySet.add(day.date);
+                bucket.revenue += safeNumber(day.revenue);
+                bucket.purchase += safeNumber(day.purchase);
+                bucket.profit += safeNumber(day.profit);
+                bucket.rowCount += safeNumber(day.rowCount);
+            });
+        });
+
+    return buckets.map((bucket) => {
+        const first = bucket.days[0]?.date || '';
+        const last = bucket.days[bucket.days.length - 1]?.date || '';
+        return {
+            ...bucket,
+            rangeLabel: first && last && first !== last ? `${first}~${last}` : (first || last),
+        };
+    });
+}
+
+function buildWeekdayCards(daily = []) {
+    const cards = WEEKDAY_LABELS.map((label, index) => ({
+        key: String(index),
+        label,
+        revenue: 0,
+        purchase: 0,
+        profit: 0,
+        rowCount: 0,
+    }));
+    safeObjectList(daily).filter(isMetricActive).forEach((item) => {
+        const dateText = String(item.date || '').trim();
+        const date = new Date(`${dateText}T00:00:00Z`);
+        if (Number.isNaN(date.getTime())) return;
+        const index = (date.getUTCDay() + 6) % 7;
+        const bucket = cards[index];
+        bucket.revenue += safeNumber(item.revenue);
+        bucket.purchase += safeNumber(item.purchase);
+        bucket.profit += safeNumber(item.profit);
+        bucket.rowCount += safeNumber(item.rowCount);
+    });
+    return cards;
 }
 
 function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
@@ -558,6 +689,7 @@ export default function AsanMonthlyPerformance() {
     const [selectedReportPeriod, setSelectedReportPeriod] = useState(REPORT_ALL_KEY);
     const [analysisScope, setAnalysisScope] = useState(ANALYSIS_SCOPE_ALL);
     const [selectedAnalysisMonth, setSelectedAnalysisMonth] = useState('');
+    const [selectedAnalysisWeek, setSelectedAnalysisWeek] = useState('');
     const [selectedAnalysisDay, setSelectedAnalysisDay] = useState('');
     const [expandedDailyMonths, setExpandedDailyMonths] = useState(new Set());
     const [activeDimensionKey, setActiveDimensionKey] = useState('');
@@ -745,28 +877,40 @@ export default function AsanMonthlyPerformance() {
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
     }, [colOrder, headers, hiddenCols]);
     const availableMonths = useMemo(() => monthly.filter(isMetricActive), [monthly]);
-    const availableDays = useMemo(() => daily.filter(isMetricActive), [daily]);
+    const availableDays = useMemo(() => daily
+        .filter(isMetricActive)
+        .map(normalizeDailyOption)
+        .sort((a, b) => String(a.period || '').localeCompare(String(b.period || '')) || String(a.date || '').localeCompare(String(b.date || ''))), [daily]);
+    const availableWeeks = useMemo(() => buildWeekBuckets(availableDays), [availableDays]);
     const fallbackAnalysisMonthValue = availableMonths[availableMonths.length - 1]?.period || '';
-    const fallbackAnalysisDayValue = availableDays[availableDays.length - 1]?.date || '';
+    const fallbackAnalysisWeekValue = availableWeeks[availableWeeks.length - 1]?.key || '';
+    const fallbackAnalysisDayValue = availableDays[availableDays.length - 1]?.scopeKey || '';
     const activeAnalysisMonthValue = availableMonths.some(item => item.period === selectedAnalysisMonth)
         ? selectedAnalysisMonth
         : fallbackAnalysisMonthValue;
-    const activeAnalysisDayValue = availableDays.some(item => item.date === selectedAnalysisDay)
+    const activeAnalysisWeekValue = availableWeeks.some(item => item.key === selectedAnalysisWeek)
+        ? selectedAnalysisWeek
+        : fallbackAnalysisWeekValue;
+    const activeAnalysisWeek = availableWeeks.find(item => item.key === activeAnalysisWeekValue) || null;
+    const activeAnalysisDayValue = availableDays.some(item => item.scopeKey === selectedAnalysisDay)
         ? selectedAnalysisDay
         : fallbackAnalysisDayValue;
+    const activeAnalysisDay = availableDays.find(item => item.scopeKey === activeAnalysisDayValue) || null;
     const scopedMonthly = useMemo(() => {
         if (analysisScope === ANALYSIS_SCOPE_MONTH) return monthly.filter(item => item.period === activeAnalysisMonthValue && isMetricActive(item));
+        if (analysisScope === ANALYSIS_SCOPE_WEEK) return monthly.filter(item => item.period === activeAnalysisWeek?.period && isMetricActive(item));
         if (analysisScope === ANALYSIS_SCOPE_DAY) {
-            const dayMonth = String(activeAnalysisDayValue || '').slice(0, 7);
+            const dayMonth = activeAnalysisDay?.period || String(activeAnalysisDay?.date || '').slice(0, 7);
             return monthly.filter(item => item.period === dayMonth && isMetricActive(item));
         }
         return monthly.filter(isMetricActive);
-    }, [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, monthly]);
+    }, [activeAnalysisDay, activeAnalysisMonthValue, activeAnalysisWeek, analysisScope, monthly]);
     const scopedDaily = useMemo(() => {
-        if (analysisScope === ANALYSIS_SCOPE_MONTH) return daily.filter(item => (item.period || String(item.date || '').slice(0, 7)) === activeAnalysisMonthValue && isMetricActive(item));
-        if (analysisScope === ANALYSIS_SCOPE_DAY) return daily.filter(item => item.date === activeAnalysisDayValue && isMetricActive(item));
-        return daily.filter(isMetricActive);
-    }, [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, daily]);
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) return availableDays.filter(item => item.period === activeAnalysisMonthValue);
+        if (analysisScope === ANALYSIS_SCOPE_WEEK) return availableDays.filter(item => activeAnalysisWeek?.dateSet?.has(item.scopeKey));
+        if (analysisScope === ANALYSIS_SCOPE_DAY) return availableDays.filter(item => item.scopeKey === activeAnalysisDayValue);
+        return availableDays;
+    }, [activeAnalysisDayValue, activeAnalysisMonthValue, activeAnalysisWeek, analysisScope, availableDays]);
     const monthRange = monthly.length ? `${monthly[0].period} ~ ${monthly[monthly.length - 1].period}` : DEFAULT_MONTHLY_RANGE_HINT;
     const scopedMonthRange = scopedMonthly.length ? `${scopedMonthly[0].period} ~ ${scopedMonthly[scopedMonthly.length - 1].period}` : monthRange;
     const totalRevenue = safeNumber(summary.totalRevenue);
@@ -776,7 +920,7 @@ export default function AsanMonthlyPerformance() {
     const analysisRows = safeNumber(summary.analysisRows) || totalRows;
     const scopedTotals = analysisScope === ANALYSIS_SCOPE_ALL
         ? { revenue: totalRevenue, purchase: totalPurchase, profit: totalProfit, rowCount: analysisRows }
-        : sumMetricItems(analysisScope === ANALYSIS_SCOPE_DAY ? scopedDaily : scopedMonthly);
+        : sumMetricItems([ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? scopedDaily : scopedMonthly);
     const scopeRevenue = safeNumber(scopedTotals.revenue);
     const scopePurchase = safeNumber(scopedTotals.purchase);
     const scopeProfit = safeNumber(scopedTotals.profit);
@@ -784,7 +928,9 @@ export default function AsanMonthlyPerformance() {
     const scopeProfitRate = scopeRevenue ? (scopeProfit / scopeRevenue) * 100 : 0;
     const selectedScopePeriod = analysisScope === ANALYSIS_SCOPE_MONTH
         ? activeAnalysisMonthValue
-        : (analysisScope === ANALYSIS_SCOPE_DAY ? String(activeAnalysisDayValue || '').slice(0, 7) : '');
+        : (analysisScope === ANALYSIS_SCOPE_WEEK
+            ? (activeAnalysisWeek?.period || '')
+            : (analysisScope === ANALYSIS_SCOPE_DAY ? (activeAnalysisDay?.period || String(activeAnalysisDay?.date || '').slice(0, 7)) : ''));
     const selectedReport = selectedReportPeriod === REPORT_ALL_KEY
         ? allReport
         : (monthlyReports.find(item => item.period === selectedReportPeriod) || allReport || monthlyReports[monthlyReports.length - 1] || null);
@@ -814,30 +960,36 @@ export default function AsanMonthlyPerformance() {
     const segmentItems = safeObjectList(summary.strategicSegments)
         .map(normalizeStrategicSegment)
         .filter(Boolean);
-    const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 2);
+    const scopedSegmentItems = scopeMetricList(segmentItems, analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 2);
     const scopedDimensionSections = useMemo(() => (
-        scopeDimensionSections(dimensionSections, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue)
-    ), [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, dimensionSections, scopeRevenue]);
+        scopeDimensionSections(dimensionSections, analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue)
+    ), [activeAnalysisDay, activeAnalysisMonthValue, activeAnalysisWeek, analysisScope, dimensionSections, scopeRevenue]);
     const activeDimension = scopedDimensionSections.find(section => section.key === activeDimensionKey) || scopedDimensionSections[0] || null;
     const activeDimensionItems = safeObjectList(activeDimension?.items);
     const activeDimensionExpanded = Boolean(activeDimension?.key && expandedDimensionKeys.has(activeDimension.key));
     const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
     const topDimensionItem = activeDimensionItems[0] || null;
     const dailyTree = useMemo(() => groupDailyByMonth(scopedMonthly, scopedDaily), [scopedDaily, scopedMonthly]);
-    const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 999);
+    const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 999);
     const visibleVehicles = showAllVehicles ? scopedVehicleItems : scopedVehicleItems.slice(0, 5);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
     const vehicleMax = Math.max(1, ...scopedVehicleItems.map(item => Math.abs(safeNumber(item.revenue))));
     const chartMax = getPerformanceChartMax(scopedMonthly, ['revenue', 'purchase', 'profit']);
+    const weekdayCards = useMemo(() => buildWeekdayCards(scopedDaily), [scopedDaily]);
+    const weekdayMax = Math.max(1, ...weekdayCards.map(item => Math.abs(safeNumber(item.revenue))));
     const scopeLabel = analysisScope === ANALYSIS_SCOPE_MONTH
         ? `월별 ${activeAnalysisMonthValue || '-'}`
-        : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${activeAnalysisDayValue || '-'}` : '전체');
-    const scopeBasisLabel = analysisScope === ANALYSIS_SCOPE_DAY ? '작업일자' : '마감월';
-    const analysisResetKey = `${analysisScope}:${activeAnalysisMonthValue}:${activeAnalysisDayValue}:${totalRows}:${payload?.synced_at || ''}`;
+        : (analysisScope === ANALYSIS_SCOPE_WEEK
+            ? `주간 ${activeAnalysisWeek?.label || '-'}`
+            : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${activeAnalysisDay?.date || '-'}` : '전체'));
+    const scopeBasisLabel = [ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월';
+    const analysisResetKey = `${analysisScope}:${activeAnalysisMonthValue}:${activeAnalysisWeekValue}:${activeAnalysisDayValue}:${totalRows}:${payload?.synced_at || ''}`;
     const changeAnalysisScope = (nextScope) => {
         if (nextScope === ANALYSIS_SCOPE_MONTH && !activeAnalysisMonthValue) return;
+        if (nextScope === ANALYSIS_SCOPE_WEEK && !activeAnalysisWeekValue) return;
         if (nextScope === ANALYSIS_SCOPE_DAY && !activeAnalysisDayValue) return;
         if (nextScope === ANALYSIS_SCOPE_MONTH) setSelectedAnalysisMonth(activeAnalysisMonthValue);
+        if (nextScope === ANALYSIS_SCOPE_WEEK) setSelectedAnalysisWeek(activeAnalysisWeekValue);
         if (nextScope === ANALYSIS_SCOPE_DAY) setSelectedAnalysisDay(activeAnalysisDayValue);
         setAnalysisScope(nextScope);
     };
@@ -860,8 +1012,15 @@ export default function AsanMonthlyPerformance() {
     }, [availableMonths, selectedAnalysisMonth]);
 
     useEffect(() => {
-        const latest = availableDays[availableDays.length - 1]?.date || '';
-        if (latest && (!selectedAnalysisDay || !availableDays.some(item => item.date === selectedAnalysisDay))) {
+        const latest = availableWeeks[availableWeeks.length - 1]?.key || '';
+        if (latest && (!selectedAnalysisWeek || !availableWeeks.some(item => item.key === selectedAnalysisWeek))) {
+            setSelectedAnalysisWeek(latest);
+        }
+    }, [availableWeeks, selectedAnalysisWeek]);
+
+    useEffect(() => {
+        const latest = availableDays[availableDays.length - 1]?.scopeKey || '';
+        if (latest && (!selectedAnalysisDay || !availableDays.some(item => item.scopeKey === selectedAnalysisDay))) {
             setSelectedAnalysisDay(latest);
         }
     }, [availableDays, selectedAnalysisDay]);
@@ -1100,6 +1259,14 @@ export default function AsanMonthlyPerformance() {
                             </button>
                             <button
                                 type="button"
+                                className={analysisScope === ANALYSIS_SCOPE_WEEK ? styles.analysisScopeActive : ''}
+                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_WEEK)}
+                                disabled={!activeAnalysisWeekValue}
+                            >
+                                주간 선택
+                            </button>
+                            <button
+                                type="button"
                                 className={analysisScope === ANALYSIS_SCOPE_DAY ? styles.analysisScopeActive : ''}
                                 onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_DAY)}
                                 disabled={!activeAnalysisDayValue}
@@ -1120,6 +1287,21 @@ export default function AsanMonthlyPerformance() {
                                 {availableMonths.map(item => <option key={item.period} value={item.period}>{item.period}</option>)}
                             </select>
                             <select
+                                aria-label="분석 주간 선택"
+                                disabled={analysisScope === ANALYSIS_SCOPE_ALL || !availableWeeks.length}
+                                value={activeAnalysisWeekValue}
+                                onChange={e => {
+                                    setSelectedAnalysisWeek(e.target.value);
+                                    setAnalysisScope(ANALYSIS_SCOPE_WEEK);
+                                }}
+                            >
+                                {availableWeeks.map(item => (
+                                    <option key={item.key} value={item.key}>
+                                        {item.rangeLabel ? `${item.label} (${item.rangeLabel})` : item.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
                                 aria-label="분석 일 선택"
                                 disabled={analysisScope === ANALYSIS_SCOPE_ALL || !availableDays.length}
                                 value={activeAnalysisDayValue}
@@ -1128,7 +1310,7 @@ export default function AsanMonthlyPerformance() {
                                     setAnalysisScope(ANALYSIS_SCOPE_DAY);
                                 }}
                             >
-                                {availableDays.map(item => <option key={item.date} value={item.date}>{item.date}</option>)}
+                                {availableDays.map(item => <option key={item.scopeKey} value={item.scopeKey}>{item.label}</option>)}
                             </select>
                         </div>
                     </section>
@@ -1284,7 +1466,7 @@ export default function AsanMonthlyPerformance() {
                     <section className={`${styles.panel} ${styles.dailyTreePanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>월별·일별 트리</h3>
-                            <span>{scopedDaily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
+                            <span>{scopedDaily.length.toLocaleString('ko-KR')}일 · 마감월 기준</span>
                         </div>
                         {dailyTree.length === 0 ? (
                             <div className={styles.emptyPanel}>일별 원장 데이터를 아직 도출하지 못했습니다. 원본에 작업일자 컬럼이 있으면 동기화 후 자동 집계됩니다.</div>
@@ -1309,7 +1491,7 @@ export default function AsanMonthlyPerformance() {
                                         {expandedDailyMonths.has(item.period) && (
                                             <div className={styles.dailyList}>
                                                 {(item.days || []).map(day => (
-                                                    <div className={styles.dailyRow} key={day.date}>
+                                                    <div className={styles.dailyRow} key={day.scopeKey || `${item.period}::${day.date}`}>
                                                         <span>{day.date}</span>
                                                         <strong>{formatPerformanceAmount(day.revenue)}</strong>
                                                         <em>{formatPerformanceAmount(day.purchase)}</em>
@@ -1323,6 +1505,23 @@ export default function AsanMonthlyPerformance() {
                                 ))}
                             </div>
                         )}
+                    </section>
+
+                    <section className={`${styles.panel} ${styles.weekdayPanel}`}>
+                        <div className={styles.panelHeader}>
+                            <h3>요일별 카드</h3>
+                            <span>{scopeLabel} · 작업일자 기준</span>
+                        </div>
+                        <div className={styles.weekdayGrid}>
+                            {weekdayCards.map(item => (
+                                <div className={styles.weekdayCard} key={item.key}>
+                                    <span>{item.label}</span>
+                                    <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                                    <em>{formatPerformanceAmount(item.profit)} · {safeNumber(item.rowCount).toLocaleString('ko-KR')}건</em>
+                                    <i style={{ width: metricWidth(item.revenue, weekdayMax) }} />
+                                </div>
+                            ))}
+                        </div>
                     </section>
 
                     <section className={`${styles.panel} ${styles.dimensionPanel}`}>

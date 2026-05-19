@@ -1,3 +1,21 @@
+## [2026-05-19] 아산 월간실적 마감월 기준 주간/요일 분석 (v5.14.45)
+### 핵심
+- 월간실적 `daily` 집계를 작업일자 월이 아니라 파일 마감월 `sourcePeriod` 기준으로 병합해, 정리기간 작업일자인 `2025-12`가 월별·일별 트리 최상위 월로 노출되지 않게 했습니다.
+- 분석 기준에 `주간 선택`을 추가하고, 마감월 안에서 작업일자 순서 7일 단위로 `YYYY-MM N주차` 조회가 가능하게 했습니다.
+- 선택 범위 기준 `요일별 카드`를 추가해 월별/주간/일별 전환과 함께 요일별 청구·손익·건수를 바로 확인하게 했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
+- Browser 플러그인은 인앱 브라우저 목록 확인 후 탭 제어에서 `No active Codex browser pane available`로 막혀 실제 클릭 자동화는 완료하지 못했습니다.
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 선적관리 하단 가로 스크롤 복구 (v5.14.44)
 ### 핵심
 - 선적관리 테이블이 `width: 100%`로 브라우저 폭에 눌리면서 실제 컬럼 폭만큼 가로 overflow가 생기지 않아 하단 슬라이더가 보이지 않았습니다.

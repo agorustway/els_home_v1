@@ -1089,7 +1089,7 @@
 
 .weekdayGrid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
     gap: 7px;
     padding: 8px;
 }
@@ -1117,6 +1117,16 @@
     color: #0f172a;
     font-size: 0.84rem;
     font-weight: 950;
+}
+
+.weekdayCard i {
+    display: block;
+    width: 0;
+    max-width: 100%;
+    height: 5px;
+    margin-top: 7px;
+    border-radius: 999px;
+    background: #0f766e;
 }
 
 .evidenceHelp {
@@ -1983,6 +1993,7 @@
 .monthlyTrendPanel,
 .segmentInsightPanel,
 .vehicleInsightPanel,
+.weekdayPanel,
 .reportNoticePanel {
     width: 100%;
     box-sizing: border-box;
@@ -2062,7 +2073,7 @@
 
 .analysisScopeSelects {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -2105,6 +2116,13 @@
 
 .dailyTreePanel {
     order: 60;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.weekdayPanel {
+    order: 62;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -3173,6 +3191,7 @@
     .segmentInsightPanel,
     .monthPanel,
     .vehicleInsightPanel,
+    .weekdayPanel,
     .dimensionPanel,
     .dailyTreePanel,
     .monthlyReportSheet {

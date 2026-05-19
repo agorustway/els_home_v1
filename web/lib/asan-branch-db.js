@@ -1118,17 +1118,20 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
         for (const item of summary.daily || []) {
             const date = String(item.date || '').trim();
             if (!date) continue;
-            if (!daily.has(date)) {
-                daily.set(date, {
+            const dailyKey = `${sourcePeriod}::${date}`;
+            if (!daily.has(dailyKey)) {
+                daily.set(dailyKey, {
                     date,
-                    period: date.slice(0, 7),
+                    period: sourcePeriod,
+                    sourcePeriod,
+                    workPeriod: date.slice(0, 7),
                     revenue: 0,
                     purchase: 0,
                     profit: 0,
                     rowCount: 0,
                 });
             }
-            const bucket = daily.get(date);
+            const bucket = daily.get(dailyKey);
             bucket.revenue += Number(item.revenue || 0) || 0;
             bucket.purchase += Number(item.purchase || 0) || 0;
             bucket.profit += Number(item.profit || 0) || 0;
@@ -1175,7 +1178,7 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
                 purchase: Math.round(item.purchase * 100) / 100,
                 profit: Math.round(item.profit * 100) / 100,
             }))
-            .sort((a, b) => a.date.localeCompare(b.date)),
+            .sort((a, b) => String(a.period || '').localeCompare(String(b.period || '')) || a.date.localeCompare(b.date)),
         monthlyBasis: '파일월',
         monthlyFileCount: metas.length,
         monthlyFileSlots,
