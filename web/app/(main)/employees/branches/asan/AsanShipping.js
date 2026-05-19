@@ -884,12 +884,14 @@ export default function AsanShipping() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     path: selectedPath,
-                    force: true,
+                    force: false,
                     page: 1,
                     page_size: SHIPPING_PAGE_SIZE,
                     search: searchTerm,
                     sort_key: serverSortParams.sortKey,
-                    sort_dir: serverSortParams.sortDir
+                    sort_dir: serverSortParams.sortDir,
+                    date_col: dateFilter.col,
+                    months: dateFilter.months || [],
                 })
             });
             const text = await r.text();

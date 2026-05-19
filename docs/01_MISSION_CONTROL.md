@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL (v5.14.17 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.18 / APK v5.11.17)
 
-> 최신 업데이트: 드라이버 앱 지도 자동추적 줌을 속도 기반으로 조정하고 전체보기 최대 줌을 제한한 APK v5.11.17 산출물을 반영했습니다.
+> 최신 업데이트: 선적관리 NAS 동기화 타임아웃 방지를 위해 수동 동기화와 Core 중복 실행을 보강했습니다.
 
 ## CURRENT STATUS
 - **동기화 정책**: 연간실적 `NAS 동기화` 버튼은 core 직접 파싱 대신 외부 Node importer를 `nice/ionice` 백그라운드 프로세스로 실행. 동일 파일+current snapshot 존재 시 `summary-only`, 파일 변경 시 snapshot import로 처리.
-- **웹 버전**: v5.14.17
+- **웹 버전**: v5.14.18
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
@@ -13,6 +13,7 @@
   - Naver Directions 경로가 원시 trace 대비 과도하게 길거나 루프면 보정 GPS선으로 fallback.
   - `android_bg` stale replay 차단과 네이티브 물리 필터 유지.
   - 드라이버 앱 지도 자동추적은 속도별 줌을 적용하고, 전체 차량 보기 과확대를 제한.
+  - 선적관리 수동 동기화는 파일 변경 시에만 재적재하고, Core는 이미 동기화 중이면 중복 파싱을 건너뜀.
   - 아산 배차 모바일 날짜탭 자동 포커스는 `scrollIntoView` 대신 `scrollLeft`만 조정해 화면 세로 위치 유지.
   - 선적관리/안전운임/연간실적 v5.14 개선사항 운영 유지.
 
@@ -41,6 +42,7 @@
 - [ ] Next: 아산 월간실적 취합 및 연간+월간 합산 API
 
 ## RECENT CHANGES
+- **v5.14.18**: 선적관리 `NAS 동기화` 버튼이 항상 강제 재적재하지 않도록 `force=false`로 변경하고 현재 날짜 필터를 POST에도 전달. Core에는 `shipping_sync_lock`을 추가해 자동/수동 동기화 중복 파싱을 차단.
 - **v5.14.17**: 드라이버 앱 지도 자동추적/내 차량 클릭은 속도 기반 줌을 적용하고 전체 차량 보기 최대 줌을 제한. APK v5.11.17 / 5158 산출물 반영.
 - **v5.14.16**: 아산 배차 모바일 범위 전환 시 날짜탭 자동 가운데 맞춤이 세로 스크롤을 끌어내리지 않도록 수평 스크롤 전용으로 변경. 첫 진입 상단 위치도 유지.
 - **v5.14.15**: 12가0140 2026-05-19 06:59/07:03 운행을 재분석. 원시 좌표는 불가능 속도 0건이나 진행 중 마커 클릭이 상세경로/끝점으로 오해될 수 있어 내 차량 마커 클릭은 추적/줌만 수행하도록 변경. Android 서비스 `onDestroy`의 자동 `TRIP_END` 전송을 제거하고, Naver Directions 결과가 원시 진행 대비 과도하게 길거나 trace 밖/루프면 필터 경로로 대체. 운행 완료 액션 로그도 남김. APK v5.11.16 / 5157 빌드.
@@ -52,6 +54,9 @@
 - **v5.14.09**: 차량 위치 관제에서 `TRIP_END` 저품질/불가능 좌표는 마지막 정상점으로 수렴시키고, 앱 지도는 GPS 공백 중 짧은 예측 이동만 표시. 터널 출구 후보는 방향·속도상 맞을 때만 실제 경로로 연결. 완료 마커는 유지하되 동일 차량 재운행 시 진행 중 운행이 우선 표시되도록 보강.
 
 ## VERIFICATION
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 0 errors
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
 - `node --check web/driver-src/modules/map.js`: 통과
 - APK 내부 `assets/public/modules/store.js`: `APP_VERSION v5.11.17`, `BUILD_CODE 5158` 확인
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.17 / 5158 APK 빌드 및 `web/public/apk/els_driver.apk` 복사 완료

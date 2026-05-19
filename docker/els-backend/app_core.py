@@ -701,6 +701,7 @@ DEFAULT_ASAN_SHIPPING_PATH = "/아산지점/2026_자체보관리스트.xlsx"
 SHIPPING_ARCHIVE_RETENTION_DAYS = 365
 SHIPPING_LOOKUP_RETENTION_DAYS = 180
 shipping_cache = {}
+shipping_sync_lock = threading.Lock()
 shipping_db_available = True
 shipping_history_cleanup_last_date = None
 
@@ -980,6 +981,18 @@ def sync_asan_shipping_python(force=False, rel_path=None):
     parsed = None
     rows = None
     payload = None
+    lock_acquired = shipping_sync_lock.acquire(blocking=False)
+    if not lock_acquired:
+        app.logger.info(f"[선적관리DB] 동기화 이미 진행 중: {normalized_path}")
+        try:
+            meta_res = supabase.from_("branch_shipping_files").select("*").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+            if meta_res.data:
+                current_meta = meta_res.data[0]
+                current_meta["sync_running"] = True
+                return current_meta
+        except Exception:
+            pass
+        return {"file_modified_at": file_modified_at, "sync_running": True}
 
     try:
         meta_res = supabase.from_("branch_shipping_files").select("file_modified_at").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
@@ -1049,6 +1062,8 @@ def sync_asan_shipping_python(force=False, rel_path=None):
         parsed = None
         rows = None
         payload = None
+        if lock_acquired:
+            shipping_sync_lock.release()
         gc.collect()
 
 def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key="", sort_dir="asc", date_col="", months=""):

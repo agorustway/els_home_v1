@@ -1,3 +1,22 @@
+## [2026-05-19] 아산 선적관리 NAS 동기화 타임아웃 방지 (v5.14.18)
+### 분석
+- 운영 NAS 컨테이너는 정상 기동 중이며, 2026-05-19 09:35경 선적관리 1,057행 동기화는 Core 로그 기준 완료됐습니다.
+- 다만 수동 `NAS 동기화` 버튼이 항상 `force=true`로 전체 엑셀 파싱/DB 삭제/재삽입을 요청해, 이미 최신이어도 Vercel 프록시 120초 타임아웃에 걸릴 수 있었습니다.
+- 자동 동기화와 수동 동기화가 겹치면 같은 파일을 중복 파싱할 수 있는 구조도 확인했습니다.
+### 핵심
+- 선적관리 수동 동기화 요청을 `force=false`로 바꿔 파일 mtime이 DB와 같으면 재적재 없이 최신 DB를 바로 조회합니다.
+- 동기화 POST에도 현재 날짜 필터(`date_col`, `months`)를 전달해 동기화 후 화면이 기존 필터 기준으로 유지되게 했습니다.
+- NAS Core에 `shipping_sync_lock`을 추가해 자동/수동 동기화가 겹치면 중복 파싱 대신 기존 메타/DB 조회로 빠르게 응답합니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 0 errors
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 드라이버 앱 지도 자동추적 줌 보정 (v5.14.17 / APK v5.11.17)
 ### 핵심
 - 드라이버 앱 지도 자동추적 중 속도에 따라 줌 레벨을 조정해 저속/시내/고속 주행 화면 밀도를 다르게 보이게 했습니다.
