@@ -68,7 +68,7 @@
   - 위치: `실적관리 > 연간실적`
   - 파일 설정/`NAS 동기화`는 선택 파일을 대상으로 하고, 분석/테이블 조회는 `aggregate=all`로 전체 annual 현재 스냅샷을 읽는다.
   - 통합 테이블은 `원본파일` 컬럼을 추가해 2015~2025 파일과 2026 이후 분할 파일의 행 출처를 구분한다.
-  - 분석 하위 탭: `개요`, `10년 흐름`, `연도×월`, `직계약/차량`, `주차·요일`, `검증·근거`
+  - 분석 하위 탭: `개요`, `연도×월`, `계약/차량`, `주차·요일`, `검증·근거`. 원장 장기 흐름은 개요 상단에 고정해 별도 `10년 흐름` 탭을 두지 않는다.
   - 분석 축: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 연도×월 히트맵, 주차/요일 흐름, 검증/근거 설명
   - 회계 분석 축: 매출(`청구`), 매입(`하불`), 손익, 손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도
   - `운송사(명의)=ELS솔루션`은 외부 운송사 비교 대상과 분리한다.
@@ -93,6 +93,7 @@
 - 분석 탭에서 원장 상세로 이동할 때는 `search_mode=and`를 사용해 쉼표로 나눈 조건을 모두 포함하는 행만 조회한다.
 - Supabase에 아직 적재 데이터가 없으면 `supabase-empty`와 `needs_sync=true`로 응답하며, 기본 조회가 Excel 파일을 직접 읽지 않는다.
 - 최초 적재처럼 60초를 넘길 수 있는 작업은 화면 요청을 붙잡지 않고 백그라운드 작업으로 돌린 뒤 폴링한다.
+- `NAS 동기화` POST 비동기 응답은 원장 행을 다시 조회하지 않고 메타/상태만 반환한다. 실제 화면 데이터 갱신은 폴링 GET이 담당한다.
 - 직접 주입이 마지막 previous current 정리 단계에서 timeout 나면 이미 insert된 `staged_current` snapshot을 `20260517_asan_performance_recover_staged_snapshot.sql`로 공개한 뒤, 최신 웹 코드가 `currentSnapshotId` 기준으로 조회하게 한다.
 - 월별 summary가 잘못 계산된 경우 원장 행을 재주입하지 않고 current snapshot의 `row_data->>'마감월'` 기준으로 `20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`을 실행해 복구한다.
 - 분석 summary가 비어 있거나 구조가 바뀐 경우 `20260517_asan_performance_rebuild_analytics_workbench_summary.sql`을 실행한다. 운영 검증 기준은 current snapshot 368,617행, 월별 summary 불일치 0건, raw 재집계 차이 0원이다.

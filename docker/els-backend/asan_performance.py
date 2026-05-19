@@ -794,6 +794,38 @@ def register_asan_performance_routes(app, supabase, kst):
                 summary = {}
         return summary.get("currentSnapshotId") or summary.get("current_snapshot_id")
 
+    def _sync_only_data(rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, page=1, page_size=500, source="core-sync-status"):
+        normalized_path = _normalize_performance_path(rel_path)
+        actual_sheet = sheet_name or DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET
+        try:
+            page = max(1, int(page or 1))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = max(1, min(5000, int(page_size or 500)))
+        except (TypeError, ValueError):
+            page_size = 500
+        try:
+            meta = _read_current_meta(normalized_path, actual_sheet) or {}
+        except Exception:
+            meta = {}
+        return {
+            "headers": meta.get("headers") or [],
+            "data": [],
+            "summary": meta.get("summary") or {},
+            "file_path": normalized_path,
+            "sheet_name": meta.get("sheet_name") or actual_sheet,
+            "header_row": meta.get("header_row"),
+            "file_modified_at": meta.get("file_modified_at"),
+            "synced_at": meta.get("synced_at"),
+            "total": meta.get("current_row_count") or meta.get("row_count") or 0,
+            "page": page,
+            "page_size": page_size,
+            "source": source,
+            "sync_only": True,
+            "needs_refresh": True,
+        }
+
     def _tail_log(log_path, limit=4000):
         try:
             text = Path(log_path).read_text(encoding="utf-8", errors="ignore")
@@ -1180,6 +1212,7 @@ def register_asan_performance_routes(app, supabase, kst):
             return None
 
         headers = meta.get("headers") or []
+        current_snapshot_id = _current_snapshot_id(meta)
         page = max(1, int(page or 1))
         page_size = max(1, min(5000, int(page_size or 500)))
         start = (page - 1) * page_size
@@ -1190,13 +1223,18 @@ def register_asan_performance_routes(app, supabase, kst):
 
         q = (
             supabase.from_("branch_performance_rows")
-            .select("row_values,row_index", count="exact")
+            .select("row_values,row_index")
             .eq("branch_id", "asan")
             .eq("dataset_type", "annual")
-            .eq("file_path", normalized_path)
-            .eq("sheet_name", meta.get("sheet_name") or sheet_name)
-            .eq("is_current", True)
         )
+        if current_snapshot_id:
+            q = q.eq("snapshot_id", current_snapshot_id)
+        else:
+            q = (
+                q.eq("file_path", normalized_path)
+                .eq("sheet_name", meta.get("sheet_name") or sheet_name)
+                .eq("is_current", True)
+            )
         terms = _search_terms(search)
         search_mode = str(search_mode or "or").lower()
         if len(terms) == 1:
@@ -1236,7 +1274,7 @@ def register_asan_performance_routes(app, supabase, kst):
             "header_row": meta.get("header_row"),
             "file_modified_at": meta.get("file_modified_at"),
             "synced_at": meta.get("synced_at"),
-            "total": rows_res.count if rows_res.count is not None else meta.get("current_row_count", 0),
+            "total": meta.get("current_row_count") or meta.get("row_count") or 0,
             "page": page,
             "page_size": page_size,
             "sort_key": sort_key if sort_idx >= 0 else "",
@@ -1330,24 +1368,15 @@ def register_asan_performance_routes(app, supabase, kst):
                     run_async = run_async.lower() in ("1", "true", "yes", "y")
 
                 if not allow_core_sync and not external_sync_enabled:
-                    db_data = _query(
-                        rel_path=rel_path,
-                        sheet_name=sheet_name,
-                        page=body.get("page") or request.args.get("page", 1),
-                        page_size=body.get("page_size") or request.args.get("page_size", 500),
-                        search=(body.get("search") or request.args.get("search") or "").strip(),
-                        search_mode=(body.get("search_mode") or request.args.get("search_mode") or "or").strip(),
-                        sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
-                        sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
-                    )
                     return jsonify({
                         "ok": False,
                         "error": "연간실적 NAS 동기화는 core 메모리 보호를 위해 비활성화되어 있습니다. NAS에서 scripts/import-asan-annual-performance.sh를 실행하세요.",
-                        "data": _attach_sync_status(db_data or _empty_supabase_data(
+                        "data": _attach_sync_status(_sync_only_data(
                             rel_path=rel_path,
                             sheet_name=sheet_name,
                             page=body.get("page") or request.args.get("page", 1),
                             page_size=body.get("page_size") or request.args.get("page_size", 500),
+                            source="core-sync-disabled",
                         )),
                     }), 409
                 if not allow_core_sync:
@@ -1355,21 +1384,12 @@ def register_asan_performance_routes(app, supabase, kst):
 
                 if run_async:
                     started = _start_background_sync(rel_path, sheet_name, header_row, bool(force))
-                    db_data = _query(
+                    data = _sync_only_data(
                         rel_path=rel_path,
                         sheet_name=sheet_name,
                         page=body.get("page") or request.args.get("page", 1),
                         page_size=body.get("page_size") or request.args.get("page_size", 500),
-                        search=(body.get("search") or request.args.get("search") or "").strip(),
-                        search_mode=(body.get("search_mode") or request.args.get("search_mode") or "or").strip(),
-                        sort_key=(body.get("sort_key") or request.args.get("sort_key") or "").strip(),
-                        sort_dir=body.get("sort_dir") or request.args.get("sort_dir") or "asc",
-                    )
-                    data = db_data or _empty_supabase_data(
-                        rel_path=rel_path,
-                        sheet_name=sheet_name,
-                        page=body.get("page") or request.args.get("page", 1),
-                        page_size=body.get("page_size") or request.args.get("page_size", 500),
+                        source="core-sync-status",
                     )
                     status = _sync_status()
                     return jsonify({

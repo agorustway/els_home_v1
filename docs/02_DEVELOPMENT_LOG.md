@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 연간실적 NAS 동기화 응답 경량화 (v5.14.29)
+### 핵심
+- 연간실적 `NAS 동기화` 버튼이 백그라운드 importer를 시작한 뒤 NAS Core `_query()`로 36만 행 원장을 다시 count/조회하며 `statement timeout`을 화면에 노출하던 문제를 수정했습니다.
+- POST 비동기 응답은 `_sync_only_data()`의 메타/동기화 상태만 반환하고, 프론트는 `sync_only` 응답을 받으면 기존 분석/테이블 데이터를 덮어쓰지 않습니다.
+- NAS Core 단일 파일 조회도 `count="exact"`를 제거하고 `currentSnapshotId`가 있으면 snapshot 기준으로 조회해 불필요한 current 전체 count를 피합니다.
+- 개요에 원장 장기 흐름 그래프가 고정되어 있어 중복되는 `10년 흐름` 분석 탭을 제거했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] 아산 월간실적 NAS 동기화 helper 스코프 수정 (v5.14.28)
 ### 원인
 - NAS 월간실적 동기화 로그에서 1~4월 파일 모두 Excel 파싱 후 `ReferenceError: finalizeSeries is not defined`로 실패했습니다.

@@ -21,7 +21,6 @@ const DIMENSION_PRIORITY = ['청구처', '작업지', '운송사', '노선', '�
 const EMPTY_LIST = Object.freeze([]);
 const ANALYSIS_VIEWS = [
     { key: 'overview', label: '개요' },
-    { key: 'flow', label: '10년 흐름' },
     { key: 'matrix', label: '연도×월' },
     { key: 'segments', label: '계약/차량' },
     { key: 'calendar', label: '주차·요일' },
@@ -608,6 +607,10 @@ export default function AsanAnnualPerformance() {
             if (!nextPayload.sync_status.running && nextPayload.sync_status.last_error) {
                 setError(nextPayload.sync_status.last_error);
             }
+        }
+        if (nextPayload.sync_only) {
+            setPayload(prev => prev || nextPayload);
+            return;
         }
         if (options.append) {
             setPayload(prev => ({
@@ -1280,35 +1283,6 @@ export default function AsanAnnualPerformance() {
                         <span>원장: 삭제 없이 누적</span>
                     </section>
                         </>
-                    )}
-
-                    {analysisView === 'flow' && (
-                        <div className={styles.deepGrid}>
-                            <MiniTrendChart items={scopedYearly} title="연도별 장기 흐름" basis="연도" />
-                            <section className={styles.panel}>
-                                <div className={styles.panelHeader}>
-                                    <h3>최근 변화 근거</h3>
-                                    <span>전월 대비</span>
-                                </div>
-                                <div className={styles.changeGrid}>
-                                    <div>
-                                        <span>최근월</span>
-                                        <strong>{latestMonth?.period || '-'}</strong>
-                                        <em>매출 {formatPerformanceAmount(latestMonth?.revenue)}</em>
-                                    </div>
-                                    <div>
-                                        <span>전월 대비 매출</span>
-                                        <strong>{formatSignedAmount(safeNumber(latestMonth?.revenue) - safeNumber(previousMonth?.revenue))}</strong>
-                                        <em>{previousMonth?.period || '-'} 기준</em>
-                                    </div>
-                                    <div>
-                                        <span>전월 대비 손익</span>
-                                        <strong>{formatSignedAmount(safeNumber(latestMonth?.profit) - safeNumber(previousMonth?.profit))}</strong>
-                                        <em>손익률 {formatPercent(profitRateOf(latestMonth), 2)}</em>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
                     )}
 
                     {analysisView === 'matrix' && (
