@@ -1,11 +1,11 @@
-# ELS MISSION CONTROL (v5.14.64 / APK v5.11.21)
+# ELS MISSION CONTROL (v5.14.65 / APK v5.11.22)
 
-> 최신 업데이트: 아산 월간실적 누적 그래프를 선택 단계별 흐름으로 바꾸고 중복 월별·일별 트리를 제거했습니다.
+> 최신 업데이트: Android 네이티브 PiP 진입을 제거하고 기존 운행 플로팅 위젯이 앱 최소화 때 표시되도록 복구했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.64
+- **웹 버전**: v5.14.65
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
-- **APK 버전**: v5.11.21
+- **APK 버전**: v5.11.22
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 차량 active API는 운행별 최근 좌표를 따로 읽어 전역 1만건 제한으로 최신점이 잘리는 문제를 제거한다.
@@ -13,9 +13,9 @@
   - Android 앱 지도는 운행 중 상세보기에서 지나온 경로를 그리지 않고 실시간 위치만 표시한다. 완료 후에는 전체 경로를 표시한다.
   - 지도 카메라는 사용자 확대/이동 후 15초간 자동추적을 쉬고, 내 위치는 차량 최신점/최근 GPS를 우선 사용해 튐을 줄인다.
   - 모바일 웹 관제 전체지도/상세 패널은 390px급 화면에서 bottom sheet/반응형 폭으로 동작한다.
-  - Android PiP는 Galaxy S24/S25 기준 운행시작 즉시 네이티브 PiP를 직접 요청하고 실패 시 오버레이를 표시하며, 운행 종료 후 오버레이/앱 태스크를 함께 정리한다.
+  - Android 앱은 네이티브 PiP가 아니라 기존 플로팅 위젯을 사용한다. 운행 시작 때 서비스만 숨김 준비하고, 앱 최소화 시 운행시간/GPS상태/위치 위젯을 표시하며 복귀 시 숨긴다.
   - Android 앱 지도 진입은 차량 최신 좌표 조회/초기 포커스 후 전경 GPS 샘플링을 시작하고, 이동+확대는 단일 카메라 동작으로 처리한다.
-  - Android 앱 완료경로 필터도 method 기반 TRIP_END를 끝점으로 보존하고, PiP 판단용 운행 ID를 서비스 시작 즉시 네이티브에 저장한다.
+  - Android 앱 완료경로 필터도 method 기반 TRIP_END를 끝점으로 보존하고, 오버레이 판단용 운행 ID를 서비스 시작 즉시 네이티브에 저장한다.
   - 선적관리 컨테이너 조회는 `조회 멈춤`으로 봇 중지 신호와 브라우저 요청 중단을 함께 처리하고, `ERROR` 행의 사유를 화면에 요약 표시한다.
   - 월간실적은 전체/월별/주간/일별 선택 기준에 맞춰 누적·실적 인포그래픽·세분화·차량 성과를 같은 범위 데이터로 집계한다.
   - 월간실적 세분화는 `청구처/작업지/지급처/구분/청구픽업/포트/노선/이월구분/계약/선적/매출/이월/계산서` 축을 우선 표시하고, 감지된 추가 컬럼도 탭으로 보강한다.
@@ -32,7 +32,7 @@
 | Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 잔여 Chrome 정리 보강 |
-| Android 드라이버 앱 | 정상 | APK v5.11.21 빌드 완료 |
+| Android 드라이버 앱 | 정상 | APK v5.11.22 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -54,9 +54,11 @@
 - [x] v5.14.62: 종합실적 경영 판단 수익성 신호 재구성
 - [x] v5.14.63: 연간실적 선택범위 시간축 통합과 계약/차량 흐름 범위 연동
 - [x] v5.14.64: 월간실적 선택 단계별 누적 그래프와 중복 트리 제거
+- [x] v5.14.65: Android 기존 플로팅 위젯 최소화 표시 복구
 - [ ] Next: 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.65**: 형이 말한 PiP가 네이티브 Picture-in-Picture가 아니라 기존 운행 플로팅 위젯임을 반영했다. 운행시작 직후 네이티브 PiP 호출을 제거하고, 운행 시작은 오버레이 서비스를 숨김 준비만 한다. 앱 최소화/onPause 때 운행시간·GPS상태·위치 플로팅 위젯을 표시하고, 앱 복귀/onResume 때 숨긴다. APK v5.11.22.
 - **v5.14.64**: 월간실적 `누적` 그래프를 선택 기준의 다음 단계 흐름으로 바꿨다. 전체는 월별, 월 선택은 주차별, 주차 선택은 일자별, 일 선택은 해당 월의 일자별 흐름을 보여주고 선택일을 점으로 강조한다. 같은 정보를 반복하던 `월별·일별 트리` 섹션은 제거하고 `선택 기준 성과 흐름` 표와 요일 카드로 흐름을 정리한다.
 - **v5.14.63**: 연간실적 개요에서 `월별 성과 흐름`, `연도별 매출·매입·손익`, `성과 경보` 중복 패널을 `선택범위 성과 흐름`으로 통합했다. 전체 범위는 연도별, 최근 12/24개월은 월별, 최근 3/5년은 3개월별로 자동 집계하며, `계약/차량`의 흐름 그래프도 같은 조사범위와 집계 단위를 제목·툴팁·요약 카드에 표시한다.
 - **v5.14.62**: 종합실적 `경영 판단`에서 최근월 방향·데이터 신뢰·저마진 차량 카드를 제거하고, `ELS/외부 집중도`, `고마진 청구처`, `고마진 지급처`, `저마진 청구처`, `저마진 지급처`를 추가했다. breakdown 세분화의 청구처/지급처/운송사 축을 종합 summary에 보존하고 선택 범위별로 재집계해 고저마진 후보를 산출한다.
@@ -76,12 +78,13 @@
 - **v5.14.48**: 차량 위치관제 active 조회를 운행별 최신 좌표 기반으로 바꿔 정차/저속 마지막 좌표가 사라지는 문제를 막았다. 앱 지도는 운행 중 상세보기 경로 표시를 중지하고 완료 후에만 전체 경로를 보여준다. 자동추적 카메라, 내 위치 우선순위, 차량/시작/종료 마커 z-index, 모바일 웹 전체지도/상세 패널, Android PiP/권한 설정 버튼을 함께 보정했다. APK v5.11.18 빌드 완료.
 - **v5.14.46**: 월간실적 세분화 분석에서 `구분별/청구픽업별/포트별/노선별/이월구분별/계약별`처럼 관리 의미가 약하거나 중복되는 탭을 제거했다. `운송사(명의)별`은 `지급처별`로 명칭을 바꾸고, 이월금액은 별도 `청구처 이월` 표에서 청구처별 이월청구·이월하불·차액으로 표시한다.
 - **v5.14.45**: 월간실적 일별 원장은 작업일자 월이 아니라 파일 마감월 `sourcePeriod`로 묶어 `2025-12` 같은 정리기간 작업일자 월이 트리 최상단에 노출되지 않게 했다. 분석 기준에는 `주간 선택`을 추가해 `YYYY-MM N주차` 단위로 조회하고, 선택 범위 기준 `요일별 카드`를 함께 표시한다.
-- **v5.14.44**: 선적관리 테이블이 `width:100%`로 눌리며 가로 overflow가 생기지 않아 하단 슬라이더가 사라진 문제를 보정. 테이블은 `max-content` 기준으로 실제 컬럼 폭을 유지하고, 래퍼는 가로/세로 overflow와 100% 폭을 고정해 브라우저 하단 안쪽에 가로 스크롤바가 표시된다.
-- **v5.14.43**: 월간실적 세분화 분석의 항목 탭은 같은 탭을 다시 누르면 상위 12개/전체 항목을 토글한다. `세분화 분석` 제목도 현재 탭 전체 전환을 지원하고, `차량 성과 TOP` 제목은 상위 5대/전체 차량 목록을 전환한다.
 ## VERIFICATION
+- `node --test web\tests\driverMapCamera.test.mjs`: 7개 통과
+- `node --check web\driver-src\modules\trip.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.22 (5163) 빌드/배포 복사/내부 버전 검증 통과
 - `node --test web\tests\asanAnnualPerformance.test.mjs web\tests\asanMonthlyPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
-- Browser 자동화: 이전과 동일하게 번들 Playwright `playwright-core` 누락으로 생략.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

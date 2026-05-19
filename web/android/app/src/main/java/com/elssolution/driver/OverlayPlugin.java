@@ -111,21 +111,7 @@ public class OverlayPlugin extends Plugin {
         call.resolve(new JSObject().put("started", true));
     }
 
-    // JS → 운행 시작 직후 네이티브 PiP 진입 요청
-    @PluginMethod
-    public void enterPipMode(PluginCall call) {
-        boolean entered = false;
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getActivity() instanceof MainActivity) {
-                entered = ((MainActivity) getActivity()).enterPipIfActiveTrip();
-            }
-            call.resolve(new JSObject().put("entered", entered));
-        } catch (Exception e) {
-            call.resolve(new JSObject().put("entered", false).put("error", e.getMessage()));
-        }
-    }
-
-    // JS → PiP 진입 실패 시 오버레이 위젯을 즉시 표시
+    // JS → 오버레이 위젯 표시/숨김 제어
     @PluginMethod
     public void setWidgetVisible(PluginCall call) {
         boolean visible = call.getBoolean("visible", true);

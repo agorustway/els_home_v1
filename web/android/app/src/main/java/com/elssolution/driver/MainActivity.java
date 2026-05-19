@@ -1,6 +1,5 @@
 package com.elssolution.driver;
 
-import android.app.PictureInPictureParams;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -9,17 +8,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
-import android.util.Rational;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.annotation.CapacitorPlugin;
 
 public class MainActivity extends BridgeActivity {
 
-    private static final int REQ_PERMISSION_CODE = 101;
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
@@ -78,32 +73,6 @@ public class MainActivity extends BridgeActivity {
     private boolean hasActiveTripForService() {
         String tripId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_TRIP_ID, "");
         return tripId != null && !tripId.trim().isEmpty();
-    }
-
-    private PictureInPictureParams buildPipParams() {
-        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder()
-            .setAspectRatio(new Rational(9, 16));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setAutoEnterEnabled(true);
-        }
-        return builder.build();
-    }
-
-    public boolean enterPipIfActiveTrip() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
-        if (!hasActiveTripForService() || isFinishing() || isInPictureInPictureMode()) return false;
-        try {
-            setPictureInPictureParams(buildPipParams());
-            return enterPictureInPictureMode(buildPipParams());
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    @Override
-    public void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        enterPipIfActiveTrip();
     }
 
     private void cleanExitApp() {
@@ -168,9 +137,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasActiveTripForService()) {
-            try { setPictureInPictureParams(buildPipParams()); } catch (Exception ignored) {}
-        }
         // [v4.3.01] 방어 코드: 위치 권한이 없는 상태에서 서비스를 시작하면 안드로이드 14+에서 즉시 크래시 발생
         if (hasActiveTripForService()
             && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -185,9 +151,7 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         // [v4.3.01] 방어 코드: 위치 권한이 있을 때만 백그라운드 오버레이 전환 시도
-        boolean inPipMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode();
-        if (!inPipMode
-            && hasActiveTripForService()
+        if (hasActiveTripForService()
             && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(this, FloatingWidgetService.class);
             intent.setAction("SET_VISIBILITY");

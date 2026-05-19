@@ -7,6 +7,7 @@ const tripSource = readFileSync(new URL('../driver-src/modules/trip.js', import.
 const mainActivitySource = readFileSync(new URL('../android/app/src/main/java/com/elssolution/driver/MainActivity.java', import.meta.url), 'utf8');
 const overlayPluginSource = readFileSync(new URL('../android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java', import.meta.url), 'utf8');
 const floatingServiceSource = readFileSync(new URL('../android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java', import.meta.url), 'utf8');
+const manifestSource = readFileSync(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url), 'utf8');
 
 test('앱 지도 진입은 차량 데이터 초기 포커스 후 GPS 샘플링을 시작한다', () => {
   const openMapStart = mapSource.indexOf('export async function openMap()');
@@ -47,23 +48,37 @@ test('운행 중 위치보기는 matched-route 조회나 complete 호출을 하�
   assert.equal(activeBranch.includes("action: 'complete'"), false, 'active route branch must not complete trip');
 });
 
-test('PiP 판단용 운행 ID는 서비스 시작 즉시 네이티브 prefs에 저장한다', () => {
+test('오버레이 판단용 운행 ID는 서비스 시작 즉시 네이티브 prefs에 저장한다', () => {
   const startServiceStart = overlayPluginSource.indexOf('public void startService');
   const startServiceEnd = overlayPluginSource.indexOf('// JS → 서비스 상태 업데이트', startServiceStart);
   const startServiceBody = overlayPluginSource.slice(startServiceStart, startServiceEnd);
 
   assert.ok(startServiceBody.includes('putString(KEY_TRIP_ID, tripId)'), 'startService should persist active trip before service startup');
-  assert.ok(mainActivitySource.includes('setAutoEnterEnabled(true)'), 'Android 12+ should enable auto PiP entry');
-  assert.ok(mainActivitySource.includes('enterPipIfActiveTrip()'), 'home/leave flow should call PiP entry helper');
+  assert.ok(startServiceBody.includes('putLong(KEY_START_TIME, startTime)'), 'startService should persist start time for overlay timer');
 });
 
-test('운행 시작은 네이티브 PiP를 직접 요청하고 실패 시 오버레이를 보인다', () => {
-  assert.ok(tripSource.includes('startOverlayService({ enterPip: true })'), 'startTrip should request immediate PiP');
-  assert.ok(tripSource.includes('enterPipMode'), 'driver app should call native PiP entry');
-  assert.ok(tripSource.includes('setWidgetVisible'), 'driver app should show overlay when PiP cannot enter');
-  assert.ok(overlayPluginSource.includes('public void enterPipMode'), 'native plugin should expose PiP entry');
+test('운행 시작은 오버레이 서비스를 숨김 상태로 준비하고 네이티브 PiP를 쓰지 않는다', () => {
+  assert.ok(tripSource.includes('startOverlayService();'), 'startTrip should prepare overlay service');
+  assert.equal(tripSource.includes('enterPipMode'), false, 'driver app must not request native PiP');
+  assert.equal(overlayPluginSource.includes('public void enterPipMode'), false, 'native plugin must not expose PiP entry');
+  assert.equal(mainActivitySource.includes('PictureInPicture'), false, 'activity must not import native PiP');
+  assert.equal(mainActivitySource.includes('enterPictureInPictureMode'), false, 'activity must not enter native PiP');
+  assert.equal(manifestSource.includes('supportsPictureInPicture'), false, 'manifest must not advertise native PiP');
   assert.ok(overlayPluginSource.includes('public void setWidgetVisible'), 'native plugin should expose overlay visibility control');
   assert.ok(floatingServiceSource.includes('setupFloatingWidget(initialVisible)'), 'service should honor initial visibility from trip start');
+});
+
+test('앱 최소화 시 기존 플로팅 위젯을 보이고 복귀 시 숨긴다', () => {
+  const onResumeStart = mainActivitySource.indexOf('public void onResume()');
+  const onPauseStart = mainActivitySource.indexOf('public void onPause()');
+  const onResumeBody = mainActivitySource.slice(onResumeStart, onPauseStart);
+  const onPauseBody = mainActivitySource.slice(onPauseStart);
+
+  assert.ok(onResumeBody.includes('intent.setAction("SET_VISIBILITY")'), 'resume should control overlay visibility');
+  assert.ok(onResumeBody.includes('intent.putExtra("visible", false)'), 'resume should hide floating widget');
+  assert.ok(onPauseBody.includes('intent.setAction("SET_VISIBILITY")'), 'pause should control overlay visibility');
+  assert.ok(onPauseBody.includes('intent.putExtra("visible", true)'), 'pause should show floating widget');
+  assert.equal(onPauseBody.includes('isInPictureInPictureMode'), false, 'overlay display should not depend on native PiP state');
 });
 
 test('운행 종료는 오버레이와 앱 태스크를 함께 정리한다', () => {

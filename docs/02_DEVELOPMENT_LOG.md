@@ -1,3 +1,23 @@
+## [2026-05-19] Android 기존 플로팅 위젯 최소화 표시 복구 (v5.14.65 / APK v5.11.22)
+### 핵심
+- 이번 요청의 PiP 의미를 Android 네이티브 Picture-in-Picture가 아니라 기존 운행 플로팅 위젯으로 재정의했습니다.
+- 운행시작 직후 네이티브 PiP 진입 호출과 Manifest PiP 선언을 제거했습니다.
+- 운행 시작은 `FloatingWidgetService`를 숨김 상태로 준비하고, 앱 최소화/onPause 때 `SET_VISIBILITY=true`로 운행시간·GPS상태·위치 위젯을 표시합니다.
+- 앱 복귀/onResume 때는 위젯을 숨기고, 종료 시에는 기존처럼 Overlay 서비스와 앱 태스크를 정리합니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 7개 통과
+- `node --check web/driver-src/modules/trip.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.22 (5163) 빌드/배포 복사 완료, APK 내부 버전 검증 통과
+### 변경 파일
+- `web/driver-src/modules/trip.js`
+- `web/android/app/src/main/AndroidManifest.xml`
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`
+- `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 선택 단계별 누적 그래프 정리 (v5.14.64)
 ### 핵심
 - 월간실적 `누적` 그래프가 선택 범위 한 점만 보여주던 문제를 고쳐, 선택 단계의 다음 단위 흐름을 그리도록 바꿨습니다.
