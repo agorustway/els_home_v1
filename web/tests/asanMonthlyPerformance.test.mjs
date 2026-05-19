@@ -139,7 +139,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /IN\/OUT-BOUND/);
   assert.match(component, /단위 : 원/);
   assert.match(component, /이월/);
-  assert.match(component, /월별 보고서/);
+  assert.match(component, /매출보고서 표 미감지/);
   assert.match(component, /REPORT_ALL_KEY/);
   assert.match(component, /if \(period === REPORT_ALL_KEY\) return '매출보고서'/);
   assert.match(component, /selectedReportPeriod === REPORT_ALL_KEY \? '매출보고서'/);
@@ -156,6 +156,12 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /포트별/);
   assert.match(component, /dimensionDiagram/);
   assert.match(component, /openDetailSearch\(\[item\.name\], 'and'\)/);
+  assert.match(component, /월간 실적 인포그래픽/);
+  assert.match(component, /최고 청구월/);
+  assert.match(component, /구성 분석/);
+  assert.match(component, /차량 성과 TOP/);
+  assert.match(component, /reportTableReady/);
+  assert.match(component, /매출보고서 표 미감지/);
   assert.match(component, /이월금액/);
   assert.match(component, /selectedReportPeriod/);
   assert.match(component, /2027-03/);
@@ -166,6 +172,11 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.dailyTreeHead/);
   assert.match(css, /\.dailyTree\s*{[\s\S]*max-width: 680px/);
   assert.match(css, /\.dimensionRows\s*{[\s\S]*max-width: 780px/);
+  assert.match(css, /\.monthlySummaryPanel/);
+  assert.match(css, /\.monthlyInfographicGrid/);
+  assert.match(css, /\.reportNoticePanel/);
+  assert.match(css, /\.segmentInsightGrid/);
+  assert.match(css, /\.vehicleInsightRow/);
   assert.match(css, /\.dailyMonthRow/);
   assert.match(css, /\.dimensionRows/);
 });

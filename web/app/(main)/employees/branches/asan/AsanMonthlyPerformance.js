@@ -96,6 +96,29 @@ function profitRate(item = {}) {
     return revenue ? (safeNumber(item.profit) / revenue) * 100 : 0;
 }
 
+function maxBy(items = [], key) {
+    return (items || []).reduce((best, item) => (
+        !best || safeNumber(item?.[key]) > safeNumber(best?.[key]) ? item : best
+    ), null);
+}
+
+function metricWidth(value, max, minimum = 3) {
+    const size = Math.abs(safeNumber(value));
+    const base = Math.max(1, Math.abs(safeNumber(max)));
+    if (!size) return '2%';
+    return `${Math.max(minimum, Math.min(100, (size / base) * 100))}%`;
+}
+
+function metricDelta(current, previous, key) {
+    if (!current || !previous) return { amount: 0, rate: 0 };
+    const amount = safeNumber(current[key]) - safeNumber(previous[key]);
+    const base = Math.abs(safeNumber(previous[key]));
+    return {
+        amount,
+        rate: base ? (amount / base) * 100 : 0,
+    };
+}
+
 function normalizeSlot(slot) {
     const year = Number.parseInt(slot.year, 10);
     const month = Number.parseInt(slot.month, 10);
@@ -475,6 +498,21 @@ export default function AsanMonthlyPerformance() {
     const reportColumnCount = reportGroups.length + 3;
     const diagramMax = Math.max(1, Math.abs(totalRevenue), Math.abs(totalPurchase), Math.abs(totalProfit), Math.abs(carryoverRevenue));
     const topDimensionItem = activeDimension?.items?.[0] || null;
+    const reportTableReady = Boolean(selectedReport && reportGroups.length);
+    const analysisRows = safeNumber(summary.analysisRows) || totalRows;
+    const activeMonths = monthly.filter(item => safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)).length;
+    const latestMonth = [...monthly].reverse().find(item => safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit)) || null;
+    const previousMonth = latestMonth ? [...monthly].reverse().find(item => item.period !== latestMonth.period && (safeNumber(item.rowCount) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))) || null : null;
+    const bestRevenueMonth = maxBy(monthly, 'revenue');
+    const bestProfitMonth = maxBy(monthly, 'profit');
+    const bestProfitDay = maxBy(daily, 'profit');
+    const revenueDelta = metricDelta(latestMonth, previousMonth, 'revenue');
+    const avgRevenuePerJob = analysisRows ? totalRevenue / analysisRows : 0;
+    const carryoverRate = totalRevenue ? (carryoverRevenue / totalRevenue) * 100 : 0;
+    const segmentItems = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
+    const topVehicles = Array.isArray(summary.vehiclePerformance) ? summary.vehiclePerformance.slice(0, 5) : EMPTY_LIST;
+    const segmentMax = Math.max(1, ...segmentItems.map(item => Math.abs(safeNumber(item.revenue))));
+    const vehicleMax = Math.max(1, ...topVehicles.map(item => Math.abs(safeNumber(item.revenue))));
 
     useEffect(() => {
         if (!monthlyReports.length) {
@@ -627,6 +665,15 @@ export default function AsanMonthlyPerformance() {
         }
     };
 
+    const openDetailSearch = (terms = [], mode = 'and') => {
+        const text = terms.map(term => String(term || '').trim()).filter(Boolean).join(', ');
+        if (!text) return;
+        setSearchMode(mode);
+        setSearchInput(text);
+        setSearchTerm(text);
+        setActiveTab('table');
+    };
+
     return (
         <div className={styles.container}>
             <div className={styles.topBar}>
@@ -659,68 +706,113 @@ export default function AsanMonthlyPerformance() {
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
                 <div className={styles.analytics}>
-                    <section className={styles.monthlyReportSheet}>
-                        <div className={styles.reportSheetTop}>
-                            <div>
-                                <h3>{reportTitleText}</h3>
-                                <strong>통합 <span>IN/OUT-BOUND</span></strong>
+                    <section className={`${styles.panel} ${styles.monthlySummaryPanel}`}>
+                        <div className={styles.panelHeader}>
+                            <h3>월간 실적 인포그래픽</h3>
+                            <span>{monthRange}</span>
+                        </div>
+                        <div className={styles.monthlyInfographicGrid}>
+                            <div className={styles.monthlyInfoCard}>
+                                <span>청구</span>
+                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
+                                <em>{analysisRows.toLocaleString('ko-KR')}건</em>
+                                <i style={{ width: metricWidth(totalRevenue, diagramMax) }} />
                             </div>
-                            <div>
-                                <span>{monthRange || DEFAULT_MONTHLY_RANGE_HINT}</span>
-                                <b>단위 : 원</b>
+                            <div className={styles.monthlyInfoCard}>
+                                <span>하불</span>
+                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
+                                <em>청구 대비 {formatPercent(totalRevenue ? (totalPurchase / totalRevenue) * 100 : 0, 1)}</em>
+                                <i style={{ width: metricWidth(totalPurchase, diagramMax) }} />
+                            </div>
+                            <div className={styles.monthlyInfoCard}>
+                                <span>손익</span>
+                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
+                                <em>{formatPercent(totalProfitRate, 2)}</em>
+                                <i style={{ width: metricWidth(totalProfit, diagramMax) }} />
+                            </div>
+                            <div className={styles.monthlyInfoCard}>
+                                <span>이월</span>
+                                <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
+                                <em>청구 대비 {formatPercent(carryoverRate, 1)}</em>
+                                <i style={{ width: metricWidth(carryoverRevenue, diagramMax) }} />
+                            </div>
+                            <div className={styles.monthlyInfoCard}>
+                                <span>건당 청구</span>
+                                <strong>{formatPerformanceAmount(avgRevenuePerJob)}</strong>
+                                <em>{activeMonths.toLocaleString('ko-KR')}개월 집계</em>
+                                <i style={{ width: metricWidth(avgRevenuePerJob, Math.max(1, totalRevenue), 6) }} />
                             </div>
                         </div>
-                        {reportOptions.length > 0 && (
-                            <div className={styles.reportPeriodTabs}>
-                                {reportOptions.map(report => (
+                        <div className={styles.performanceFunnel}>
+                            <div>
+                                <span>청구</span>
+                                <strong>{formatPerformanceAmount(totalRevenue)}</strong>
+                            </div>
+                            <b>→</b>
+                            <div>
+                                <span>하불</span>
+                                <strong>{formatPerformanceAmount(totalPurchase)}</strong>
+                            </div>
+                            <b>→</b>
+                            <div>
+                                <span>손익</span>
+                                <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
+                            </div>
+                        </div>
+                        <div className={styles.monthlyInsightStrip}>
+                            <div>
+                                <span>최고 청구월</span>
+                                <strong>{bestRevenueMonth?.period || '-'}</strong>
+                                <em>{bestRevenueMonth ? formatPerformanceAmount(bestRevenueMonth.revenue) : '-'}</em>
+                            </div>
+                            <div>
+                                <span>최고 손익월</span>
+                                <strong>{bestProfitMonth?.period || '-'}</strong>
+                                <em>{bestProfitMonth ? formatPerformanceAmount(bestProfitMonth.profit) : '-'}</em>
+                            </div>
+                            <div>
+                                <span>최고 손익일</span>
+                                <strong>{bestProfitDay?.date || '-'}</strong>
+                                <em>{bestProfitDay ? formatPerformanceAmount(bestProfitDay.profit) : '-'}</em>
+                            </div>
+                            <div>
+                                <span>최근월 증감</span>
+                                <strong className={revenueDelta.amount < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(revenueDelta.amount)}</strong>
+                                <em>{formatPercent(revenueDelta.rate, 1)}</em>
+                            </div>
+                        </div>
+                    </section>
+
+                    {!reportTableReady && (
+                        <section className={`${styles.panel} ${styles.reportNoticePanel}`}>
+                            <strong>매출보고서 표 미감지</strong>
+                            <span>원장 누적 분석 기준으로 청구·하불·손익·일별·세분화 데이터를 표시 중입니다.</span>
+                        </section>
+                    )}
+
+                    {segmentItems.length > 0 && (
+                        <section className={`${styles.panel} ${styles.segmentInsightPanel}`}>
+                            <div className={styles.panelHeader}>
+                                <h3>구성 분석</h3>
+                                <span>계약·운영 구분 기준</span>
+                            </div>
+                            <div className={styles.segmentInsightGrid}>
+                                {segmentItems.slice(0, 4).map(segment => (
                                     <button
-                                        key={report.period}
+                                        key={segment.key || segment.label}
                                         type="button"
-                                        className={selectedReportPeriod === report.period ? styles.reportPeriodActive : ''}
-                                        onClick={() => setSelectedReportPeriod(report.period)}
+                                        className={styles.segmentInsightCard}
+                                        onClick={() => openDetailSearch([segment.label || segment.name], 'and')}
                                     >
-                                        {report.label}
+                                        <span>{segment.label || segment.name}</span>
+                                        <strong>{formatPerformanceAmount(segment.revenue)}</strong>
+                                        <em>{formatPerformanceAmount(segment.profit)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
+                                        <i style={{ width: metricWidth(segment.revenue, segmentMax) }} />
                                     </button>
                                 ))}
                             </div>
-                        )}
-                        {!selectedReport ? (
-                            <div className={styles.emptyPanel}>월별 보고서 표를 감지하지 못했습니다. NAS 동기화 후 첫 번째 시트의 매출보고서 표를 확인해 주세요.</div>
-                        ) : (
-                            <div className={styles.monthlyReportScroll}>
-                                <table className={styles.monthlyReportTable}>
-                                    <thead>
-                                        <tr>
-                                            <th>{reportPeriodText}</th>
-                                            {reportGroups.map(group => <th key={group.name}>{group.name}</th>)}
-                                            <th>매출합계</th>
-                                            <th>이익율<br />(%)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>매 출</td></tr>
-                                        {renderReportRow('순매출', 'netRevenue', 'netProfitRate')}
-                                        {renderReportRow('순매입', 'netPurchase')}
-                                        {renderReportRow('매출이익/순매출', 'netProfit')}
-                                        {renderReportRow('매출(계산서)', 'invoiceRevenue', 'invoiceProfitRate')}
-                                        {renderReportRow('매입(계산서)', 'invoicePurchase')}
-                                        {renderReportRow('매출이익(계산서)', 'invoiceProfit')}
-                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>이 월</td></tr>
-                                        {renderReportRow('매출 이월', 'carryoverRevenue')}
-                                        {renderReportRow('매입 이월', 'carryoverPurchase')}
-                                        {renderReportRow('이월 차액', 'carryoverProfit')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                        <div className={styles.reportSummaryStrip}>
-                            <span>순매출 {formatPerformanceAmount(safeNumber(reportTotals.netRevenue) || totalRevenue)}</span>
-                            <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
-                            <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
-                            <span>이월금액 {formatPerformanceAmount(carryoverRevenue)}</span>
-                            <span>손익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
-                        </div>
-                    </section>
+                        </section>
+                    )}
 
                     <section className={`${styles.panel} ${styles.monthPanel}`}>
                         <div className={styles.panelHeader}>
@@ -875,6 +967,92 @@ export default function AsanMonthlyPerformance() {
                             </>
                         )}
                     </section>
+
+                    {topVehicles.length > 0 && (
+                        <section className={`${styles.panel} ${styles.vehicleInsightPanel}`}>
+                            <div className={styles.panelHeader}>
+                                <h3>차량 성과 TOP</h3>
+                                <span>청구액 기준</span>
+                            </div>
+                            <div className={styles.vehicleInsightRows}>
+                                {topVehicles.map((vehicle, idx) => (
+                                    <button
+                                        key={vehicle.vehicleNo || vehicle.name || idx}
+                                        type="button"
+                                        className={styles.vehicleInsightRow}
+                                        onClick={() => openDetailSearch([vehicle.vehicleNo || vehicle.name], 'and')}
+                                    >
+                                        <span>{idx + 1}</span>
+                                        <strong>{vehicle.vehicleNo || vehicle.name || '-'}</strong>
+                                        <i><b style={{ width: metricWidth(vehicle.revenue, vehicleMax) }} /></i>
+                                        <em>{formatPerformanceAmount(vehicle.revenue)}</em>
+                                        <small>{formatPerformanceAmount(vehicle.profit)} · {safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {reportTableReady && (
+                        <section className={styles.monthlyReportSheet}>
+                            <div className={styles.reportSheetTop}>
+                                <div>
+                                    <h3>{reportTitleText}</h3>
+                                    <strong>통합 <span>IN/OUT-BOUND</span></strong>
+                                </div>
+                                <div>
+                                    <span>{monthRange || DEFAULT_MONTHLY_RANGE_HINT}</span>
+                                    <b>단위 : 원</b>
+                                </div>
+                            </div>
+                            {reportOptions.length > 0 && (
+                                <div className={styles.reportPeriodTabs}>
+                                    {reportOptions.map(report => (
+                                        <button
+                                            key={report.period}
+                                            type="button"
+                                            className={selectedReportPeriod === report.period ? styles.reportPeriodActive : ''}
+                                            onClick={() => setSelectedReportPeriod(report.period)}
+                                        >
+                                            {report.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <div className={styles.monthlyReportScroll}>
+                                <table className={styles.monthlyReportTable}>
+                                    <thead>
+                                        <tr>
+                                            <th>{reportPeriodText}</th>
+                                            {reportGroups.map(group => <th key={group.name}>{group.name}</th>)}
+                                            <th>매출합계</th>
+                                            <th>이익율<br />(%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>매 출</td></tr>
+                                        {renderReportRow('순매출', 'netRevenue', 'netProfitRate')}
+                                        {renderReportRow('순매입', 'netPurchase')}
+                                        {renderReportRow('매출이익/순매출', 'netProfit')}
+                                        {renderReportRow('매출(계산서)', 'invoiceRevenue', 'invoiceProfitRate')}
+                                        {renderReportRow('매입(계산서)', 'invoicePurchase')}
+                                        {renderReportRow('매출이익(계산서)', 'invoiceProfit')}
+                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>이 월</td></tr>
+                                        {renderReportRow('매출 이월', 'carryoverRevenue')}
+                                        {renderReportRow('매입 이월', 'carryoverPurchase')}
+                                        {renderReportRow('이월 차액', 'carryoverProfit')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className={styles.reportSummaryStrip}>
+                                <span>순매출 {formatPerformanceAmount(safeNumber(reportTotals.netRevenue) || totalRevenue)}</span>
+                                <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
+                                <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
+                                <span>이월금액 {formatPerformanceAmount(carryoverRevenue)}</span>
+                                <span>손익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
+                            </div>
+                        </section>
+                    )}
 
                 </div>
             ) : (

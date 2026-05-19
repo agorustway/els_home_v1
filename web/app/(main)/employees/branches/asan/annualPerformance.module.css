@@ -1190,6 +1190,12 @@
     min-width: 0;
 }
 
+.monthPanel {
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
+}
+
 .bridgeList {
     display: flex;
     flex-direction: column;
@@ -1929,7 +1935,289 @@
     overflow: hidden;
 }
 
+.monthlySummaryPanel,
+.segmentInsightPanel,
+.vehicleInsightPanel,
+.reportNoticePanel {
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.monthlyInfographicGrid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+}
+
+.monthlyInfoCard,
+.segmentInsightCard {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.monthlyInfoCard span,
+.monthlyInfoCard strong,
+.monthlyInfoCard em,
+.segmentInsightCard span,
+.segmentInsightCard strong,
+.segmentInsightCard em {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.monthlyInfoCard span,
+.segmentInsightCard span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.monthlyInfoCard strong,
+.segmentInsightCard strong {
+    margin: 4px 0 2px;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 950;
+}
+
+.monthlyInfoCard em,
+.segmentInsightCard em {
+    color: #475569;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.monthlyInfoCard i,
+.segmentInsightCard i {
+    display: block;
+    height: 7px;
+    margin-top: 7px;
+    border-radius: 999px;
+    background: #0f766e;
+}
+
+.performanceFunnel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px 8px;
+}
+
+.performanceFunnel div {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+}
+
+.performanceFunnel span,
+.performanceFunnel strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.performanceFunnel span {
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.performanceFunnel strong {
+    margin-top: 3px;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 950;
+}
+
+.performanceFunnel b {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 950;
+    text-align: center;
+}
+
+.monthlyInsightStrip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 0 8px 8px;
+}
+
+.monthlyInsightStrip div {
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    background: #fffbeb;
+}
+
+.monthlyInsightStrip span,
+.monthlyInsightStrip strong,
+.monthlyInsightStrip em {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.monthlyInsightStrip span {
+    color: #92400e;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.monthlyInsightStrip strong {
+    margin: 2px 0;
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.monthlyInsightStrip em {
+    color: #475569;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.reportNoticePanel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-color: #fcd34d;
+    background: #fffbeb;
+}
+
+.reportNoticePanel strong {
+    flex: 0 0 auto;
+    color: #92400e;
+    font-size: 0.78rem;
+    font-weight: 950;
+}
+
+.reportNoticePanel span {
+    min-width: 0;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.segmentInsightGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    padding: 8px;
+}
+
+.segmentInsightCard {
+    border: 1px solid #ccfbf1;
+    background: #f0fdfa;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.segmentInsightCard:hover,
+.vehicleInsightRow:hover {
+    border-color: #99f6e4;
+    background: #ecfeff;
+}
+
+.vehicleInsightRows {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 780px);
+    max-width: 780px;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.vehicleInsightRow {
+    display: grid;
+    grid-template-columns: 26px 120px minmax(160px, 1fr) 110px 160px;
+    align-items: center;
+    gap: 8px;
+    min-height: 31px;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.vehicleInsightRow:last-child {
+    border-bottom: 0;
+}
+
+.vehicleInsightRow span,
+.vehicleInsightRow strong,
+.vehicleInsightRow em,
+.vehicleInsightRow small {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vehicleInsightRow span {
+    color: #94a3b8;
+    font-weight: 950;
+}
+
+.vehicleInsightRow strong {
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.vehicleInsightRow em,
+.vehicleInsightRow small {
+    text-align: right;
+}
+
+.vehicleInsightRow i {
+    position: relative;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.vehicleInsightRow i b {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #2563eb;
+}
+
 .monthlyReportSheet {
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
     overflow: hidden;
     border: 1px solid #0f172a;
     border-radius: 0;
@@ -2474,6 +2762,38 @@
         grid-template-columns: 1fr 1fr;
     }
 
+    .monthlyInfographicGrid,
+    .segmentInsightGrid,
+    .monthlyInsightStrip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .performanceFunnel {
+        grid-template-columns: 1fr;
+    }
+
+    .performanceFunnel b {
+        display: none;
+    }
+
+    .reportNoticePanel {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .reportNoticePanel span {
+        white-space: normal;
+    }
+
+    .vehicleInsightRow {
+        grid-template-columns: 24px 96px minmax(100px, 1fr) 96px;
+    }
+
+    .vehicleInsightRow small {
+        display: none;
+    }
+
     .scopeTitle {
         grid-template-columns: 1fr;
         gap: 3px;
@@ -2660,6 +2980,20 @@
 
     .monthlySlotGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .monthlyInfographicGrid,
+    .segmentInsightGrid,
+    .monthlyInsightStrip {
+        grid-template-columns: 1fr;
+    }
+
+    .vehicleInsightRow {
+        grid-template-columns: 24px 86px minmax(92px, 1fr);
+    }
+
+    .vehicleInsightRow em {
+        display: none;
     }
 
     .monthlySettingsRow {
