@@ -459,14 +459,20 @@
     border-radius: 6px;
     border: 1px solid #cbd5e1;
     overflow: auto;
+    overflow-x: auto;
+    overflow-y: auto;
     flex: 1;
+    width: 100%;
+    max-width: 100%;
     min-height: 0;
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     position: relative;
+    scrollbar-gutter: stable;
 }
 
 .table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
     font-size: 0.78rem;

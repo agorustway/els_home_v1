@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.43 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.44 / APK v5.11.17)
 
-> 최신 업데이트: 아산 월간실적 TOP 항목을 제목/탭 클릭으로 전체 항목까지 펼쳐보게 했습니다.
+> 최신 업데이트: 선적관리 표 하단 가로 스크롤바가 브라우저 안에서 보이도록 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.43
+- **웹 버전**: v5.14.44
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -52,6 +52,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.44**: 선적관리 테이블이 `width:100%`로 눌리며 가로 overflow가 생기지 않아 하단 슬라이더가 사라진 문제를 보정. 테이블은 `max-content` 기준으로 실제 컬럼 폭을 유지하고, 래퍼는 가로/세로 overflow와 100% 폭을 고정해 브라우저 하단 안쪽에 가로 스크롤바가 표시된다.
 - **v5.14.43**: 월간실적 세분화 분석의 항목 탭은 같은 탭을 다시 누르면 상위 12개/전체 항목을 토글한다. `세분화 분석` 제목도 현재 탭 전체 전환을 지원하고, `차량 성과 TOP` 제목은 상위 5대/전체 차량 목록을 전환한다.
 - **v5.14.42**: 월별/일별 선택 시 summary의 `monthly/daily/breakdowns/vehiclePerformance`가 배열이 아니거나 빈 세부값을 포함해도 분석 렌더가 죽지 않도록 전체 범위 데이터를 객체 배열로 정규화했다. 선택값도 실제 옵션에 존재하는 월/일만 사용하고, 월간 분석 내부 오류 경계를 둬 페이지 전체 오류로 번지지 않게 했다.
 - **v5.14.41**: 월별/일별 선택 시 해당 범위 데이터가 없는 세부 항목이 `null`로 내려와 화면 전체가 오류 페이지로 바뀔 수 있던 문제를 수정했다. 세부 항목 `monthly/daily` 시리즈는 배열/객체 모두 안전하게 읽고, 월별 누적 흐름 그래프는 시작·끝뿐 아니라 중간 월 라벨도 포인트 위치에 맞춰 표시한다.
@@ -70,7 +71,6 @@
 - **v5.14.27**: 아산 연간실적 `aggregate=all` 테이블 조회가 `year_value/month_value` 대용량 정렬을 타며 Supabase statement timeout이 나던 문제를 보정. 현재 스냅샷이 확정된 통합 조회는 `snapshot_id,row_index` 보조 인덱스 순서로 페이징하고, exact count 없이 파일 메타 건수를 사용한다. 운영 DB 직접 조회에서 snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7`의 첫 301행이 즉시 반환됨을 확인했다.
 - **v5.14.26**: 아산 월간실적 분석 첫 화면에서 `월별 파일 공간` 카드 노출을 제거하고 설정 모달로 한정. 스크린샷 기준에 맞춰 `YYYY년 M월 아산매출보고서`, `통합 IN/OUT-BOUND`, `단위 : 원`, 매출/이월 섹션 표를 최상단 보고서 형태로 재구성했다.
 - **v5.14.25**: 아산 연간실적 통합 조회의 `allMetasHaveSnapshot` 스코프 오류를 수정해 `aggregate=all`이 Supabase current snapshots를 정상 조회하게 했다. 연간/월간실적 GET에서 DB 조회 예외가 나도 NAS 프록시로 떨어지지 않도록 바꿔, NAS Docker 빌드 중에는 DB 직조회 화면이 NAS 상태에 끌려가지 않게 했다. 운영 DB 확인 결과 annual 메타 1개/368,617행은 존재하고, monthly 메타는 아직 0개라 월간은 최초 동기화 전 상태다.
-- **v5.14.24**: AI 어시스턴트 전체 삭제 후 10초 뒤 purge가 삭제마커까지 제거해, 늦게 도착한 옛 자동저장이 대화 목록을 되살릴 수 있던 문제를 보강. 서버는 빈 삭제마커와 `clearedAt`을 유지하고, 클라이언트는 이를 받으면 로컬 옛 목록도 무효화한다.
 ## VERIFICATION
 - `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
 - `node --check web\lib\asan-branch-db.js`: 통과

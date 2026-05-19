@@ -1,3 +1,16 @@
+## [2026-05-19] 아산 선적관리 하단 가로 스크롤 복구 (v5.14.44)
+### 핵심
+- 선적관리 테이블이 `width: 100%`로 브라우저 폭에 눌리면서 실제 컬럼 폭만큼 가로 overflow가 생기지 않아 하단 슬라이더가 보이지 않았습니다.
+- `.table`은 `width: max-content; min-width: 100%`로 실제 컬럼 폭을 유지하고, `.tableWrap`은 `overflow-x/y: auto`, `width/max-width: 100%`를 명시해 브라우저 안쪽 하단에서 가로 스크롤바가 표시되게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 TOP 항목 전체 보기 토글 (v5.14.43)
 ### 핵심
 - 세분화 분석의 현재 탭 또는 `세분화 분석` 제목을 누르면 상위 12개와 전체 항목 표시를 전환합니다.
