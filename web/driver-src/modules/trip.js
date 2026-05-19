@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5163';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5163';
+import { Store, State, BASE_URL } from './store.js?v=5164';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5164';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5163';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5163';
+} from './gps.js?v=5164';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5164';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -129,9 +129,9 @@ export function saveChecklist() {
   }
   State.preTripDone = { chk_brake: true, chk_tire: true, chk_lamp: true, chk_cargo: true, chk_driver: true };
   closeChecklist();
-  // 점검 완료 버튼 검은색
+  // 점검/운행 가능 상태는 파란색으로 통일
   const btn = document.getElementById('btn-trip-checklist');
-  if (btn) { btn.style.background = '#111827'; btn.style.color = '#ffffff'; }
+  if (btn) { btn.style.background = '#2563eb'; btn.style.color = '#ffffff'; }
   // 운행시작 버튼을 파란색으로 전환 (점검 완료 = 운행 준비 완료)
   const startBtn = document.getElementById('btn-trip-start');
   if (startBtn) {
@@ -446,7 +446,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5163');
+  const gpsModule = await import('./gps.js?v=5164');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -587,9 +587,9 @@ export function clearTripData(bypassAuth = false) {
   // 점검 버튼 빨간색으로 복원
   const btnCheck = document.getElementById('btn-trip-checklist');
   if (btnCheck) { btnCheck.style.background = '#ef4444'; btnCheck.style.color = '#ffffff'; }
-  // 운행시작 버튼은 대기 상태 기본 검은색
+  // 운행 전 점검 전에는 운행 시작이 막힌 상태이므로 빨간색
   const startBtn = document.getElementById('btn-trip-start');
-  if (startBtn) { startBtn.style.background = '#111827'; startBtn.style.color = '#ffffff'; }
+  if (startBtn) { startBtn.style.background = '#ef4444'; startBtn.style.color = '#ffffff'; }
 
   document.getElementById('container-no').value = '';
   document.getElementById('seal-no').value      = '';

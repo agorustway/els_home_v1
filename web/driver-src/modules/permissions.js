@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=5163';
-import { Overlay, remoteLog } from './bridge.js?v=5163';
-import { showScreen } from './nav.js?v=5163';
+import { Store, State } from './store.js?v=5164';
+import { Overlay, remoteLog } from './bridge.js?v=5164';
+import { showScreen } from './nav.js?v=5164';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -140,10 +140,10 @@ export async function updatePermStatuses() {
   if (btnFinish) {
     const criticalPerms = permStatuses.loc && permStatuses.overlay && permStatuses.battery;
     if (criticalPerms) {
-      btnFinish.classList.remove('btn-red');
-      btnFinish.classList.add('btn-black');
+      btnFinish.classList.remove('btn-red', 'btn-black');
+      btnFinish.classList.add('btn-primary');
     } else {
-      btnFinish.classList.remove('btn-black');
+      btnFinish.classList.remove('btn-black', 'btn-primary');
       btnFinish.classList.add('btn-red');
     }
   }

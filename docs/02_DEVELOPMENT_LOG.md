@@ -1,3 +1,21 @@
+## [2026-05-19] Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리 (v5.14.66 / APK v5.11.23)
+### 핵심
+- 사용자 관점의 운행 흐름에서 백그라운드 위치수신이 핵심임을 기준으로, 앱 최소화/플로팅 위젯 표시가 GPS 수신을 멈추지 않는지 테스트를 추가했습니다.
+- 테스트는 `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, `stopWithTask=false`, 전경 서비스, FusedLocation `requestLocationUpdates`, 서버 전송, 운행 시작 시 네이티브 서비스 후 JS GPS watcher 순서를 함께 고정합니다.
+- 핵심 진행 버튼 색상은 불가/미완료 상태 빨강, 진행 가능 상태 파랑으로 정리했습니다.
+- 프로필 저장 버튼은 미입력 상태에서도 빨간색으로 남고 탭하면 기존 검증 안내를 보여주도록 클릭 가능 상태를 유지했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 9개 통과
+- `node --check web/driver-src/modules/trip.js web/driver-src/modules/profile.js web/driver-src/modules/permissions.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js driver-src/modules/profile.js driver-src/modules/permissions.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.23 (5164) 빌드/배포 복사 완료, APK 내부 버전 검증 통과
+### 변경 파일
+- `web/driver-src/index.html`
+- `web/driver-src/modules/trip.js`, `web/driver-src/modules/profile.js`, `web/driver-src/modules/permissions.js`
+- `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] Android 기존 플로팅 위젯 최소화 표시 복구 (v5.14.65 / APK v5.11.22)
 ### 핵심
 - 이번 요청의 PiP 의미를 Android 네이티브 Picture-in-Picture가 아니라 기존 운행 플로팅 위젯으로 재정의했습니다.

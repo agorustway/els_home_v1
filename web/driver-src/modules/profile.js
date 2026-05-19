@@ -1,11 +1,11 @@
 /**
  * profile.js — 프로필 UI, 저장, 기사 조회, 프로필 사진 3종
  */
-import { Store, State, BASE_URL } from './store.js?v=5163';
-import { smartFetch } from './bridge.js?v=5163';
+import { Store, State, BASE_URL } from './store.js?v=5164';
+import { smartFetch } from './bridge.js?v=5164';
 import {
   GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES,
-} from './cargoOptions.js?v=5163';
+} from './cargoOptions.js?v=5164';
 
 function showToast(msg, duration) { window.App?.showToast(msg, duration); }
 
@@ -76,10 +76,10 @@ export function applyProfileToUI() {
 export function updateSettingsButtonState(enabled) {
   const saveBtn = document.getElementById('btn-save-profile');
   if (saveBtn) {
-    saveBtn.style.background = enabled ? '#2563eb' : '#9ca3af';
+    saveBtn.style.background = enabled ? '#2563eb' : '#ef4444';
     saveBtn.style.color = '#ffffff';
     saveBtn.style.opacity = '1';
-    saveBtn.style.pointerEvents = enabled ? 'auto' : 'none';
+    saveBtn.style.pointerEvents = 'auto';
     saveBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
   }
   // 부가 버튼 (lookup 버튼 제외)
