@@ -1,3 +1,22 @@
+## [2026-05-19] 아산 월간실적 선택 범위 집계 통일 (v5.14.50)
+### 핵심
+- `월별 누적 흐름`은 `누적`, `월간 실적 인포그래픽`은 `실적 인포그래픽`으로 제목을 정리했습니다.
+- 전체/월별/주간/일별 선택 시 누적 그래프, KPI, 선택 범위 성과 흐름, 세분화 분석, 차량 성과가 모두 같은 선택 범위 집계를 사용하게 했습니다.
+- 세분화 항목, 구성 분석, 차량 성과에도 일별 시리즈를 저장/병합해 일별 선택에서 월별값으로 fallback되는 흐름을 제거했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --check web\scripts\import-asan-annual-performance.mjs`: 통과
+- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" web/lib/asan-branch-db.js web/scripts/import-asan-annual-performance.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/lib/asan-branch-db.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 선적관리 컨테이너 조회 중단/실패 사유 표시 (v5.14.49)
 ### 핵심
 - 선적관리 컨테이너 조회 실행 중 `조회 멈춤` 버튼을 표시하고, 클릭 시 `/api/els/stop-daemon` 중지 요청과 브라우저 `AbortController` 중단을 함께 수행합니다.

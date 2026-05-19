@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.49 / APK v5.11.18)
+# ELS MISSION CONTROL (v5.14.50 / APK v5.11.18)
 
-> 최신 업데이트: 선적관리 컨테이너 조회 중단 버튼과 실패 사유 요약 표시를 추가했습니다.
+> 최신 업데이트: 아산 월간실적 분석 기준별 집계 단위를 통일했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.49
+- **웹 버전**: v5.14.50
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.18
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -15,6 +15,7 @@
   - 모바일 웹 관제 전체지도/상세 패널은 390px급 화면에서 bottom sheet/반응형 폭으로 동작한다.
   - Android PiP를 Manifest/MainActivity에 복구하고, 설정 화면에 권한 설정/점검 버튼을 추가했다.
   - 선적관리 컨테이너 조회는 `조회 멈춤`으로 봇 중지 신호와 브라우저 요청 중단을 함께 처리하고, `ERROR` 행의 사유를 화면에 요약 표시한다.
+  - 월간실적은 전체/월별/주간/일별 선택 기준에 맞춰 누적·실적 인포그래픽·세분화·차량 성과를 같은 범위 데이터로 집계한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -41,6 +42,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.50**: 월간실적 `월별 누적 흐름` 제목을 `누적`, `월간 실적 인포그래픽` 제목을 `실적 인포그래픽`으로 정리했다. 전체/월별/주간/일별 선택 시 누적 그래프, KPI, 성과 흐름, 세분화, 차량 TOP이 같은 선택 범위 데이터를 쓰도록 `scopeFlowItems` 기준으로 통일하고, 세분화/구성/차량 항목에도 일별 시리즈를 누적 저장해 일별 선택에서 월별 fallback이 섞이지 않게 했다.
 - **v5.14.49**: 선적관리 컨테이너 조회 중 `조회 멈춤` 버튼을 노출해 `/api/els/stop-daemon` 중지 요청과 `AbortController` 요청 중단을 함께 수행한다. 중단 시 완료/실패/미조회 건수를 분리해 남기고, 조회 실패는 봇이 반환한 `ERROR` 행의 사유를 집계해 상태줄에 표시한다.
 - **v5.14.48**: 차량 위치관제 active 조회를 운행별 최신 좌표 기반으로 바꿔 정차/저속 마지막 좌표가 사라지는 문제를 막았다. 앱 지도는 운행 중 상세보기 경로 표시를 중지하고 완료 후에만 전체 경로를 보여준다. 자동추적 카메라, 내 위치 우선순위, 차량/시작/종료 마커 z-index, 모바일 웹 전체지도/상세 패널, Android PiP/권한 설정 버튼을 함께 보정했다. APK v5.11.18 빌드 완료.
 - **v5.14.46**: 월간실적 세분화 분석에서 `구분별/청구픽업별/포트별/노선별/이월구분별/계약별`처럼 관리 의미가 약하거나 중복되는 탭을 제거했다. `운송사(명의)별`은 `지급처별`로 명칭을 바꾸고, 이월금액은 별도 `청구처 이월` 표에서 청구처별 이월청구·이월하불·차액으로 표시한다.
@@ -58,6 +60,8 @@
 - **v5.14.34**: 선적관리 원본 엑셀에는 2026-05-18 작업일 81건이 있으나 화면/API가 첫 1,000건만 읽어 뒤쪽 57건이 필터 범위 밖으로 밀리던 문제를 수정. Next 직조회와 NAS Core 모두 Supabase range를 1,000건 단위로 나눠 읽어 `page_size=10000` 전체 필터가 실제 전체 row를 대상으로 동작한다.
 - **v5.14.33**: 월별·일별 트리 금액 컬럼 위에 `월/일`, `청구`, `하불`, `손익`, `건수` 헤더를 추가하고 표 폭을 680px 안쪽으로 제한해 제목과 값의 시선 거리를 줄였다. 세분화 분석도 780~980px 안쪽 블록으로 묶었고, 내부 키 `all`이 제목으로 보이지 않도록 전체 보고서 제목을 `매출보고서`로 보정했다.
 ## VERIFICATION
+- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
 - `node --test web\tests\vehicleLocation.test.mjs`: 14개 통과
 - `npm.cmd run lint`: 통과
 - `npm.cmd run build`: 통과

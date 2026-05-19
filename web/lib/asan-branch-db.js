@@ -484,10 +484,12 @@ function mergeNamedMetricList(lists, totalRevenue = 0, limit = 30) {
                 name: item.name || item.label || item.vehicleNo || key,
                 label: item.label || item.name || item.vehicleNo || key,
                 monthly: [],
+                daily: [],
                 yearly: [],
                 weekday: [],
             }, item);
             bucket.monthly = mergeInlineSeries(bucket.monthly, item.monthly, 'period');
+            bucket.daily = mergeInlineSeries(bucket.daily, item.daily, 'dateKey');
             bucket.yearly = mergeInlineSeries(bucket.yearly, item.yearly, 'year');
             bucket.weekday = mergeInlineSeries(bucket.weekday, item.weekday, 'day');
         }
@@ -512,6 +514,13 @@ function metricWithSourcePeriod(item = {}, sourcePeriod = '') {
             profit: numberValue(item.profit),
             rowCount: numberValue(item.rowCount),
         }],
+        daily: (item.daily || []).map(metric => ({
+            ...metric,
+            dateKey: `${sourcePeriod}::${metric.date || ''}`,
+            period: sourcePeriod,
+            sourcePeriod,
+            workPeriod: metric.period || String(metric.date || '').slice(0, 7),
+        })),
     };
 }
 
@@ -566,6 +575,7 @@ function mergeStrategicSegments(metas, totalRevenue) {
                     profit: 0,
                     rowCount: 0,
                     monthly: [],
+                    daily: [],
                     yearly: [],
                     weekday: [],
                     topWorkSites: [],
@@ -578,6 +588,7 @@ function mergeStrategicSegments(metas, totalRevenue) {
             const bucket = segments.get(key);
             addMetricFields(bucket, segment);
             bucket.monthly = mergeInlineSeries(bucket.monthly, metricWithSourcePeriod(segment, sourcePeriod).monthly, 'period');
+            bucket.daily = mergeInlineSeries(bucket.daily, metricWithSourcePeriod(segment, sourcePeriod).daily, 'dateKey');
             bucket.yearly = mergeInlineSeries(bucket.yearly, segment.yearly, 'year');
             bucket.weekday = mergeInlineSeries(bucket.weekday, segment.weekday, 'day');
             bucket.topWorkSites = mergeNamedMetricList([bucket.topWorkSites, segment.topWorkSites], totalRevenue, 12);
@@ -617,6 +628,7 @@ function mergeVehiclePerformance(metas, totalRevenue) {
                     profit: 0,
                     rowCount: 0,
                     monthly: [],
+                    daily: [],
                     yearly: [],
                     weekday: [],
                 });
@@ -624,6 +636,7 @@ function mergeVehiclePerformance(metas, totalRevenue) {
             const bucket = vehicles.get(key);
             addMetricFields(bucket, vehicle);
             bucket.monthly = mergeInlineSeries(bucket.monthly, metricWithSourcePeriod(vehicle, sourcePeriod).monthly, 'period');
+            bucket.daily = mergeInlineSeries(bucket.daily, metricWithSourcePeriod(vehicle, sourcePeriod).daily, 'dateKey');
             bucket.yearly = mergeInlineSeries(bucket.yearly, vehicle.yearly, 'year');
             bucket.weekday = mergeInlineSeries(bucket.weekday, vehicle.weekday, 'day');
             String(vehicle.drivers || '').split(',').map(item => item.trim()).filter(Boolean).forEach(driver => bucket.driverSet.add(driver));

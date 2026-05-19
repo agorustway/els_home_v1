@@ -452,12 +452,12 @@ function breakdownColumnIndices(headers, numericCols) {
     .map(item => item.idx);
 }
 
-function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, profit, year = null, month = null) {
+function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, profit, year = null, month = null, dateInfo = null) {
   for (const idx of columnIndices) {
     const value = row[idx] || '미분류';
     if (!breakdowns.has(idx)) breakdowns.set(idx, new Map());
     const bucket = breakdowns.get(idx);
-    if (!bucket.has(value)) bucket.set(value, { name: value, revenue: 0, purchase: 0, profit: 0, rowCount: 0, monthly: new Map() });
+    if (!bucket.has(value)) bucket.set(value, { name: value, revenue: 0, purchase: 0, profit: 0, rowCount: 0, monthly: new Map(), daily: new Map() });
     const item = bucket.get(value);
     item.revenue += revenue;
     item.purchase += purchase;
@@ -466,6 +466,14 @@ function addBreakdownRow(breakdowns, columnIndices, row, revenue, purchase, prof
     if (year && month) {
       const period = `${year}-${String(month).padStart(2, '0')}`;
       addMetric(item.monthly, period, { period, year, month }, revenue, purchase, profit);
+    }
+    if (dateInfo) {
+      addMetric(item.daily, dateInfo.date, {
+        date: dateInfo.date,
+        period: dateInfo.date.slice(0, 7),
+        day: dateInfo.day,
+        label: dateInfo.weekday,
+      }, revenue, purchase, profit);
     }
   }
 }
@@ -580,6 +588,7 @@ function createAdvancedAccumulator(headers) {
         rowCount: 0,
         yearly: new Map(),
         monthly: new Map(),
+        daily: new Map(),
         weekday: new Map(),
         topWorkSites: new Map(),
         topClients: new Map(),
@@ -603,6 +612,7 @@ function createAdvancedAccumulator(headers) {
         profit: 0,
         rowCount: 0,
         monthly: new Map(),
+        daily: new Map(),
       });
     }
     return vehicles.get(vehicleNo);
@@ -652,6 +662,14 @@ function createAdvancedAccumulator(headers) {
       vehicle.rowCount += 1;
       if (driver) vehicle.drivers.add(driver);
       if (monthKey) addMetric(vehicle.monthly, monthKey, { period: monthKey, year, month }, revenue, purchase, profit);
+      if (dateInfo) {
+        addMetric(vehicle.daily, dateInfo.date, {
+          date: dateInfo.date,
+          period: dateInfo.date.slice(0, 7),
+          day: dateInfo.day,
+          label: dateInfo.weekday,
+        }, revenue, purchase, profit);
+      }
     }
 
     for (const definition of segmentDefs) {
@@ -664,6 +682,12 @@ function createAdvancedAccumulator(headers) {
       addMetric(segment.yearly, yearKey, { year: yearKey }, revenue, purchase, profit);
       if (monthKey) addMetric(segment.monthly, monthKey, { period: monthKey, year, month }, revenue, purchase, profit);
       if (dateInfo) {
+        addMetric(segment.daily, dateInfo.date, {
+          date: dateInfo.date,
+          period: dateInfo.date.slice(0, 7),
+          day: dateInfo.day,
+          label: dateInfo.weekday,
+        }, revenue, purchase, profit);
         addMetric(segment.weekday, String(dateInfo.day), {
           day: dateInfo.day,
           label: dateInfo.weekday,
@@ -708,6 +732,7 @@ function createAdvancedAccumulator(headers) {
         rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
         rounded.yearly = finalizeSeries(segment.yearly, roundItem, 40, (a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR'));
         rounded.monthly = finalizeSeries(segment.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
+        rounded.daily = finalizeSeries(segment.daily, roundItem, 400, (a, b) => a.date.localeCompare(b.date));
         rounded.weekday = finalizeSeries(segment.weekday, roundItem, 7, (a, b) => a.day - b.day);
         rounded.topWorkSites = finalizeTop(segment.topWorkSites);
         rounded.topClients = finalizeTop(segment.topClients);
@@ -732,6 +757,7 @@ function createAdvancedAccumulator(headers) {
         rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
         rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
         rounded.monthly = finalizeSeries(vehicle.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
+        rounded.daily = finalizeSeries(vehicle.daily, roundItem, 400, (a, b) => a.date.localeCompare(b.date));
         return rounded;
       }).sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue)).slice(0, 80),
       vehicleDataQuality: {
@@ -750,6 +776,7 @@ function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, ro
       rounded.profitRate = rounded.revenue ? Math.round((rounded.profit / rounded.revenue) * 10000) / 100 : 0;
       rounded.revenueShare = totalRevenue ? Math.round((rounded.revenue / totalRevenue) * 10000) / 100 : 0;
       rounded.monthly = finalizeSeries(item.monthly, roundItem, 240, (a, b) => a.period.localeCompare(b.period));
+      rounded.daily = finalizeSeries(item.daily, roundItem, 400, (a, b) => a.date.localeCompare(b.date));
       return rounded;
     });
     items.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
@@ -831,7 +858,7 @@ function buildSummary(headers, rows, fallbackPeriod = {}) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
-      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month);
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month, workDateInfo(headers, row));
       advanced.add(row, year, month, revenue, purchase, profit);
     }
   } else {
@@ -1022,7 +1049,7 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}) {
         groupItem.profit += profit;
         groupItem.rowCount += 1;
       }
-      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month);
+      addBreakdownRow(breakdowns, breakdownCandidates, row, revenue, purchase, profit, year, month, workDateInfo(headers, row));
       advanced.add(row, year, month, revenue, purchase, profit);
       return;
     }

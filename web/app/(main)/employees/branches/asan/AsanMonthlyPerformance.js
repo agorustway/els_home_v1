@@ -218,7 +218,7 @@ function findScopedMetric(item = {}, scope, selectedMonth, selectedDay, selected
                 label: selectedWeek?.label,
             };
         }
-        return metricSeries(item, 'monthly').find(metric => metric.period === selectedWeek?.period) || null;
+        return null;
     }
     if (scope === ANALYSIS_SCOPE_DAY) {
         const selectedDate = typeof selectedDay === 'object' ? selectedDay?.date : selectedDay;
@@ -228,8 +228,7 @@ function findScopedMetric(item = {}, scope, selectedMonth, selectedDay, selected
             && (!metric.period || !selectedPeriod || metric.period === selectedPeriod)
         ));
         if (dailyMetric) return dailyMetric;
-        const dayMonth = selectedPeriod || String(selectedDate || '').slice(0, 7);
-        return metricSeries(item, 'monthly').find(metric => metric.period === dayMonth) || null;
+        return null;
     }
     return item;
 }
@@ -562,8 +561,13 @@ function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
     );
 }
 
-function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
-    const series = (items || []).filter(isMetricActive);
+function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '마감월', unitLabel = '건' }) {
+    const series = safeObjectList(items)
+        .filter(isMetricActive)
+        .map(item => ({
+            ...item,
+            displayLabel: item.scopeLabel || item.label || item.period || item.date || item.key || '-',
+        }));
     const width = 640;
     const height = 142;
     const pad = { left: 10, right: 10, top: 12, bottom: 12 };
@@ -573,7 +577,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
     const maxValue = Math.max(1, ...values);
     const minValue = Math.min(0, ...values);
     const valueRange = Math.max(1, maxValue - minValue);
-    const xAt = idx => pad.left + (series.length <= 1 ? 0 : (idx / (series.length - 1)) * chartW);
+    const xAt = idx => pad.left + (series.length <= 1 ? chartW / 2 : (idx / (series.length - 1)) * chartW);
     const yAt = value => pad.top + ((maxValue - safeNumber(value)) / valueRange) * chartH;
     const toPoints = field => series.map((item, idx) => `${xAt(idx).toFixed(1)},${yAt(item[field]).toFixed(1)}`).join(' ');
     const revenuePoints = toPoints('revenue');
@@ -583,8 +587,8 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
     const revenueArea = series.length
         ? `${pad.left},${baselineY.toFixed(1)} ${revenuePoints} ${(series.length > 1 ? pad.left + chartW : pad.left).toFixed(1)},${baselineY.toFixed(1)}`
         : '';
-    const start = series[0]?.period || '-';
-    const end = series[series.length - 1]?.period || '-';
+    const start = series[0]?.displayLabel || '-';
+    const end = series[series.length - 1]?.displayLabel || '-';
     const high = maxBy(series, 'revenue');
     const last = series[series.length - 1] || null;
     const previous = series.length >= 2 ? series[series.length - 2] : null;
@@ -594,7 +598,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
     const grid = [0.25, 0.5, 0.75].map(ratio => pad.top + chartH * ratio);
     const axisStep = series.length <= 8 ? 1 : Math.ceil(series.length / 7);
     const axisLabels = series.map((item, idx) => ({
-        period: item.period,
+        label: item.displayLabel,
         visible: idx === 0 || idx === series.length - 1 || idx % axisStep === 0,
     }));
 
@@ -602,8 +606,8 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
         <section className={`${styles.panel} ${styles.monthlyTrendPanel}`}>
             <div className={styles.monthlyTrendHeader}>
                 <div>
-                    <h3>월별 누적 흐름</h3>
-                    <span>{start} ~ {end} · {scopeLabel} · 마감월 기준</span>
+                    <h3>누적</h3>
+                    <span>{start} ~ {end} · {scopeLabel} · {basisLabel} 기준</span>
                 </div>
                 <div className={styles.monthlyTrendLegend}>
                     <span><i className={styles.revenueDot} />청구</span>
@@ -612,7 +616,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
                 </div>
             </div>
             {series.length === 0 ? (
-                <div className={styles.emptyPanel}>월별 추세를 그릴 마감월 데이터가 부족합니다.</div>
+                <div className={styles.emptyPanel}>선택 범위의 누적 데이터를 아직 그릴 수 없습니다.</div>
             ) : (
                 <>
                     <div className={styles.monthlyTrendChartShell}>
@@ -621,7 +625,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
                             viewBox={`0 0 ${width} ${height}`}
                             preserveAspectRatio="none"
                             role="img"
-                            aria-label="월별 누적 흐름 차트"
+                            aria-label="누적 차트"
                         >
                             <defs>
                                 <linearGradient id="monthlyTrendRevenueArea" x1="0" x2="0" y1="0" y2="1">
@@ -651,19 +655,19 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
                         >
                             {axisLabels.map((item, idx) => (
                                 <span
-                                    key={`${item.period}-${idx}`}
+                                    key={`${item.label}-${idx}`}
                                     className={!item.visible ? styles.monthlyTrendAxisBlank : ''}
                                     aria-hidden={!item.visible}
                                 >
-                                    {item.visible ? item.period : ''}
+                                    {item.visible ? item.label : ''}
                                 </span>
                             ))}
                         </div>
                     </div>
                     <div className={styles.monthlyTrendStats}>
-                        <div><span>최고 청구월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
-                        <div><span>최근 마감월</span><strong>{last?.period || '-'}</strong><em>{last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
-                        <div><span>누적 청구</span><strong>{formatPerformanceAmount(sumMetricItems(series).revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}개월</em></div>
+                        <div><span>최고 청구</span><strong>{high?.displayLabel || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
+                        <div><span>최근 항목</span><strong>{last?.displayLabel || '-'}</strong><em>{last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
+                        <div><span>누적 청구</span><strong>{formatPerformanceAmount(sumMetricItems(series).revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}{unitLabel}</em></div>
                         <div>
                             <span>최근 증감</span>
                             <strong className={recentDelta < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(recentDelta)}</strong>
@@ -953,13 +957,40 @@ export default function AsanMonthlyPerformance() {
     const reportColumnCount = reportGroups.length + 3;
     const diagramMax = Math.max(1, Math.abs(scopeRevenue), Math.abs(scopePurchase), Math.abs(scopeProfit), Math.abs(carryoverRevenue));
     const reportTableReady = Boolean(selectedReport && reportGroups.length);
-    const activeMonths = scopedMonthly.length;
-    const latestMonth = [...scopedMonthly].reverse().find(isMetricActive) || null;
-    const previousMonth = previousMetricItem(scopedMonthly, latestMonth, 'period');
-    const bestRevenueMonth = maxBy(scopedMonthly, 'revenue');
-    const bestProfitMonth = maxBy(scopedMonthly, 'profit');
-    const bestProfitDay = maxBy(scopedDaily, 'profit');
-    const revenueDelta = metricDelta(latestMonth, previousMonth, 'revenue');
+    const scopeFlowItems = useMemo(() => {
+        if (analysisScope === ANALYSIS_SCOPE_WEEK) {
+            if (!activeAnalysisWeek) return [];
+            return [{
+                ...sumMetricItems(scopedDaily),
+                scopeLabel: activeAnalysisWeek.label,
+                _scopeKey: activeAnalysisWeek.key,
+                period: activeAnalysisWeek.period,
+            }];
+        }
+        if (analysisScope === ANALYSIS_SCOPE_DAY) {
+            return scopedDaily.map(item => ({
+                ...item,
+                scopeLabel: item.date || item.label,
+                _scopeKey: item.scopeKey || item.date,
+            }));
+        }
+        return scopedMonthly.map(item => ({
+            ...item,
+            scopeLabel: item.period,
+            _scopeKey: item.period,
+        }));
+    }, [activeAnalysisWeek, analysisScope, scopedDaily, scopedMonthly]);
+    const scopeFlowRange = scopeFlowItems.length
+        ? `${scopeFlowItems[0].scopeLabel || '-'} ~ ${scopeFlowItems[scopeFlowItems.length - 1].scopeLabel || '-'}`
+        : scopedMonthRange;
+    const scopeFlowBasisLabel = analysisScope === ANALYSIS_SCOPE_WEEK ? '작업주간' : ([ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월');
+    const scopeFlowUnitLabel = analysisScope === ANALYSIS_SCOPE_WEEK ? '주' : (analysisScope === ANALYSIS_SCOPE_DAY ? '일' : '개월');
+    const activeFlowCount = scopeFlowItems.length;
+    const latestFlowItem = [...scopeFlowItems].reverse().find(isMetricActive) || null;
+    const previousFlowItem = previousMetricItem(scopeFlowItems, latestFlowItem, '_scopeKey');
+    const bestRevenueItem = maxBy(scopeFlowItems, 'revenue');
+    const bestProfitItem = maxBy(scopeFlowItems, 'profit');
+    const revenueDelta = metricDelta(latestFlowItem, previousFlowItem, 'revenue');
     const avgRevenuePerJob = scopeRows ? scopeRevenue / scopeRows : 0;
     const carryoverRate = scopeRevenue ? (carryoverRevenue / scopeRevenue) * 100 : 0;
     const segmentItems = safeObjectList(summary.strategicSegments)
@@ -974,12 +1005,13 @@ export default function AsanMonthlyPerformance() {
     const activeDimensionExpanded = Boolean(activeDimension?.key && expandedDimensionKeys.has(activeDimension.key));
     const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
     const topDimensionItem = activeDimensionItems[0] || null;
-    const dailyTree = useMemo(() => groupDailyByMonth(scopedMonthly, scopedDaily), [scopedDaily, scopedMonthly]);
+    const dailyTreeMonthlySeed = [ANALYSIS_SCOPE_ALL, ANALYSIS_SCOPE_MONTH].includes(analysisScope) ? scopedMonthly : EMPTY_LIST;
+    const dailyTree = useMemo(() => groupDailyByMonth(dailyTreeMonthlySeed, scopedDaily), [dailyTreeMonthlySeed, scopedDaily]);
     const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 999);
     const visibleVehicles = showAllVehicles ? scopedVehicleItems : scopedVehicleItems.slice(0, 5);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
     const vehicleMax = Math.max(1, ...scopedVehicleItems.map(item => Math.abs(safeNumber(item.revenue))));
-    const chartMax = getPerformanceChartMax(scopedMonthly, ['revenue', 'purchase', 'profit']);
+    const chartMax = getPerformanceChartMax(scopeFlowItems, ['revenue', 'purchase', 'profit']);
     const weekdayCards = useMemo(() => buildWeekdayCards(scopedDaily), [scopedDaily]);
     const weekdayMax = Math.max(1, ...weekdayCards.map(item => Math.abs(safeNumber(item.revenue))));
     const scopeLabel = analysisScope === ANALYSIS_SCOPE_MONTH
@@ -1320,12 +1352,17 @@ export default function AsanMonthlyPerformance() {
                         </div>
                     </section>
 
-                    <MonthlyLedgerFlowChart items={scopedMonthly} scopeLabel={scopeLabel} />
+                    <MonthlyLedgerFlowChart
+                        items={scopeFlowItems}
+                        scopeLabel={scopeLabel}
+                        basisLabel={scopeFlowBasisLabel}
+                        unitLabel={scopeFlowUnitLabel}
+                    />
 
                     <section className={`${styles.panel} ${styles.monthlySummaryPanel}`}>
                         <div className={styles.panelHeader}>
-                            <h3>월간 실적 인포그래픽</h3>
-                            <span>{scopedMonthRange}</span>
+                            <h3>실적 인포그래픽</h3>
+                            <span>{scopeFlowRange}</span>
                         </div>
                         <div className={styles.monthlyInfographicGrid}>
                             <div className={styles.monthlyInfoCard}>
@@ -1360,7 +1397,7 @@ export default function AsanMonthlyPerformance() {
                                 <MetricDonut value={avgRevenuePerJob} max={Math.max(1, scopeRevenue)} tone="revenue" />
                                 <span>건당 청구</span>
                                 <strong>{formatPerformanceAmount(avgRevenuePerJob)}</strong>
-                                <em>{activeMonths.toLocaleString('ko-KR')}개월 집계</em>
+                                <em>{activeFlowCount.toLocaleString('ko-KR')}{scopeFlowUnitLabel} 집계</em>
                                 <i style={{ width: metricWidth(avgRevenuePerJob, Math.max(1, scopeRevenue), 6) }} />
                             </div>
                         </div>
@@ -1382,22 +1419,22 @@ export default function AsanMonthlyPerformance() {
                         </div>
                         <div className={styles.monthlyInsightStrip}>
                             <div>
-                                <span>최고 청구월</span>
-                                <strong>{bestRevenueMonth?.period || '-'}</strong>
-                                <em>{bestRevenueMonth ? formatPerformanceAmount(bestRevenueMonth.revenue) : '-'}</em>
+                                <span>최고 청구</span>
+                                <strong>{bestRevenueItem?.scopeLabel || '-'}</strong>
+                                <em>{bestRevenueItem ? formatPerformanceAmount(bestRevenueItem.revenue) : '-'}</em>
                             </div>
                             <div>
-                                <span>최고 손익월</span>
-                                <strong>{bestProfitMonth?.period || '-'}</strong>
-                                <em>{bestProfitMonth ? formatPerformanceAmount(bestProfitMonth.profit) : '-'}</em>
+                                <span>최고 손익</span>
+                                <strong>{bestProfitItem?.scopeLabel || '-'}</strong>
+                                <em>{bestProfitItem ? formatPerformanceAmount(bestProfitItem.profit) : '-'}</em>
                             </div>
                             <div>
-                                <span>최고 손익일</span>
-                                <strong>{bestProfitDay?.date || '-'}</strong>
-                                <em>{bestProfitDay ? formatPerformanceAmount(bestProfitDay.profit) : '-'}</em>
+                                <span>최근 항목</span>
+                                <strong>{latestFlowItem?.scopeLabel || '-'}</strong>
+                                <em>{latestFlowItem ? formatPerformanceAmount(latestFlowItem.revenue) : '-'}</em>
                             </div>
                             <div>
-                                <span>최근월 증감</span>
+                                <span>최근 증감</span>
                                 <strong className={revenueDelta.amount < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(revenueDelta.amount)}</strong>
                                 <em>{formatPercent(revenueDelta.rate, 1)}</em>
                             </div>
@@ -1437,25 +1474,25 @@ export default function AsanMonthlyPerformance() {
 
                     <section className={`${styles.panel} ${styles.monthPanel}`}>
                         <div className={styles.panelHeader}>
-                            <h3>월별 성과 흐름</h3>
-                            <span>{scopedMonthRange} · 마감월 기준</span>
+                            <h3>선택 범위 성과 흐름</h3>
+                            <span>{scopeFlowRange} · {scopeFlowBasisLabel} 기준</span>
                         </div>
                         <div className={styles.monthChart}>
-                            {scopedMonthly.length === 0 ? (
-                                <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
+                            {scopeFlowItems.length === 0 ? (
+                                <div className={styles.emptyPanel}>선택 범위 분석 데이터가 아직 없습니다.</div>
                             ) : (
                                 <>
                                     <div className={styles.monthHeaderRow}>
-                                        <span>월</span>
+                                        <span>범위</span>
                                         <span>매출</span>
                                         <span>매출액</span>
                                         <span>손익</span>
                                         <span>손익액</span>
                                         <span>률</span>
                                     </div>
-                                    {scopedMonthly.map(item => (
-                                        <div className={styles.monthRow} key={item.period}>
-                                            <span>{item.period}</span>
+                                    {scopeFlowItems.map(item => (
+                                        <div className={styles.monthRow} key={item._scopeKey || item.scopeLabel}>
+                                            <span>{item.scopeLabel || '-'}</span>
                                             <span className={styles.inlineBar}><i style={{ width: `${Math.max(2, Math.min(100, Math.abs(safeNumber(item.revenue)) / chartMax * 100))}%` }} /></span>
                                             <strong>{formatPerformanceAmount(item.revenue)}</strong>
                                             <span className={styles.inlineBar}><i style={{ width: `${Math.max(2, Math.min(100, Math.abs(safeNumber(item.profit)) / chartMax * 100))}%` }} /></span>
