@@ -130,6 +130,47 @@ function resolveReportGroupName(headers, idx) {
   return '';
 }
 
+function normalizeReportRows(rows = []) {
+  return (rows || [])
+    .map(row => (Array.isArray(row) ? row : []))
+    .map(row => row.map(normalizePerformanceFilterValue))
+    .filter(row => row.some(Boolean));
+}
+
+function reportHeaderScore(matrix, idx) {
+  const row = matrix[idx] || [];
+  const nonEmpty = row.map(normalizePerformanceFilterValue).filter(Boolean);
+  if (nonEmpty.length < 3) return -1;
+
+  const compactRow = compactReportText(row.join(' '));
+  const lookahead = matrix.slice(idx + 1, Math.min(matrix.length, idx + 18));
+  const metricHits = lookahead.filter(item => reportMetricKey(item.slice(0, 3).map(normalizePerformanceFilterValue).find(Boolean) || '')).length;
+  if (metricHits < 2) return -1;
+
+  const meaningfulHeaders = row.filter(isMeaningfulReportHeader).length;
+  const score = (metricHits * 12)
+    + (meaningfulHeaders * 3)
+    + (compactRow.includes('매출합계') ? 14 : 0)
+    + (compactRow.includes('이익율') || compactRow.includes('이익률') ? 8 : 0)
+    + (compactRow.includes('년') && compactRow.includes('월') ? 8 : 0)
+    - (idx * 0.02);
+  return score;
+}
+
+function findReportHeaderIndex(matrix = []) {
+  let bestIdx = -1;
+  let bestScore = -1;
+  const scanLimit = Math.min(matrix.length, 80);
+  for (let idx = 0; idx < scanLimit; idx += 1) {
+    const score = reportHeaderScore(matrix, idx);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = idx;
+    }
+  }
+  return bestScore >= 24 ? bestIdx : -1;
+}
+
 function blankMonthlyReportMetric(name = '') {
   return {
     name,
@@ -147,10 +188,11 @@ function blankMonthlyReportMetric(name = '') {
   };
 }
 
-export function buildMonthlyPerformanceReport(headers = [], rows = [], options = {}) {
+function buildMonthlyReportCandidate(headers = [], rows = [], options = {}) {
   const groups = new Map();
   const totals = blankMonthlyReportMetric('매출합계');
   const order = [];
+  const metricSet = new Set();
 
   const ensureGroup = (name) => {
     const key = name || '미분류';
@@ -171,6 +213,7 @@ export function buildMonthlyPerformanceReport(headers = [], rows = [], options =
     const label = row.slice(0, 3).map(normalizePerformanceFilterValue).find(Boolean) || '';
     const metric = reportMetricKey(label);
     if (!metric) continue;
+    metricSet.add(metric);
 
     row.forEach((cell, idx) => {
       if (idx === 0) return;
@@ -211,11 +254,29 @@ export function buildMonthlyPerformanceReport(headers = [], rows = [], options =
     .map(key => finalize(groups.get(key)))
     .filter(item => item.netRevenue || item.netPurchase || item.invoiceRevenue || item.invoicePurchase || item.carryoverRevenue || item.carryoverPurchase);
   const finalizedTotals = finalize(totals);
+  const reportMetricKeys = ['netRevenue', 'netPurchase', 'netProfit', 'invoiceRevenue', 'invoicePurchase', 'invoiceProfit', 'carryoverRevenue', 'carryoverPurchase', 'carryoverProfit'];
+  const groupSums = finalizedGroups.reduce((sum, item) => {
+    for (const key of reportMetricKeys) sum[key] += Number(item[key] || 0) || 0;
+    return sum;
+  }, blankMonthlyReportMetric('그룹합계'));
+
+  for (const key of reportMetricKeys) {
+    if (!finalizedTotals[key] && groupSums[key]) finalizedTotals[key] = roundMoney(groupSums[key]);
+  }
+  finalizedTotals.netProfitRate = finalizedTotals.netRevenue ? Math.round((finalizedTotals.netProfit / finalizedTotals.netRevenue) * 10000) / 100 : 0;
+  finalizedTotals.invoiceProfitRate = finalizedTotals.invoiceRevenue ? Math.round((finalizedTotals.invoiceProfit / finalizedTotals.invoiceRevenue) * 10000) / 100 : 0;
+
   const carryover = {
     revenue: finalizedTotals.carryoverRevenue || roundMoney(finalizedGroups.reduce((sum, item) => sum + item.carryoverRevenue, 0)),
     purchase: finalizedTotals.carryoverPurchase || roundMoney(finalizedGroups.reduce((sum, item) => sum + item.carryoverPurchase, 0)),
   };
   carryover.profit = roundMoney(carryover.revenue - carryover.purchase);
+  const primaryReady = Boolean(finalizedTotals.netRevenue && (finalizedTotals.netPurchase || finalizedTotals.netProfit));
+  const displayReady = finalizedGroups.length > 0 || Boolean(finalizedTotals.netRevenue || finalizedTotals.invoiceRevenue || carryover.revenue || carryover.purchase);
+  const score = (primaryReady ? 60 : 0)
+    + (finalizedGroups.length >= 2 ? 20 : finalizedGroups.length ? 10 : 0)
+    + (metricSet.has('invoiceRevenue') || metricSet.has('invoicePurchase') ? 10 : 0)
+    + (metricSet.has('carryoverRevenue') || metricSet.has('carryoverPurchase') ? 10 : 0);
 
   return {
     period: options.period || '',
@@ -223,8 +284,45 @@ export function buildMonthlyPerformanceReport(headers = [], rows = [], options =
     groups: finalizedGroups,
     totals: finalizedTotals,
     carryover,
-    hasReportRows: finalizedGroups.length > 0 || Boolean(finalizedTotals.netRevenue || finalizedTotals.invoiceRevenue || carryover.revenue || carryover.purchase),
+    hasReportRows: displayReady,
+    quality: {
+      source: options.source || 'normalized',
+      score,
+      metricCount: metricSet.size,
+      groupCount: finalizedGroups.length,
+      primaryReady,
+      headerRow: options.headerRow || null,
+    },
   };
+}
+
+function buildReportFromRawRows(rawRows = [], options = {}) {
+  const matrix = normalizeReportRows(rawRows);
+  const headerIdx = findReportHeaderIndex(matrix);
+  if (headerIdx < 0) return null;
+  const headers = matrix[headerIdx];
+  const reportRows = matrix
+    .slice(headerIdx + 1, Math.min(matrix.length, headerIdx + 40))
+    .filter(row => reportMetricKey(row.slice(0, 3).map(normalizePerformanceFilterValue).find(Boolean) || ''));
+  if (!reportRows.length) return null;
+  return buildMonthlyReportCandidate(headers, reportRows, {
+    ...options,
+    source: 'raw-preview',
+    headerRow: headerIdx + 1,
+  });
+}
+
+export function buildMonthlyPerformanceReport(headers = [], rows = [], options = {}) {
+  const normalizedCandidate = buildMonthlyReportCandidate(headers, rows, {
+    ...options,
+    source: 'normalized',
+  });
+  const rawCandidate = buildReportFromRawRows(options.rawRows || [], options);
+  if (!rawCandidate) return normalizedCandidate;
+  if (!normalizedCandidate?.hasReportRows) return rawCandidate;
+  return (rawCandidate.quality?.score || 0) > (normalizedCandidate.quality?.score || 0)
+    ? rawCandidate
+    : normalizedCandidate;
 }
 
 export function normalizePerformancePath(path = DEFAULT_ANNUAL_PERFORMANCE_PATH) {

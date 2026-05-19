@@ -265,6 +265,7 @@ async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerR
   workbookReader.model = { sheets: [] };
 
   const warmupRows = [];
+  const rawPreviewRows = [];
   let headers = [];
   let headerIdx = null;
   let lastCol = null;
@@ -303,6 +304,7 @@ async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerR
         headers,
         sheetName: actualSheet,
         headerRow: (headerIdx || 0) + 1,
+        rawPreviewRows: rawPreviewRows.slice(),
       });
     }
 
@@ -322,6 +324,9 @@ async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerR
     for await (const row of worksheetReader) {
       rawRowCount += 1;
       const rawValues = rowToArray(row);
+      if (rawPreviewRows.length < 240) {
+        rawPreviewRows.push(rawValues.map(cleanCell));
+      }
       if (headerIdx == null) {
         warmupRows.push(rawValues);
         if (warmupRows.length < 240) continue;
@@ -342,6 +347,7 @@ async function streamExcelRows(filePath, sheetName = DEFAULT_SHEET_NAME, headerR
     headerRow: (headerIdx || 0) + 1,
     rowCount: emittedRows,
     rawRowCount,
+    rawPreviewRows,
   };
 }
 
@@ -358,6 +364,7 @@ async function parseExcel(filePath, sheetName = DEFAULT_SHEET_NAME, headerRow = 
     sheetName: parsed.sheetName,
     headerRow: parsed.headerRow,
     rawRowCount: parsed.rawRowCount,
+    rawPreviewRows: parsed.rawPreviewRows,
   };
 }
 
@@ -790,7 +797,7 @@ function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, ro
   }).filter(item => item.items.length);
 }
 
-function buildSummary(headers, rows, fallbackPeriod = {}) {
+function buildSummary(headers, rows, fallbackPeriod = {}, rawPreviewRows = []) {
   const analysisRows = rows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisRows);
   const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
@@ -925,7 +932,7 @@ function buildSummary(headers, rows, fallbackPeriod = {}) {
     yearly: yearlyList,
     monthly: monthlyList.slice(0, 240),
     monthlyBasis: '마감월',
-    monthlyReport: buildMonthlyPerformanceReport(headers, rows, { period: fallbackPeriodKey }),
+    monthlyReport: buildMonthlyPerformanceReport(headers, rows, { period: fallbackPeriodKey, rawRows: rawPreviewRows }),
     ...advancedSummary,
     topGroups: topGroups.slice(0, 15),
     breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
@@ -946,7 +953,7 @@ async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow, 
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod, ready.rawPreviewRows || []);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -974,7 +981,7 @@ async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow, 
   };
 }
 
-function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}) {
+function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}, rawPreviewRows = []) {
   const analysisSampleRows = sampleRows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisSampleRows);
   const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
@@ -1116,7 +1123,7 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}) {
       yearly: yearlyList,
       monthly: monthlyList.slice(0, 240),
       monthlyBasis: '마감월',
-      monthlyReport: buildMonthlyPerformanceReport(headers, sampleRows, { period: fallbackPeriodKey }),
+      monthlyReport: buildMonthlyPerformanceReport(headers, sampleRows, { period: fallbackPeriodKey, rawRows: rawPreviewRows }),
       ...advancedSummary,
       topGroups: topGroups.slice(0, 15),
       breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
@@ -1458,7 +1465,7 @@ async function importExcelSnapshotStreaming({
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod, ready.rawPreviewRows || []);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -1565,7 +1572,7 @@ async function importExcelStreaming({
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod, ready.rawPreviewRows || []);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -1766,7 +1773,7 @@ async function run() {
 
   if (args['dry-run']) {
     const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
-    const summary = buildSummary(parsed.headers, parsed.data, fallbackPeriod);
+    const summary = buildSummary(parsed.headers, parsed.data, fallbackPeriod, parsed.rawPreviewRows || []);
     if (fallbackPeriod.year && fallbackPeriod.month) {
       summary.sourceYear = fallbackPeriod.year;
       summary.sourceMonth = fallbackPeriod.month;

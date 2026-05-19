@@ -1056,6 +1056,16 @@ function metaSourcePeriod(meta = {}) {
     return monthlyPeriodKey(summary.sourceYear, summary.sourceMonth);
 }
 
+function isMonthlyReportPrimaryReady(report = null) {
+    if (!report?.hasReportRows) return false;
+    if (report.quality && report.quality.primaryReady === false) return false;
+    const totals = report.totals || {};
+    const revenue = Number(totals.netRevenue || 0) || 0;
+    const purchase = Number(totals.netPurchase || 0) || 0;
+    const profit = Number(totals.netProfit || 0) || 0;
+    return Boolean(revenue && (purchase || profit));
+}
+
 function mergeMonthlySummaries(metas, monthlyFileSlots) {
     const monthly = new Map();
     const daily = new Map();
@@ -1098,13 +1108,14 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
         const sourcePeriod = metaSourcePeriod(meta);
         const report = summary.monthlyReport && typeof summary.monthlyReport === 'object' ? summary.monthlyReport : null;
         const hasReport = Boolean(report?.hasReportRows);
+        const hasPrimaryReport = isMonthlyReportPrimaryReady(report);
         const reportTotals = report?.totals || {};
         const reportRevenue = Number(reportTotals.netRevenue || 0) || 0;
         const reportPurchase = Number(reportTotals.netPurchase || 0) || 0;
         const reportProfit = Number(reportTotals.netProfit || 0) || 0;
-        const metricRevenue = hasReport ? reportRevenue : (Number(summary.totalRevenue || 0) || 0);
-        const metricPurchase = hasReport ? reportPurchase : (Number(summary.totalPurchase || 0) || 0);
-        const metricProfit = hasReport ? reportProfit : (Number(summary.totalProfit || 0) || 0);
+        const metricRevenue = hasPrimaryReport ? reportRevenue : (Number(summary.totalRevenue || 0) || 0);
+        const metricPurchase = hasPrimaryReport ? reportPurchase : (Number(summary.totalPurchase || 0) || 0);
+        const metricProfit = hasPrimaryReport ? reportProfit : (Number(summary.totalProfit || 0) || 0);
         totalRows += Number(meta.current_row_count || meta.row_count || summary.totalRows || 0) || 0;
         analysisRows += Number(summary.analysisRows || meta.current_row_count || meta.row_count || 0) || 0;
         totalRevenue += metricRevenue;

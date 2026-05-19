@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.70 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.72 / APK v5.11.23)
 
-> 최신 업데이트: 종합실적 그래프 단위를 선택 기준과 맞추고 상단 월간/연간 바로가기를 제거했습니다.
+> 최신 업데이트: 월간실적 보고서 표 전용파서를 raw preview 기반으로 보강하고 부분 표가 총액 기준을 덮어쓰지 않게 했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.70
+- **웹 버전**: v5.14.72
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -22,10 +22,10 @@
   - 월간실적 구성·차량 성과는 한 카드에서 선택 범위별 구성 집계와 차량 TOP10을 함께 보이며 차량번호 앞에는 운송사(명의)를 붙인다.
   - 실적관리 테이블 스크롤러는 브라우저 높이에 맞춘 더 낮은 clamp 높이와 명시적 스크롤바 스타일로 가로 슬라이더를 화면 안쪽에 보이게 한다.
   - 월간실적 누적 그래프는 전체=연도별, 월=선택월 주차별, 주차=선택주 일자별, 일=해당일 단일 데이터로 표시하고 선택하지 않는 셀렉트는 잠근다.
-  - 연간실적 계약/차량 월별 흐름은 매출/손익 선, 평균선, 최고/최근 포인트, 평균 손익률 요약을 함께 표시한다.
-  - 연간실적 개요의 시간축 분석은 전체=연도별, 최근 12/24개월=월별, 최근 3/5년=3개월별로 자동 집계하고 계약/차량 흐름도 동일한 조사범위 단위를 사용한다.
+  - 연간실적 장기/계약·차량 흐름은 SVG 비율 고정, 평균선, 최고·최근·최저 포인트 콜아웃으로 눌림·해석 문제를 줄인다.
+  - 연간실적 개요는 고마진→저마진→손실 순으로 리스크 카드를 정리하고, 주차 분석은 제거해 요일별 매출·손익·건수 다이어그램에 집중한다.
   - 종합실적은 전체/연도별/월별/일별 선택 기준으로 연간+월간 Supabase summary를 재집계하고, KPI·흐름도·추세·연도 매트릭스·계약/차량 집중도·원장 신뢰도·청구처/지급처 고저마진을 같은 선택 범위로 표시한다.
-  - 종합실적 흐름 그래프는 연도별=연도 단위, 월별=월 단위, 일별=일 단위로 표시하며 현재 단계에서 쓰지 않는 선택 목록은 음영/잠금 처리한다.
+  - 월간실적 보고서 표 전용파서는 엑셀 상단 raw preview를 함께 스캔하고, `순매출·순매입·계산서·이월` 표가 신뢰 조건을 충족할 때만 월간 총액 기준으로 사용한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -49,7 +49,6 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.60: 종합실적 범위 선택형 경영 대시보드 보강
 - [x] v5.14.61: 월간실적 세분화 탭 전체 복구와 테이블 스크롤바 가시성 보강
 - [x] v5.14.62: 종합실적 경영 판단 수익성 신호 재구성
 - [x] v5.14.63: 연간실적 선택범위 시간축 통합과 계약/차량 흐름 범위 연동
@@ -59,9 +58,12 @@
 - [x] v5.14.67: 월간실적 그래프 단위와 세분화 탭 기준 보정
 - [x] v5.14.69: 선적관리 컨테이너 자동조회 DB 설정과 03:00/03:10 스케줄
 - [x] v5.14.70: 종합실적 선택 단위별 그래프 단위 보정과 상단 바로가기 제거
-- [ ] Next: 운영 NAS 최초 월간 동기화
+- [x] v5.14.71: 연간실적 장기/직계약 그래프 콜아웃과 요일 분석 재구성
+- [x] v5.14.72: 월간실적 보고서 표 전용파서 raw preview 복원과 총액 덮어쓰기 안전장치
 
 ## RECENT CHANGES
+- **v5.14.72**: 월간실적 보고서 표 전용파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview에서 `순매출/순매입/계산서/이월` 표를 복원한다. 파서 결과에는 `quality.primaryReady`를 붙여 완전 표만 월간 총액 기준으로 승격하고, 부분 표는 보조 표시로 남겨 원장 누적값을 덮어쓰지 않게 했다. 화면 문구는 `보고서 표 없음 · 원장 기준 분석 중`으로 바꿔 장애 경고처럼 보이지 않게 했다.
+- **v5.14.71**: 연간실적 원장 장기 흐름 그래프와 우리 직계약차량 흐름 그래프의 SVG 비율을 고정하고, 최고 매출·최고 손익·최저 손익·최근 포인트와 평균선 라벨을 추가했다. 개요 리스크 카드는 `고마진 항목 → 저마진 주의 → 손실 항목` 순서로 바꿨고, `주차·요일` 분석은 `요일` 분석으로 단순화해 요일별 매출·손익·건수 다이어그램과 집중/주의 요약만 표시한다.
 - **v5.14.70**: 종합실적 선택 기준을 `전체/연도별/월별/일별`로 바꿀 때 흐름 그래프도 같은 단위로 집계되도록 맞췄다. 연도별은 연도 데이터, 월별은 선택 연도의 월 데이터, 일별은 선택 일 데이터로 표시하며 해당 모드에서 쓰지 않는 연도/월/일 선택 목록은 비활성 음영 처리한다. 종합실적 상단의 `월간실적/연간실적` 바로가기 버튼은 제거해 화면 역할을 분리했다.
 - **v5.14.69**: 선적관리 설정에 `컨테이너 자동조회` 체크박스를 추가해 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`로 저장한다. 봇 데몬 일일 리셋은 03:00, NAS Core 자동조회는 03:10 실행으로 맞췄고, 전체 선적관리 컨테이너 중 최신 이력구분이 `적하`인 건은 제외한다. 자동조회 중 어떤 이유든 `ERROR` 10건에 도달하면 설정을 OFF로 저장하고 남은 조회를 중단한다.
 - **v5.14.67**: 월간실적 `누적` 그래프를 전체=연도별, 월=선택월 주차별, 주차=선택주 일자별, 일=해당일 단일 데이터로 맞췄다. 전체 상태에서는 월/주차/일 선택을 잠그고, 월·주차·일 선택마다 필요한 셀렉트만 활성화한다. 세분화 분석은 `구분별/노선별/계약별/ODCY구분별`과 중복 `청구픽업별` 왼쪽 탭을 제거했다.
@@ -78,20 +80,18 @@
 - **v5.14.56**: 종합실적 탭을 준비중 placeholder에서 연간+월간 합산 대시보드로 교체했다. `/api/branches/asan/performance/summary`는 annual current summary와 monthly diff-current summary를 `page_size=1`로 읽어 합산하고, 화면은 통합 매출/손익/손익률/매입률/최근월, 합산 흐름도, 최근 12개월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도만 압축 표시한다. 실제 DB 기준 합산값은 매출 196,151,544,233.1원, 손익률 10.68%, 응답 34.6KB로 확인했다.
 - **v5.14.55**: 운영 DB에 `marker_type` 컬럼이 없어도 `method=TRIP_END/TRIP_START`를 명시 마커로 인식하게 서버/앱 경로 필터를 통일했다. 2026-05-19 KST 데이터 재분석 결과 194서2632는 raw/server/app clean 모두 18:54:32 TRIP_END까지 보존된다. 운행 중 위치보기는 matched-route/complete 호출 없이 실시간 위치만 보도록 회귀 테스트를 추가했고, PiP는 운행 ID를 서비스 시작 즉시 저장하며 Android 12+ auto-enter를 설정한다. APK v5.11.20.
 - **v5.14.54**: 월간실적 분석 기준 버튼을 `월/주차/일`로 줄이고, 선택 월에 속한 주차와 일자만 셀렉트에 표시한다. `누적` 그래프는 청구/하불/손익 평균선을 추가하고, 주요 포인트마다 청구 금액과 건수를 SVG 라벨로 표시해 별도 표를 보지 않아도 흐름을 읽을 수 있게 했다.
-- **v5.14.53**: Android 앱 지도 탭 진입 시 기본 지도/브라우저 GPS 기준으로 먼저 확대되던 흐름을 막고, `/trips?mode=active` 차량 최신점 조회와 초기 포커스를 끝낸 뒤 전경 GPS 샘플링을 시작한다. `panTo + setZoom` 조합은 `morph` 우선 helper로 묶어 중심좌표 확정 후 확대되게 했다. APK v5.11.19.
-- **v5.14.52**: 연간실적 `계약/차량`의 월별 흐름 차트에 매출 평균선/손익 평균선, 최고 매출월/최고 손익월/최근월 포인트, 평균 손익률 요약 카드를 추가했다. 작은 라인 그래프만으로 의미를 해석하기 어렵던 문제를 줄이고, 같은 원장 summary 기반이라는 근거 문구는 유지했다.
 ## VERIFICATION
-- `node --test web/tests/asanSummaryPerformance.test.mjs`: 4개 통과
-- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 22개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
-- `npm.cmd run build`: 통과(외부 fetch는 샌드박스 EACCES 경고 후 정적 빌드 완료)
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "utils/asanPerformanceView.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
-- 운영 Supabase에 `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql` 적용 필요. 읽기 확인 결과 신규 컬럼은 아직 없음(42703).
+- 운영 Supabase `shipping_container_auto_lookup_enabled=true` 적용 확인 완료. NAS core/bot은 `0d9b2bd0` 기준 배포 완료, 03:00 리셋/03:10 자동조회는 다음 새벽 실동작 관찰.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

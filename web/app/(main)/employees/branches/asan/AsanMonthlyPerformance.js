@@ -1666,8 +1666,8 @@ export default function AsanMonthlyPerformance() {
 
                     {!reportTableReady && (
                         <section className={`${styles.panel} ${styles.reportNoticePanel}`}>
-                            <strong>매출보고서 표 미감지</strong>
-                            <span>원장 누적 분석 기준으로 청구·하불·손익·일별·세분화 데이터를 표시 중입니다.</span>
+                            <strong>보고서 표 없음 · 원장 기준 분석 중</strong>
+                            <span>정형 월간보고서 표는 찾지 못했지만 원장 누적값으로 청구·하불·손익·일별·세분화 데이터를 표시합니다.</span>
                         </section>
                     )}
 

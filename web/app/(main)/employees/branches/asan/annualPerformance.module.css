@@ -1214,11 +1214,13 @@
 
 .marketFlowChartWrap {
     width: 100%;
-    height: 220px;
-    min-height: 220px;
-    overflow-x: auto;
+    height: 250px;
+    min-height: 250px;
+    overflow: hidden;
     overflow-y: visible;
-    background: linear-gradient(#ffffff, #f8fafc);
+    background:
+        radial-gradient(circle at 8% 10%, rgba(20, 184, 166, 0.08), transparent 28%),
+        linear-gradient(#ffffff, #f8fafc);
 }
 
 .marketFlowHeader {
@@ -1273,7 +1275,7 @@
 
 .marketFlowSvg {
     display: block;
-    width: max(100%, 1500px);
+    width: 100%;
     height: 100%;
     min-height: 0;
 }
@@ -1298,7 +1300,7 @@
 .marketPurchaseLine,
 .marketProfitLine {
     fill: none;
-    stroke-width: 3;
+    stroke-width: 3.4;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
@@ -1331,10 +1333,44 @@
 
 .marketFlowStats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 6px;
     padding: 6px 8px 8px;
     border-top: 1px solid #e2e8f0;
+}
+
+.marketMarkerGuide {
+    stroke: #cbd5e1;
+    stroke-dasharray: 3 5;
+    stroke-width: 1;
+}
+
+.marketMarker_revenue,
+.marketMarker_profit,
+.marketMarker_recent {
+    stroke: #fff;
+    stroke-width: 2.6;
+}
+
+.marketMarker_revenue {
+    fill: #0f766e;
+}
+
+.marketMarker_profit {
+    fill: #2563eb;
+}
+
+.marketMarker_recent {
+    fill: #14b8a6;
+}
+
+.marketMarkerLabel {
+    fill: #0f172a;
+    stroke: #fff;
+    stroke-width: 4px;
+    paint-order: stroke;
+    font-size: 12px;
+    font-weight: 950;
 }
 
 .marketFlowStats div {
@@ -1414,9 +1450,16 @@
 
 .trendSvg {
     width: 100%;
-    height: 180px;
+    height: 224px;
     display: block;
-    background: linear-gradient(#fff, #f8fafc);
+    background:
+        radial-gradient(circle at 18% 18%, rgba(20, 184, 166, 0.08), transparent 30%),
+        linear-gradient(#fff, #f8fafc);
+}
+
+.trendRevenueArea {
+    fill: url(#miniTrendRevenueArea);
+    stroke: none;
 }
 
 .axisLine {
@@ -1462,7 +1505,8 @@
 
 .trendRevenuePoint,
 .trendProfitPoint,
-.trendRecentPoint {
+.trendRecentPoint,
+.trendLossPoint {
     stroke: #fff;
     stroke-width: 2;
 }
@@ -1479,13 +1523,23 @@
     fill: #0f766e;
 }
 
-.trendMarkerLabel {
+.trendLossPoint {
+    fill: #dc2626;
+}
+
+.trendMarkerLabel,
+.trendAvgLabel {
     fill: #334155;
     stroke: #fff;
     stroke-width: 3px;
     paint-order: stroke;
     font-size: 11px;
     font-weight: 950;
+}
+
+.trendAvgLabel {
+    fill: #64748b;
+    font-size: 10.5px;
 }
 
 .trendSummaryGrid {
@@ -1948,6 +2002,122 @@
     margin-top: 7px;
     border-radius: 999px;
     background: #0f766e;
+}
+
+.weekdayDiagram {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+}
+
+.weekdayDiagramRow {
+    display: grid;
+    grid-template-rows: auto minmax(132px, 1fr) auto;
+    gap: 8px;
+    min-width: 0;
+    min-height: 218px;
+    padding: 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(240, 253, 250, 0.78), #fff 42%),
+        #fff;
+    font-family: inherit;
+    text-align: left;
+}
+
+.weekdayDiagramRow:hover {
+    border-color: #14b8a6;
+    box-shadow: 0 10px 22px rgba(15, 118, 110, 0.1);
+}
+
+.weekdayDiagramRow strong {
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 950;
+}
+
+.weekdayDiagramRow em {
+    color: #0f766e;
+    font-size: 0.76rem;
+    font-style: normal;
+    font-weight: 950;
+    text-align: right;
+}
+
+.weekdayBars {
+    display: grid;
+    align-content: end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.weekdayBars span {
+    display: grid;
+    grid-template-rows: 44px auto;
+    gap: 5px;
+    min-width: 0;
+    color: #475569;
+    font-size: 0.67rem;
+    font-weight: 850;
+}
+
+.weekdayBars i {
+    align-self: end;
+    display: block;
+    height: 100%;
+    max-height: 44px;
+    min-width: 6px;
+    border-radius: 8px 8px 4px 4px;
+}
+
+.weekdayRevenueBar {
+    background: linear-gradient(180deg, #0f766e, #14b8a6);
+}
+
+.weekdayProfitBar {
+    background: linear-gradient(180deg, #2563eb, #60a5fa);
+}
+
+.weekdayLossBar {
+    background: linear-gradient(180deg, #dc2626, #f87171);
+}
+
+.weekdayCountBar {
+    background: linear-gradient(180deg, #64748b, #cbd5e1);
+}
+
+.weekdayInsightStrip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    padding: 0 10px 10px;
+}
+
+.weekdayInsightStrip div {
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+
+.weekdayInsightStrip span,
+.weekdayInsightStrip em {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.weekdayInsightStrip strong {
+    display: block;
+    margin: 2px 0;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
 }
 
 .evidenceHelp {
@@ -4366,8 +4536,8 @@
 
     .marketFlowChartWrap {
         border-bottom: 1px solid #e2e8f0;
-        height: 220px;
-        min-height: 220px;
+        height: 230px;
+        min-height: 230px;
     }
 
     .marketFlowStats {
@@ -4379,7 +4549,7 @@
     }
 
     .marketFlowSvg {
-        width: max(100%, 1080px);
+        width: 100%;
         height: 100%;
         min-height: 0;
     }
@@ -4424,6 +4594,14 @@
 
     .weekdayGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .weekdayDiagram {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .weekdayInsightStrip {
+        grid-template-columns: 1fr;
     }
 
     .segmentSummary div,
@@ -4635,7 +4813,7 @@
     }
 
     .marketFlowSvg {
-        width: 900px;
+        width: 100%;
         height: 100%;
         min-height: 0;
     }
@@ -4647,6 +4825,14 @@
 
     .marketFlowStats {
         grid-template-columns: 1fr;
+    }
+
+    .weekdayDiagram {
+        grid-template-columns: 1fr;
+    }
+
+    .weekdayDiagramRow {
+        min-height: 186px;
     }
 
     .trendSummaryGrid {

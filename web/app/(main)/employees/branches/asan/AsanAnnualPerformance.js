@@ -22,7 +22,7 @@ const ANALYSIS_VIEWS = [
     { key: 'overview', label: '개요' },
     { key: 'matrix', label: '연도×월' },
     { key: 'segments', label: '계약/차량' },
-    { key: 'calendar', label: '주차·요일' },
+    { key: 'calendar', label: '요일' },
     { key: 'evidence', label: '검증·근거' },
 ];
 const SCOPE_PRESETS = [
@@ -219,6 +219,36 @@ function sumSeriesMetrics(items = []) {
     }, { revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
 }
 
+function weekdaySortValue(item = {}) {
+    const label = String(item.label || '').replace(/요일$/, '');
+    const labelIndex = ['일', '월', '화', '수', '목', '금', '토'].indexOf(label);
+    if (labelIndex >= 0) return labelIndex;
+    const day = Number(item.day);
+    return Number.isFinite(day) ? day : 99;
+}
+
+function buildWeekdaySeries({ daily = [], weekday = [], scopeBounds = {} }) {
+    const scopedDaily = filterSeriesByScope(daily, scopeBounds);
+    if (scopedDaily.length) {
+        const map = new Map();
+        scopedDaily.forEach(item => {
+            const date = new Date(`${item.date || item.dateKey || ''}T00:00:00`);
+            const dateDay = Number.isNaN(date.getTime()) ? null : date.getDay();
+            const dayNo = Number.isFinite(Number(item.day)) ? Number(item.day) : (dateDay ?? weekdaySortValue(item));
+            const key = String(dayNo);
+            const label = String(item.label || ['일', '월', '화', '수', '목', '금', '토'][dayNo] || key).replace(/요일$/, '');
+            const prev = map.get(key) || { day: Number(key), label, revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+            prev.revenue += safeNumber(item.revenue);
+            prev.purchase += safeNumber(item.purchase);
+            prev.profit += safeNumber(item.profit);
+            prev.rowCount += safeNumber(item.rowCount);
+            map.set(key, prev);
+        });
+        return Array.from(map.values()).sort((a, b) => weekdaySortValue(a) - weekdaySortValue(b));
+    }
+    return (Array.isArray(weekday) ? weekday : []).slice().sort((a, b) => weekdaySortValue(a) - weekdaySortValue(b));
+}
+
 function getFlowItemLabel(item = {}) {
     return item.label || item.period || item.weekStart || item.year || '-';
 }
@@ -398,9 +428,9 @@ function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, b
 
 function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-' }) {
     const series = normalizeSeries(items);
-    const width = 1800;
-    const height = 260;
-    const pad = { left: 62, right: 38, top: 28, bottom: 42 };
+    const width = 1280;
+    const height = 286;
+    const pad = { left: 72, right: 92, top: 30, bottom: 54 };
     const chartW = width - pad.left - pad.right;
     const chartH = height - pad.top - pad.bottom;
     const maxValue = Math.max(1, ...series.flatMap(item => [safeNumber(item.revenue), safeNumber(item.purchase)]));
@@ -415,6 +445,9 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
     const start = series[0]?.period || '-';
     const end = series[series.length - 1]?.period || '-';
     const high = series.reduce((best, item) => safeNumber(item.revenue) > safeNumber(best?.revenue) ? item : best, null);
+    const highPurchase = series.reduce((best, item) => safeNumber(item.purchase) > safeNumber(best?.purchase) ? item : best, null);
+    const highProfit = series.reduce((best, item) => safeNumber(item.profit) > safeNumber(best?.profit) ? item : best, null);
+    const lowProfit = series.reduce((best, item) => safeNumber(item.profit) < safeNumber(best?.profit) ? item : best, series[0] || null);
     const last = series[series.length - 1] || null;
     const avgRevenueY = yAt(avgRevenue);
     const avgPurchaseY = yAt(avgPurchase);
@@ -423,6 +456,12 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
         y: pad.top + chartH - chartH * ratio,
         value: maxValue * ratio,
     }));
+    const markerDefs = [
+        { key: 'high', item: high, field: 'revenue', label: '최고 매출', tone: 'revenue' },
+        { key: 'profit', item: highProfit, field: 'revenue', label: '최고 손익', tone: 'profit', valueField: 'profit' },
+        { key: 'recent', item: last, field: 'revenue', label: '최근', tone: 'recent' },
+    ].filter(marker => marker.item);
+    const tickEvery = Math.max(1, Math.ceil(series.length / 8));
 
     return (
         <section className={styles.marketFlowPanel}>
@@ -443,18 +482,16 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
             ) : (
                 <>
                     <div className={styles.marketFlowChartWrap}>
-                        <svg
-                            className={styles.marketFlowSvg}
-                            viewBox={`0 0 ${width} ${height}`}
-                            preserveAspectRatio="none"
-                            role="img"
-                            aria-label={`${title} 매출 매입 흐름`}
-                        >
+                        <svg className={styles.marketFlowSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 매출 매입 흐름`}>
                             <defs>
                                 <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stopColor="#0f766e" stopOpacity="0.22" />
-                                    <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
+                                    <stop offset="0%" stopColor="#0f766e" stopOpacity="0.18" />
+                                    <stop offset="64%" stopColor="#14b8a6" stopOpacity="0.08" />
+                                    <stop offset="100%" stopColor="#0f766e" stopOpacity="0.01" />
                                 </linearGradient>
+                                <filter id="annualFlowGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#0f766e" floodOpacity="0.16" />
+                                </filter>
                             </defs>
                             {grid.map(item => (
                                 <g key={item.y}>
@@ -463,22 +500,43 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
                                 </g>
                             ))}
                             <polygon points={revenueArea} className={styles.marketRevenueArea} style={{ fill: `url(#${gradientId})` }} />
-                            <polyline points={revenuePoints} className={styles.marketRevenueLine} />
+                            <polyline points={revenuePoints} className={styles.marketRevenueLine} filter="url(#annualFlowGlow)" />
                             <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
                             <line x1={pad.left} x2={pad.left + chartW} y1={avgRevenueY} y2={avgRevenueY} className={styles.marketRevenueAvgLine} />
                             <line x1={pad.left} x2={pad.left + chartW} y1={avgPurchaseY} y2={avgPurchaseY} className={styles.marketPurchaseAvgLine} />
-                            <text x={pad.left + chartW - 4} y={avgRevenueY - 6} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
-                            <text x={pad.left + chartW - 4} y={avgPurchaseY + 14} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
+                            <text x={pad.left + chartW - 8} y={Math.max(14, avgRevenueY - 7)} className={styles.marketAvgText} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
+                            <text x={pad.left + chartW - 8} y={Math.min(height - 34, avgPurchaseY + 16)} className={styles.marketAvgText} textAnchor="end">매입 평균 {formatPerformanceAmount(avgPurchase)}</text>
                             {series.map((item, idx) => {
-                                const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 10)) === 0;
+                                const showTick = idx === 0 || idx === series.length - 1 || idx % tickEvery === 0;
                                 return showTick ? (
                                     <text key={item.period} x={xAt(idx)} y={height - 16} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
                                 ) : null;
+                            })}
+                            {markerDefs.map((marker, order) => {
+                                const idx = Math.max(0, series.indexOf(marker.item));
+                                const x = xAt(idx);
+                                const y = yAt(marker.item[marker.field]);
+                                const labelX = Math.min(width - 112, Math.max(100, x));
+                                const labelY = Math.max(20, y - 23 - (order % 2) * 14);
+                                return (
+                                    <g key={marker.key}>
+                                        <line x1={x} x2={x} y1={y + 8} y2={pad.top + chartH} className={styles.marketMarkerGuide} />
+                                        <circle cx={x} cy={y} r="6" className={styles[`marketMarker_${marker.tone}`] || styles.marketMarker_recent}>
+                                            <title>{`${getFlowItemLabel(marker.item)} ${marker.label} ${formatPerformanceAmount(marker.item[marker.valueField || marker.field])}`}</title>
+                                        </circle>
+                                        <text x={labelX} y={labelY} className={styles.marketMarkerLabel} textAnchor="middle">
+                                            {marker.label} {formatPerformanceAmount(marker.item[marker.valueField || marker.field])}
+                                        </text>
+                                    </g>
+                                );
                             })}
                         </svg>
                     </div>
                     <div className={styles.marketFlowStats}>
                         <div><span>최고 매출월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
+                        <div><span>최고 매입월</span><strong>{highPurchase?.period || '-'}</strong><em>{highPurchase ? formatPerformanceAmount(highPurchase.purchase) : '-'}</em></div>
+                        <div><span>최고 손익월</span><strong>{highProfit?.period || '-'}</strong><em>{highProfit ? formatPerformanceAmount(highProfit.profit) : '-'}</em></div>
+                        <div><span>최저 손익월</span><strong>{lowProfit?.period || '-'}</strong><em>{lowProfit ? formatPerformanceAmount(lowProfit.profit) : '-'}</em></div>
                         <div><span>최근월</span><strong>{last?.period || '-'}</strong><em>매출 {last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
                         <div><span>매출 평균</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>월 평균</em></div>
                         <div><span>매입 평균</span><strong>{formatPerformanceAmount(avgPurchase)}</strong><em>월 평균</em></div>
@@ -493,14 +551,15 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
     const series = normalizeSeries(items);
     const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
     const maxProfit = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.profit))));
-    const width = 720;
-    const height = 168;
-    const padX = 24;
+    const width = 760;
+    const height = 212;
+    const padX = 38;
     const xAt = idx => (series.length <= 1 ? padX : padX + (idx / (series.length - 1)) * (width - padX * 2));
-    const revenueY = value => 18 + (1 - (safeNumber(value) / maxRevenue)) * 74;
-    const profitY = value => Math.max(76, Math.min(154, 118 - (safeNumber(value) / maxProfit) * 42));
+    const revenueY = value => 28 + (1 - (safeNumber(value) / maxRevenue)) * 92;
+    const profitY = value => Math.max(112, Math.min(182, 158 - (safeNumber(value) / maxProfit) * 46));
     const revenuePoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${revenueY(item.revenue).toFixed(1)}`).join(' ');
     const profitPoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${profitY(item.profit).toFixed(1)}`).join(' ');
+    const revenueArea = series.length ? `${padX},188 ${revenuePoints} ${width - padX},188` : '';
     const first = getFlowItemLabel(series[0]);
     const last = getFlowItemLabel(series[series.length - 1]);
     const recent = series[series.length - 1] || null;
@@ -511,8 +570,10 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
     const avgProfitRate = rate(totalProfit, totalRevenue, 2);
     const highRevenue = series.reduce((best, item) => (!best || safeNumber(item.revenue) > safeNumber(best.revenue) ? item : best), null);
     const highProfit = series.reduce((best, item) => (!best || safeNumber(item.profit) > safeNumber(best.profit) ? item : best), null);
+    const lowProfit = series.reduce((best, item) => (!best || safeNumber(item.profit) < safeNumber(best.profit) ? item : best), null);
     const highRevenueIndex = Math.max(0, series.indexOf(highRevenue));
     const highProfitIndex = Math.max(0, series.indexOf(highProfit));
+    const lowProfitIndex = Math.max(0, series.indexOf(lowProfit));
     const recentIndex = Math.max(0, series.length - 1);
 
     return (
@@ -534,10 +595,19 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
             ) : (
                 <>
                     <svg className={styles.trendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} 차트`}>
-                        <line x1="20" y1="92" x2="700" y2="92" className={styles.axisLine} />
-                        <line x1="20" y1="118" x2="700" y2="118" className={styles.zeroLine} />
-                        <line x1="20" y1={revenueY(avgRevenue)} x2="700" y2={revenueY(avgRevenue)} className={styles.trendAvgRevenueLine} />
-                        <line x1="20" y1={profitY(avgProfit)} x2="700" y2={profitY(avgProfit)} className={styles.trendAvgProfitLine} />
+                        <defs>
+                            <linearGradient id="miniTrendRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor="#0f766e" stopOpacity="0.16" />
+                                <stop offset="100%" stopColor="#0f766e" stopOpacity="0.01" />
+                            </linearGradient>
+                        </defs>
+                        {[58, 108, 158].map(y => <line key={y} x1={padX} y1={y} x2={width - padX} y2={y} className={styles.axisLine} />)}
+                        <line x1={padX} y1="158" x2={width - padX} y2="158" className={styles.zeroLine} />
+                        <polygon points={revenueArea} className={styles.trendRevenueArea} />
+                        <line x1={padX} y1={revenueY(avgRevenue)} x2={width - padX} y2={revenueY(avgRevenue)} className={styles.trendAvgRevenueLine} />
+                        <line x1={padX} y1={profitY(avgProfit)} x2={width - padX} y2={profitY(avgProfit)} className={styles.trendAvgProfitLine} />
+                        <text x={width - padX} y={Math.max(14, revenueY(avgRevenue) - 7)} className={styles.trendAvgLabel} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
+                        <text x={width - padX} y={Math.min(height - 8, profitY(avgProfit) + 14)} className={styles.trendAvgLabel} textAnchor="end">손익 평균 {formatPerformanceAmount(avgProfit)}</text>
                         <polyline points={revenuePoints} className={styles.revenueLine} />
                         <polyline points={profitPoints} className={styles.profitLine} />
                         {highRevenue && (
@@ -545,20 +615,31 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                                 <circle cx={xAt(highRevenueIndex)} cy={revenueY(highRevenue.revenue)} r="5" className={styles.trendRevenuePoint}>
                                     <title>{`${getFlowItemLabel(highRevenue)} 최고 매출 ${formatPerformanceAmount(highRevenue.revenue)}`}</title>
                                 </circle>
-                                <text x={xAt(highRevenueIndex)} y={Math.max(14, revenueY(highRevenue.revenue) - 9)} className={styles.trendMarkerLabel} textAnchor="middle">최고</text>
+                                <text x={xAt(highRevenueIndex)} y={Math.max(14, revenueY(highRevenue.revenue) - 10)} className={styles.trendMarkerLabel} textAnchor="middle">매출 최고</text>
                             </g>
                         )}
                         {highProfit && (
-                            <circle cx={xAt(highProfitIndex)} cy={profitY(highProfit.profit)} r="4.5" className={styles.trendProfitPoint}>
-                                <title>{`${getFlowItemLabel(highProfit)} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
-                            </circle>
+                            <g>
+                                <circle cx={xAt(highProfitIndex)} cy={profitY(highProfit.profit)} r="4.8" className={styles.trendProfitPoint}>
+                                    <title>{`${getFlowItemLabel(highProfit)} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
+                                </circle>
+                                <text x={xAt(highProfitIndex)} y={Math.max(96, profitY(highProfit.profit) - 8)} className={styles.trendMarkerLabel} textAnchor="middle">손익 최고</text>
+                            </g>
+                        )}
+                        {lowProfit && lowProfit !== highProfit && (
+                            <g>
+                                <circle cx={xAt(lowProfitIndex)} cy={profitY(lowProfit.profit)} r="4.8" className={styles.trendLossPoint}>
+                                    <title>{`${getFlowItemLabel(lowProfit)} 최저 손익 ${formatPerformanceAmount(lowProfit.profit)}`}</title>
+                                </circle>
+                                <text x={xAt(lowProfitIndex)} y={Math.min(height - 10, profitY(lowProfit.profit) + 18)} className={styles.trendMarkerLabel} textAnchor="middle">손익 최저</text>
+                            </g>
                         )}
                         {recent && (
                             <g>
                                 <circle cx={xAt(recentIndex)} cy={revenueY(recent.revenue)} r="4.5" className={styles.trendRecentPoint}>
                                     <title>{`${getFlowItemLabel(recent)} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 손익 ${formatPerformanceAmount(recent.profit)}`}</title>
                                 </circle>
-                                <text x={Math.min(width - 28, xAt(recentIndex) - 10)} y={revenueY(recent.revenue) - 10} className={styles.trendMarkerLabel} textAnchor="end">최근</text>
+                                <text x={Math.min(width - 36, xAt(recentIndex) - 8)} y={revenueY(recent.revenue) - 10} className={styles.trendMarkerLabel} textAnchor="end">최근 {formatPerformanceAmount(recent.revenue)}</text>
                             </g>
                         )}
                     </svg>
@@ -575,6 +656,59 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                 </>
             )}
         </div>
+    );
+}
+
+function WeekdayPerformanceDiagram({ items = [], scopeLabel = '-' }) {
+    const series = (Array.isArray(items) ? items : []).filter(item => safeNumber(item.revenue) || safeNumber(item.profit) || safeNumber(item.rowCount));
+    const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
+    const maxProfit = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.profit))));
+    const maxRows = Math.max(1, ...series.map(item => safeNumber(item.rowCount)));
+    const bestRevenue = series.reduce((best, item) => (!best || safeNumber(item.revenue) > safeNumber(best.revenue) ? item : best), null);
+    const bestProfitRate = series.reduce((best, item) => (!best || profitRateOf(item) > profitRateOf(best) ? item : best), null);
+    const weakProfitRate = series.reduce((best, item) => (!best || profitRateOf(item) < profitRateOf(best) ? item : best), null);
+
+    return (
+        <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+                <h3>요일별 매출·손익 집중도</h3>
+                <span>{scopeLabel} · 작업일자 기준</span>
+            </div>
+            {series.length === 0 ? (
+                <div className={styles.emptyPanel}>요일별 원장 분석 데이터가 아직 없습니다.</div>
+            ) : (
+                <>
+                    <div className={styles.weekdayDiagram}>
+                        {series.map(item => {
+                            const revenueWidth = Math.max(4, Math.min(100, Math.abs(safeNumber(item.revenue)) / maxRevenue * 100));
+                            const profitWidth = Math.max(3, Math.min(100, Math.abs(safeNumber(item.profit)) / maxProfit * 100));
+                            const rowWidth = Math.max(3, Math.min(100, safeNumber(item.rowCount) / maxRows * 100));
+                            return (
+                                <button
+                                    type="button"
+                                    key={item.label || item.day}
+                                    className={styles.weekdayDiagramRow}
+                                    title={`${item.label}요일 매출 ${formatPerformanceAmount(item.revenue)} / 손익 ${formatPerformanceAmount(item.profit)} / ${safeNumber(item.rowCount).toLocaleString('ko-KR')}건`}
+                                >
+                                    <strong>{item.label}요일</strong>
+                                    <div className={styles.weekdayBars}>
+                                        <span><i className={styles.weekdayRevenueBar} style={{ width: `${revenueWidth}%` }} />매출 {formatPerformanceAmount(item.revenue)}</span>
+                                        <span><i className={safeNumber(item.profit) < 0 ? styles.weekdayLossBar : styles.weekdayProfitBar} style={{ width: `${profitWidth}%` }} />손익 {formatPerformanceAmount(item.profit)}</span>
+                                        <span><i className={styles.weekdayCountBar} style={{ width: `${rowWidth}%` }} />{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</span>
+                                    </div>
+                                    <em className={profitRateOf(item) < 5 ? styles.warningText : styles.positive}>{formatPercent(profitRateOf(item), 1)}</em>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className={styles.weekdayInsightStrip}>
+                        <div><span>매출 집중 요일</span><strong>{bestRevenue?.label || '-'}</strong><em>{bestRevenue ? formatPerformanceAmount(bestRevenue.revenue) : '-'}</em></div>
+                        <div><span>고마진 요일</span><strong>{bestProfitRate?.label || '-'}</strong><em>{bestProfitRate ? formatPercent(profitRateOf(bestProfitRate), 1) : '-'}</em></div>
+                        <div><span>주의 요일</span><strong>{weakProfitRate?.label || '-'}</strong><em>{weakProfitRate ? formatPercent(profitRateOf(weakProfitRate), 1) : '-'}</em></div>
+                    </div>
+                </>
+            )}
+        </section>
     );
 }
 
@@ -854,7 +988,7 @@ export default function AsanAnnualPerformance() {
     }, [colOrder, headers, hiddenCols]);
     const yearly = Array.isArray(summary.yearly) ? summary.yearly : EMPTY_LIST;
     const monthly = Array.isArray(summary.monthly) ? summary.monthly : EMPTY_LIST;
-    const weekly = Array.isArray(summary.weekly) ? summary.weekly : EMPTY_LIST;
+    const daily = Array.isArray(summary.daily) ? summary.daily : EMPTY_LIST;
     const weekday = Array.isArray(summary.weekday) ? summary.weekday : EMPTY_LIST;
     const strategicSegments = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
     const periodOptions = useMemo(() => getPeriodOptions(monthly), [monthly]);
@@ -865,7 +999,7 @@ export default function AsanAnnualPerformance() {
         end: scopeEnd,
     }), [periodOptions, scopeEnd, scopeMode, scopeStart]);
     const scopedMonthly = useMemo(() => filterSeriesByScope(monthly, scopeBounds), [monthly, scopeBounds]);
-    const scopedWeekly = useMemo(() => filterSeriesByScope(weekly, scopeBounds), [scopeBounds, weekly]);
+    const scopedWeekday = useMemo(() => buildWeekdaySeries({ daily, weekday, scopeBounds }), [daily, scopeBounds, weekday]);
     const scopedTotals = useMemo(() => {
         const totals = sumSeriesMetrics(scopedMonthly);
         if (!monthly.length) {
@@ -883,7 +1017,6 @@ export default function AsanAnnualPerformance() {
     ), [scopeBounds, scopedTotals.revenue, strategicSegments]);
     const scopedTimeFlow = useMemo(() => buildScopedTimeFlow(scopedMonthly, scopeBounds), [scopeBounds, scopedMonthly]);
     const timeFlowItems = scopedTimeFlow.items;
-    const weeklyTrend = scopedWeekly.slice(-26);
     const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
     const vehiclePerformance = Array.isArray(summary.vehiclePerformance)
@@ -1283,6 +1416,24 @@ export default function AsanAnnualPerformance() {
                     <div className={styles.portfolioGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
+                                <h3>고마진 항목</h3>
+                                <span>{evidenceBasisLabel || '손익률 기준'}</span>
+                            </div>
+                            <div className={styles.compactList}>
+                                {marginLeaders.length === 0 ? (
+                                    <div className={styles.emptyMini}>{activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : '고마진 항목 없음'}</div>
+                                ) : marginLeaders.map((item, idx) => (
+                                    <div className={styles.compactRow} key={`margin-${item.name}-${idx}`}>
+                                        <span>{item.name || '미분류'}</span>
+                                        <b className={styles.positive}>{formatPercent(profitRateOf(item))}</b>
+                                        <em>{formatPerformanceAmount(item.profit)}</em>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className={styles.panel}>
+                            <div className={styles.panelHeader}>
                                 <h3>저마진 주의</h3>
                                 <span>{evidenceBasisLabel || '매출 상위 내 손익률 낮음'}</span>
                             </div>
@@ -1312,24 +1463,6 @@ export default function AsanAnnualPerformance() {
                                         <span>{item.name || '미분류'}</span>
                                         <b className={styles.negative}>{formatPerformanceAmount(item.profit)}</b>
                                         <em>{formatPercent(profitRateOf(item))}</em>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <h3>고마진 항목</h3>
-                                <span>{evidenceBasisLabel || '손익률 기준'}</span>
-                            </div>
-                            <div className={styles.compactList}>
-                                {marginLeaders.length === 0 ? (
-                                    <div className={styles.emptyMini}>{activeBreakdownNeedsRefresh ? '구간별 월별 근거 갱신 필요' : '고마진 항목 없음'}</div>
-                                ) : marginLeaders.map((item, idx) => (
-                                    <div className={styles.compactRow} key={`margin-${item.name}-${idx}`}>
-                                        <span>{item.name || '미분류'}</span>
-                                        <b className={styles.positive}>{formatPercent(profitRateOf(item))}</b>
-                                        <em>{formatPerformanceAmount(item.profit)}</em>
                                     </div>
                                 ))}
                             </div>
@@ -1508,38 +1641,7 @@ export default function AsanAnnualPerformance() {
 
                     {analysisView === 'calendar' && (
                         <div className={styles.deepGrid}>
-                            <section className={styles.panel}>
-                                <div className={styles.panelHeader}>
-                                    <h3>주차별 금액/건수</h3>
-                                    <span>{scopeBounds.label} · 최근 {weeklyTrend.length.toLocaleString('ko-KR')}주</span>
-                                </div>
-                                <div className={styles.weekList}>
-                                    {weeklyTrend.map(item => (
-                                        <div className={styles.weekRow} key={item.weekStart}>
-                                            <span>{item.weekStart}</span>
-                                            <DataBar value={item.revenue} max={getPerformanceChartMax(weeklyTrend, ['revenue'])} tone="revenue" />
-                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                            <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</em>
-                                            <b>{formatPerformanceAmount(item.profit)}</b>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                            <section className={styles.panel}>
-                                <div className={styles.panelHeader}>
-                                    <h3>요일별 원장 분석</h3>
-                                    <span>전체 기간 summary 기준</span>
-                                </div>
-                                <div className={styles.weekdayGrid}>
-                                    {weekday.map(item => (
-                                        <div className={styles.weekdayCard} key={item.label || item.day}>
-                                            <span>{item.label}요일</span>
-                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                            <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건 · 손익률 {formatPercent(profitRateOf(item), 1)}</em>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
+                            <WeekdayPerformanceDiagram items={scopedWeekday} scopeLabel={scopeBounds.label} />
                         </div>
                     )}
 

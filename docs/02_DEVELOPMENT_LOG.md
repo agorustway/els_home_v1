@@ -1,3 +1,38 @@
+## [2026-05-20] 아산 월간실적 보고서 표 전용파서 개선 (v5.14.72)
+### 핵심
+- 월간실적 보고서 표 파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview 240행에서도 `순매출/순매입/계산서/이월` 표를 탐지합니다.
+- 파서 결과에 `quality.primaryReady`를 추가해 완전한 순매출·순매입 표만 월간 총액 기준으로 승격하고, 이월만 잡힌 부분 표는 보조 표시로만 남기게 했습니다.
+- DB 병합 단계는 `isMonthlyReportPrimaryReady()`를 거쳐 보고서 표가 신뢰 조건을 통과할 때만 원장 누적 총액을 대체합니다.
+- 화면 안내 문구는 `보고서 표 없음 · 원장 기준 분석 중`으로 바꿔, 파서 미탐지가 데이터 장애처럼 보이지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "utils/asanPerformanceView.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanPerformanceView.mjs`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-20] 아산 연간실적 그래프와 요일 분석 개선 (v5.14.71)
+### 핵심
+- 연간실적 원장 장기 흐름 그래프의 SVG 비율을 고정하고, 최고 매출·최고 손익·최근 포인트와 평균선 라벨을 추가해 선과 글자가 눌려 보이던 문제를 줄였습니다.
+- 우리 직계약차량 흐름 그래프에 매출 영역, 손익선, 평균선, 최고/최저/최근 콜아웃을 넣어 단순한 선 그래프가 아니라 흐름 근거를 읽을 수 있게 했습니다.
+- 개요의 리스크 카드 순서를 `고마진 항목 → 저마진 주의 → 손실 항목`으로 바꿨습니다.
+- 의미가 불명확하던 주차별 분석은 제거하고, `요일` 탭에서 요일별 매출·손익·건수와 고마진/주의 요일을 다이어그램으로 집중 표시합니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 종합실적 선택 단위별 그래프 보정 (v5.14.70)
 ### 핵심
 - 종합실적의 `연도별/월별/일별` 선택과 흐름 그래프 집계 단위를 일치시켰습니다.
@@ -24,13 +59,15 @@
 - 자동조회 대상은 전체 선적관리 리스트에서 최신 저장 이력의 `이력 구분`이 `적하`인 컨테이너를 제외한 건입니다.
 - 자동조회 중 `ERROR` 결과가 10건에 도달하거나 실행 자체가 실패하면 자동조회 설정을 OFF로 저장하고 봇 중지 요청을 보내 남은 조회를 멈추게 했습니다.
 - 운영 DB 적용용 SQL `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql`을 추가했습니다.
-- 운영 Supabase 읽기 확인 결과 신규 컬럼은 아직 적용 전입니다(`42703`). 적용 전까지 체크박스 저장과 자동 OFF 저장은 실패할 수 있어 `.tmp_issues/20260519_asan_shipping_auto_lookup_db_migration.md`에 남겼습니다.
+- 형이 운영 Supabase SQL Editor에 적용한 뒤 REST API로 `shipping_container_auto_lookup_enabled=true` 응답을 확인했습니다.
 - 후속 안전장치로 NAS Core는 해당 DB 컬럼이 응답에 없거나 설정 조회가 실패하면 03:10 자동조회를 실행하지 않고 보류합니다.
 ### 검증
 - `node --test web/tests/asanShippingFlow.test.mjs`: 35개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/settings/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py docker/els-backend/app.py elsbot/els_web_runner_daemon.py`: 통과
-- 운영 Supabase 읽기 확인: `branch_dispatch_settings.shipping_container_auto_lookup_enabled` 미존재(42703)
+- 운영 Supabase REST 확인: `branch_dispatch_settings.shipping_container_auto_lookup_enabled=true` 응답(200)
+- NAS `deploy-core.sh`: 통과, `/health` 응답 `{"service":"els-core","status":"ok","sb_ready":true}`
+- NAS `deploy-bot.sh`: 통과, `/health` 응답 `{"service":"els-bot","status":"ok"}`, 로그 `DAILY RESET @ 03:00 KST ENABLED`
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/AsanShipping.js`, `web/app/(main)/employees/branches/asan/shipping.module.css`
 - `web/app/api/branches/asan/settings/route.js`, `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql`
