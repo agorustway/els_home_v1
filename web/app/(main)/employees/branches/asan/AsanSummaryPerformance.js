@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatPerformanceAmount } from '@/utils/asanPerformanceView.mjs';
+import { buildScopedAsanPerformanceSummary } from '@/utils/asanPerformanceSummary.mjs';
 import styles from './annualPerformance.module.css';
 
 const DEFAULT_SUMMARY_YEAR = 2026;
 const DEFAULT_EXTRA_MONTHS = 3;
+const SCOPE_BUTTONS = [
+    { key: 'all', label: '전체' },
+    { key: 'year', label: '연도별' },
+    { key: 'month', label: '월별' },
+    { key: 'day', label: '일별' },
+];
 
 function safeNumber(value) {
     const number = Number(value);
@@ -29,6 +36,19 @@ function fmtTs(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatScopeMonth(period = '') {
+    const [year, month] = String(period || '').split('-');
+    if (!year || !month) return period || '-';
+    return `${year}년 ${Number(month)}월`;
+}
+
+function metricLabel(item = {}, basis = '월별') {
+    if (basis === '일별') {
+        return item.date ? String(item.date).slice(5) : String(item.period || '').slice(5);
+    }
+    return String(item.period || item.year || '').slice(5) || item.period || item.year || '-';
 }
 
 async function readPerformanceJson(res, fallbackMessage) {
@@ -66,6 +86,77 @@ function KpiCard({ label, value, sub, tone = 'neutral' }) {
     );
 }
 
+function ScopeControls({
+    scopeMode,
+    setScopeMode,
+    selectedYear,
+    setSelectedYear,
+    selectedMonth,
+    setSelectedMonth,
+    selectedDayKey,
+    setSelectedDayKey,
+    options,
+}) {
+    const years = options?.yearly || [];
+    const months = options?.monthly || [];
+    const days = options?.daily || [];
+
+    return (
+        <section className={styles.summaryScopePanel}>
+            <div className={styles.summaryScopeButtons}>
+                {SCOPE_BUTTONS.map(item => (
+                    <button
+                        type="button"
+                        key={item.key}
+                        className={scopeMode === item.key ? styles.summaryScopeActive : ''}
+                        onClick={() => setScopeMode(item.key)}
+                    >
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+            <div className={styles.summaryScopeSelects}>
+                <label>
+                    <span>연도</span>
+                    <select
+                        value={selectedYear}
+                        onChange={(event) => {
+                            setSelectedYear(event.target.value);
+                            setScopeMode('year');
+                        }}
+                    >
+                        {years.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
+                    </select>
+                </label>
+                <label>
+                    <span>월</span>
+                    <select
+                        value={selectedMonth}
+                        onChange={(event) => {
+                            setSelectedMonth(event.target.value);
+                            setScopeMode('month');
+                        }}
+                    >
+                        {months.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
+                    </select>
+                </label>
+                <label>
+                    <span>일</span>
+                    <select
+                        value={selectedDayKey}
+                        onChange={(event) => {
+                            setSelectedDayKey(event.target.value);
+                            setScopeMode('day');
+                        }}
+                    >
+                        {days.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
+                    </select>
+                </label>
+            </div>
+        </section>
+    );
+}
+
 function ExecutiveFlowDiagram({ summary }) {
     const sourceMix = summary?.sourceMix || {};
     const annual = sourceMix.annual || {};
@@ -78,19 +169,19 @@ function ExecutiveFlowDiagram({ summary }) {
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>연간+월간 합산 흐름</h3>
-                    <span>연간 원장과 월간 마감 원장의 순매출·매입·손익 합산</span>
+                    <h3>선택 범위 합산 구조</h3>
+                    <span>{summary?.scope?.label || '전체'} 기준 · 연간실적과 월간실적을 더한 뒤 매입을 차감</span>
                 </div>
             </div>
             <div className={styles.summaryFlowDiagram}>
                 <div className={styles.summarySourceStack}>
                     <div>
-                        <span>연간실적</span>
+                        <span>연간실적 매출</span>
                         <strong>{formatPerformanceAmount(annual.revenue)}</strong>
                         <i style={{ width: `${Math.max(4, safeNumber(annual.revenueShare))}%` }} />
                     </div>
                     <div>
-                        <span>월간실적</span>
+                        <span>월간실적 매출</span>
                         <strong>{formatPerformanceAmount(monthly.revenue)}</strong>
                         <i style={{ width: `${Math.max(4, safeNumber(monthly.revenueShare))}%` }} />
                     </div>
@@ -100,79 +191,111 @@ function ExecutiveFlowDiagram({ summary }) {
                     <div className={styles.summaryFlowTotal}>
                         <span>통합 매출</span>
                         <strong>{formatPerformanceAmount(summary?.totalRevenue)}</strong>
+                        <em>연간 + 월간</em>
                     </div>
                     <div className={styles.summaryFlowBars}>
                         <div>
-                            <span>매입</span>
+                            <span>매입 차감</span>
                             <b style={{ width: `${purchaseWidth}%` }} />
                             <em>{formatPerformanceAmount(summary?.totalPurchase)}</em>
                         </div>
                         <div>
-                            <span>손익</span>
+                            <span>통합 손익</span>
                             <b className={safeNumber(summary?.totalProfit) < 0 ? styles.summaryNegativeBar : styles.summaryPositiveBar} style={{ width: `${profitWidth}%` }} />
                             <em>{formatPerformanceAmount(summary?.totalProfit)}</em>
                         </div>
                     </div>
                 </div>
             </div>
+            <div className={styles.summaryFormulaStrip}>
+                <span>매출 = 연간실적 + 월간실적</span>
+                <strong>{formatPerformanceAmount(annual.revenue)} + {formatPerformanceAmount(monthly.revenue)} = {formatPerformanceAmount(summary?.totalRevenue)}</strong>
+                <span>손익 = 매출 - 매입</span>
+                <strong>{formatPerformanceAmount(summary?.totalRevenue)} - {formatPerformanceAmount(summary?.totalPurchase)} = {formatPerformanceAmount(summary?.totalProfit)}</strong>
+            </div>
         </section>
     );
 }
 
-function ExecutiveTrendChart({ monthly = [] }) {
-    const items = monthly.slice(-12);
-    const width = 760;
-    const height = 168;
+function ExecutiveTrendChart({ summary }) {
+    const items = (summary?.trendItems || summary?.monthly || []).slice(-14);
+    const basis = summary?.trendBasis || '월별';
+    const width = 820;
+    const height = 214;
     const maxRevenue = Math.max(1, ...items.map(item => Math.abs(safeNumber(item.revenue))));
     const maxProfit = Math.max(1, ...items.map(item => Math.abs(safeNumber(item.profit))));
-    const xAt = idx => (items.length <= 1 ? 38 : 38 + (idx / (items.length - 1)) * (width - 76));
-    const revenueY = value => 22 + (1 - safeNumber(value) / maxRevenue) * 82;
-    const profitY = value => Math.max(38, Math.min(144, 118 - (safeNumber(value) / maxProfit) * 50));
+    const xAt = idx => (items.length <= 1 ? 58 : 58 + (idx / (items.length - 1)) * (width - 116));
+    const revenueY = value => 36 + (1 - safeNumber(value) / maxRevenue) * 102;
+    const profitY = value => Math.max(46, Math.min(166, 140 - (safeNumber(value) / maxProfit) * 58));
     const profitPoints = items.map((item, idx) => `${xAt(idx).toFixed(1)},${profitY(item.profit).toFixed(1)}`).join(' ');
+    const bestRevenue = items.reduce((best, item) => safeNumber(item.revenue) > safeNumber(best?.revenue) ? item : best, null);
+    const worstProfit = items.reduce((worst, item) => safeNumber(item.profit) < safeNumber(worst?.profit ?? Infinity) ? item : worst, null);
+    const latest = items.at(-1) || null;
 
     return (
         <section className={`${styles.summaryPanel} ${styles.summaryTrendPanel}`}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>최근월 흐름</h3>
-                    <span>통합 기준 최근 12개월</span>
+                    <h3>{basis === '일별' ? '선택월 일별 흐름' : '최근월 매출·손익 흐름'}</h3>
+                    <span>청록 막대는 매출, 파란 선은 손익 · {summary?.scope?.label || '전체'} 기준</span>
                 </div>
             </div>
             {items.length < 2 ? (
-                <div className={styles.emptyPanel}>월별 추세를 만들 데이터가 아직 부족합니다.</div>
+                <div className={styles.emptyPanel}>선택 범위 흐름을 만들 데이터가 아직 부족합니다.</div>
             ) : (
                 <div className={styles.summaryTrendChart}>
-                    <svg className={styles.summaryTrendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="종합실적 최근월 차트">
-                        <line x1="28" y1="118" x2="732" y2="118" className={styles.zeroLine} />
+                    <svg className={styles.summaryTrendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="종합실적 매출 손익 흐름 차트">
+                        <text x="18" y="28" className={styles.summaryAxisText}>매출 최대 {formatPerformanceAmount(maxRevenue)}</text>
+                        <line x1="42" y1="140" x2="782" y2="140" className={styles.zeroLine} />
+                        <text x="18" y="144" className={styles.summaryAxisText}>손익 0</text>
                         {items.map((item, idx) => {
                             const x = xAt(idx);
-                            const barHeight = Math.max(3, 102 - revenueY(item.revenue));
+                            const barHeight = Math.max(4, 138 - revenueY(item.revenue));
+                            const isBest = item === bestRevenue;
+                            const isLatest = item === latest;
                             return (
-                                <g key={item.period || idx}>
+                                <g key={item.scopeKey || item.period || item.date || idx}>
                                     <rect
-                                        x={x - 10}
-                                        y={102 - barHeight}
-                                        width="20"
+                                        x={x - 11}
+                                        y={138 - barHeight}
+                                        width="22"
                                         height={barHeight}
-                                        rx="3"
-                                        className={styles.summaryRevenueBar}
+                                        rx="4"
+                                        className={isLatest ? styles.summaryRevenueBarActive : styles.summaryRevenueBar}
                                     >
-                                        <title>{`${item.period} 매출 ${formatPerformanceAmount(item.revenue)}`}</title>
+                                        <title>{`${item.period || item.date} 매출 ${formatPerformanceAmount(item.revenue)}`}</title>
                                     </rect>
-                                    <text x={x} y="158" textAnchor="middle" className={styles.summaryTrendLabel}>{String(item.period || '').slice(5) || item.period}</text>
+                                    {(isBest || isLatest) && (
+                                        <text x={x} y={Math.max(20, 132 - barHeight)} textAnchor="middle" className={styles.summaryValueLabel}>
+                                            {isBest ? '최고' : '최근'} {formatPerformanceAmount(item.revenue)}
+                                        </text>
+                                    )}
+                                    <text x={x} y="194" textAnchor="middle" className={styles.summaryTrendLabel}>{metricLabel(item, basis)}</text>
                                 </g>
                             );
                         })}
                         <polyline points={profitPoints} className={styles.summaryProfitLine} />
-                        {items.map((item, idx) => (
-                            <circle key={`${item.period || idx}-profit`} cx={xAt(idx)} cy={profitY(item.profit)} r="3.5" className={styles.summaryProfitPoint}>
-                                <title>{`${item.period} 손익 ${formatPerformanceAmount(item.profit)}`}</title>
-                            </circle>
-                        ))}
+                        {items.map((item, idx) => {
+                            const isWorst = item === worstProfit;
+                            return (
+                                <g key={`${item.scopeKey || item.period || item.date || idx}-profit`}>
+                                    <circle cx={xAt(idx)} cy={profitY(item.profit)} r={isWorst ? 4.5 : 3.6} className={isWorst ? styles.summaryProfitPointWarn : styles.summaryProfitPoint}>
+                                        <title>{`${item.period || item.date} 손익 ${formatPerformanceAmount(item.profit)}`}</title>
+                                    </circle>
+                                    {isWorst && (
+                                        <text x={xAt(idx)} y={Math.min(184, profitY(item.profit) + 18)} textAnchor="middle" className={styles.summaryWarnLabel}>
+                                            최저 손익 {formatPerformanceAmount(item.profit)}
+                                        </text>
+                                    )}
+                                </g>
+                            );
+                        })}
                     </svg>
                     <div className={styles.summaryTrendLegend}>
-                        <span><i className={styles.revenueDot} />매출</span>
-                        <span><i className={styles.profitDot} />손익</span>
+                        <span><i className={styles.revenueDot} />청록 막대 = 매출</span>
+                        <span><i className={styles.profitDot} />파란 선 = 손익</span>
+                        <span>최고 매출 {bestRevenue ? `${metricLabel(bestRevenue, basis)} ${formatPerformanceAmount(bestRevenue.revenue)}` : '-'}</span>
+                        <span>최저 손익 {worstProfit ? `${metricLabel(worstProfit, basis)} ${formatPerformanceAmount(worstProfit.profit)}` : '-'}</span>
                     </div>
                 </div>
             )}
@@ -180,26 +303,37 @@ function ExecutiveTrendChart({ monthly = [] }) {
     );
 }
 
-function ExecutiveYearMatrix({ yearly = [], onOpenAnnual }) {
+function yearProgressLabel(item = {}, periodEnd = '') {
+    const year = Number(item.year) || item.year;
+    const endYear = Number(String(periodEnd).slice(0, 4));
+    const endMonth = Number(String(periodEnd).slice(5, 7));
+    if (endYear && String(year) === String(endYear) && endMonth) return `${year}년 ${endMonth}월까지`;
+    return `${year}년`;
+}
+
+function ExecutiveYearMatrix({ yearly = [], periodEnd, activeYear, onOpenAnnual }) {
     const maxRevenue = Math.max(1, ...yearly.map(item => Math.abs(safeNumber(item.revenue))));
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>연간 누적 매트릭스</h3>
-                    <span>연도별 매출·매입·손익</span>
+                    <h3>연도 선택 매트릭스</h3>
+                    <span>2026년처럼 진행 중인 연도는 집계 완료 월까지 표시</span>
                 </div>
                 <button type="button" className={styles.smallBtn} onClick={onOpenAnnual}>연간실적 보기</button>
             </div>
             <div className={styles.summaryYearMatrix}>
-                {yearly.slice(-8).map(item => (
-                    <button type="button" key={item.year} onClick={onOpenAnnual}>
-                        <span>{item.year}</span>
-                        <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                        <em className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)} · {formatPercent(item.profitRate, 1)}</em>
-                        <i style={{ width: `${Math.max(4, Math.min(100, Math.abs(safeNumber(item.revenue)) / maxRevenue * 100))}%` }} />
-                    </button>
-                ))}
+                {yearly.slice(-8).map(item => {
+                    const isActive = String(item.year) === String(activeYear);
+                    return (
+                        <button type="button" key={item.year} onClick={onOpenAnnual} className={isActive ? styles.summaryYearActive : ''}>
+                            <span>{yearProgressLabel(item, periodEnd)}</span>
+                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
+                            <em className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)} · {formatPercent(item.profitRate, 1)}</em>
+                            <i style={{ width: `${Math.max(4, Math.min(100, Math.abs(safeNumber(item.revenue)) / maxRevenue * 100))}%` }} />
+                        </button>
+                    );
+                })}
             </div>
         </section>
     );
@@ -207,15 +341,15 @@ function ExecutiveYearMatrix({ yearly = [], onOpenAnnual }) {
 
 function ExecutiveSourceTable({ summary, onOpenAnnual, onOpenMonthly }) {
     const rows = [
-        { label: '연간실적', action: onOpenAnnual, ...(summary?.sourceMix?.annual || {}) },
-        { label: '월간실적', action: onOpenMonthly, ...(summary?.sourceMix?.monthly || {}) },
+        { ...(summary?.sourceMix?.annual || {}), label: '연간실적', action: onOpenAnnual },
+        { ...(summary?.sourceMix?.monthly || {}), label: '월간실적', action: onOpenMonthly },
     ];
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>원장 신뢰도</h3>
-                    <span>상세는 월간실적·연간실적 탭에서 확인</span>
+                    <span>{summary?.scope?.label || '전체'} 기준 · 상세는 월간실적·연간실적 탭에서 확인</span>
                 </div>
             </div>
             <div className={styles.summarySourceRows}>
@@ -246,7 +380,7 @@ function ExecutiveSignals({ signals = [] }) {
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>경영 판단</h3>
-                    <span>최근 방향, 수익성, 집중도, 데이터 신뢰</span>
+                    <span>선택 범위의 수익성·차량 구성·청구처/지급처 마진</span>
                 </div>
             </div>
             <div className={styles.summarySignalGrid}>
@@ -262,34 +396,82 @@ function ExecutiveSignals({ signals = [] }) {
     );
 }
 
+function SegmentMiniRows({ title, items = [], openMonthly }) {
+    const rows = items.slice(0, 4);
+    return (
+        <div className={styles.summaryMiniRows}>
+            <span>{title}</span>
+            {rows.length === 0 ? (
+                <em>선택 범위 세부 항목 없음</em>
+            ) : rows.map((item, idx) => (
+                <button type="button" key={item.key || item.name || idx} onClick={openMonthly}>
+                    <strong>{idx + 1}. {item.label || item.name || item.vehicleNo || '-'}</strong>
+                    <b>{formatPerformanceAmount(item.revenue)}</b>
+                    <small className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPercent(item.profitRate, 1)}</small>
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicles, openMonthly, tone }) {
+    const evidence = evidenceItems?.length ? evidenceItems : vehicles;
+    return (
+        <div className={`${styles.summarySegmentCard} ${styles[`summarySegment_${tone}`] || ''}`}>
+            <div className={styles.summarySegmentTitle}>
+                <span>{title}</span>
+                <strong>{formatPerformanceAmount(segment?.revenue)}</strong>
+                <em>{formatPerformanceAmount(segment?.profit)} · {formatPercent(segment?.profitRate, 1)}</em>
+            </div>
+            <div className={styles.summarySegmentBars}>
+                <div>
+                    <span>매출 비중</span>
+                    <b style={{ width: `${Math.max(3, Math.min(100, safeNumber(segment?.revenueShare)))}%` }} />
+                    <em>{formatPercent(segment?.revenueShare, 1)}</em>
+                </div>
+                <div>
+                    <span>건수</span>
+                    <b style={{ width: `${Math.max(3, Math.min(100, safeNumber(segment?.rowCount) / Math.max(1, safeNumber(segment?.rowCount)) * 100))}%` }} />
+                    <em>{safeNumber(segment?.rowCount).toLocaleString('ko-KR')}건</em>
+                </div>
+            </div>
+            <SegmentMiniRows title={evidenceTitle} items={evidence || []} openMonthly={openMonthly} />
+        </div>
+    );
+}
+
 function TopConcentration({ summary, openMonthly }) {
-    const segment = summary?.strategicSegments?.[0] || null;
+    const segments = summary?.strategicSegments || [];
+    const own = segments.find(item => item.key === 'own_direct') || { label: 'ELS직계약차량' };
+    const external = segments.find(item => item.key === 'external_carrier') || { label: '외부/타운송사' };
     const vehicles = (summary?.vehiclePerformance || []).slice(0, 5);
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>계약/차량 집중도</h3>
-                    <span>매출 상위 축과 차량</span>
+                    <span>ELS직계약차량을 먼저 보고 외부/타운송사를 같은 폭으로 비교</span>
                 </div>
                 <button type="button" className={styles.smallBtn} onClick={openMonthly}>상세는 월간실적</button>
             </div>
-            <div className={styles.summaryConcentration}>
-                <div>
-                    <span>대표 축</span>
-                    <strong>{segment?.label || segment?.name || '-'}</strong>
-                    <em>{segment ? `${formatPerformanceAmount(segment.revenue)} · ${formatPercent(segment.revenueShare, 1)}` : '-'}</em>
-                </div>
-                <div className={styles.summaryVehicleList}>
-                    {vehicles.map((vehicle, idx) => (
-                        <button type="button" key={vehicle.vehicleNo || vehicle.name || idx} onClick={openMonthly}>
-                            <span>{idx + 1}</span>
-                            <strong>{vehicle.vehicleNo || vehicle.name || '-'}</strong>
-                            <em>{formatPerformanceAmount(vehicle.revenue)}</em>
-                            <b className={safeNumber(vehicle.profit) < 0 ? styles.negative : styles.positive}>{formatPercent(vehicle.profitRate, 1)}</b>
-                        </button>
-                    ))}
-                </div>
+            <div className={styles.summarySegmentSplitGrid}>
+                <SegmentFocusCard
+                    title="ELS직계약차량"
+                    segment={own}
+                    evidenceTitle="ELS 주요 거래처/작업지"
+                    evidenceItems={(own.topClients || []).length ? own.topClients : own.topWorkSites}
+                    openMonthly={openMonthly}
+                    tone="own"
+                />
+                <SegmentFocusCard
+                    title="외부/타운송사"
+                    segment={external}
+                    evidenceTitle="외부 대표 차량 TOP"
+                    evidenceItems={(external.topClients || []).length ? external.topClients : external.topWorkSites}
+                    vehicles={vehicles}
+                    openMonthly={openMonthly}
+                    tone="external"
+                />
             </div>
         </section>
     );
@@ -300,6 +482,10 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [elapsedMs, setElapsedMs] = useState(0);
+    const [scopeMode, setScopeMode] = useState('all');
+    const [selectedYear, setSelectedYear] = useState('');
+    const [selectedMonth, setSelectedMonth] = useState('');
+    const [selectedDayKey, setSelectedDayKey] = useState('');
 
     const loadSummary = useCallback(async () => {
         const started = performance.now();
@@ -325,26 +511,47 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
         loadSummary();
     }, [loadSummary]);
 
-    const summary = payload?.summary || null;
+    const baseSummary = payload?.summary || null;
+    const scopeOptions = baseSummary?.scopeOptions || {};
+
+    useEffect(() => {
+        if (!baseSummary) return;
+        const years = scopeOptions.yearly || [];
+        const months = scopeOptions.monthly || [];
+        const days = scopeOptions.daily || [];
+        const latestMonth = baseSummary.periodEnd || months.at(-1)?.value || '';
+        if (!selectedYear) setSelectedYear(String(latestMonth).slice(0, 4) || years.at(-1)?.value || '');
+        if (!selectedMonth) setSelectedMonth(latestMonth || months.at(-1)?.value || '');
+        if (!selectedDayKey) setSelectedDayKey(days.at(-1)?.value || '');
+    }, [baseSummary, scopeOptions.daily, scopeOptions.monthly, scopeOptions.yearly, selectedDayKey, selectedMonth, selectedYear]);
+
+    const summary = useMemo(() => buildScopedAsanPerformanceSummary(baseSummary, {
+        mode: scopeMode,
+        year: selectedYear,
+        month: selectedMonth,
+        dayKey: selectedDayKey,
+    }), [baseSummary, scopeMode, selectedDayKey, selectedMonth, selectedYear]);
+
     const kpis = useMemo(() => {
         if (!summary) return [];
+        const scopeLabel = summary.scope?.label || '전체';
         return [
             {
-                label: '통합 매출',
+                label: '선택 범위 매출',
                 value: formatPerformanceAmount(summary.totalRevenue),
-                sub: `연간 ${formatPercent(summary.sourceMix?.annual?.revenueShare, 1)} · 월간 ${formatPercent(summary.sourceMix?.monthly?.revenueShare, 1)}`,
+                sub: `${scopeLabel} · 연간 ${formatPercent(summary.sourceMix?.annual?.revenueShare, 1)} / 월간 ${formatPercent(summary.sourceMix?.monthly?.revenueShare, 1)}`,
                 tone: 'good',
             },
             {
-                label: '통합 손익',
+                label: '선택 범위 손익',
                 value: formatPerformanceAmount(summary.totalProfit),
-                sub: `최근월 손익 ${formatPerformanceAmount(summary.latestMonth?.profit)}`,
+                sub: `매입 차감 후 ${formatPercent(summary.profitRate, 2)}`,
                 tone: safeNumber(summary.totalProfit) >= 0 ? 'good' : 'danger',
             },
             {
                 label: '손익률',
                 value: formatPercent(summary.profitRate, 2),
-                sub: `최근월 ${formatPercent(summary.latestMonth?.profitRate, 1)} · ${formatSignedRate(summary.latestProfitDelta?.rate)}`,
+                sub: summary.latestMonth ? `최근월 ${formatPercent(summary.latestMonth.profitRate, 1)} · ${formatSignedRate(summary.latestProfitDelta?.rate)}` : '비교월 없음',
                 tone: metricTone(summary.profitRate),
             },
             {
@@ -354,9 +561,11 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                 tone: safeNumber(summary.purchaseRate) <= 85 ? 'good' : 'watch',
             },
             {
-                label: '최근월',
-                value: summary.latestMonth?.period || '-',
-                sub: `매출 ${formatSignedRate(summary.latestRevenueDelta?.rate)} · 손익 ${formatSignedRate(summary.latestProfitDelta?.rate)}`,
+                label: summary.scope?.mode === 'day' ? '선택일' : '최근월',
+                value: summary.scope?.mode === 'day' ? (summary.latestDay?.date || '-') : (summary.latestMonth?.period || '-'),
+                sub: summary.scope?.mode === 'day'
+                    ? `일 손익 ${formatPerformanceAmount(summary.latestDay?.profit)}`
+                    : `매출 ${formatSignedRate(summary.latestRevenueDelta?.rate)} · 손익 ${formatSignedRate(summary.latestProfitDelta?.rate)}`,
                 tone: trendTone(summary.latestRevenueDelta),
             },
         ];
@@ -372,7 +581,8 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                     <h2 className={styles.title}>아산 종합 실적 지휘판</h2>
                     <div className={styles.metaLine}>
                         <span>연간+월간 합산</span>
-                        <span>{summary?.periodStart && summary?.periodEnd ? `${summary.periodStart} ~ ${summary.periodEnd}` : '기간 산정 중'}</span>
+                        <span>{baseSummary?.periodStart && baseSummary?.periodEnd ? `${baseSummary.periodStart} ~ ${baseSummary.periodEnd}` : '기간 산정 중'}</span>
+                        <span>{summary?.scope?.label ? `선택: ${summary.scope.label}` : '전체 기준'}</span>
                         <span className={styles.elapsed}>{loading ? '데이터를 불러오는 중입니다...' : `${elapsedMs.toLocaleString('ko-KR')}ms`}</span>
                         <span className={styles.syncBadge}>동기화 {fmtTs(summary?.syncedAt)}</span>
                     </div>
@@ -385,10 +595,21 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
             </div>
 
             {error && <div className={styles.errorBox}>{error}</div>}
-            {!summary && !error && <div className={styles.emptyPanel}>데이터를 불러오는 중입니다...</div>}
+            {!baseSummary && !error && <div className={styles.emptyPanel}>데이터를 불러오는 중입니다...</div>}
 
             {summary && (
                 <div className={styles.summaryDashboard}>
+                    <ScopeControls
+                        scopeMode={scopeMode}
+                        setScopeMode={setScopeMode}
+                        selectedYear={selectedYear}
+                        setSelectedYear={setSelectedYear}
+                        selectedMonth={selectedMonth}
+                        setSelectedMonth={setSelectedMonth}
+                        selectedDayKey={selectedDayKey}
+                        setSelectedDayKey={setSelectedDayKey}
+                        options={scopeOptions}
+                    />
                     <div className={styles.summaryKpiGrid}>
                         {kpis.map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
                     </div>
@@ -396,8 +617,8 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                     <div className={styles.summaryMainGrid}>
                         <ExecutiveFlowDiagram summary={summary} />
                         <ExecutiveSignals signals={summary.executiveSignals || []} />
-                        <ExecutiveTrendChart monthly={summary.monthly || []} />
-                        <ExecutiveYearMatrix yearly={summary.yearly || []} onOpenAnnual={openAnnual} />
+                        <ExecutiveTrendChart summary={summary} />
+                        <ExecutiveYearMatrix yearly={baseSummary?.yearly || []} periodEnd={baseSummary?.periodEnd} activeYear={selectedYear} onOpenAnnual={openAnnual} />
                         <TopConcentration summary={summary} openMonthly={openMonthly} />
                         <ExecutiveSourceTable summary={summary} onOpenAnnual={openAnnual} onOpenMonthly={openMonthly} />
                     </div>

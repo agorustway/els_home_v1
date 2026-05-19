@@ -1,3 +1,84 @@
+## [2026-05-19] 아산 연간실적 선택범위 시간축 통합 (v5.14.63)
+### 핵심
+- 연간실적 개요의 `월별 성과 흐름`, `연도별 매출·매입·손익`, `성과 경보` 중복 패널을 `선택범위 성과 흐름`으로 합쳤습니다.
+- 조사범위 기준에 따라 전체는 연도별, 최근 12/24개월은 월별, 최근 3/5년은 3개월별로 자동 집계해 같은 화면이 선택 범위를 설명하도록 바꿨습니다.
+- `계약/차량` 흐름 그래프도 선택 조사범위와 동일한 집계 단위를 사용하고, 제목·툴팁·요약 카드에 해당 범위와 구간명을 표시합니다.
+- 선택범위 성과 표는 매출/매입/손익/손익률을 한 행에서 비교하고, 모바일에서는 720px 고정 폭과 가로 스크롤로 금액·퍼센트가 밀리지 않게 했습니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web\tests\asanAnnualPerformance.test.mjs web\tests\asanMonthlyPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "web/app/(main)/employees/branches/asan/annualPerformance.module.css" web/tests/asanAnnualPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 종합실적 경영 판단 수익성 신호 재구성 (v5.14.62)
+### 핵심
+- 종합실적 `경영 판단`에서 `최근월 방향`, `데이터 신뢰`, `저마진 차량` 카드를 제거했습니다.
+- `계약/차량 집중도` 신호가 외부/타운송사만 대표로 잡히지 않도록 `ELS/외부 집중도`로 바꾸고, ELS직계약차량과 외부/타운송사 비중을 함께 표시합니다.
+- 연간+월간 summary의 `breakdowns`를 종합실적 유틸에 보존하고, 선택 범위별로 청구처/지급처/운송사 항목을 다시 집계해 `고마진 청구처`, `고마진 지급처`, `저마진 청구처`, `저마진 지급처`를 산출합니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 4개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (외부 WebDAV/원격 fetch 때문에 네트워크 허용)
+- 전체 `asanMonthlyPerformance + asanAnnualPerformance + asanSummaryPerformance` 묶음은 작업 전부터 섞인 연간/월간 테스트 기대값 2건 불일치로 분리 검증했습니다.
+### 변경 파일
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 월간실적 세분화 탭 전체 복구와 테이블 스크롤 보강 (v5.14.61)
+### 핵심
+- 월간실적 세분화 분석을 `청구처별/작업지별/지급처별/구분별/청구픽업별/포트별/노선별/이월구분별/계약별/선적별/매출/이월(청구처기준)/계산서` 순서로 복구했습니다.
+- 요청 축에 매칭되지 않은 breakdown 컬럼도 뒤쪽 탭으로 붙여 엑셀 원장에 있는 추가 항목을 화면에서 숨기지 않게 했습니다.
+- 연간/월간 공용 실적관리 테이블 영역은 브라우저 높이에 맞춘 낮은 `clamp()`와 명시적 WebKit 스크롤바 스타일을 적용해 가로 슬라이더가 화면 안쪽에 보이도록 보강했습니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "web/app/(main)/employees/branches/asan/annualPerformance.module.css" "web/tests/asanMonthlyPerformance.test.mjs" "web/tests/asanAnnualPerformance.test.mjs"`: 통과
+- Browser 자동화는 번들 Playwright의 `playwright-core` 누락으로 실행하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 종합실적 범위 선택형 경영 대시보드 보강 (v5.14.60)
+### 핵심
+- 종합실적에 `전체/연도별/월별/일별` 선택 컨트롤을 추가하고, 선택마다 매출·손익·손익률·매입률·원장 신뢰도·연간/월간 기여도를 같은 범위로 재계산하게 했습니다.
+- 최근월 흐름은 청록 매출 막대와 파란 손익선을 설명형 라벨, 최고 매출, 최저 손익 포인트로 보강해 작은 그래프만 보고도 의미가 읽히게 했습니다.
+- 계약/차량 집중도는 `ELS직계약차량`을 왼쪽 우선, `외부/타운송사`를 오른쪽에 같은 폭으로 배치하고 각 축의 주요 거래처/작업지·차량 TOP을 함께 보여줍니다.
+- 원장 신뢰도 `annual/monthly` 영문 노출을 한글 라벨로 고정하고, 진행 중인 연도는 `2026년 5월까지`처럼 집계 완료 월을 표시합니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (외부 WebDAV/원격 fetch 때문에 네트워크 허용)
+- Browser: `http://127.0.0.1:3014/employees/branches/asan`에서 전체/월별/일별 전환, 한글 라벨, ELS/외부 반분 집중도, `2026년 5월까지` 표기 확인
+### 변경 파일
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 실적관리 테이블 가로 슬라이더 화면 안쪽 고정 (v5.14.59)
+### 핵심
+- 연간/월간 실적관리 테이블의 가로 슬라이더가 브라우저 하단 밖으로 밀릴 수 있던 높이 계산을 보정했습니다.
+- 테이블 영역은 `100dvh` 기반 `clamp()` 높이로 제한하고, 내부 테이블 스크롤러가 가로/세로 overflow를 직접 처리하도록 분리했습니다.
+- 원장 테이블은 `width: max-content`와 `min-width: max(100%, 960px)` 조합으로 실제 컬럼 폭을 유지해 가로 overflow가 안정적으로 생기게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 누적 그래프/분석 기준 배치 보정 (v5.14.58)
 ### 핵심
 - `누적` 그래프의 금액/건수 라벨을 SVG `<text>`에서 HTML 배지 레이어로 분리해 해상도별 가로 늘어짐을 막았습니다.

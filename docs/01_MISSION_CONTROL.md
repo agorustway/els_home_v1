@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.58 / APK v5.11.21)
+# ELS MISSION CONTROL (v5.14.63 / APK v5.11.21)
 
-> 최신 업데이트: 아산 월간실적 누적 그래프 라벨과 분석 기준 검색열 배치를 보정했습니다.
+> 최신 업데이트: 아산 연간실적 시간축 분석을 선택 조사범위 기준으로 통합하고, 계약/차량 흐름도 같은 범위 단위로 따라가게 했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.58
+- **웹 버전**: v5.14.63
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.21
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -18,10 +18,12 @@
   - Android 앱 완료경로 필터도 method 기반 TRIP_END를 끝점으로 보존하고, PiP 판단용 운행 ID를 서비스 시작 즉시 네이티브에 저장한다.
   - 선적관리 컨테이너 조회는 `조회 멈춤`으로 봇 중지 신호와 브라우저 요청 중단을 함께 처리하고, `ERROR` 행의 사유를 화면에 요약 표시한다.
   - 월간실적은 전체/월별/주간/일별 선택 기준에 맞춰 누적·실적 인포그래픽·세분화·차량 성과를 같은 범위 데이터로 집계한다.
-  - 월간실적 세분화는 `매출/지역/청구픽업/포트명/선적/이월(청구처기준)/계산서` 축을 우선 표시하고, 차량 TOP에는 금액 컬럼 제목을 노출한다.
+  - 월간실적 세분화는 `청구처/작업지/지급처/구분/청구픽업/포트/노선/이월구분/계약/선적/매출/이월/계산서` 축을 우선 표시하고, 감지된 추가 컬럼도 탭으로 보강한다.
+  - 실적관리 테이블 스크롤러는 브라우저 높이에 맞춘 더 낮은 clamp 높이와 명시적 스크롤바 스타일로 가로 슬라이더를 화면 안쪽에 보이게 한다.
   - 월간실적 분석 선택은 `분석 기준` 옆에 `전체/월/주차/일` 버튼을 붙이고, 누적 그래프 금액·건수 라벨은 HTML 레이어로 분리해 해상도별 글자 늘어짐을 막는다.
   - 연간실적 계약/차량 월별 흐름은 매출/손익 선, 평균선, 최고/최근 포인트, 평균 손익률 요약을 함께 표시한다.
-  - 종합실적은 연간+월간 Supabase summary를 합산해 통합 KPI, 흐름도, 최근월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도를 표시한다.
+  - 연간실적 개요의 시간축 분석은 전체=연도별, 최근 12/24개월=월별, 최근 3/5년=3개월별로 자동 집계하고 계약/차량 흐름도 동일한 조사범위 단위를 사용한다.
+  - 종합실적은 전체/연도별/월별/일별 선택 기준으로 연간+월간 Supabase summary를 재집계하고, KPI·흐름도·추세·연도 매트릭스·계약/차량 집중도·원장 신뢰도·청구처/지급처 고저마진을 같은 선택 범위로 표시한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -46,9 +48,19 @@
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
 - [x] v5.14.58: 월간실적 누적 그래프 라벨/분석 기준 검색열 보정
+- [x] v5.14.59: 실적관리 테이블 가로 슬라이더 화면 안쪽 고정 보정
+- [x] v5.14.60: 종합실적 범위 선택형 경영 대시보드 보강
+- [x] v5.14.61: 월간실적 세분화 탭 전체 복구와 테이블 스크롤바 가시성 보강
+- [x] v5.14.62: 종합실적 경영 판단 수익성 신호 재구성
+- [x] v5.14.63: 연간실적 선택범위 시간축 통합과 계약/차량 흐름 범위 연동
 - [ ] Next: 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.63**: 연간실적 개요에서 `월별 성과 흐름`, `연도별 매출·매입·손익`, `성과 경보` 중복 패널을 `선택범위 성과 흐름`으로 통합했다. 전체 범위는 연도별, 최근 12/24개월은 월별, 최근 3/5년은 3개월별로 자동 집계하며, `계약/차량`의 흐름 그래프도 같은 조사범위와 집계 단위를 제목·툴팁·요약 카드에 표시한다.
+- **v5.14.62**: 종합실적 `경영 판단`에서 최근월 방향·데이터 신뢰·저마진 차량 카드를 제거하고, `ELS/외부 집중도`, `고마진 청구처`, `고마진 지급처`, `저마진 청구처`, `저마진 지급처`를 추가했다. breakdown 세분화의 청구처/지급처/운송사 축을 종합 summary에 보존하고 선택 범위별로 재집계해 고저마진 후보를 산출한다.
+- **v5.14.61**: 월간실적 세분화 분석 탭을 `청구처별/작업지별/지급처별/구분별/청구픽업별/포트별/노선별/이월구분별/계약별/선적별/매출/이월(청구처기준)/계산서` 순서로 복구했다. 매칭되지 않은 breakdown 컬럼도 뒤쪽 탭으로 붙여 엑셀 원장이 가진 항목을 숨기지 않는다. 연간/월간 공용 테이블 스크롤러는 화면 안쪽 높이와 WebKit 스크롤바 스타일을 보강해 가로 슬라이더가 보이도록 했다.
+- **v5.14.60**: 종합실적에 `전체/연도별/월별/일별` 선택 컨트롤을 추가하고, 선택 범위마다 매출·손익·손익률·매입률·원장 신뢰도·연간/월간 기여도를 재계산한다. 최근월 흐름은 매출 막대와 손익선을 설명형 라벨/최고·최저 포인트로 보강했고, 계약/차량 집중도는 `ELS직계약차량`과 `외부/타운송사`를 반분 비교한다. 원장 구분은 한글 라벨로 고정했고, 진행 중 연도는 `2026년 5월까지`처럼 표시한다.
+- **v5.14.59**: 연간/월간 실적관리 테이블 영역을 `100dvh` 기반 clamp 높이로 바꾸고 내부 overflow를 분리했다. 테이블은 `max-content` 폭을 유지해 실제 컬럼 폭만큼 가로 overflow가 생기며, 가로 슬라이더가 브라우저 하단 화면 안쪽에 보이도록 했다.
 - **v5.14.58**: 월간실적 `누적` 그래프 안의 SVG 텍스트 라벨을 HTML 배지 레이어로 분리해 화면 비율이 달라도 금액/건수 글자가 늘어나지 않게 했다. 분석 기준 바는 `분석 기준` 상태값과 `전체/월/주차/일` 버튼을 같은 묶음으로 붙이고, 월/주차/일 셀렉트 폭을 720px 안쪽으로 제한해 큰 해상도에서 검색열이 오른쪽으로 과하게 벌어지지 않게 했다.
 - **v5.14.57**: 운행시작 버튼에서 Overlay 서비스만 숨김 상태로 시작하던 흐름을 바꿔, 서비스 시작 직후 네이티브 PiP를 직접 요청하고 실패하면 오버레이 위젯을 즉시 표시한다. 운행 종료는 TRIP_END/API 완료 후 Overlay 서비스와 앱 태스크를 함께 정리해 PiP/전경서비스가 남지 않게 했다. APK v5.11.21.
 - **v5.14.56**: 종합실적 탭을 준비중 placeholder에서 연간+월간 합산 대시보드로 교체했다. `/api/branches/asan/performance/summary`는 annual current summary와 monthly diff-current summary를 `page_size=1`로 읽어 합산하고, 화면은 통합 매출/손익/손익률/매입률/최근월, 합산 흐름도, 최근 12개월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도만 압축 표시한다. 실제 DB 기준 합산값은 매출 196,151,544,233.1원, 손익률 10.68%, 응답 34.6KB로 확인했다.
@@ -67,24 +79,12 @@
 - **v5.14.42**: 월별/일별 선택 시 summary의 `monthly/daily/breakdowns/vehiclePerformance`가 배열이 아니거나 빈 세부값을 포함해도 분석 렌더가 죽지 않도록 전체 범위 데이터를 객체 배열로 정규화했다. 선택값도 실제 옵션에 존재하는 월/일만 사용하고, 월간 분석 내부 오류 경계를 둬 페이지 전체 오류로 번지지 않게 했다.
 - **v5.14.41**: 월별/일별 선택 시 해당 범위 데이터가 없는 세부 항목이 `null`로 내려와 화면 전체가 오류 페이지로 바뀔 수 있던 문제를 수정했다. 세부 항목 `monthly/daily` 시리즈는 배열/객체 모두 안전하게 읽고, 월별 누적 흐름 그래프는 시작·끝뿐 아니라 중간 월 라벨도 포인트 위치에 맞춰 표시한다.
 - **v5.14.40**: 월간실적 월별 누적 흐름을 연간용 대형 그래프 재사용에서 분리해 카드형 스파크라인/요약칩으로 압축했다. 분석 그리드는 640px 기준으로 2~3열을 유지하게 조정했고, `전체` 기준에서는 월/일 선택 셀렉트를 비활성화하며 월별·일별 전환 시 빈 값으로 터지지 않게 했다.
-- **v5.14.39**: 월간실적 분석 상단에 `전체/월별 선택/일별 선택` 기준을 추가하고, 월별 누적 흐름을 주식 차트형 라인 그래프로 올렸다. 월별 성과는 파일 마감월만 사용해 이월/작업일자 때문에 2025-12가 끼지 않게 했고, KPI 카드에는 도넛 비중을 넣었다. 구성 분석은 `ELS직계약차량`과 `외부/타운송사` 두 축만 남겼다.
 ## VERIFICATION
-- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs`: 통과
-- `node --test web\tests\driverMapCamera.test.mjs`: 6개 통과
-- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.21 (5162) 빌드/배포 복사/내부 버전 검증 통과
-- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
-- `npm.cmd run build`: 통과 (Google Fonts fetch 때문에 네트워크 허용으로 검증)
-- 브라우저: `http://127.0.0.1:3014/employees/branches/asan` 실데이터 종합실적 렌더 확인. screenshot은 in-app browser CDP timeout으로 실패.
-- `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
-- `npm.cmd run build`: 통과 (정적 생성 중 외부 WebDAV/원격 fetch는 sandbox 네트워크 제한으로 비치명 경고 출력)
-- `node --test web\tests\vehicleLocation.test.mjs`: 14개 통과
-- `npm.cmd run lint`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.18 (5159) 빌드/배포 복사/내부 버전 검증 통과
-- 2026-05-19 오후 데이터 재분석: 12가0140, 194서2632 모두 cleanLastAt이 TRIP_END까지 보존됨
-- Browser 플러그인은 기존 3000 탭이 응답 불능으로 전환된 뒤 `No active Codex browser pane available` 상태라 시각 자동화는 완료하지 못함. 3001 dev HTTP 200 및 production build로 대체 검증.
+- `node --test web\tests\asanSummaryPerformance.test.mjs`: 4개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (외부 WebDAV/원격 fetch 때문에 네트워크 허용으로 검증)
+- 전체 `asanMonthlyPerformance + asanAnnualPerformance + asanSummaryPerformance` 묶음은 작업 전부터 섞인 연간/월간 테스트 기대값 2건 불일치로 분리 검증.
+- Browser 자동화: 기존 3014 dev 서버 CSS 청크가 꼬여 시각 검증 불안정. 프로덕션 빌드와 종합실적 테스트/린트로 대체 검증.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

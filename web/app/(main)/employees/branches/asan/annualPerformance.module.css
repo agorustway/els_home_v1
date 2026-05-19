@@ -192,6 +192,80 @@
     min-width: 0;
 }
 
+.summaryScopePanel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.summaryScopeButtons {
+    display: inline-flex;
+    gap: 3px;
+    padding: 2px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+}
+
+.summaryScopeButtons button {
+    height: 27px;
+    min-width: 58px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.summaryScopeActive {
+    background: #0f766e !important;
+    color: #fff !important;
+}
+
+.summaryScopeSelects {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    min-width: 0;
+}
+
+.summaryScopeSelects label {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.summaryScopeSelects span {
+    color: #64748b;
+    font-size: 0.67rem;
+    font-weight: 900;
+    text-align: right;
+}
+
+.summaryScopeSelects select {
+    min-width: 0;
+    height: 29px;
+    padding: 0 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 850;
+}
+
 .summaryKpiGrid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -337,6 +411,13 @@
     white-space: nowrap;
 }
 
+.summaryFlowTotal em {
+    color: #0f766e;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
 .summarySourceStack i,
 .summaryYearMatrix i {
     display: block;
@@ -406,6 +487,38 @@
     background: #dc2626 !important;
 }
 
+.summaryFormulaStrip {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px 8px;
+    align-items: center;
+    margin-top: 8px;
+    padding: 7px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+
+.summaryFormulaStrip span,
+.summaryFormulaStrip strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryFormulaStrip span {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.summaryFormulaStrip strong {
+    color: #0f172a;
+    font-size: 0.7rem;
+    font-weight: 950;
+}
+
 .summarySignalGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -442,12 +555,16 @@
 
 .summaryTrendSvg {
     display: block;
-    width: max(100%, 760px);
-    height: 168px;
+    width: max(100%, 820px);
+    height: 214px;
 }
 
 .summaryRevenueBar {
     fill: #99f6e4;
+}
+
+.summaryRevenueBarActive {
+    fill: #2dd4bf;
 }
 
 .summaryProfitLine {
@@ -464,15 +581,38 @@
     stroke-width: 2;
 }
 
+.summaryProfitPointWarn {
+    fill: #dc2626;
+    stroke: #fff;
+    stroke-width: 2;
+}
+
 .summaryTrendLabel {
     fill: #64748b;
     font-size: 10px;
     font-weight: 850;
 }
 
+.summaryAxisText,
+.summaryValueLabel,
+.summaryWarnLabel {
+    fill: #475569;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.summaryValueLabel {
+    fill: #0f766e;
+}
+
+.summaryWarnLabel {
+    fill: #b91c1c;
+}
+
 .summaryTrendLegend {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    flex-wrap: wrap;
     gap: 10px;
     padding-top: 3px;
     color: #64748b;
@@ -504,6 +644,11 @@
     cursor: pointer;
 }
 
+.summaryYearActive {
+    border-color: #0f766e !important;
+    background: #f0fdfa !important;
+}
+
 .summaryYearMatrix span,
 .summaryYearMatrix em,
 .summaryConcentration em {
@@ -529,6 +674,126 @@
     display: grid;
     grid-template-columns: minmax(150px, 0.45fr) minmax(0, 1fr);
     gap: 8px;
+}
+
+.summarySegmentSplitGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.summarySegmentCard {
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.summarySegment_own {
+    border-color: #99f6e4;
+    background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 92%);
+}
+
+.summarySegment_external {
+    border-color: #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 92%);
+}
+
+.summarySegmentTitle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
+    align-items: baseline;
+}
+
+.summarySegmentTitle span,
+.summarySegmentTitle em,
+.summarySegmentBars span,
+.summarySegmentBars em,
+.summaryMiniRows > span,
+.summaryMiniRows em,
+.summaryMiniRows small {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.summarySegmentTitle strong {
+    color: #0f172a;
+    font-size: 0.96rem;
+    font-weight: 950;
+    text-align: right;
+}
+
+.summarySegmentTitle em {
+    grid-column: 1 / -1;
+}
+
+.summarySegmentBars {
+    display: grid;
+    gap: 5px;
+    margin: 8px 0;
+}
+
+.summarySegmentBars div {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) 64px;
+    align-items: center;
+    gap: 6px;
+}
+
+.summarySegmentBars b {
+    display: block;
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0f766e, #2563eb);
+}
+
+.summarySegmentBars em {
+    text-align: right;
+}
+
+.summaryMiniRows {
+    display: grid;
+    gap: 5px;
+}
+
+.summaryMiniRows button {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 86px 48px;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 5px 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.summaryMiniRows strong,
+.summaryMiniRows b,
+.summaryMiniRows small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryMiniRows strong {
+    color: #0f172a;
+    font-size: 0.7rem;
+    font-weight: 950;
+}
+
+.summaryMiniRows b,
+.summaryMiniRows small {
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-align: right;
 }
 
 .summaryVehicleList {
@@ -2070,6 +2335,72 @@
     padding: 7px 9px 8px;
 }
 
+.timeFlowChart {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 7px 9px 8px;
+}
+
+.timeFlowHeaderRow,
+.timeFlowRow {
+    display: grid;
+    grid-template-columns: 86px repeat(3, minmax(118px, 1fr)) 62px;
+    align-items: center;
+    gap: 8px;
+}
+
+.timeFlowHeaderRow {
+    min-height: 23px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+}
+
+.timeFlowHeaderRow span:nth-child(n+2) {
+    text-align: right;
+}
+
+.timeFlowRow {
+    min-height: 29px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.timeFlowRow:last-child {
+    border-bottom: 0;
+}
+
+.timeFlowRow > span,
+.timeFlowRow strong,
+.timeFlowRow em {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.timeFlowRow > span {
+    font-weight: 950;
+}
+
+.timeFlowRow > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 88px;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.timeFlowRow strong,
+.timeFlowRow em {
+    text-align: right;
+}
+
 .monthHeaderRow,
 .monthRow {
     display: grid;
@@ -2228,9 +2559,11 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    height: calc(100vh - 212px);
-    min-height: 420px;
-    flex: 1;
+    height: clamp(240px, calc(100dvh - 300px), 680px);
+    max-height: calc(100dvh - 300px);
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
 }
 
 .tableToolbar {
@@ -2285,17 +2618,40 @@
 
 .tableScroll {
     min-height: 0;
-    max-height: calc(100vh - 292px);
-    flex: 1;
-    overflow: auto;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: auto;
+    scrollbar-gutter: stable both-edges;
+    overscroll-behavior: contain;
+    padding-bottom: 2px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: #fff;
 }
 
+.tableScroll::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.tableScroll::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.tableScroll::-webkit-scrollbar-thumb {
+    border: 3px solid #f8fafc;
+    border-radius: 999px;
+    background: #94a3b8;
+}
+
+.tableScroll::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
 .dataTable {
-    width: 100%;
-    min-width: 960px;
+    width: max-content;
+    min-width: max(100%, 960px);
     border-collapse: collapse;
     table-layout: auto;
 }
@@ -3932,8 +4288,15 @@
     .summaryMainGrid,
     .summaryFlowDiagram,
     .summaryFlowCore,
-    .summaryConcentration {
+    .summaryConcentration,
+    .summaryScopePanel,
+    .summarySegmentSplitGrid,
+    .summaryFormulaStrip {
         grid-template-columns: 1fr;
+    }
+
+    .summaryScopeSelects {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .summaryFlowArrow {
@@ -4115,7 +4478,14 @@
         min-width: 560px;
     }
 
-    .monthChart {
+    .timeFlowHeaderRow,
+    .timeFlowRow {
+        grid-template-columns: 78px repeat(3, minmax(132px, 1fr)) 62px;
+        min-width: 720px;
+    }
+
+    .monthChart,
+    .timeFlowChart {
         overflow-x: auto;
     }
 
@@ -4145,8 +4515,13 @@
         margin-left: 0;
     }
 
+    .tableArea {
+        height: clamp(220px, calc(100dvh - 230px), 560px);
+        max-height: calc(100dvh - 230px);
+    }
+
     .tableScroll {
-        max-height: 62vh;
+        min-height: 180px;
     }
 }
 
@@ -4194,6 +4569,37 @@
 
     .summaryTrendSvg {
         width: 720px;
+    }
+
+    .summaryScopePanel {
+        align-items: stretch;
+    }
+
+    .summaryScopeButtons,
+    .summaryScopeButtons button {
+        width: 100%;
+    }
+
+    .summaryScopeButtons {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .summaryScopeSelects {
+        grid-template-columns: 1fr;
+    }
+
+    .summaryScopeSelects label {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .tableArea {
+        height: clamp(220px, calc(100dvh - 210px), 520px);
+        max-height: calc(100dvh - 210px);
+    }
+
+    .summaryFormulaStrip {
+        gap: 4px;
     }
 
     .summaryVehicleList button {
@@ -4412,6 +4818,19 @@
     .monthHeaderRow,
     .monthRow {
         min-width: 560px;
+    }
+
+    .timeFlowChart {
+        overflow-x: auto;
+    }
+
+    .timeFlowHeaderRow,
+    .timeFlowRow {
+        min-width: 720px;
+    }
+
+    .timeFlowRow > div {
+        grid-template-columns: minmax(0, 1fr) 78px;
     }
 
     .metricLegend {

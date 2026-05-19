@@ -8,7 +8,6 @@ import {
     formatPerformanceCellValue,
     getPerformanceChartMax,
     normalizePerformancePath,
-    getPerformanceYearLabel,
     normalizePerformanceColumnOrder,
     reconcilePerformanceLayoutPrefs,
 } from '@/utils/asanPerformanceView.mjs';
@@ -220,20 +219,73 @@ function sumSeriesMetrics(items = []) {
     }, { revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
 }
 
-function aggregateYearlyFromMonthly(monthly = []) {
+function getFlowItemLabel(item = {}) {
+    return item.label || item.period || item.weekStart || item.year || '-';
+}
+
+function aggregateMonthlyByBucket(monthly = [], bucket = 'month') {
     const map = new Map();
-    monthly.forEach(item => {
+    normalizeSeries(monthly).forEach(item => {
         const period = normalizePeriodKey(item.period);
-        const year = String(item.year || period.slice(0, 4) || '');
-        if (!year) return;
-        const prev = map.get(year) || { year: Number(year), revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+        if (!period) return;
+        const [year, monthText] = period.split('-');
+        const month = Number(monthText) || 1;
+        let key = period;
+        let label = period;
+        let sortKey = period;
+
+        if (bucket === 'year') {
+            key = year;
+            label = `${year}년`;
+            sortKey = `${year}-00`;
+        } else if (bucket === 'quarter') {
+            const quarter = Math.ceil(month / 3);
+            key = `${year}-Q${quarter}`;
+            label = `${year} ${quarter}분기`;
+            sortKey = `${year}-${String(quarter * 3).padStart(2, '0')}`;
+        }
+
+        const prev = map.get(key) || {
+            period: key,
+            label,
+            sortKey,
+            revenue: 0,
+            purchase: 0,
+            profit: 0,
+            rowCount: 0,
+        };
         prev.revenue += safeNumber(item.revenue);
         prev.purchase += safeNumber(item.purchase);
         prev.profit += safeNumber(item.profit);
         prev.rowCount += safeNumber(item.rowCount);
-        map.set(year, prev);
+        map.set(key, prev);
     });
-    return Array.from(map.values()).sort((a, b) => String(a.year).localeCompare(String(b.year)));
+    return Array.from(map.values()).sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+}
+
+function getTimeFlowBucket(monthly = [], scopeBounds = {}) {
+    const count = monthly.length;
+    if (!count) return 'month';
+    if (scopeBounds.isFullRange && count > 60) return 'year';
+    if (count <= 24) return 'month';
+    if (count <= 60) return 'quarter';
+    return 'year';
+}
+
+function buildScopedTimeFlow(monthly = [], scopeBounds = {}) {
+    const bucket = getTimeFlowBucket(monthly, scopeBounds);
+    const items = aggregateMonthlyByBucket(monthly, bucket);
+    const labelMap = {
+        month: '월별',
+        quarter: '3개월별',
+        year: '연도별',
+    };
+    return {
+        bucket,
+        items,
+        label: labelMap[bucket] || '월별',
+        countLabel: `${items.length.toLocaleString('ko-KR')}개 구간`,
+    };
 }
 
 function scopeStrategicSegment(segment = {}, scopeBounds = {}, scopedRevenue = 0) {
@@ -437,7 +489,7 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
     );
 }
 
-function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
+function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabel = '-' }) {
     const series = normalizeSeries(items);
     const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
     const maxProfit = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.profit))));
@@ -449,8 +501,8 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
     const profitY = value => Math.max(76, Math.min(154, 118 - (safeNumber(value) / maxProfit) * 42));
     const revenuePoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${revenueY(item.revenue).toFixed(1)}`).join(' ');
     const profitPoints = series.map((item, idx) => `${xAt(idx).toFixed(1)},${profitY(item.profit).toFixed(1)}`).join(' ');
-    const first = series[0]?.period || series[0]?.weekStart || series[0]?.year || '-';
-    const last = series[series.length - 1]?.period || series[series.length - 1]?.weekStart || series[series.length - 1]?.year || '-';
+    const first = getFlowItemLabel(series[0]);
+    const last = getFlowItemLabel(series[series.length - 1]);
     const recent = series[series.length - 1] || null;
     const totalRevenue = sumField(series, 'revenue');
     const totalProfit = sumField(series, 'profit');
@@ -468,7 +520,7 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
             <div className={styles.trendTitle}>
                 <div>
                     <h3>{title}</h3>
-                    <span>{basis} {first} ~ {last}</span>
+                    <span>{scopeLabel} · {basis} {first} ~ {last}</span>
                 </div>
                 <div className={styles.trendLegend}>
                     <span><i className={styles.revenueDot} />매출</span>
@@ -491,29 +543,29 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월' }) {
                         {highRevenue && (
                             <g>
                                 <circle cx={xAt(highRevenueIndex)} cy={revenueY(highRevenue.revenue)} r="5" className={styles.trendRevenuePoint}>
-                                    <title>{`${highRevenue.period || highRevenue.weekStart || highRevenue.year} 최고 매출 ${formatPerformanceAmount(highRevenue.revenue)}`}</title>
+                                    <title>{`${getFlowItemLabel(highRevenue)} 최고 매출 ${formatPerformanceAmount(highRevenue.revenue)}`}</title>
                                 </circle>
                                 <text x={xAt(highRevenueIndex)} y={Math.max(14, revenueY(highRevenue.revenue) - 9)} className={styles.trendMarkerLabel} textAnchor="middle">최고</text>
                             </g>
                         )}
                         {highProfit && (
                             <circle cx={xAt(highProfitIndex)} cy={profitY(highProfit.profit)} r="4.5" className={styles.trendProfitPoint}>
-                                <title>{`${highProfit.period || highProfit.weekStart || highProfit.year} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
+                                <title>{`${getFlowItemLabel(highProfit)} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
                             </circle>
                         )}
                         {recent && (
                             <g>
                                 <circle cx={xAt(recentIndex)} cy={revenueY(recent.revenue)} r="4.5" className={styles.trendRecentPoint}>
-                                    <title>{`${recent.period || recent.weekStart || recent.year} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 손익 ${formatPerformanceAmount(recent.profit)}`}</title>
+                                    <title>{`${getFlowItemLabel(recent)} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 손익 ${formatPerformanceAmount(recent.profit)}`}</title>
                                 </circle>
                                 <text x={Math.min(width - 28, xAt(recentIndex) - 10)} y={revenueY(recent.revenue) - 10} className={styles.trendMarkerLabel} textAnchor="end">최근</text>
                             </g>
                         )}
                     </svg>
                     <div className={styles.trendSummaryGrid}>
-                        <div><span>최근월</span><strong>{recent?.period || recent?.weekStart || recent?.year}</strong><em>매출 {formatPerformanceAmount(recent?.revenue)}</em></div>
-                        <div><span>최고 매출월</span><strong>{highRevenue?.period || highRevenue?.weekStart || highRevenue?.year}</strong><em>{formatPerformanceAmount(highRevenue?.revenue)}</em></div>
-                        <div><span>최고 손익월</span><strong>{highProfit?.period || highProfit?.weekStart || highProfit?.year}</strong><em>{formatPerformanceAmount(highProfit?.profit)}</em></div>
+                        <div><span>최근 구간</span><strong>{getFlowItemLabel(recent)}</strong><em>매출 {formatPerformanceAmount(recent?.revenue)}</em></div>
+                        <div><span>최고 매출 구간</span><strong>{getFlowItemLabel(highRevenue)}</strong><em>{formatPerformanceAmount(highRevenue?.revenue)}</em></div>
+                        <div><span>최고 손익 구간</span><strong>{getFlowItemLabel(highProfit)}</strong><em>{formatPerformanceAmount(highProfit?.profit)}</em></div>
                         <div><span>평균 손익률</span><strong>{formatPercent(avgProfitRate, 2)}</strong><em>기간 평균선 기준</em></div>
                     </div>
                     <div className={styles.trendFoot}>
@@ -813,7 +865,6 @@ export default function AsanAnnualPerformance() {
         end: scopeEnd,
     }), [periodOptions, scopeEnd, scopeMode, scopeStart]);
     const scopedMonthly = useMemo(() => filterSeriesByScope(monthly, scopeBounds), [monthly, scopeBounds]);
-    const scopedYearly = useMemo(() => aggregateYearlyFromMonthly(scopedMonthly), [scopedMonthly]);
     const scopedWeekly = useMemo(() => filterSeriesByScope(weekly, scopeBounds), [scopeBounds, weekly]);
     const scopedTotals = useMemo(() => {
         const totals = sumSeriesMetrics(scopedMonthly);
@@ -830,7 +881,8 @@ export default function AsanAnnualPerformance() {
     const scopedStrategicSegments = useMemo(() => (
         strategicSegments.map(segment => scopeStrategicSegment(segment, scopeBounds, scopedTotals.revenue))
     ), [scopeBounds, scopedTotals.revenue, strategicSegments]);
-    const monthlyTrend = scopedMonthly.slice(-12);
+    const scopedTimeFlow = useMemo(() => buildScopedTimeFlow(scopedMonthly, scopeBounds), [scopeBounds, scopedMonthly]);
+    const timeFlowItems = scopedTimeFlow.items;
     const weeklyTrend = scopedWeekly.slice(-26);
     const breakdowns = Array.isArray(summary.breakdowns) ? summary.breakdowns : EMPTY_LIST;
     const topGroups = Array.isArray(summary.topGroups) ? summary.topGroups : EMPTY_LIST;
@@ -843,17 +895,13 @@ export default function AsanAnnualPerformance() {
             .filter(item => safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.profit))
             .sort((a, b) => Math.abs(safeNumber(b.revenue)) - Math.abs(safeNumber(a.revenue)))
     ), [scopeBounds, scopedTotals.revenue, vehiclePerformance]);
-    const chartMax = getPerformanceChartMax(scopedYearly, ['revenue', 'purchase', 'profit']);
-    const monthChartMax = getPerformanceChartMax(monthlyTrend, ['revenue', 'purchase', 'profit']);
+    const timeFlowChartMax = getPerformanceChartMax(timeFlowItems, ['revenue', 'purchase', 'profit']);
     const analysisRows = Number(scopedTotals.rowCount || 0) || 0;
     const avgRevenue = analysisRows ? scopedTotals.revenue / analysisRows : 0;
     const avgProfit = analysisRows ? scopedTotals.profit / analysisRows : 0;
     const purchaseRate = rate(scopedTotals.purchase, scopedTotals.revenue);
     const profitRate = rate(scopedTotals.profit, scopedTotals.revenue);
     const performanceGrade = getPerformanceGrade(profitRate);
-    const bestProfitMonth = scopedMonthly.reduce((best, item) => (Number(item.profit) || 0) > (Number(best?.profit) || -Infinity) ? item : best, null);
-    const worstProfitMonth = scopedMonthly.reduce((worst, item) => (Number(item.profit) || 0) < (Number(worst?.profit) || Infinity) ? item : worst, null);
-    const bestRevenueMonth = scopedMonthly.reduce((best, item) => (Number(item.revenue) || 0) > (Number(best?.revenue) || -Infinity) ? item : best, null);
     const latestMonth = scopedMonthly[scopedMonthly.length - 1] || null;
     const previousMonth = scopedMonthly[scopedMonthly.length - 2] || null;
     const dimensionOptions = useMemo(() => {
@@ -1202,91 +1250,32 @@ export default function AsanAnnualPerformance() {
 
                         <section className={`${styles.panel} ${styles.monthPanel}`}>
                             <div className={styles.panelHeader}>
-                                <h3>월별 성과 흐름</h3>
-                                <span>{summary.monthlyBasis || '마감월'} 기준 · {scopeBounds.label}</span>
+                                <h3>선택범위 성과 흐름</h3>
+                                <span>{scopedTimeFlow.label} · {scopeBounds.label} · {scopedTimeFlow.countLabel}</span>
                             </div>
-                            <div className={styles.monthChart}>
-                                {monthlyTrend.length === 0 ? (
-                                    <div className={styles.emptyPanel}>월별 분석 데이터가 아직 없습니다.</div>
+                            <div className={styles.timeFlowChart}>
+                                {timeFlowItems.length === 0 ? (
+                                    <div className={styles.emptyPanel}>선택범위 분석 데이터가 아직 없습니다.</div>
                                 ) : (
                                     <>
-                                        <div className={styles.monthHeaderRow}>
-                                            <span>월</span>
+                                        <div className={styles.timeFlowHeaderRow}>
+                                            <span>구간</span>
                                             <span>매출</span>
-                                            <span>매출액</span>
+                                            <span>매입</span>
                                             <span>손익</span>
-                                            <span>손익액</span>
-                                            <span>률</span>
+                                            <span>손익률</span>
                                         </div>
-                                        {monthlyTrend.map(item => (
-                                            <div className={styles.monthRow} key={item.period}>
-                                                <span>{item.period}</span>
-                                                <DataBar value={item.revenue} max={monthChartMax} tone="revenue" />
-                                                <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                                <DataBar value={item.profit} max={monthChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} />
-                                                <strong>{formatPerformanceAmount(item.profit)}</strong>
+                                        {timeFlowItems.map(item => (
+                                            <div className={styles.timeFlowRow} key={item.period}>
+                                                <span>{getFlowItemLabel(item)}</span>
+                                                <div><DataBar value={item.revenue} max={timeFlowChartMax} tone="revenue" /><strong>{formatPerformanceAmount(item.revenue)}</strong></div>
+                                                <div><DataBar value={item.purchase} max={timeFlowChartMax} tone="purchase" /><strong>{formatPerformanceAmount(item.purchase)}</strong></div>
+                                                <div><DataBar value={item.profit} max={timeFlowChartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} /><strong>{formatPerformanceAmount(item.profit)}</strong></div>
                                                 <em>{formatPercent(profitRateOf(item))}</em>
                                             </div>
                                         ))}
                                     </>
                                 )}
-                            </div>
-                        </section>
-                    </div>
-
-                    <div className={styles.analysisGrid}>
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <h3>연도별 매출·매입·손익</h3>
-                                <span>{scopedYearly.length.toLocaleString()}개 연도 · {scopeBounds.label}</span>
-                            </div>
-                            <div className={styles.metricLegend}>
-                                <span><i className={styles.revenueDot} />매출</span>
-                                <span><i className={styles.purchaseDot} />매입</span>
-                                <span><i className={styles.profitDot} />손익</span>
-                            </div>
-                            <div className={styles.yearChart}>
-                                {scopedYearly.length === 0 ? (
-                                    <div className={styles.emptyPanel}>분석 가능한 금액/연도 컬럼이 아직 없습니다.</div>
-                                ) : scopedYearly.map(item => (
-                                    <div className={styles.yearRow} key={getPerformanceYearLabel(item)}>
-                                        <div className={styles.yearLabel}>{getPerformanceYearLabel(item)}</div>
-                                        <div className={styles.barStack}>
-                                            <div><DataBar value={item.revenue} max={chartMax} tone="revenue" /><span>{formatPerformanceAmount(item.revenue)}</span></div>
-                                            <div><DataBar value={item.purchase} max={chartMax} tone="purchase" /><span>{formatPerformanceAmount(item.purchase)}</span></div>
-                                            <div><DataBar value={item.profit} max={chartMax} tone={(Number(item.profit) || 0) < 0 ? 'loss' : 'profit'} /><span>{formatPerformanceAmount(item.profit)}</span></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={`${styles.panel} ${styles.signalPanel}`}>
-                            <div className={styles.panelHeader}>
-                                <h3>성과 경보</h3>
-                                <span>월/집중도 기준</span>
-                            </div>
-                            <div className={styles.signalGrid}>
-                                <div className={styles.signalItem}>
-                                    <span>최고 매출월</span>
-                                    <strong>{bestRevenueMonth?.period || '-'}</strong>
-                                    <em>{bestRevenueMonth ? formatPerformanceAmount(bestRevenueMonth.revenue) : '-'}</em>
-                                </div>
-                                <div className={styles.signalItem}>
-                                    <span>최고 손익월</span>
-                                    <strong>{bestProfitMonth?.period || '-'}</strong>
-                                    <em>{bestProfitMonth ? formatPerformanceAmount(bestProfitMonth.profit) : '-'}</em>
-                                </div>
-                                <div className={styles.signalItem}>
-                                    <span>최저 손익월</span>
-                                    <strong>{worstProfitMonth?.period || '-'}</strong>
-                                    <em className={safeNumber(worstProfitMonth?.profit) < 0 ? styles.negative : ''}>{worstProfitMonth ? formatPerformanceAmount(worstProfitMonth.profit) : '-'}</em>
-                                </div>
-                                <div className={styles.signalItem}>
-                                    <span>상위 10 집중도</span>
-                                    <strong>{formatPercent(top10Share)}</strong>
-                                    <em>{activeBreakdown?.column || '그룹'} 기준</em>
-                                </div>
                             </div>
                         </section>
                     </div>
@@ -1410,7 +1399,12 @@ export default function AsanAnnualPerformance() {
                                             </div>
                                         </div>
                                     </section>
-                                    <MiniTrendChart items={selectedSegment.monthly || []} title={`${selectedSegment.label} 월별 흐름`} basis="마감월" />
+                                    <MiniTrendChart
+                                        items={aggregateMonthlyByBucket(selectedSegment.monthly || [], scopedTimeFlow.bucket)}
+                                        title={`${selectedSegment.label} 선택범위 흐름`}
+                                        basis={scopedTimeFlow.label}
+                                        scopeLabel={scopeBounds.label}
+                                    />
                                     <div className={styles.segmentDetailGrid}>
                                         {[
                                             ['작업지', selectedSegment.topWorkSites || []],

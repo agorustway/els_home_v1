@@ -38,13 +38,33 @@ const REPORT_METRIC_KEYS = [
 ];
 const DIMENSION_HINTS = [
     { key: 'sales', label: '매출', words: ['매출', '순매출', '운송수입', '청구금액'] },
-    { key: 'region', label: '지역', words: ['지역', '권역', '구간'] },
-    { key: 'billing_pickup', label: '청구픽업', words: ['청구픽업', '청구 픽업', '픽업'] },
-    { key: 'port', label: '포트명', words: ['포트명', '포트', 'port', 'pod', 'pol'] },
-    { key: 'shipping', label: '선적', words: ['선적', '선사', '선명', '모선', '노선', 'line', '라인'] },
+    { key: 'client', label: '청구처별', words: ['청구처', '거래처', '화주', '업체', '고객', '상호'] },
+    { key: 'work_site', label: '작업지별', words: ['작업지', '작업지명', '작업장', '현장', '상차지', '하차지', '출발지', '도착지'] },
+    { key: 'payee', label: '지급처별', words: ['지급처', '운송사', '명의', '기사', '차주', '협력사', '배차처'] },
+    { key: 'category', label: '구분별', words: ['구분', '작업구분', '운송구분', '분류', '형태'] },
+    { key: 'billing_pickup', label: '청구픽업별', words: ['청구픽업', '청구 픽업', '픽업'] },
+    { key: 'port', label: '포트별', words: ['포트명', '포트', '터미널', 'port', 'pod', 'pol'] },
+    { key: 'route', label: '노선별', words: ['노선', '라인', 'line', '구간', '권역', '지역'] },
+    { key: 'carryover_type', label: '이월구분별', words: ['이월구분', '이월 구분', '이월', '전월', '차월'] },
+    { key: 'contract', label: '계약별', words: ['계약', '직계약', '계약구분', '계약형태', '운영구분'] },
+    { key: 'shipping', label: '선적별', words: ['선적', '선사', '선명', '모선', '항차', 'vessel', 'voyage'] },
     { key: 'invoice', label: '계산서', words: ['계산서'] },
 ];
-const DIMENSION_ORDER = ['sales', 'region', 'billing_pickup', 'port', 'shipping', 'carryover_client', 'invoice'];
+const DIMENSION_ORDER = [
+    'sales',
+    'client',
+    'work_site',
+    'payee',
+    'category',
+    'billing_pickup',
+    'port',
+    'route',
+    'carryover_type',
+    'contract',
+    'shipping',
+    'carryover_client',
+    'invoice',
+];
 const EMPTY_LIST = Object.freeze([]);
 
 class MonthlyAnalysisErrorBoundary extends React.Component {
@@ -396,14 +416,28 @@ function normalizeDimensionSections(breakdowns = []) {
     const used = new Set();
 
     DIMENSION_HINTS.forEach((hint) => {
-        const match = sections.find((section, idx) => !used.has(idx) && hint.words.some(word => String(section.column || '').toLowerCase().includes(String(word).toLowerCase())));
+        const match = sections.find((section, idx) => !used.has(idx) && hint.words.some((word) => {
+            const column = String(section.column || section.label || '').toLowerCase();
+            return column.includes(String(word).toLowerCase());
+        }));
         if (!match) return;
         const idx = sections.indexOf(match);
         used.add(idx);
         selected.push({ ...match, key: hint.key, label: hint.label });
     });
 
-    return selected;
+    const extras = sections
+        .map((section, idx) => ({ section, idx }))
+        .filter(({ idx }) => !used.has(idx))
+        .map(({ section, idx }) => ({
+            ...section,
+            key: `extra_${idx}_${String(section.column || 'dimension').replace(/\s+/g, '_')}`,
+            label: String(section.column || section.label || '기타항목').endsWith('별')
+                ? String(section.column || section.label || '기타항목')
+                : `${section.column || section.label || '기타항목'}별`,
+        }));
+
+    return [...selected, ...extras];
 }
 
 function buildReportDimensionSection(report = null, config = {}) {
@@ -494,7 +528,9 @@ function mergeDimensionSections(baseSections = [], reportSections = [], carryove
         if (section.key) byKey.set(section.key, section);
     });
     if (carryoverSection?.key) byKey.set(carryoverSection.key, carryoverSection);
-    return DIMENSION_ORDER.map(key => byKey.get(key)).filter(Boolean);
+    const ordered = DIMENSION_ORDER.map(key => byKey.get(key)).filter(Boolean);
+    const remaining = Array.from(byKey.values()).filter(section => !DIMENSION_ORDER.includes(section.key));
+    return [...ordered, ...remaining];
 }
 
 function groupDailyByMonth(monthly = [], daily = []) {
@@ -1788,7 +1824,7 @@ export default function AsanMonthlyPerformance() {
                             </div>
                         </div>
                         {scopedDimensionSections.length === 0 ? (
-                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 매출, 지역, 청구픽업, 포트명, 선적, 이월(청구처기준), 계산서 데이터를 동기화 후 자동 분석합니다.</div>
+                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 매출, 청구처별, 작업지별, 지급처별, 구분별, 청구픽업별, 포트별, 노선별, 이월구분별, 계약별, 선적별, 이월(청구처기준), 계산서 데이터를 동기화 후 자동 분석합니다.</div>
                         ) : (
                             <>
                                 <div className={styles.dimensionTabs}>
