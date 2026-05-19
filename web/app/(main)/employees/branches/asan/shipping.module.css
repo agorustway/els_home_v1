@@ -197,6 +197,32 @@
     opacity: 0.65;
 }
 
+.stopLookupBtn {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 0.72rem;
+    cursor: pointer;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #be123c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    line-height: 1;
+    vertical-align: middle;
+    font-family: inherit;
+}
+
+.stopLookupBtn:hover { background: #ffe4e6; }
+
+.stopLookupBtn:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
 .lookupStatus {
     min-height: 28px;
     display: flex;
@@ -228,6 +254,12 @@
 
 .lookupStatusFailed {
     color: #dc2626;
+}
+
+.lookupStatusErrorDetail {
+    min-width: 0;
+    order: 2;
+    color: #be123c;
 }
 
 .pageBar {
@@ -810,7 +842,7 @@
         font-size: 0.66rem;
     }
 
-    .resetBtn, .syncBtn, .dangerBtn, .lookupBtn {
+    .resetBtn, .syncBtn, .dangerBtn, .lookupBtn, .stopLookupBtn {
         font-size: 0.68rem;
         min-height: 34px;
         padding: 6px 4px;

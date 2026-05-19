@@ -416,9 +416,21 @@ test('선적관리 화면은 전체/조회 건수와 컨테이너 조회 완료/
   assert.match(source, /lookedUpAt >= startedAt/);
   assert.match(source, /setInterval\(\(\) => \{\s*refreshContainerLookupSession\(\{ session: activeLookupSession \}\);/);
   assert.match(source, /disabled=\{containerLookupRunning \|\| activeLookupRunning\}/);
+  assert.match(source, /const \[containerLookupStopping, setContainerLookupStopping\] = useState\(false\);/);
+  assert.match(source, /const handleStopContainerLookup = async \(\) =>/);
+  assert.match(source, /containerLookupAbortRef\.current = abortController/);
+  assert.match(source, /signal: abortController\.signal/);
+  assert.match(source, /fetch\('\/api\/els\/stop-daemon', \{ method: 'POST' \}\)/);
+  assert.match(source, /조회 멈춤/);
+  assert.match(source, /조회 중단됨: 완료/);
+  assert.match(source, /미조회 \{containerLookupProgress\.remaining\.toLocaleString\(\)\}건/);
+  assert.match(source, /function summarizeContainerLookupErrors\(rows = \[\], containers = \[\], progress = null\)/);
+  assert.match(source, /실패 사유: \{containerLookupErrorSummary\.message\}/);
   assert.match(source, /이전 컨테이너 조회가 아직 진행 중입니다/);
   assert.match(css, /\.lookupStatusFailed[\s\S]*color: #dc2626;/);
   assert.match(css, /\.lookupStatusMessage[\s\S]*order: 1;/);
+  assert.match(css, /\.stopLookupBtn[\s\S]*color: #be123c;/);
+  assert.match(css, /\.lookupStatusErrorDetail[\s\S]*order: 2;/);
 });
 
 test('선적관리 컨테이너 이력은 반입/적하 이력구분을 선적완료로 판정한다', () => {

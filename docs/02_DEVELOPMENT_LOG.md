@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 선적관리 컨테이너 조회 중단/실패 사유 표시 (v5.14.49)
+### 핵심
+- 선적관리 컨테이너 조회 실행 중 `조회 멈춤` 버튼을 표시하고, 클릭 시 `/api/els/stop-daemon` 중지 요청과 브라우저 `AbortController` 중단을 함께 수행합니다.
+- 중단 상태는 완료/실패/미조회 건수를 분리해 남기며, 정상 종료라도 `ERROR` 행이 있으면 실패 상태와 사유 요약을 유지합니다.
+- 봇 로그 확인 결과, 이번 실패 흐름은 컨테이너 저장 실패가 아니라 이트랜스 세션 만료/로그인 모달 감지로 불확실 재조회가 반복된 쪽에 가깝습니다. 앞으로는 `ERROR` 행의 사유를 상태줄에 바로 표시합니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanShipping.js"`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `git diff --check -- 'web/app/(main)/employees/branches/asan/AsanShipping.js' 'web/app/(main)/employees/branches/asan/shipping.module.css' 'web/tests/asanShippingFlow.test.mjs' docs/01_MISSION_CONTROL.md docs/02_DEVELOPMENT_LOG.md`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 차량위치관제 현재점/지도 UX/PiP 보정 (v5.14.48 / APK v5.11.18)
 ### 핵심
 - 2026-05-19 오후 데이터 기준 12가0140(17:09~18:51 KST), 194서2632(16:59~18:54 KST)를 재분석했습니다. 기존에는 경로 보정용 중복 제거가 마지막 정차/종료 좌표까지 떨어뜨려 194서2632가 18:25 지점에서 멈춘 것처럼 보였습니다.
@@ -16,22 +32,6 @@
 - `web/utils/vehicleLocation.mjs`, `web/app/api/vehicle-tracking/trips/route.js`
 - `web/driver-src/`, `web/android/app/`, `web/public/apk/`
 - `web/app/(main)/employees/vehicle-tracking/`, `web/tests/vehicleLocation.test.mjs`
-- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
-
-## [2026-05-19] 아산 선적관리 컨테이너 조회 중단/실패 사유 표시 (v5.14.47)
-### 핵심
-- 선적관리 컨테이너 조회 실행 중 `조회 멈춤` 버튼을 표시하고, 클릭 시 `/api/els/stop-daemon` 중지 요청과 브라우저 `AbortController` 중단을 함께 수행합니다.
-- 중단 상태는 완료/실패/미조회 건수를 분리해 남기며, 정상 종료라도 `ERROR` 행이 있으면 실패 상태와 사유 요약을 유지합니다.
-- 봇 로그 확인 결과, 이번 실패 흐름은 컨테이너 저장 실패가 아니라 이트랜스 세션 만료/로그인 모달 감지로 불확실 재조회가 반복된 쪽에 가깝습니다. 앞으로는 `ERROR` 행의 사유를 상태줄에 바로 표시합니다.
-### 검증
-- `node --check "web/app/(main)/employees/branches/asan/AsanShipping.js"`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
-- `git diff --check -- 'web/app/(main)/employees/branches/asan/AsanShipping.js' 'web/app/(main)/employees/branches/asan/shipping.module.css' 'web/tests/asanShippingFlow.test.mjs'`: 통과
-### 변경 파일
-- `web/app/(main)/employees/branches/asan/AsanShipping.js`
-- `web/app/(main)/employees/branches/asan/shipping.module.css`
-- `web/tests/asanShippingFlow.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ## [2026-05-19] 아산 월간실적 세분화 탭/이월 표 정리 (v5.14.46)
