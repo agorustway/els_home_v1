@@ -1,3 +1,12 @@
+## [2026-05-19] 아산 연간실적 조사범위 날짜 선택 잠금 (v5.14.19)
+### 핵심
+- 연간실적 조사범위에서 전체/최근 12개월/최근 24개월/최근 3년/최근 5년 프리셋을 선택한 경우 시작월/종료월 select를 비활성화했습니다.
+- `직접` 모드에서만 날짜 선택을 활성화해 프리셋 기준과 수동 날짜 기준이 동시에 보이는 혼선을 줄였습니다.
+- 비활성 select에는 잠금 스타일을 적용하고, 접근성용 aria-label을 추가했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 0 errors
+- `git diff --check`: 통과
 ## [2026-05-19] 아산 선적관리 NAS 동기화 타임아웃 방지 (v5.14.18)
 ### 분석
 - 운영 NAS 컨테이너는 정상 기동 중이며, 2026-05-19 09:35경 선적관리 1,057행 동기화는 Core 로그 기준 완료됐습니다.

@@ -296,6 +296,8 @@ function normalizeSeries(items = []) {
 }
 
 function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, bounds, rowCount }) {
+    const isCustomScope = mode === 'custom';
+
     return (
         <section className={styles.scopePanel}>
             <div className={styles.scopeTitle}>
@@ -316,6 +318,8 @@ function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, b
             </div>
             <div className={styles.scopeSelects}>
                 <select
+                    aria-label="조사 시작월"
+                    disabled={!isCustomScope}
                     value={start || periods[0] || ''}
                     onChange={e => {
                         setStart(e.target.value);
@@ -326,6 +330,8 @@ function ScopeControls({ mode, setMode, start, end, setStart, setEnd, periods, b
                 </select>
                 <span>~</span>
                 <select
+                    aria-label="조사 종료월"
+                    disabled={!isCustomScope}
                     value={end || periods[periods.length - 1] || ''}
                     onChange={e => {
                         setEnd(e.target.value);

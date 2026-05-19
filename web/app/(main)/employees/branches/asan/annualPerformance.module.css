@@ -435,6 +435,13 @@
     font-weight: 850;
 }
 
+.scopeSelects select:disabled {
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
 .scopeSelects span {
     color: #94a3b8;
     font-size: 0.78rem;
