@@ -1,3 +1,18 @@
+## [2026-05-19] 아산 월간실적 선택 단계별 누적 그래프 정리 (v5.14.64)
+### 핵심
+- 월간실적 `누적` 그래프가 선택 범위 한 점만 보여주던 문제를 고쳐, 선택 단계의 다음 단위 흐름을 그리도록 바꿨습니다.
+- `전체`는 월별, `월`은 주차별, `주차`는 일자별, `일`은 해당 월의 일자별 흐름을 표시하고 선택일을 강조합니다.
+- 선택 UI와 역할이 겹치던 `월별·일별 트리` 섹션은 제거하고, `선택 기준 성과 흐름` 표와 요일 카드로 흐름을 보게 정리했습니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 연간실적 선택범위 시간축 통합 (v5.14.63)
 ### 핵심
 - 연간실적 개요의 `월별 성과 흐름`, `연도별 매출·매입·손익`, `성과 경보` 중복 패널을 `선택범위 성과 흐름`으로 합쳤습니다.

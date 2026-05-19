@@ -3021,13 +3021,6 @@
     order: 45;
 }
 
-.dailyTreePanel {
-    order: 60;
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
 .weekdayPanel {
     order: 62;
     width: 100%;
@@ -3054,7 +3047,6 @@
 }
 
 @media (min-width: 1840px) {
-    .dailyTreePanel,
     .segmentInsightPanel,
     .vehicleInsightPanel,
     .monthPanel {
@@ -3185,6 +3177,12 @@
 
 .monthlyTrendRevenuePoint {
     fill: #0f766e;
+}
+
+.monthlyTrendPointActive {
+    stroke: #0f172a;
+    stroke-width: 2.8;
+    filter: drop-shadow(0 0 4px rgba(15, 23, 42, 0.28));
 }
 
 .monthlyTrendPurchasePoint {
@@ -3836,108 +3834,6 @@
     border-right: 0;
 }
 
-.dailyList {
-    display: flex;
-    flex-direction: column;
-    padding: 0 8px 8px 28px;
-}
-
-.dailyTree {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    overflow-x: auto;
-    padding: 7px 8px 8px;
-}
-
-.dailyTreeHead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: minmax(112px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) 64px;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    min-width: 560px;
-    min-height: 26px;
-    border-bottom: 1px solid #cbd5e1;
-    background: #f8fafc;
-}
-
-.dailyTreeHead span {
-    color: #64748b;
-    font-size: 0.68rem;
-    font-weight: 950;
-    text-align: right;
-}
-
-.dailyTreeHead span:first-child {
-    text-align: left;
-}
-
-.dailyTreeGroup {
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.dailyTreeGroup:last-child {
-    border-bottom: 0;
-}
-
-.dailyRow {
-    border-top: 1px solid #f1f5f9;
-}
-
-.dailyMonthRow,
-.dailyRow {
-    display: grid;
-    grid-template-columns: minmax(112px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) 64px;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    min-width: 560px;
-    min-height: 30px;
-}
-
-.dailyMonthRow {
-    width: 100%;
-    border: 0;
-    background: transparent;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-.dailyMonthRow:hover {
-    background: #f8fafc;
-}
-
-.dailyMonthRow span,
-.dailyMonthRow strong,
-.dailyMonthRow em,
-.dailyMonthRow b,
-.dailyMonthRow small,
-.dailyRow span,
-.dailyRow strong,
-.dailyRow em,
-.dailyRow b,
-.dailyRow small {
-    color: #334155;
-    font-size: 0.72rem;
-    font-style: normal;
-    font-weight: 850;
-}
-
-.dailyMonthRow strong,
-.dailyMonthRow em,
-.dailyMonthRow b,
-.dailyMonthRow small,
-.dailyRow strong,
-.dailyRow em,
-.dailyRow b,
-.dailyRow small {
-    text-align: right;
-}
-
 .dimensionDiagram {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -4373,7 +4269,6 @@
     .vehicleInsightPanel,
     .weekdayPanel,
     .dimensionPanel,
-    .dailyTreePanel,
     .monthlyReportSheet {
         grid-column: 1 / -1;
     }
@@ -4767,13 +4662,6 @@
         padding: 8px;
         border: 1px solid #e2e8f0;
         border-radius: 6px;
-    }
-
-    .dailyTreeHead,
-    .dailyMonthRow,
-    .dailyRow {
-        grid-template-columns: 92px repeat(3, minmax(84px, 1fr)) 48px;
-        min-width: 560px;
     }
 
     .dimensionDiagram {

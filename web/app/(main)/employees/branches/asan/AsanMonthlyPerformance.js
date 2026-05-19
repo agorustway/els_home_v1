@@ -533,48 +533,6 @@ function mergeDimensionSections(baseSections = [], reportSections = [], carryove
     return [...ordered, ...remaining];
 }
 
-function groupDailyByMonth(monthly = [], daily = []) {
-    const map = new Map();
-    safeObjectList(monthly).forEach((item) => {
-        const period = String(item.period || '').trim();
-        if (period && isMetricActive(item)) map.set(period, { ...item, period, days: [], fromMonthly: true });
-    });
-    safeObjectList(daily).forEach((item) => {
-        const period = String(item.period || '').trim();
-        if (!period) return;
-        if (!map.has(period)) {
-            const [yearText, monthText] = period.split('-');
-            map.set(period, {
-                period,
-                year: Number(yearText),
-                month: Number(monthText),
-                revenue: 0,
-                purchase: 0,
-                profit: 0,
-                rowCount: 0,
-                days: [],
-                fromMonthly: false,
-            });
-        }
-        const bucket = map.get(period);
-        bucket.days.push(item);
-        if (!bucket.fromMonthly) {
-            bucket.revenue += safeNumber(item.revenue);
-            bucket.purchase += safeNumber(item.purchase);
-            bucket.profit += safeNumber(item.profit);
-            bucket.rowCount += safeNumber(item.rowCount);
-        }
-    });
-    return Array.from(map.values())
-        .filter(item => isMetricActive(item) || safeObjectList(item.days).some(isMetricActive))
-        .map(item => ({
-            ...item,
-            fromMonthly: undefined,
-            days: safeObjectList(item.days).sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
-        }))
-        .sort((a, b) => String(a.period).localeCompare(String(b.period)));
-}
-
 function normalizeDailyOption(item = {}, index = 0) {
     const date = String(item.date || '').trim();
     const period = String(item.period || '').trim();
@@ -727,11 +685,13 @@ function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
     );
 }
 
-function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '마감월', unitLabel = '건' }) {
+function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '마감월', unitLabel = '건', highlightKey = '' }) {
     const series = safeObjectList(items)
         .filter(isMetricActive)
         .map(item => ({
             ...item,
+            flowKey: item._scopeKey || item.key || item.scopeKey || item.date || item.period || item.label || '',
+            isSelected: Boolean(item.isSelected || (highlightKey && [item._scopeKey, item.key, item.scopeKey, item.date, item.period].includes(highlightKey))),
             displayLabel: item.scopeLabel || item.label || item.period || item.date || item.key || '-',
         }));
     const width = 640;
@@ -770,7 +730,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
     const axisStep = series.length <= 8 ? 1 : Math.ceil(series.length / 7);
     const axisLabels = series.map((item, idx) => ({
         label: item.displayLabel,
-        visible: idx === 0 || idx === series.length - 1 || idx % axisStep === 0,
+        visible: item.isSelected || idx === 0 || idx === series.length - 1 || idx % axisStep === 0,
     }));
     const pointLabelStep = series.length <= 7 ? 1 : Math.ceil(series.length / 6);
     const pointLabels = series.map((item, idx) => ({
@@ -779,7 +739,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
         x: xAt(idx),
         y: yAt(item.revenue),
         anchor: idx === 0 ? 'start' : (idx === series.length - 1 ? 'end' : 'middle'),
-    })).filter(point => point.idx === 0 || point.idx === lastIdx || point.idx === highIdx || point.idx % pointLabelStep === 0)
+    })).filter(point => point.item.isSelected || point.idx === 0 || point.idx === lastIdx || point.idx === highIdx || point.idx % pointLabelStep === 0)
         .map(point => ({
             ...point,
             xPercent: Math.max(1, Math.min(99, (point.x / width) * 100)),
@@ -833,10 +793,10 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
                                 <polyline points={purchasePoints} className={styles.monthlyTrendPurchaseLine} />
                                 <polyline points={profitPoints} className={styles.monthlyTrendProfitLine} />
                                 {series.map((item, idx) => (
-                                    <g key={`${item.displayLabel}-${idx}`}>
-                                        <circle cx={xAt(idx)} cy={yAt(item.revenue)} r={idx === highIdx ? '4.6' : '3.6'} className={styles.monthlyTrendRevenuePoint} />
-                                        <circle cx={xAt(idx)} cy={yAt(item.purchase)} r="3.2" className={styles.monthlyTrendPurchasePoint} />
-                                        <circle cx={xAt(idx)} cy={yAt(item.profit)} r="3.2" className={styles.monthlyTrendProfitPoint} />
+                                    <g key={`${item.flowKey || item.displayLabel}-${idx}`}>
+                                        <circle cx={xAt(idx)} cy={yAt(item.revenue)} r={item.isSelected ? '5.4' : (idx === highIdx ? '4.6' : '3.6')} className={`${styles.monthlyTrendRevenuePoint} ${item.isSelected ? styles.monthlyTrendPointActive : ''}`} />
+                                        <circle cx={xAt(idx)} cy={yAt(item.purchase)} r={item.isSelected ? '4.4' : '3.2'} className={`${styles.monthlyTrendPurchasePoint} ${item.isSelected ? styles.monthlyTrendPointActive : ''}`} />
+                                        <circle cx={xAt(idx)} cy={yAt(item.profit)} r={item.isSelected ? '4.4' : '3.2'} className={`${styles.monthlyTrendProfitPoint} ${item.isSelected ? styles.monthlyTrendPointActive : ''}`} />
                                     </g>
                                 ))}
                             </svg>
@@ -907,7 +867,6 @@ export default function AsanMonthlyPerformance() {
     const [selectedAnalysisMonth, setSelectedAnalysisMonth] = useState('');
     const [selectedAnalysisWeek, setSelectedAnalysisWeek] = useState('');
     const [selectedAnalysisDay, setSelectedAnalysisDay] = useState('');
-    const [expandedDailyMonths, setExpandedDailyMonths] = useState(new Set());
     const [activeDimensionKey, setActiveDimensionKey] = useState('');
     const [expandedDimensionKeys, setExpandedDimensionKeys] = useState(new Set());
     const [showAllVehicles, setShowAllVehicles] = useState(false);
@@ -1176,19 +1135,30 @@ export default function AsanMonthlyPerformance() {
     const diagramMax = Math.max(1, Math.abs(scopeRevenue), Math.abs(scopePurchase), Math.abs(scopeProfit), Math.abs(carryoverRevenue));
     const reportTableReady = Boolean(selectedReport && reportGroups.length);
     const scopeFlowItems = useMemo(() => {
+        if (analysisScope === ANALYSIS_SCOPE_MONTH) {
+            return monthWeeks
+                .filter(isMetricActive)
+                .map(item => ({
+                    ...item,
+                    scopeLabel: `${Number(item.weekIndex) || '-'}주차`,
+                    _scopeKey: item.key,
+                    period: item.period,
+                }));
+        }
         if (analysisScope === ANALYSIS_SCOPE_WEEK) {
-            if (!activeAnalysisWeek) return [];
-            return [{
-                ...sumMetricItems(scopedDaily),
-                scopeLabel: activeAnalysisWeek.label,
-                _scopeKey: activeAnalysisWeek.key,
-                period: activeAnalysisWeek.period,
-            }];
+            return monthDays
+                .filter(item => activeAnalysisWeek?.dateSet?.has(item.scopeKey))
+                .map(item => ({
+                    ...item,
+                    scopeLabel: shortDateLabel(item.date),
+                    _scopeKey: item.scopeKey || item.date,
+                }));
         }
         if (analysisScope === ANALYSIS_SCOPE_DAY) {
-            return scopedDaily.map(item => ({
+            return monthDays.map(item => ({
                 ...item,
-                scopeLabel: item.date || item.label,
+                isSelected: item.scopeKey === activeAnalysisDayValue,
+                scopeLabel: shortDateLabel(item.date),
                 _scopeKey: item.scopeKey || item.date,
             }));
         }
@@ -1197,13 +1167,12 @@ export default function AsanMonthlyPerformance() {
             scopeLabel: item.period,
             _scopeKey: item.period,
         }));
-    }, [activeAnalysisWeek, analysisScope, scopedDaily, scopedMonthly]);
+    }, [activeAnalysisDayValue, activeAnalysisWeek, analysisScope, monthDays, monthWeeks, scopedMonthly]);
     const scopeFlowRange = scopeFlowItems.length
         ? `${scopeFlowItems[0].scopeLabel || '-'} ~ ${scopeFlowItems[scopeFlowItems.length - 1].scopeLabel || '-'}`
         : scopedMonthRange;
-    const scopeFlowBasisLabel = analysisScope === ANALYSIS_SCOPE_WEEK ? '작업주간' : ([ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월');
-    const scopeFlowUnitLabel = analysisScope === ANALYSIS_SCOPE_WEEK ? '주' : (analysisScope === ANALYSIS_SCOPE_DAY ? '일' : '개월');
-    const activeFlowCount = scopeFlowItems.length;
+    const scopeFlowBasisLabel = analysisScope === ANALYSIS_SCOPE_MONTH ? '주차' : ([ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월');
+    const scopeFlowUnitLabel = analysisScope === ANALYSIS_SCOPE_MONTH ? '주' : ([ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '일' : '개월');
     const latestFlowItem = [...scopeFlowItems].reverse().find(isMetricActive) || null;
     const previousFlowItem = previousMetricItem(scopeFlowItems, latestFlowItem, '_scopeKey');
     const bestRevenueItem = maxBy(scopeFlowItems, 'revenue');
@@ -1226,8 +1195,6 @@ export default function AsanMonthlyPerformance() {
     const activeDimensionExpanded = Boolean(activeDimension?.key && expandedDimensionKeys.has(activeDimension.key));
     const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
     const topDimensionItem = activeDimensionItems[0] || null;
-    const dailyTreeMonthlySeed = [ANALYSIS_SCOPE_ALL, ANALYSIS_SCOPE_MONTH].includes(analysisScope) ? scopedMonthly : EMPTY_LIST;
-    const dailyTree = useMemo(() => groupDailyByMonth(dailyTreeMonthlySeed, scopedDaily), [dailyTreeMonthlySeed, scopedDaily]);
     const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 999);
     const visibleVehicles = showAllVehicles ? scopedVehicleItems : scopedVehicleItems.slice(0, 5);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
@@ -1300,15 +1267,6 @@ export default function AsanMonthlyPerformance() {
             <td>{rateKey ? formatPercent(reportTotals[rateKey], 2) : ''}</td>
         </tr>
     );
-
-    const toggleDailyMonth = (period) => {
-        setExpandedDailyMonths(prev => {
-            const next = new Set(prev);
-            if (next.has(period)) next.delete(period);
-            else next.add(period);
-            return next;
-        });
-    };
 
     const toggleDimensionExpanded = (key = activeDimension?.key) => {
         if (!key) return;
@@ -1580,6 +1538,7 @@ export default function AsanMonthlyPerformance() {
                         scopeLabel={scopeLabel}
                         basisLabel={scopeFlowBasisLabel}
                         unitLabel={scopeFlowUnitLabel}
+                        highlightKey={analysisScope === ANALYSIS_SCOPE_DAY ? activeAnalysisDayValue : ''}
                     />
 
                     <section className={`${styles.panel} ${styles.monthlySummaryPanel}`}>
@@ -1620,7 +1579,7 @@ export default function AsanMonthlyPerformance() {
                                 <MetricDonut value={avgRevenuePerJob} max={Math.max(1, scopeRevenue)} tone="revenue" />
                                 <span>건당 청구</span>
                                 <strong>{formatPerformanceAmount(avgRevenuePerJob)}</strong>
-                                <em>{activeFlowCount.toLocaleString('ko-KR')}{scopeFlowUnitLabel} 집계</em>
+                                <em>{scopeRows.toLocaleString('ko-KR')}건 기준</em>
                                 <i style={{ width: metricWidth(avgRevenuePerJob, Math.max(1, scopeRevenue), 6) }} />
                             </div>
                         </div>
@@ -1697,7 +1656,7 @@ export default function AsanMonthlyPerformance() {
 
                     <section className={`${styles.panel} ${styles.monthPanel}`}>
                         <div className={styles.panelHeader}>
-                            <h3>선택 범위 성과 흐름</h3>
+                            <h3>선택 기준 성과 흐름</h3>
                             <span>{scopeFlowRange} · {scopeFlowBasisLabel} 기준</span>
                         </div>
                         <div className={styles.monthChart}>
@@ -1726,50 +1685,6 @@ export default function AsanMonthlyPerformance() {
                                 </>
                             )}
                         </div>
-                    </section>
-
-                    <section className={`${styles.panel} ${styles.dailyTreePanel}`}>
-                        <div className={styles.panelHeader}>
-                            <h3>월별·일별 트리</h3>
-                            <span>{scopedDaily.length.toLocaleString('ko-KR')}일 · 마감월 기준</span>
-                        </div>
-                        {dailyTree.length === 0 ? (
-                            <div className={styles.emptyPanel}>일별 원장 데이터를 아직 도출하지 못했습니다. 원본에 작업일자 컬럼이 있으면 동기화 후 자동 집계됩니다.</div>
-                        ) : (
-                            <div className={styles.dailyTree}>
-                                <div className={styles.dailyTreeHead}>
-                                    <span>월/일</span>
-                                    <span>청구</span>
-                                    <span>하불</span>
-                                    <span>손익</span>
-                                    <span>건수</span>
-                                </div>
-                                {dailyTree.map(item => (
-                                    <div className={styles.dailyTreeGroup} key={item.period}>
-                                        <button type="button" className={styles.dailyMonthRow} onClick={() => toggleDailyMonth(item.period)}>
-                                            <span>{expandedDailyMonths.has(item.period) ? '접기' : '펼치기'} {item.period}</span>
-                                            <strong>{formatPerformanceAmount(item.revenue)}</strong>
-                                            <em>{formatPerformanceAmount(item.purchase)}</em>
-                                            <b className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)}</b>
-                                            <small>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</small>
-                                        </button>
-                                        {expandedDailyMonths.has(item.period) && (
-                                            <div className={styles.dailyList}>
-                                                {(item.days || []).map(day => (
-                                                    <div className={styles.dailyRow} key={day.scopeKey || `${item.period}::${day.date}`}>
-                                                        <span>{day.date}</span>
-                                                        <strong>{formatPerformanceAmount(day.revenue)}</strong>
-                                                        <em>{formatPerformanceAmount(day.purchase)}</em>
-                                                        <b className={safeNumber(day.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(day.profit)}</b>
-                                                        <small>{safeNumber(day.rowCount).toLocaleString('ko-KR')}건</small>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </section>
 
                     <section className={`${styles.panel} ${styles.weekdayPanel}`}>
