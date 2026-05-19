@@ -4,7 +4,7 @@
 > 범위: 연간실적 1차 구축, 월별실적/합산실적 확장 계획
 
 ## 1. 목표
-- NAS 아산지점 루트의 `B_총무\C_마감\합계연간실적\합계연간실적.xlsx` `합계` 탭을 백엔드에서 읽어 Supabase 원장으로 누적한다.
+- NAS 아산지점 루트의 `B_총무\C_마감\합계연간실적\합계연간실적.xlsx` `합계` 탭을 백엔드에서 읽어 Supabase 원장으로 누적한다. 2026년 이후 파일을 별도 경로로 나누더라도 웹은 annual 현재 스냅샷 전체를 통합 조회한다.
 - 웹 `/employees/branches/asan` 안에 `실적관리` 메인 탭을 두고, 하위 `종합실적/월간실적/연간실적` 구조로 확장한다.
 - 현재 연간실적 화면은 `실적관리 > 연간실적`에 배치하고, 분석 인포그래픽과 원장 테이블을 함께 제공한다.
 - 제목행과 컬럼명은 엑셀 변경에 맞춰 동적으로 반영하며, 컬럼 추가/삭제도 현재 헤더 기준으로 수용한다.
@@ -17,6 +17,7 @@
 - `els-core` Docker 이미지에는 버튼 동기화용 Node.js/npm/util-linux가 포함된다. 호스트 수동 스크립트는 장애 대응/cron fallback으로 유지한다.
 - Next API: `/api/branches/asan/performance/annual`
   - `GET`: 기본 `source=supabase`로 Next 서버에서 Supabase 현재 원장 페이지 직접 조회
+  - `GET aggregate=all`: `dataset_type=annual` 파일 메타 전체의 `currentSnapshotId`를 모아 통합 원장처럼 조회. 화면 기본값이며 2015~2025 기존 파일과 2026 이후 분할 파일을 합산한다.
   - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰, NAS Core 경유
   - `POST async=true`: NAS 엑셀 동기화를 백그라운드로 시작하고 현재 Supabase 조회값과 `sync_status` 반환
   - `POST async=false`: 운영 점검용 동기 처리
@@ -26,7 +27,7 @@
   - ExcelJS streaming reader로 대상 시트를 순차 파싱하고, 실제 주입은 읽는 중 100행 단위로 바로 반영해 NAS 메모리 점유를 낮춘다.
   - `마감월`은 `YYYY-MM`, `작업일자`는 `YYYY-MM-DD`로 저장하고 Excel 날짜 시리얼/ISO 시간 문자열을 정규화한다. `청구`/`하불` 등 금액 컬럼은 천단위 구분 표시값으로 저장한다.
   - 월 파서는 `YYYY-MM`, `YYYYMM`, `YYYY-MM-DD`, `YYYYMMDD`를 1~12월 범위로 엄격하게 읽는다. 특히 `2022-10/11/12`가 `2022-01`로 집계되지 않도록 월 정규식은 `1[0-2]|0?[1-9]` 순서를 유지한다.
-  - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 웹 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막는다.
+  - summary에는 `currentSnapshotId`와 월별/구분별 breakdown을 저장한다. 단일 파일 조회는 해당 snapshot만 읽어 중복 current 스냅샷 표시를 막고, 화면 기본 통합 조회는 각 annual 파일의 현재 snapshot을 합산한다.
   - 운영 기본값은 current 원장 전체 조회 없이 새 스냅샷을 staged 방식으로 insert한 뒤 메타 `currentSnapshotId`를 새 스냅샷으로 바꿔 공개한다. 이전 current 행 정리는 기본 성공 경로에서 제외해 statement timeout을 피한다.
   - 이전 current 행 정리가 필요할 때만 `--retire-previous-current`를 붙여 별도 수행한다.
   - staged 스냅샷을 복구 SQL로 공개한 뒤 분석 summary만 최신화하려면 `--summary-only`를 사용한다. 이 모드는 행 insert/update 없이 Excel을 스트리밍으로 읽고 `branch_performance_files.summary`만 갱신한다.
@@ -63,6 +64,8 @@
   - 10년 원장 분석 summary 재생성 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
 - 웹 UI: `AsanAnnualPerformance`
   - 위치: `실적관리 > 연간실적`
+  - 파일 설정/`NAS 동기화`는 선택 파일을 대상으로 하고, 분석/테이블 조회는 `aggregate=all`로 전체 annual 현재 스냅샷을 읽는다.
+  - 통합 테이블은 `원본파일` 컬럼을 추가해 2015~2025 파일과 2026 이후 분할 파일의 행 출처를 구분한다.
   - 분석 하위 탭: `개요`, `10년 흐름`, `연도×월`, `직계약/차량`, `주차·요일`, `검증·근거`
   - 분석 축: 연간 성과 리포트, 손익 구조, 성과 경보, 연도별·월별 흐름, 연도×월 히트맵, 주차/요일 흐름, 검증/근거 설명
   - 회계 분석 축: 매출(`청구`), 매입(`하불`), 손익, 손익률, 매입률, 고객/작업지/운송사/노선/구분별 공헌도와 상위 집중도
@@ -79,6 +82,7 @@
 ## 3. 데이터 처리 원칙
 - 엑셀에서 행이 수정되면 기존 행은 `superseded_by_excel`로 종료하고 새 행을 추가한다.
 - 엑셀에서 행이 사라져도 기존 행은 삭제하지 않는다. 기본 직접 주입은 파일 변경 시 새 스냅샷을 current로 올리고 직전 current 스냅샷을 종료한다.
+- 연간 파일을 새 경로로 추가해도 기존 연간 파일 DB는 유지한다. 같은 파일/시트는 새 current snapshot으로 교체되고, 다른 파일 경로는 별도 current snapshot으로 누적되어 화면에서 합산된다.
 - 행별 변경/삭제 상태가 꼭 필요하면 `--diff-current`로 기존 hash 비교 모드를 사용한다.
 - 직접 주입 스크립트는 기존 원장을 물리 삭제하지 않고 `is_current`만 전환한다.
 - 엑셀 제목만 바뀐 경우 웹 컬럼 레이아웃은 같은 인덱스 기준으로 최대한 복구한다.
@@ -115,4 +119,4 @@
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
 - 연간실적 `year_value/month_value` 과거 오집계 행은 화면 summary에는 영향 없지만, 향후 DB 직접 분석용으로 별도 저부하 backfill SQL 검토.
 - 운영 NAS에서 2026년 월별 마감자료 실제 경로를 확인하고 월간실적 `NAS 동기화` 최초 적재.
-- 연간실적과 월간실적 합산 API, 월간 마감 후 연간 이관 워크플로우 설계. 이월 행은 연간 이관 대상에서 제외하는 정책 검토.
+- 연간실적과 월간실적 합산 API, 월간 마감 후 연간 이관 워크플로우 설계. 2026 이후 연간 분할 파일과 월간 누적 원장의 중복 산입 방지 기준 및 이월 행 제외 정책 검토.

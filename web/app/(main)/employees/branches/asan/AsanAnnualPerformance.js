@@ -650,6 +650,7 @@ export default function AsanAnnualPerformance() {
             const params = new URLSearchParams({
                 path: normalizePerformancePath(options.path || selectedPath),
                 sheet_name: options.sheetName || sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
+                aggregate: 'all',
                 page: String(page),
                 page_size: String(PAGE_SIZE),
                 source: 'supabase',
@@ -1021,6 +1022,7 @@ export default function AsanAnnualPerformance() {
                                 <span>기간 {getPeriodRange(scopedMonthly)}</span>
                                 <span>분석 {analysisRows.toLocaleString('ko-KR')}행</span>
                                 <span>월별 {summary.monthlyBasis || '마감월'} 기준</span>
+                                <span>파일 {safeNumber(summary.annualFileCount || 1).toLocaleString('ko-KR')}개 통합</span>
                                 <span>현재 스냅샷 {summary.currentSnapshotId ? '고정' : '미확인'}</span>
                                 <span>{summary.importMode || 'supabase'}</span>
                             </div>

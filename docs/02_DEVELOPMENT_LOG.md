@@ -9,6 +9,8 @@
 - `node --check web\lib\asan-branch-db.js`: 통과
 - `node --check "web\app\(main)\employees\branches\asan\AsanAnnualPerformance.js"`: 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
 ### 변경 파일
 - `web/lib/asan-branch-db.js`
 - `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`

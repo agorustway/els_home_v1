@@ -8,6 +8,9 @@ import {
 const DEFAULT_ASAN_SHIPPING_PATH = '/아산지점/2026_자체보관리스트.xlsx';
 const DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
 const DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET = '합계';
+const ANNUAL_AGGREGATE_PATH = '/아산지점/B_총무/C_마감/연간실적-통합';
+const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
+const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 
 let adminClient;
@@ -326,7 +329,543 @@ function emptyPerformanceData({ path, sheetName, page, pageSize }) {
     };
 }
 
-export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
+function shouldAggregateAnnualPerformance(searchParams) {
+    const aggregate = String(searchParams.get('aggregate') || '').trim().toLowerCase();
+    const path = String(searchParams.get('path') || '').trim().toLowerCase();
+    return aggregate === 'all' || aggregate === 'current' || aggregate === 'merged' || path === '__all__';
+}
+
+function numberValue(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function roundMetric(value) {
+    return Math.round(numberValue(value) * 100) / 100;
+}
+
+function lastPathName(value) {
+    return String(value || '').split('/').filter(Boolean).pop() || String(value || '');
+}
+
+function summaryOf(meta = {}) {
+    return meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
+}
+
+function mergeDetectedColumns(metas) {
+    const detected = {
+        numericColumns: new Set(),
+        revenueColumns: new Set(),
+        purchaseColumns: new Set(),
+        profitColumns: new Set(),
+        groupColumns: new Set(),
+    };
+
+    for (const meta of metas) {
+        const summary = summaryOf(meta);
+        for (const key of Object.keys(detected)) {
+            for (const value of summary.detected?.[key] || []) detected[key].add(value);
+        }
+    }
+
+    return Object.fromEntries(Object.entries(detected).map(([key, set]) => [key, Array.from(set)]));
+}
+
+function addMetricFields(bucket, item = {}) {
+    bucket.revenue += numberValue(item.revenue);
+    bucket.purchase += numberValue(item.purchase);
+    bucket.profit += numberValue(item.profit);
+    bucket.rowCount += numberValue(item.rowCount);
+}
+
+function addMetricToMap(map, key, seed = {}, item = {}) {
+    if (!key) return null;
+    if (!map.has(key)) {
+        map.set(key, {
+            ...seed,
+            revenue: 0,
+            purchase: 0,
+            profit: 0,
+            rowCount: 0,
+        });
+    }
+    const bucket = map.get(key);
+    addMetricFields(bucket, item);
+    return bucket;
+}
+
+function finalizeMetricItem(item, totalRevenue = 0) {
+    const revenue = roundMetric(item.revenue);
+    const purchase = roundMetric(item.purchase);
+    const profit = roundMetric(item.profit);
+    return {
+        ...item,
+        revenue,
+        purchase,
+        profit,
+        rowCount: numberValue(item.rowCount),
+        profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+        revenueShare: totalRevenue ? Math.round((revenue / totalRevenue) * 10000) / 100 : 0,
+    };
+}
+
+function mergeMetricSeries(metas, field, keyOf, seedOf, sorter, limit = 1000) {
+    const map = new Map();
+    for (const meta of metas) {
+        for (const item of summaryOf(meta)[field] || []) {
+            const key = keyOf(item);
+            addMetricToMap(map, key, seedOf(item, key), item);
+        }
+    }
+    return Array.from(map.values())
+        .map(item => finalizeMetricItem(item))
+        .sort(sorter)
+        .slice(0, limit);
+}
+
+function mergeNamedMetricList(lists, totalRevenue = 0, limit = 30) {
+    const map = new Map();
+    for (const items of lists) {
+        for (const item of items || []) {
+            const key = String(item.name || item.label || item.vehicleNo || '').trim();
+            if (!key) continue;
+            const bucket = addMetricToMap(map, key, {
+                ...item,
+                name: item.name || item.label || item.vehicleNo || key,
+                label: item.label || item.name || item.vehicleNo || key,
+                monthly: [],
+                yearly: [],
+                weekday: [],
+            }, item);
+            bucket.monthly = mergeInlineSeries(bucket.monthly, item.monthly, 'period');
+            bucket.yearly = mergeInlineSeries(bucket.yearly, item.yearly, 'year');
+            bucket.weekday = mergeInlineSeries(bucket.weekday, item.weekday, 'day');
+        }
+    }
+    return Array.from(map.values())
+        .map(item => finalizeMetricItem(item, totalRevenue))
+        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)))
+        .slice(0, limit);
+}
+
+function mergeInlineSeries(left = [], right = [], keyField = 'period') {
+    const map = new Map();
+    for (const item of [...(left || []), ...(right || [])]) {
+        const key = String(item?.[keyField] ?? item?.period ?? item?.year ?? item?.label ?? '').trim();
+        if (!key) continue;
+        addMetricToMap(map, key, { ...item }, item);
+    }
+    return Array.from(map.values())
+        .map(item => finalizeMetricItem(item))
+        .sort((a, b) => String(a[keyField] ?? a.period ?? a.year ?? a.label).localeCompare(String(b[keyField] ?? b.period ?? b.year ?? b.label), 'ko-KR'));
+}
+
+function mergeBreakdowns(metas, totalRevenue) {
+    const sections = new Map();
+    for (const meta of metas) {
+        for (const section of summaryOf(meta).breakdowns || []) {
+            const column = String(section.column || '').trim();
+            if (!column) continue;
+            if (!sections.has(column)) {
+                sections.set(column, {
+                    column,
+                    items: [],
+                });
+            }
+            const bucket = sections.get(column);
+            bucket.items.push(...(section.items || []));
+        }
+    }
+
+    return Array.from(sections.values()).map(section => ({
+        column: section.column,
+        items: mergeNamedMetricList([section.items], totalRevenue, 60),
+    }));
+}
+
+function mergeStrategicSegments(metas, totalRevenue) {
+    const segments = new Map();
+    for (const meta of metas) {
+        for (const segment of summaryOf(meta).strategicSegments || []) {
+            const key = String(segment.key || segment.label || '').trim();
+            if (!key) continue;
+            if (!segments.has(key)) {
+                segments.set(key, {
+                    ...segment,
+                    revenue: 0,
+                    purchase: 0,
+                    profit: 0,
+                    rowCount: 0,
+                    monthly: [],
+                    yearly: [],
+                    weekday: [],
+                    topWorkSites: [],
+                    topClients: [],
+                    topRoutes: [],
+                    topCategories: [],
+                    topPickups: [],
+                });
+            }
+            const bucket = segments.get(key);
+            addMetricFields(bucket, segment);
+            bucket.monthly = mergeInlineSeries(bucket.monthly, segment.monthly, 'period');
+            bucket.yearly = mergeInlineSeries(bucket.yearly, segment.yearly, 'year');
+            bucket.weekday = mergeInlineSeries(bucket.weekday, segment.weekday, 'day');
+            bucket.topWorkSites = mergeNamedMetricList([bucket.topWorkSites, segment.topWorkSites], totalRevenue, 12);
+            bucket.topClients = mergeNamedMetricList([bucket.topClients, segment.topClients], totalRevenue, 12);
+            bucket.topRoutes = mergeNamedMetricList([bucket.topRoutes, segment.topRoutes], totalRevenue, 12);
+            bucket.topCategories = mergeNamedMetricList([bucket.topCategories, segment.topCategories], totalRevenue, 12);
+            bucket.topPickups = mergeNamedMetricList([bucket.topPickups, segment.topPickups], totalRevenue, 12);
+        }
+    }
+    const order = ['own_direct', 'els_solution', 'outsourced', 'unclassified'];
+    return Array.from(segments.values())
+        .map(item => finalizeMetricItem(item, totalRevenue))
+        .sort((a, b) => {
+            const ai = order.indexOf(a.key);
+            const bi = order.indexOf(b.key);
+            if (ai >= 0 || bi >= 0) return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+            return Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue));
+        });
+}
+
+function mergeVehiclePerformance(metas, totalRevenue) {
+    const vehicles = new Map();
+    for (const meta of metas) {
+        for (const vehicle of summaryOf(meta).vehiclePerformance || []) {
+            const key = String(vehicle.vehicleNo || vehicle.name || vehicle.label || '').trim();
+            if (!key) continue;
+            if (!vehicles.has(key)) {
+                vehicles.set(key, {
+                    ...vehicle,
+                    name: vehicle.name || key,
+                    vehicleNo: vehicle.vehicleNo || key,
+                    driverSet: new Set(),
+                    revenue: 0,
+                    purchase: 0,
+                    profit: 0,
+                    rowCount: 0,
+                    monthly: [],
+                    yearly: [],
+                    weekday: [],
+                });
+            }
+            const bucket = vehicles.get(key);
+            addMetricFields(bucket, vehicle);
+            bucket.monthly = mergeInlineSeries(bucket.monthly, vehicle.monthly, 'period');
+            bucket.yearly = mergeInlineSeries(bucket.yearly, vehicle.yearly, 'year');
+            bucket.weekday = mergeInlineSeries(bucket.weekday, vehicle.weekday, 'day');
+            String(vehicle.drivers || '').split(',').map(item => item.trim()).filter(Boolean).forEach(driver => bucket.driverSet.add(driver));
+        }
+    }
+    return Array.from(vehicles.values())
+        .map((item) => {
+            const finalized = finalizeMetricItem(item, totalRevenue);
+            finalized.drivers = Array.from(item.driverSet || []).slice(0, 5).join(', ');
+            delete finalized.driverSet;
+            return finalized;
+        })
+        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)))
+        .slice(0, 300);
+}
+
+function mergeQualityObjects(metas, field) {
+    const result = {};
+    for (const meta of metas) {
+        const value = summaryOf(meta)[field] || summaryOf(meta).ledgerValidation?.[field] || {};
+        for (const [key, item] of Object.entries(value)) {
+            if (typeof item === 'number') result[key] = numberValue(result[key]) + item;
+            else if (key.toLowerCase().startsWith('min')) result[key] = !result[key] || String(item) < String(result[key]) ? item : result[key];
+            else if (key.toLowerCase().startsWith('max')) result[key] = !result[key] || String(item) > String(result[key]) ? item : result[key];
+            else if (result[key] == null) result[key] = item;
+        }
+    }
+    return result;
+}
+
+function mergeLedgerValidation(metas, totalRows) {
+    const result = mergeQualityObjects(metas, 'ledgerValidation');
+    result.rowCountActual = totalRows;
+    result.rowCountMeta = metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count), 0);
+    result.amountQuality = mergeQualityObjects(metas, 'amountQuality');
+    result.dateQuality = mergeQualityObjects(metas, 'dateQuality');
+    return result;
+}
+
+function buildAnnualHeaders(metas) {
+    const seen = new Set([ANNUAL_SOURCE_FILE_HEADER]);
+    const headers = [ANNUAL_SOURCE_FILE_HEADER];
+    for (const meta of metas) {
+        for (const header of meta.headers || []) {
+            if (seen.has(header)) continue;
+            seen.add(header);
+            headers.push(header);
+        }
+    }
+    return headers;
+}
+
+function annualRowToValues(row, headers) {
+    const rowData = row.row_data && typeof row.row_data === 'object' ? row.row_data : {};
+    const fallbackValues = Array.isArray(row.row_values) ? row.row_values : [];
+    const fallbackHeaders = Array.isArray(row.source_headers) ? row.source_headers : [];
+    const fallbackMap = new Map(fallbackHeaders.map((header, idx) => [header, fallbackValues[idx] ?? '']));
+    const fileName = lastPathName(row.file_path);
+
+    return headers.map((header, idx) => {
+        if (header === ANNUAL_SOURCE_FILE_HEADER) return fileName;
+        if (Object.prototype.hasOwnProperty.call(rowData, header)) return rowData[header] ?? '';
+        if (fallbackMap.has(header)) return fallbackMap.get(header) ?? '';
+        return fallbackValues[idx - 1] ?? '';
+    });
+}
+
+async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize - 1;
+    const sortIdx = headers.indexOf(sortKey);
+    const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
+    const baseOrdered = query
+        .order('year_value', { ascending: true, nullsFirst: false })
+        .order('month_value', { ascending: true, nullsFirst: false })
+        .order('file_path', { ascending: true })
+        .order('row_index', { ascending: true });
+    const attachHeaders = row => ({
+        ...row,
+        source_headers: metaBySnapshot.get(row.snapshot_id)?.headers || metaBySnapshot.get(`${row.file_path}::${row.sheet_name}`)?.headers || [],
+    });
+
+    if (sortIdx >= 0) {
+        const { data, error } = await baseOrdered.range(0, maxSortRows);
+        if (error) throw new Error(error.message);
+        const sortable = [];
+        const blanks = [];
+        for (const item of data || []) {
+            const mapped = annualRowToValues(attachHeaders(item), headers);
+            const value = sortValue(mapped[sortIdx]);
+            if (!value) blanks.push({ ...item, mapped_values: mapped });
+            else sortable.push([value, { ...item, mapped_values: mapped }]);
+        }
+        sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
+        const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
+        return {
+            rows: ordered.slice(start, end + 1),
+            total: Math.max(numberValue(fallbackTotal), ordered.length),
+            sortKey,
+            sortDir: sortDesc ? 'desc' : 'asc',
+        };
+    }
+
+    const { data, error } = await baseOrdered.range(start, end + 1);
+    if (error) throw new Error(error.message);
+    const rows = data || [];
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const loadedThrough = start + pageRows.length;
+    return {
+        rows: pageRows.map(item => {
+            const row = attachHeaders(item);
+            return { ...row, mapped_values: annualRowToValues(row, headers) };
+        }),
+        total: Math.max(numberValue(fallbackTotal), loadedThrough + (hasMore ? 1 : 0)),
+        totalEstimated: hasMore && !numberValue(fallbackTotal),
+        sortKey: '',
+        sortDir: sortDesc ? 'desc' : 'asc',
+    };
+}
+
+function mergeAnnualSummaries(metas) {
+    const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
+    const allMetasHaveSnapshot = snapshotIds.length === metas.length;
+    const totalRows = metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
+    const analysisRows = metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).analysisRows || meta.current_row_count || meta.row_count), 0);
+    const totalRevenue = roundMetric(metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).totalRevenue), 0));
+    const totalPurchase = roundMetric(metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).totalPurchase), 0));
+    const totalProfit = roundMetric(metas.reduce((sum, meta) => sum + numberValue(summaryOf(meta).totalProfit), 0));
+    const monthly = mergeMetricSeries(
+        metas,
+        'monthly',
+        item => String(item.period || ''),
+        item => ({ period: item.period, year: item.year, month: item.month }),
+        (a, b) => String(a.period).localeCompare(String(b.period)),
+        400,
+    );
+    const yearlyMap = new Map();
+    for (const item of monthly) {
+        const year = String(item.year || String(item.period || '').slice(0, 4));
+        if (!year) continue;
+        addMetricToMap(yearlyMap, year, { year: Number(year) || year }, item);
+    }
+    if (!yearlyMap.size) {
+        for (const meta of metas) {
+            for (const item of summaryOf(meta).yearly || []) {
+                const year = String(item.year || '');
+                addMetricToMap(yearlyMap, year, { year: item.year }, item);
+            }
+        }
+    }
+    const yearly = Array.from(yearlyMap.values())
+        .map(item => finalizeMetricItem(item))
+        .sort((a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR'));
+
+    const daily = mergeMetricSeries(metas, 'daily', item => String(item.date || ''), item => ({ date: item.date, period: item.period }), (a, b) => String(a.date).localeCompare(String(b.date)), 800);
+    const weekly = mergeMetricSeries(metas, 'weekly', item => String(item.weekStart || ''), item => ({ weekStart: item.weekStart, weekEnd: item.weekEnd }), (a, b) => String(a.weekStart).localeCompare(String(b.weekStart)), 800);
+    const weekday = mergeMetricSeries(metas, 'weekday', item => String(item.day ?? item.label ?? ''), item => ({ day: item.day, label: item.label }), (a, b) => numberValue(a.day) - numberValue(b.day), 7);
+    const sourceFiles = metas.map(meta => {
+        const summary = summaryOf(meta);
+        const periods = Array.isArray(summary.monthly) ? summary.monthly.map(item => item.period).filter(Boolean).sort() : [];
+        return {
+            filePath: meta.file_path,
+            fileName: lastPathName(meta.file_path),
+            sheetName: meta.sheet_name,
+            rows: numberValue(meta.current_row_count || meta.row_count || summary.totalRows),
+            snapshotId: summary.currentSnapshotId || summary.snapshotId || '',
+            periodStart: summary.dateQuality?.minPeriod || periods[0] || '',
+            periodEnd: summary.dateQuality?.maxPeriod || periods[periods.length - 1] || '',
+            fileModifiedAt: meta.file_modified_at || '',
+            syncedAt: meta.synced_at || '',
+        };
+    });
+
+    const summary = {
+        totalRows,
+        analysisRows,
+        totalRevenue,
+        totalPurchase,
+        totalProfit,
+        profitRate: totalRevenue ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+        yearly,
+        monthly,
+        daily,
+        weekly,
+        weekday,
+        monthlyBasis: metas.map(meta => summaryOf(meta).monthlyBasis).find(Boolean) || '마감월',
+        topGroups: mergeNamedMetricList(metas.map(meta => summaryOf(meta).topGroups || []), totalRevenue, 30),
+        breakdowns: mergeBreakdowns(metas, totalRevenue),
+        strategicSegments: mergeStrategicSegments(metas, totalRevenue),
+        vehiclePerformance: mergeVehiclePerformance(metas, totalRevenue),
+        detected: mergeDetectedColumns(metas),
+        amountQuality: mergeQualityObjects(metas, 'amountQuality'),
+        dateQuality: mergeQualityObjects(metas, 'dateQuality'),
+        vehicleDataQuality: mergeQualityObjects(metas, 'vehicleDataQuality'),
+        ledgerValidation: mergeLedgerValidation(metas, totalRows),
+        sourceFiles,
+        annualFileCount: metas.length,
+        currentSnapshotId: snapshotIds[0] || '',
+        currentSnapshotIds: snapshotIds,
+        currentSelectionMode: 'annual.allCurrentSnapshots',
+        importMode: metas.length > 1 ? 'annual-multi-current' : (summaryOf(metas[0]).importMode || 'supabase'),
+    };
+    summary.periodStart = monthly[0]?.period || sourceFiles.map(item => item.periodStart).filter(Boolean).sort()[0] || '';
+    summary.periodEnd = monthly[monthly.length - 1]?.period || sourceFiles.map(item => item.periodEnd).filter(Boolean).sort().at(-1) || '';
+    return summary;
+}
+
+async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
+    const supabase = getSupabaseAdmin();
+    const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
+    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
+    const search = (searchParams.get('search') || '').trim();
+    const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
+    const sortKey = (searchParams.get('sort_key') || '').trim();
+    const sortDir = searchParams.get('sort_dir') || 'asc';
+
+    const { data: allMetas, error: metaError } = await supabase
+        .from('branch_performance_files')
+        .select('*')
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'annual');
+    if (metaError) throw new Error(metaError.message);
+
+    const metas = (allMetas || [])
+        .filter(meta => {
+            const summary = summaryOf(meta);
+            return numberValue(meta.current_row_count || meta.row_count || summary.totalRows) > 0
+                && (summary.currentSnapshotId || summary.snapshotId || meta.current_row_count || meta.row_count);
+        })
+        .sort((a, b) => {
+            const sa = summaryOf(a);
+            const sb = summaryOf(b);
+            const aPeriod = sa.periodStart || sa.dateQuality?.minPeriod || sa.monthly?.[0]?.period || a.file_modified_at || '';
+            const bPeriod = sb.periodStart || sb.dateQuality?.minPeriod || sb.monthly?.[0]?.period || b.file_modified_at || '';
+            return String(aPeriod).localeCompare(String(bPeriod), 'ko-KR')
+                || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR')
+                || String(a.sheet_name).localeCompare(String(b.sheet_name), 'ko-KR');
+        });
+    const headers = buildAnnualHeaders(metas);
+    const summary = mergeAnnualSummaries(metas);
+
+    if (!metas.length) {
+        return {
+            ...emptyPerformanceData({
+                path: ANNUAL_AGGREGATE_PATH,
+                sheetName: ANNUAL_AGGREGATE_SHEET,
+                page,
+                pageSize,
+            }),
+            headers,
+            summary,
+            source: 'supabase-empty',
+        };
+    }
+
+    const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
+    const metaBySnapshot = new Map();
+    for (const meta of metas) {
+        const snapshotId = summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId;
+        if (snapshotId) metaBySnapshot.set(snapshotId, meta);
+        metaBySnapshot.set(`${meta.file_path}::${meta.sheet_name}`, meta);
+    }
+    const fallbackTotal = search ? 0 : metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
+    let query = supabase
+        .from('branch_performance_rows')
+        .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'annual');
+    if (allMetasHaveSnapshot) {
+        query = query.in('snapshot_id', snapshotIds);
+    } else {
+        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+    }
+    query = applySearch(query, search, searchMode);
+
+    const paged = await getAnnualPagedRows({
+        query,
+        headers,
+        metaBySnapshot,
+        page,
+        pageSize,
+        sortKey,
+        sortDir,
+        maxSortRows: 19999,
+        fallbackTotal,
+    });
+
+    return {
+        headers,
+        data: paged.rows.map(row => row.mapped_values || annualRowToValues(row, headers)),
+        summary,
+        file_path: ANNUAL_AGGREGATE_PATH,
+        sheet_name: ANNUAL_AGGREGATE_SHEET,
+        header_row: null,
+        file_modified_at: metas.reduce((latest, meta) => (
+            !latest || new Date(meta.file_modified_at || 0) > new Date(latest) ? meta.file_modified_at : latest
+        ), ''),
+        synced_at: metas.reduce((latest, meta) => (
+            !latest || new Date(meta.synced_at || 0) > new Date(latest) ? meta.synced_at : latest
+        ), ''),
+        total: paged.total || fallbackTotal,
+        total_is_estimated: Boolean(paged.totalEstimated),
+        page,
+        page_size: pageSize,
+        sort_key: paged.sortKey,
+        sort_dir: paged.sortDir,
+        source: 'supabase',
+        read_path: 'next-direct',
+    };
+}
+
+async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
     const supabase = getSupabaseAdmin();
     const normalizedPath = normalizePerformancePath(searchParams.get('path'));
     const sheetName = searchParams.get('sheet_name') || DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET;
@@ -403,6 +942,13 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         source: 'supabase',
         read_path: 'next-direct',
     };
+}
+
+export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
+    if (shouldAggregateAnnualPerformance(searchParams)) {
+        return queryAsanAnnualPerformanceAggregateFromSupabase(searchParams);
+    }
+    return queryAsanAnnualPerformanceFileFromSupabase(searchParams);
 }
 
 function monthlyPeriodKey(year, month) {
