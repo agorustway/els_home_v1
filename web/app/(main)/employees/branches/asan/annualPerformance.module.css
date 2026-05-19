@@ -2096,6 +2096,9 @@
 .dailyTree {
     display: flex;
     flex-direction: column;
+    width: min(100%, 680px);
+    max-width: 680px;
+    overflow-x: auto;
     padding: 7px 8px 8px;
 }
 
@@ -2104,9 +2107,11 @@
     top: 0;
     z-index: 1;
     display: grid;
-    grid-template-columns: 116px repeat(3, minmax(100px, 1fr)) 58px;
+    grid-template-columns: 124px 118px 118px 118px 64px;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    min-width: 560px;
     min-height: 26px;
     border-bottom: 1px solid #cbd5e1;
     background: #f8fafc;
@@ -2138,9 +2143,11 @@
 .dailyMonthRow,
 .dailyRow {
     display: grid;
-    grid-template-columns: 116px repeat(3, minmax(100px, 1fr)) 58px;
+    grid-template-columns: 124px 118px 118px 118px 64px;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    min-width: 560px;
     min-height: 30px;
 }
 
@@ -2187,6 +2194,9 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 7px;
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
     padding: 8px;
     border-bottom: 1px solid #e2e8f0;
     background: #f8fafc;
@@ -2233,6 +2243,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
     padding: 8px 8px 0;
 }
 
@@ -2257,9 +2270,11 @@
 
 .dimensionSummary {
     display: grid;
-    grid-template-columns: 80px minmax(0, 1fr) auto;
+    grid-template-columns: 80px minmax(190px, 1fr) 180px;
     gap: 8px;
     align-items: center;
+    width: min(100% - 16px, 780px);
+    max-width: 780px;
     margin: 8px;
     padding: 7px 8px;
     border: 1px solid #ccfbf1;
@@ -2288,6 +2303,9 @@
 .dimensionRows {
     display: flex;
     flex-direction: column;
+    width: min(100%, 780px);
+    max-width: 780px;
+    box-sizing: border-box;
     padding: 0 8px 9px;
     overflow-x: auto;
 }
@@ -2295,7 +2313,7 @@
 .dimensionHead,
 .dimensionRow {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) 100px 100px 100px 58px 54px;
+    grid-template-columns: 190px 112px 112px 112px 64px 58px;
     align-items: center;
     gap: 7px;
     min-width: 680px;

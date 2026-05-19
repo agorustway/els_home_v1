@@ -1,3 +1,18 @@
+## [2026-05-19] 아산 월간실적 트리 폭/전체 제목 보정 (v5.14.33)
+### 핵심
+- 월별·일별 트리와 세분화 분석이 와이드 모니터 전체 폭을 사용해 제목과 값 사이가 너무 멀어지는 문제를 보정했습니다.
+- 월별·일별 트리는 680px, 세분화 표는 780px, 세분화 요약 카드 영역은 980px 안쪽으로 제한해 좌측 분석 블록처럼 읽히게 했습니다.
+- 전체 보고서 상태에서 내부 키 `all`이 제목에 노출될 수 있어, 화면 제목은 `매출보고서`로 고정했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월별·일별 트리 금액 헤더 추가 (v5.14.32)
 ### 핵심
 - 월별·일별 트리에서 금액 컬럼 위에 제목행이 없어 청구/하불/손익/건수 의미를 바로 알기 어려웠습니다.

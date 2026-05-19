@@ -141,6 +141,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /이월/);
   assert.match(component, /월별 보고서/);
   assert.match(component, /REPORT_ALL_KEY/);
+  assert.match(component, /if \(period === REPORT_ALL_KEY\) return '매출보고서'/);
+  assert.match(component, /selectedReportPeriod === REPORT_ALL_KEY \? '매출보고서'/);
   assert.match(component, /aggregateMonthlyReports/);
   assert.match(component, /월별·일별 트리/);
   assert.match(component, /dailyTreeHead/);
@@ -162,6 +164,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.tableArea\s*{[\s\S]*height: calc\(100vh - 212px\)/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*max-height: calc\(100vh - 292px\)/);
   assert.match(css, /\.dailyTreeHead/);
+  assert.match(css, /\.dailyTree\s*{[\s\S]*max-width: 680px/);
+  assert.match(css, /\.dimensionRows\s*{[\s\S]*max-width: 780px/);
   assert.match(css, /\.dailyMonthRow/);
   assert.match(css, /\.dimensionRows/);
 });

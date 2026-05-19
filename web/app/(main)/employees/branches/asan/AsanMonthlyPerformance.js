@@ -132,12 +132,14 @@ function slotsForApi(slots) {
 }
 
 function formatReportPeriod(period) {
+    if (period === REPORT_ALL_KEY) return '전체';
     const match = String(period || '').match(/^(\d{4})-(\d{1,2})$/);
     if (!match) return period || '월간';
     return `${match[1]}년 ${Number(match[2])}월`;
 }
 
 function formatReportTitle(period) {
+    if (period === REPORT_ALL_KEY) return '매출보고서';
     return `${formatReportPeriod(period)} 아산매출보고서`;
 }
 
@@ -469,7 +471,7 @@ export default function AsanMonthlyPerformance() {
     const carryoverPurchase = safeNumber(carryover.purchase);
     const carryoverProfit = safeNumber(carryover.profit);
     const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
-    const reportTitleText = selectedReport?.period === REPORT_ALL_KEY ? `${monthRange} 아산매출보고서` : formatReportTitle(selectedReport?.period || selectedReportPeriod);
+    const reportTitleText = selectedReportPeriod === REPORT_ALL_KEY ? '매출보고서' : formatReportTitle(selectedReport?.period || selectedReportPeriod);
     const reportColumnCount = reportGroups.length + 3;
     const diagramMax = Math.max(1, Math.abs(totalRevenue), Math.abs(totalPurchase), Math.abs(totalProfit), Math.abs(carryoverRevenue));
     const topDimensionItem = activeDimension?.items?.[0] || null;
