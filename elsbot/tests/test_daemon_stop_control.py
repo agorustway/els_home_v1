@@ -207,6 +207,44 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertTrue(pool.wait_for_init_slot(3, pool.generation))
         self.assertEqual(waited, [7.0])
 
+    def test_saved_credentials_prefers_environment_values(self):
+        with patch.dict(os.environ, {"ELS_USER_ID": "ENVUSER", "ELS_USER_PW": "ENVPW"}, clear=False):
+            with patch.object(self.daemon, "load_config", return_value={"user_id": "FILEUSER", "user_pw": "FILEPW"}):
+                creds = self.daemon._saved_credentials()
+
+        self.assertEqual(creds, {"user_id": "ENVUSER", "user_pw": "ENVPW", "source": "env"})
+
+    def test_saved_warmup_reports_clear_error_without_credentials(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(self.daemon, "load_config", return_value={}):
+                result = self.daemon._trigger_saved_warmup(source="test", wait_for_ready=False)
+
+        self.assertFalse(result["ok"])
+        self.assertIn("저장된 ETRANS 계정", result["error"])
+
+    def test_start_login_pool_can_prepare_first_worker_without_page_visit(self):
+        with patch.dict(os.environ, {"ELS_MAX_DRIVERS": "1"}):
+            pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
+
+        def fake_login_and_prepare(*args, **kwargs):
+            return (DummyDriver(32000), "ok")
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(self.daemon, "login_and_prepare", side_effect=fake_login_and_prepare):
+                result = self.daemon._start_login_pool(
+                    "ELSUSER",
+                    "ELSPW",
+                    wait_for_ready=True,
+                    wait_timeout=2,
+                    source="test",
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(pool.current_user["id"], "ELSUSER")
+        self.assertEqual(len(pool.drivers), 1)
+        pool.clear()
+
 
 if __name__ == "__main__":
     unittest.main()

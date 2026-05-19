@@ -151,6 +151,12 @@ def _daemon_login_once(user_id, user_pw, show_browser=False, timeout=380):
     r = urlopen(req, timeout=timeout)
     return json.loads(r.read().decode("utf-8"))
 
+def _daemon_warmup(wait=False, timeout=10):
+    body = json.dumps({"wait": bool(wait)}, ensure_ascii=False).encode("utf-8")
+    req = Request(DAEMON_URL + "/warmup", data=body, method="POST", headers={"Content-Type": "application/json"})
+    r = urlopen(req, timeout=timeout)
+    return json.loads(r.read().decode("utf-8"))
+
 def _daemon_available():
     try:
         r = urlopen(Request(DAEMON_URL + "/health", method="GET"), timeout=2)
@@ -225,6 +231,16 @@ def logs():
             return Response(r.read(), mimetype="application/json")
     except Exception: pass
     return jsonify({"ok": False, "log": []})
+
+@app.route("/api/els/warmup", methods=["GET", "POST"])
+def warmup():
+    data = request.get_json(silent=True) or {}
+    wait = bool(data.get("wait")) or str(request.args.get("wait") or "").lower() in ("1", "true", "yes")
+    try:
+        result = _daemon_warmup(wait=wait, timeout=380 if wait else 10)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route("/api/els/login", methods=["POST"])
 def login():
@@ -644,6 +660,12 @@ def container_tracking():
     
     # 봇 데몬에게 단일 조회 요청
     try:
+        health = _daemon_health(timeout=3)
+        if int(health.get("total_drivers") or 0) <= 0:
+            try:
+                _daemon_warmup(wait=False, timeout=5)
+            except Exception:
+                pass
         body = json.dumps({
             "containerNo": cntr_no,
             "requestPurpose": "single",

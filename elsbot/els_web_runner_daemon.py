@@ -16,6 +16,7 @@ from els_bot import (
     normalize_container_no, is_valid_container_no, make_status_row,
     parse_grid_text_to_rows, is_retryable_result_rows, is_no_data_text,
     compact_grid_text, is_container_query_screen_ready,
+    load_config,
 )
 import re
 import pandas as pd
@@ -364,6 +365,178 @@ pool = DriverPool()
 def is_query_screen_ready(driver, timeout=0.2):
     return is_container_query_screen_ready(driver, timeout=timeout)
 
+def _bool_env(name, default=False):
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+def _request_json():
+    try:
+        return request.get_json(silent=True) or {}
+    except AttributeError:
+        return getattr(request, "json", {}) or {}
+
+def _saved_credentials():
+    env_id = (os.environ.get("ELS_USER_ID") or os.environ.get("ETRANS_USER_ID") or "").strip()
+    env_pw = os.environ.get("ELS_USER_PW") or os.environ.get("ETRANS_USER_PW") or ""
+    if env_id and env_pw:
+        return {"user_id": env_id, "user_pw": env_pw, "source": "env"}
+    try:
+        config = load_config() or {}
+    except Exception as e:
+        pool.add_log(f"⚠️ [자동시작] 저장 계정 파일 읽기 실패: {e}")
+        return None
+    user_id = (config.get("user_id") or "").strip()
+    user_pw = config.get("user_pw") or ""
+    if user_id and user_pw:
+        return {"user_id": user_id, "user_pw": user_pw, "source": "els_config.json"}
+    return None
+
+def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_timeout=350, source="manual"):
+    u_id = (u_id or "").strip()
+    if not u_id or not u_pw:
+        return {
+            "ok": False,
+            "error": "ETRANS 저장 계정이 없어 bot을 자동 시작할 수 없습니다.",
+            "log": list(pool.log_buffer),
+        }
+
+    if pool.is_same_user(u_id, show_browser):
+        with pool.lock:
+            if len(pool.drivers) > 0:
+                return {
+                    "ok": True,
+                    "already_ready": True,
+                    "message": f"세션 유지 중 ({len(pool.drivers)}개 활성)",
+                    "log": list(pool.log_buffer),
+                }
+            if pool.is_logging_in:
+                return {
+                    "ok": True,
+                    "warming": True,
+                    "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.",
+                    "log": list(pool.log_buffer),
+                }
+
+    with pool.lock:
+        if pool.is_logging_in:
+            return {
+                "ok": True,
+                "warming": True,
+                "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.",
+                "log": list(pool.log_buffer),
+            }
+        pool.clear(mark_stopped=False)
+        pool.stop_requested.clear()
+        pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
+        pool.is_logging_in = True
+        pool.active_init_threads = pool.max_drivers
+        login_generation = pool.generation
+
+    pool.add_log(f"🚀 [bot-warmup] {source} 트리거로 '{u_id}' 계정 세션 준비 시작")
+
+    def _do_login(idx, generation=login_generation):
+        try:
+            success = False
+            for retry in range(1, 4):
+                try:
+                    with pool.lock:
+                        if pool.is_cancelled(generation):
+                            return
+                        if pool.consecutive_login_failures >= 5:
+                            pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
+                            return
+
+                    if idx > 0 and retry == 1:
+                        if not pool.wait_for_init_slot(idx, generation):
+                            return
+                    elif retry > 1:
+                        if not pool.wait_unless_cancelled(10, generation):
+                            return
+
+                    msg = f"브라우저 #{idx+1} 초기화 중... (시도 {retry}/3)"
+                    pool.add_log(msg)
+
+                    def _inner_log(m):
+                        pool.add_log(f"[B#{idx+1}] {m}")
+
+                    target_port = 32000 + idx
+                    pool.cleanup_lingering_chrome(target_port)
+                    if pool.is_cancelled(generation):
+                        return
+
+                    res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
+                    if res[0]:
+                        if pool.is_cancelled(generation):
+                            try: res[0].quit()
+                            except: pass
+                            return
+                        res[0].used_port = target_port
+                        with pool.lock:
+                            if pool.is_cancelled(generation):
+                                try: res[0].quit()
+                                except: pass
+                                return
+                            pool.consecutive_login_failures = 0
+                            pool.add_driver(res[0])
+                        pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
+                        success = True
+                        break
+                    else:
+                        pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {res[1]}")
+                except Exception as e:
+                    pool.add_log(f"🔥 브라우저 #{idx+1} 예외 발생 ({retry}/3): {e}")
+
+            if not success:
+                pool.add_log(f"❌ 브라우저 #{idx+1} 최종 실패. (3회 시도 모두 실패)")
+        finally:
+            with pool.lock:
+                if generation == pool.generation:
+                    pool.active_init_threads = max(0, pool.active_init_threads - 1)
+                    if pool.active_init_threads == 0:
+                        pool.is_logging_in = False
+
+    for i in range(pool.max_drivers):
+        threading.Thread(target=_do_login, args=(i,), daemon=True).start()
+
+    if not wait_for_ready:
+        return {
+            "ok": True,
+            "warming": True,
+            "message": "bot 세션 준비를 백그라운드에서 시작했습니다.",
+            "log": list(pool.log_buffer),
+        }
+
+    start_wait = time.time()
+    while time.time() - start_wait < wait_timeout:
+        if pool.is_cancelled(login_generation):
+            return {"ok": False, "error": "로그인 초기화가 중지되었습니다.", "log": list(pool.log_buffer)}
+        if pool.available_queue.qsize() > 0:
+            return {
+                "ok": True,
+                "message": "첫 번째 세션이 준비되었습니다. 조회를 시작합니다. (동생이 뒤에서 나머지 세션도 마저 띄우는 중!)",
+                "log": list(pool.log_buffer),
+            }
+        if pool.active_init_threads == 0:
+            break
+        time.sleep(1)
+
+    return {"ok": False, "error": "초기 세션 확보 실패 (시간 초과 또는 올인원 로그인 실패)", "log": list(pool.log_buffer)}
+
+def _trigger_saved_warmup(source="manual", wait_for_ready=False):
+    creds = _saved_credentials()
+    if not creds:
+        pool.add_log(f"⚠️ [bot-warmup] {source}: 저장 계정이 없어 자동 시작을 건너뜁니다.")
+        return {"ok": False, "error": "저장된 ETRANS 계정이 없습니다.", "log": list(pool.log_buffer)}
+    return _start_login_pool(
+        creds["user_id"],
+        creds["user_pw"],
+        show_browser=_bool_env("ELS_SHOW_BROWSER", False),
+        wait_for_ready=wait_for_ready,
+        source=f"{source}/{creds['source']}",
+    )
+
 @app.route('/health', methods=['GET'])
 def health():
     with pool.lock:
@@ -406,126 +579,17 @@ def health():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.json
+    data = _request_json()
     u_id = (data.get('userId') or "").strip()
     u_pw = data.get('userPw')
-    # NAS 도커용 정비: 환경변수 또는 기본값(False)에 따라 브라우저 표시 여부 결정
-    show_browser = os.environ.get("ELS_SHOW_BROWSER", "false").lower() == "true"
+    show_browser = _bool_env("ELS_SHOW_BROWSER", False)
+    return jsonify(_start_login_pool(u_id, u_pw, show_browser=show_browser, wait_for_ready=True, source="api-login"))
 
-    if pool.is_same_user(u_id, show_browser):
-        # [수정] 풀이 꽉 차지 않았더라도 1개 이상의 브라우저가 살아있으면 불필요한 전체 초기화를 방지
-        if len(pool.drivers) > 0:
-            return jsonify({
-                "ok": True,
-                "message": f"세션 유지 중 ({len(pool.drivers)}개 활성)",
-                "log": [f"[데몬] 이미 {u_id} 계정으로 세션이 존재하여 페이지 로드 시의 전체 초기화를 생략합니다."]
-            })
-        if pool.is_logging_in:
-            return jsonify({
-                "ok": True,
-                "message": "현재 로그인이 진행 중입니다. 잠시만 기다려주세요.",
-                "log": ["[데몬] 이전 로그인 요청이 처리 중입니다. 중복 실행을 방지합니다."]
-            }), 202 # 202 Accepted
-
-    with pool.lock:
-        pool.clear(mark_stopped=False)
-        pool.stop_requested.clear()
-        pool.current_user = {"id": u_id, "pw": u_pw, "show_browser": show_browser}
-        pool.is_logging_in = True
-        pool.active_init_threads = pool.max_drivers
-        login_generation = pool.generation
-
-    logs = []
-
-    def _do_login(idx, generation=login_generation):
-        try:
-            # [v4.4.60] 개별 브라우저별로 최대 3회 재시도 (다른 브라우저에 영향 없음)
-            success = False
-            for retry in range(1, 4):
-                try:
-                    with pool.lock:
-                        if pool.is_cancelled(generation):
-                            return
-                        if pool.consecutive_login_failures >= 5: # 누적 실패가 너무 많으면 중단 (보안)
-                            pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
-                            return
-
-                    # NAS Chrome 기동은 평균 CPU보다 순간 포트/프로필 경합이 중요하다.
-                    # 후행 워커는 선행 워커가 실제 준비된 뒤 순차 기동한다.
-                    if idx > 0 and retry == 1:
-                        if not pool.wait_for_init_slot(idx, generation):
-                            return
-                    elif retry > 1:
-                        if not pool.wait_unless_cancelled(10, generation):
-                            return # 재시도 간격 10초
-
-                    msg = f"브라우저 #{idx+1} 초기화 중... (시도 {retry}/3)"
-                    pool.add_log(msg)
-
-                    def _inner_log(m):
-                        pool.add_log(f"[B#{idx+1}] {m}")
-
-                    target_port = 32000 + idx
-
-                    # [추가] 브라우저 실행 전 찌꺼기 프로세스 청소
-                    pool.cleanup_lingering_chrome(target_port)
-                    if pool.is_cancelled(generation):
-                        return
-
-                    res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
-                    if res[0]:
-                        if pool.is_cancelled(generation):
-                            try: res[0].quit()
-                            except: pass
-                            return
-                        res[0].used_port = target_port
-                        with pool.lock:
-                            if pool.is_cancelled(generation):
-                                try: res[0].quit()
-                                except: pass
-                                return
-                            pool.consecutive_login_failures = 0
-                            pool.add_driver(res[0])
-                        pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
-                        success = True
-                        break # 성공시 루프 탈출
-                    else:
-                        pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {res[1]}")
-                except Exception as e:
-                    pool.add_log(f"🔥 브라우저 #{idx+1} 예외 발생 ({retry}/3): {e}")
-
-            if not success:
-                pool.add_log(f"❌ 브라우저 #{idx+1} 최종 실패. (3회 시도 모두 실패)")
-        finally:
-            with pool.lock:
-                if generation == pool.generation:
-                    pool.active_init_threads = max(0, pool.active_init_threads - 1)
-                    if pool.active_init_threads == 0:
-                        pool.is_logging_in = False
-
-    threads = []
-    for i in range(pool.max_drivers):
-        t = threading.Thread(target=_do_login, args=(i,), daemon=True)
-        t.start()
-        threads.append(t)
-
-    # [핵심] 첫 번째 드라이버가 준비될 때까지만 기다리고 즉시 응답 반환!
-    start_wait = time.time()
-    # 백엔드(400s)보다 약간 짧게 잡아서 데몬이 먼저 응답을 주게 함 (Race Condition 방지)
-    while time.time() - start_wait < 350:
-        if pool.is_cancelled(login_generation):
-            return jsonify({"ok": False, "error": "로그인 초기화가 중지되었습니다.", "log": list(pool.log_buffer)})
-        if pool.available_queue.qsize() > 0:
-             return jsonify({
-                 "ok": True,
-                 "message": "첫 번째 세션이 준비되었습니다. 조회를 시작합니다. (동생이 뒤에서 나머지 세션도 마저 띄우는 중!)",
-                 "log": list(pool.log_buffer)
-             })
-        if pool.active_init_threads == 0: # 모든 쓰레드가 종료됨 (전부 실패한 경우)
-            break
-        time.sleep(1)
-
-    return jsonify({"ok": False, "error": "초기 세션 확보 실패 (시간 초과 또는 올인원 로그인 실패)", "log": list(pool.log_buffer)})
+@app.route('/warmup', methods=['POST'])
+def warmup():
+    data = _request_json()
+    wait_for_ready = bool(data.get("wait"))
+    return jsonify(_trigger_saved_warmup(source="api-warmup", wait_for_ready=wait_for_ready))
 
 @app.route('/stop', methods=['POST'])
 def stop():
@@ -1179,6 +1243,20 @@ def daily_reset_scheduler():
         except Exception as e:
             pool.add_log(f"❌ [일일리셋] 스케줄러 오류: {e}")
 
+def startup_auto_login():
+    if not _bool_env("ELS_AUTO_LOGIN_ON_START", False):
+        return
+    try:
+        delay = max(0.0, float(os.environ.get("ELS_AUTO_LOGIN_DELAY_SEC", "8")))
+    except (TypeError, ValueError):
+        delay = 8.0
+    if delay > 0:
+        time.sleep(delay)
+    try:
+        _trigger_saved_warmup(source="container-start", wait_for_ready=False)
+    except Exception as e:
+        pool.add_log(f"❌ [bot-warmup] 컨테이너 시작 자동 로그인 실패: {e}")
+
 if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")
@@ -1190,8 +1268,11 @@ if __name__ == '__main__':
     keeper = threading.Thread(target=session_keeper, daemon=True)
     keeper.start()
 
-    # 일일 리셋 스케줄러 시작 (새벽 5시)
+    # 일일 리셋 스케줄러 시작 (새벽 3시)
     resetter = threading.Thread(target=daily_reset_scheduler, daemon=True)
     resetter.start()
+
+    starter = threading.Thread(target=startup_auto_login, daemon=True)
+    starter.start()
 
     app.run(host='0.0.0.0', port=31999, debug=False, threaded=True)

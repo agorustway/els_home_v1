@@ -1,3 +1,22 @@
+## [2026-05-20] 컨테이너 Bot 자동 워밍업과 수동 정지 버튼 (v5.14.75)
+### 핵심
+- `els-bot` 데몬에 저장 계정 기반 `/warmup` 흐름을 추가해, 도커 컨테이너 기동 직후 Selenium 풀을 백그라운드에서 준비하도록 했습니다.
+- Bot API에 `/api/els/warmup`을 열고, AI/외부 단건 컨테이너 조회(`/api/els/container/tracking`)가 들어왔는데 워커가 0개면 페이지 진입 없이 워밍업을 한 번 트리거하게 했습니다.
+- `docker-compose.yml`의 bot 환경에 `ELS_AUTO_LOGIN_ON_START=true`, `ELS_AUTO_LOGIN_DELAY_SEC=8`을 추가했습니다.
+- 컨테이너 이력조회 페이지 시스템 로그 버튼 영역에 `BOT 정지` 버튼을 추가했습니다. 누르면 현재 조회 abort, `/api/els/stop-daemon`, 로그인 상태/워커 표시 초기화, 대기 행 실패 사유 기록을 함께 수행합니다.
+### 검증
+- `node --test tests/containerHistoryBotControl.test.mjs tests/containerInput.test.mjs`: 6개 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_web_runner_daemon.py docker\els-backend\app_bot.py`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 13개 통과
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js" "tests/containerHistoryBotControl.test.mjs"`: 에러 없음, 기존 이미지/Hook 경고 5건 유지
+### 변경 파일
+- `elsbot/els_web_runner_daemon.py`
+- `docker/els-backend/app_bot.py`
+- `docker/docker-compose.yml`
+- `web/app/(main)/employees/container-history/page.js`
+- `elsbot/tests/test_daemon_stop_control.py`, `web/tests/containerHistoryBotControl.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산 실적관리 테이블 하단 슬라이드와 모바일 보정 (v5.14.74)
 ### 핵심
 - 종합실적/월간실적/연간실적 공용 CSS에서 테이블형 영역의 가로 overflow를 화면 안쪽 하단 슬라이더로 통일했습니다.

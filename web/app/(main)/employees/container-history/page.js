@@ -578,6 +578,32 @@ function ContainerHistoryInner() {
         } catch (err) { console.error(err); }
     };
 
+    const handleStopBot = useCallback(async (e) => {
+        if (e) e.stopPropagation();
+        if (!confirm('백그라운드 BOT 세션을 종료하시겠습니까? 진행 중인 조회가 있으면 중단됩니다.')) return;
+        if (searchAbortRef.current) {
+            searchAbortRef.current.abort();
+            searchAbortRef.current = null;
+        }
+        pendingSearchRef.current = null;
+        try {
+            await fetch(`${BACKEND_BASE_URL}/api/els/stop-daemon`, { method: "POST" });
+            setLoginSuccess(false);
+            setWorkers([]);
+            sessionStorage.removeItem('els_login_success');
+            setLogLines(prev => [...prev, '⏹ BOT 정지: 백그라운드 세션과 워커를 종료했습니다.'].slice(-100));
+            markPendingRows('BOT 정지로 조회 중단됨');
+        } catch (err) {
+            console.error(err);
+            setLogLines(prev => [...prev, `![오류] BOT 정지 실패: ${err.message}`].slice(-100));
+        } finally {
+            setLoading(false);
+            setLoginLoading(false);
+            stopTimer();
+            setTotalElapsed(elapsedSecondsRef.current);
+        }
+    }, [BACKEND_BASE_URL, markPendingRows, stopTimer]);
+
     const runSearch = () => {
         if (loading) {
             stopSearch('사용자 중지');
@@ -1249,6 +1275,7 @@ function ContainerHistoryInner() {
                                 {!isLogCollapsed && (
                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                         <button onClick={handleResetDaemon} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#fee2e2', borderColor: '#ef4444', color: '#991b1b' }}>데몬 리셋</button>
+                                        <button onClick={handleStopBot} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#fff1f2', borderColor: '#fb7185', color: '#be123c' }}>BOT 정지</button>
                                         <button onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' }}>활동 확인</button>
                                         <button onClick={(e) => { e.stopPropagation(); setLogLines([]); }} className={styles.buttonSecondary} style={{ padding: '6px 12px', fontSize: '0.75rem' }}>로그 비우기</button>
                                     </div>

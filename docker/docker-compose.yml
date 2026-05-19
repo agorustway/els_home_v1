@@ -29,6 +29,8 @@ services:
     environment:
       - PORT=2931
       - DAEMON_URL=http://127.0.0.1:31999
+      - ELS_AUTO_LOGIN_ON_START=true
+      - ELS_AUTO_LOGIN_DELAY_SEC=8
       - ELS_MAX_DRIVERS=2
       - ELS_BATCH_MAX_WORKERS=2
       - ELS_DRIVER_STAGGER_SEC=15
