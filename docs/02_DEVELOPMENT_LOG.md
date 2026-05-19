@@ -1,3 +1,17 @@
+## [2026-05-19] 아산 월간실적 트리/세분화 패널 폭 정리 (v5.14.36)
+### 핵심
+- 월별·일별 트리와 세분화 분석에서 내부 표만 좁아지고 외곽 패널은 브라우저 전체 폭으로 벌어져 튀어나온 것처럼 보이던 부분을 정리했습니다.
+- 트리 패널은 696px, 세분화 패널은 980px 안쪽으로 외곽선과 헤더까지 함께 묶었습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 분석 화면 안정화/인포그래픽 보강 (v5.14.35)
 ### 핵심
 - 월간실적 분석 첫 화면에서 원본 매출보고서 표가 크게 먼저 나오고, 표 미감지 시 빈 영역이 화면을 차지해 전체 구성이 어지러워지는 문제를 정리했습니다.

@@ -847,7 +847,7 @@ export default function AsanMonthlyPerformance() {
                         </div>
                     </section>
 
-                    <section className={styles.panel}>
+                    <section className={`${styles.panel} ${styles.dailyTreePanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>월별·일별 트리</h3>
                             <span>{daily.length.toLocaleString('ko-KR')}일 · 작업일자 기준</span>
@@ -891,7 +891,7 @@ export default function AsanMonthlyPerformance() {
                         )}
                     </section>
 
-                    <section className={styles.panel}>
+                    <section className={`${styles.panel} ${styles.dimensionPanel}`}>
                         <div className={styles.panelHeader}>
                             <h3>세분화 분석</h3>
                             <span>청구·하불·손익·건수 기준</span>

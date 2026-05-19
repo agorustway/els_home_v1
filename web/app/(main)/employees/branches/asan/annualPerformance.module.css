@@ -1945,6 +1945,20 @@
     overflow: hidden;
 }
 
+.dailyTreePanel {
+    width: min(100%, 696px);
+    max-width: 696px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.dimensionPanel {
+    width: min(100%, 980px);
+    max-width: 980px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
 .monthlyInfographicGrid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
