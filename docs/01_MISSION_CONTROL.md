@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.82 / APK v5.11.24)
+# ELS MISSION CONTROL (v5.14.83 / APK v5.11.24)
 
-> 최신 업데이트: Android 운행종료 후 앱이 강제 종료되던 흐름을 제거하고 앱 화면 유지로 복구했습니다.
+> 최신 업데이트: 선적관리 대량 컨테이너 자동조회가 900초 스트림 타임아웃 후 봇 전체 stop으로 이어지던 경로를 차단했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.82
+- **웹 버전**: v5.14.83
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.24
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -13,6 +13,7 @@
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
   - Bot 운영 워커는 2개 유지하며 도커 재기동/리셋 이후에도 저장 계정 기반 자동 복구 흐름을 유지한다.
   - 03:00 일일 리셋은 공통 bot warmup 경로를 사용해 메뉴 진입 타임아웃 등 일시 실패를 워커별 3회 재시도하고, 계정 잠금/비밀번호 오류는 즉시 재시도 중단한다.
+  - 선적관리 대량 자동조회는 기본 스트림 대기 시간을 3600초로 늘리고, 소비자 연결 종료만으로 `els-bot` 전체를 stop하지 않는다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 체크된 파일 중 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
   - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정해 상단 공백을 줄인다.
@@ -42,7 +43,6 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.63: 연간실적 선택범위 시간축 통합과 계약/차량 흐름 범위 연동
 - [x] v5.14.64: 월간실적 선택 단계별 누적 그래프와 중복 트리 제거
 - [x] v5.14.65: Android 기존 플로팅 위젯 최소화 표시 복구
 - [x] v5.14.66: Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리
@@ -61,8 +61,10 @@
 - [x] v5.14.80: ELS Bot 계정 잠금 팝업 감지와 자동 재시도 차단
 - [x] v5.14.81: 월간실적 모바일 분석 기준 공백 보정
 - [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
+- [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 
 ## RECENT CHANGES
+- **v5.14.83**: 선적관리 컨테이너 자동조회가 482건 규모에서 900초 read timeout을 만나 스트림이 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출하던 문제를 보정했다. Core 자동조회 스트림 timeout 기본값은 3600초로 늘리고, 명시 `stopOnDisconnect=true`가 아닌 연결 종료는 데몬 전체 stop으로 전파하지 않는다.
 - **v5.14.82**: 운행종료 성공 뒤 `exitAppForce()`를 예약 호출하던 흐름을 제거했다. 이제 운행종료는 TRIP_END 기록, 서버 complete, 오버레이 서비스 중지, JS GPS watcher 중지, activeTrip 제거, 운행 UI 초기화까지만 수행하고 앱 화면은 계속 유지한다. 회귀 테스트도 앱 태스크 제거 금지 조건으로 바꿨다. APK v5.11.24.
 - **v5.14.81**: 월간실적 모바일 480px 이하에서 `분석 기준/전체` 제목 박스가 column flex 안의 기존 `flex-basis: 220px`을 높이로 먹어 상단이 비어 보이던 문제를 수정했다. 모바일에서는 제목 박스가 내용 높이만 쓰고 전체 폭을 차지하도록 보정했다.
 - **v5.14.80**: ETrans 로그인 팝업의 `로그인을 5회 이상 실패하여 정지된 계정`/`임시비밀번호` 문구를 `LOGIN_ACCOUNT_LOCKED`로 분리했다. 저장 계정 워밍업은 이 인증 오류를 만나면 실패 횟수를 잠금 상태로 표시하고 추가 자동 로그인 시도를 중단한다.
@@ -74,14 +76,12 @@
 - **v5.14.74**: 종합/월간/연간 실적관리에서 테이블형 영역이 브라우저 폭을 넘을 때 화면 안쪽 하단 슬라이더로 이동하도록 공통 스크롤 스타일을 확장했다. 요약 추세, 세분화, 차량성과, 보고서 표, 월/일 흐름, 히트맵, 이월 청구처 표까지 같은 스크롤바 규칙을 적용했고, Galaxy S24급 폭에서는 카드·버튼·원장 테이블 높이를 더 촘촘하게 조정했다.
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
 - **v5.14.72**: 월간실적 보고서 표 전용파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview에서 `순매출/순매입/계산서/이월` 표를 복원한다. 파서 결과에는 `quality.primaryReady`를 붙여 완전 표만 월간 총액 기준으로 승격하고, 부분 표는 보조 표시로 남겨 원장 누적값을 덮어쓰지 않게 했다.
-- **v5.14.71**: 연간실적 원장 장기 흐름 그래프와 우리 직계약차량 흐름 그래프의 SVG 비율을 고정하고, 최고 매출·최고 손익·최저 손익·최근 포인트와 평균선 라벨을 추가했다. 개요 리스크 카드는 `고마진 항목 → 저마진 주의 → 손실 항목` 순서로 바꿨고, `주차·요일` 분석은 `요일` 분석으로 단순화해 요일별 매출·손익·건수 다이어그램과 집중/주의 요약만 표시한다.
 ## VERIFICATION
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_container_lookup_safety`: 13개 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --test web\tests\asanShippingFlow.test.mjs`: 35개 통과
 - `node --test web\tests\driverMapCamera.test.mjs`: 9개 통과
-- `node --check web\driver-src\modules\trip.js web\driver-src\modules\profile.js web\driver-src\modules\permissions.js`: 통과
-- `npm.cmd run lint -- driver-src/modules/trip.js driver-src/modules/profile.js driver-src/modules/permissions.js tests/driverMapCamera.test.mjs`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.24 (5165) 빌드/배포 복사/내부 버전 검증 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control`: 31개 통과
-- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
 - `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
 - `git diff --check`: 통과

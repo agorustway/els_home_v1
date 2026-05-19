@@ -1,3 +1,18 @@
+## [2026-05-20] 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리 (v5.14.83)
+### 핵심
+- 2026-05-20 08:30 KST 전후 선적관리 컨테이너 자동조회 482건이 진행되던 중 Core의 Bot 스트림 read timeout 900초가 먼저 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출해 워커 풀이 초기화되는 흐름을 확인했습니다.
+- 자동조회 요청의 read timeout을 `ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS` 환경변수로 분리하고 기본값을 3600초로 늘렸습니다.
+- Bot `/api/els/run`은 소비자 연결 종료만으로 데몬 전체를 stop하지 않도록 바꿨습니다. 명시적인 중지 버튼/`/api/els/stop-daemon` 요청은 기존처럼 즉시 워커를 종료합니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile docker\els-backend\app_bot.py docker\els-backend\app.py docker\els-backend\app_core.py`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_container_lookup_safety`: 13개 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --test web\tests\asanShippingFlow.test.mjs`: 35개 통과
+### 변경 파일
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `docker/els-backend/app_bot.py`
+- `elsbot/tests/test_container_lookup_safety.py`, `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] Android 운행종료 후 앱 화면 유지 복구 (v5.14.82 / APK v5.11.24)
 ### 핵심
 - 2026-05-20 아침 테스트에서 운행 진행은 정상이나 `운행종료` 직후 앱이 튕기듯 종료되고 재실행 시 Android 오류 팝업이 뜨는 증상을 확인했습니다.

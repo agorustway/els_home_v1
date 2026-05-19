@@ -58,6 +58,16 @@ global_progress = {"total": 0, "completed": 0, "is_running": False}
 global_last_activity_time = 0
 global_stop_requested = threading.Event()
 
+def _boolish(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+
+def _should_stop_daemon_on_disconnect(data):
+    return _boolish((data or {}).get("stopOnDisconnect"), default=False)
+
 def _status_row(cn, code, message):
     return [str(cn or "").strip().upper(), code, message] + [""] * 12
 
@@ -291,6 +301,7 @@ def run():
     uid = data.get("userId", "")
     pw = data.get("userPw", "")
     show_browser = data.get("showBrowser", False)
+    stop_daemon_on_disconnect = _should_stop_daemon_on_disconnect(data)
 
     global global_progress, global_last_activity_time
     global_stop_requested.clear()
@@ -639,11 +650,12 @@ def run():
                 yield "RESULT:" + json.dumps({"ok": True, "result": final_rows, "downloadToken": token, "fileName": file_name}, ensure_ascii=False) + "\n"
         except GeneratorExit:
             global_stop_requested.set()
-            try:
-                req = Request(DAEMON_URL + "/stop", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
-                urlopen(req, timeout=2)
-            except Exception:
-                pass
+            if stop_daemon_on_disconnect:
+                try:
+                    req = Request(DAEMON_URL + "/stop", data=b"{}", method="POST", headers={"Content-Type": "application/json"})
+                    urlopen(req, timeout=2)
+                except Exception:
+                    pass
             raise
         finally:
             # [v4.9.8] 핵심: 스트림 중단(스마트폰 창 내림 등)에도 반드시 잠금 해제

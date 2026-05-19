@@ -183,6 +183,18 @@ class TestContainerLookupSafety(unittest.TestCase):
         self.assertEqual(app_bot._configured_batch_workers("bad"), 3)
         self.assertEqual(app_bot._configured_batch_workers(3), 3)
 
+    def test_backend_disconnect_does_not_stop_daemon_by_default(self):
+        backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
+        sys.path.append(backend_dir)
+        spec = importlib.util.spec_from_file_location("app_bot_for_disconnect_test", os.path.join(backend_dir, "app_bot.py"))
+        app_bot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app_bot)
+
+        self.assertFalse(app_bot._should_stop_daemon_on_disconnect({}))
+        self.assertFalse(app_bot._should_stop_daemon_on_disconnect({"stopOnDisconnect": False}))
+        self.assertTrue(app_bot._should_stop_daemon_on_disconnect({"stopOnDisconnect": True}))
+        self.assertTrue(app_bot._should_stop_daemon_on_disconnect({"stopOnDisconnect": "true"}))
+
     def test_backend_retries_only_worker_or_uncertain_failures(self):
         backend_dir = os.path.join(ROOT_DIR, "docker", "els-backend")
         sys.path.append(backend_dir)

@@ -82,6 +82,7 @@ ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR = _env_int("ASAN_SHIPPING_CONTAINER_AUT
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT", 10, 1)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS", 10000, 1)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS", 3600, 300)
 ELS_BOT_API_URL = os.environ.get("ELS_BOT_API_URL", "http://127.0.0.1:2931").rstrip("/")
 
 dispatch_sync_gate = StableFileSyncGate(
@@ -1109,7 +1110,7 @@ def run_asan_shipping_container_auto_lookup():
                 f"{ELS_BOT_API_URL}/api/els/run",
                 json={"containers": containers, "reserveSingle": False},
                 stream=True,
-                timeout=(10, 900),
+                timeout=(10, ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS),
             )
             response.raise_for_status()
             response.encoding = "utf-8"
