@@ -402,6 +402,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.analysisScopeSelects\s*{[\s\S]*grid-template-columns: repeat\(3/);
   assert.match(css, /\.analysisScopeSelects\s*{[\s\S]*width: min\(100%, 720px\)/);
   assert.match(css, /\.analysisScopeSelects select:disabled\s*{[\s\S]*background: #f1f5f9/);
+  assert.match(css, /@media \(max-width: 480px\)[\s\S]*\.analysisScopeTitle\s*{[\s\S]*flex: 0 0 auto/);
+  assert.match(css, /@media \(max-width: 480px\)[\s\S]*\.analysisScopeTitle\s*{[\s\S]*width: 100%/);
   assert.match(css, /\.monthlyTrendPanel\s*{[\s\S]*order: 8/);
   assert.match(css, /\.panelHeaderTitleButton\s*{[\s\S]*cursor: pointer/);
   assert.match(css, /\.analysisScopeButtons button:disabled/);

@@ -1,3 +1,16 @@
+## [2026-05-20] 월간실적 모바일 분석 기준 공백 보정 (v5.14.81)
+### 핵심
+- 모바일 480px 이하에서 월간실적 상단 `분석 기준/전체` 제목 영역이 기존 `flex-basis: 220px`을 세로 높이처럼 가져가 과한 공백이 생길 수 있던 CSS를 보정했습니다.
+- 모바일에서는 분석 기준 제목 박스가 내용 높이만 쓰고 전체 폭을 차지하게 해 버튼과 선택 목록이 바로 이어지도록 했습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] ELS Bot 계정 잠금 감지와 자동 재시도 차단 (v5.14.80)
 ### 핵심
 - NAS `els-bot` 로그인 실패 스크린샷에서 ETrans가 `로그인을 5회 이상 실패하여 정지된 계정입니다. 비밀번호 찾기를 통해 본인인증 후 임시비밀번호를 발급 받으시기 바랍니다.` 팝업을 띄운 것을 확인했습니다.
