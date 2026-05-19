@@ -283,6 +283,7 @@ test('선적관리 컨테이너 자동조회는 DB 설정과 새벽 스케줄을
     assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0\)/);
     assert.match(source, /def maybe_run_asan_shipping_container_auto_lookup\(now=None\):/);
     assert.match(source, /maybe_run_asan_shipping_container_auto_lookup\(now\)/);
+    assert.match(source, /DB 설정 컬럼 미적용 상태라 자동조회 실행을 보류/);
     assert.match(source, /targets = \[cn for cn in containers if statuses\.get\(cn\) != "적하"\]/);
     assert.match(source, /failed_count >= ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT/);
     assert.match(source, /set_asan_shipping_container_auto_lookup_enabled\(False, reason=reason\)/);

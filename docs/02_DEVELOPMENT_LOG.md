@@ -25,6 +25,7 @@
 - 자동조회 중 `ERROR` 결과가 10건에 도달하거나 실행 자체가 실패하면 자동조회 설정을 OFF로 저장하고 봇 중지 요청을 보내 남은 조회를 멈추게 했습니다.
 - 운영 DB 적용용 SQL `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql`을 추가했습니다.
 - 운영 Supabase 읽기 확인 결과 신규 컬럼은 아직 적용 전입니다(`42703`). 적용 전까지 체크박스 저장과 자동 OFF 저장은 실패할 수 있어 `.tmp_issues/20260519_asan_shipping_auto_lookup_db_migration.md`에 남겼습니다.
+- 후속 안전장치로 NAS Core는 해당 DB 컬럼이 응답에 없거나 설정 조회가 실패하면 03:10 자동조회를 실행하지 않고 보류합니다.
 ### 검증
 - `node --test web/tests/asanShippingFlow.test.mjs`: 35개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/settings/route.js" "tests/asanShippingFlow.test.mjs"`: 통과

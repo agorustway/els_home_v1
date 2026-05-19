@@ -1097,10 +1097,13 @@ def _shipping_latest_lookup_statuses(normalized_path, containers):
 def _shipping_container_auto_lookup_enabled():
     try:
         settings = get_asan_dispatch_settings(force=True) or {}
+        if "shipping_container_auto_lookup_enabled" not in settings:
+            app.logger.warning("[컨테이너자동조회] DB 설정 컬럼 미적용 상태라 자동조회 실행을 보류")
+            return False
         return settings.get("shipping_container_auto_lookup_enabled", True) is not False
     except Exception as exc:
-        app.logger.warning(f"[컨테이너자동조회] 설정 조회 실패, 기본 사용으로 진행: {exc}")
-        return True
+        app.logger.warning(f"[컨테이너자동조회] 설정 조회 실패로 자동조회 실행 보류: {exc}")
+        return False
 
 def set_asan_shipping_container_auto_lookup_enabled(enabled, reason=""):
     if not supabase:
