@@ -324,6 +324,9 @@ export default function AsanShipping() {
     const [browserFiles, setBrowserFiles] = useState([]);
     const [browserLoading, setBrowserLoading] = useState(false);
     const [selectedPath, setSelectedPath] = useState('');
+    const [containerAutoLookupEnabled, setContainerAutoLookupEnabled] = useState(true);
+    const [containerAutoLookupSaving, setContainerAutoLookupSaving] = useState(false);
+    const [containerAutoLookupStatus, setContainerAutoLookupStatus] = useState('');
     const [containerLookupResults, setContainerLookupResults] = useState({});
     const [containerLookupRunning, setContainerLookupRunning] = useState(false);
     const [containerLookupStopping, setContainerLookupStopping] = useState(false);
@@ -341,6 +344,23 @@ export default function AsanShipping() {
     useEffect(() => {
         const saved = localStorage.getItem('asan_shipping_file') || '/아산지점/2026_자체보관리스트.xlsx';
         setSelectedPath(saved);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadShippingSettings = async () => {
+            try {
+                const res = await fetch('/api/branches/asan/settings');
+                const json = await res.json().catch(() => ({}));
+                if (!cancelled && res.ok && json.data) {
+                    setContainerAutoLookupEnabled(json.data.shipping_container_auto_lookup_enabled !== false);
+                }
+            } catch (err) {
+                console.warn('선적관리 설정 조회 실패:', err);
+            }
+        };
+        loadShippingSettings();
+        return () => { cancelled = true; };
     }, []);
 
     const applyShippingData = useCallback((payload, options = {}) => {
@@ -660,6 +680,31 @@ export default function AsanShipping() {
             localStorage.setItem('asan_shipping_file', file.path);
             setSelectedPath(file.path);
             setShowBrowser(false);
+        }
+    };
+
+    const handleContainerAutoLookupToggle = async (checked) => {
+        const prev = containerAutoLookupEnabled;
+        setContainerAutoLookupEnabled(checked);
+        setContainerAutoLookupSaving(true);
+        setContainerAutoLookupStatus('DB 저장 중...');
+        try {
+            const res = await fetch('/api/branches/asan/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shipping_container_auto_lookup_enabled: checked }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error || '컨테이너 자동조회 설정 저장 실패');
+            setContainerAutoLookupEnabled(json.data?.shipping_container_auto_lookup_enabled !== false);
+            setContainerAutoLookupStatus('DB 저장 완료');
+        } catch (err) {
+            console.warn('컨테이너 자동조회 설정 저장 실패:', err);
+            setContainerAutoLookupEnabled(prev);
+            setContainerAutoLookupStatus('DB 저장 실패');
+            alert(err.message || '컨테이너 자동조회 설정 저장에 실패했습니다.');
+        } finally {
+            setContainerAutoLookupSaving(false);
         }
     };
 
@@ -1878,6 +1923,26 @@ export default function AsanShipping() {
                                 <input value={selectedPath} readOnly className={styles.pathInput} />
                                 <button onClick={openBrowser} className={styles.browseBtn}>찾기</button>
                             </div>
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.checkboxRow}>
+                                <input
+                                    type="checkbox"
+                                    checked={containerAutoLookupEnabled}
+                                    disabled={containerAutoLookupSaving}
+                                    onChange={e => handleContainerAutoLookupToggle(e.target.checked)}
+                                />
+                                <span>컨테이너 자동조회</span>
+                            </label>
+                            <div className={styles.settingHelp}>
+                                컨테이너이력조회초기화 매일 03:00<br />
+                                컨테이너 자동조회 03:10<br />
+                                조건 모든 항목에서 &quot;적하&quot;외 컨테이너 조회<br />
+                                실패시 중단
+                            </div>
+                            {containerAutoLookupStatus && (
+                                <div className={styles.settingStatus}>{containerAutoLookupStatus}</div>
+                            )}
                         </div>
                         <div className={styles.modalFooter}>
                             <button onClick={() => setShowSettings(false)} className={styles.saveBtn}>닫기</button>

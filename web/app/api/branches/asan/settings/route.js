@@ -6,30 +6,56 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function normalizeSettings(data) {
+    if (!data) return null;
+    return {
+        ...data,
+        shipping_container_auto_lookup_enabled: data.shipping_container_auto_lookup_enabled !== false,
+    };
+}
+
 export async function GET() {
     const { data, error } = await supabase
         .from('branch_dispatch_settings')
         .select('*')
         .eq('branch_id', 'asan')
-        .single();
+        .maybeSingle();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: normalizeSettings(data) });
 }
 
 export async function PATCH(request) {
     const body = await request.json();
+    const { data: current, error: currentError } = await supabase
+        .from('branch_dispatch_settings')
+        .select('*')
+        .eq('branch_id', 'asan')
+        .maybeSingle();
+
+    if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 });
+
+    const payload = {
+        branch_id: 'asan',
+        glovis_path: Object.prototype.hasOwnProperty.call(body, 'glovis_path')
+            ? (body.glovis_path || '')
+            : (current?.glovis_path || ''),
+        mobis_path: Object.prototype.hasOwnProperty.call(body, 'mobis_path')
+            ? (body.mobis_path || '')
+            : (current?.mobis_path || ''),
+        updated_at: new Date().toISOString()
+    };
+
+    if (Object.prototype.hasOwnProperty.call(body, 'shipping_container_auto_lookup_enabled')) {
+        payload.shipping_container_auto_lookup_enabled = body.shipping_container_auto_lookup_enabled !== false;
+    }
+
     const { data, error } = await supabase
         .from('branch_dispatch_settings')
-        .upsert({
-            branch_id: 'asan',
-            glovis_path: body.glovis_path || '',
-            mobis_path: body.mobis_path || '',
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'branch_id' })
+        .upsert(payload, { onConflict: 'branch_id' })
         .select()
         .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: normalizeSettings(data) });
 }

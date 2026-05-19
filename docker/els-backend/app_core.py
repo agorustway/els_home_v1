@@ -15,6 +15,7 @@ import re
 import hashlib
 import tempfile
 import math
+import uuid
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, Response, send_file
@@ -77,6 +78,11 @@ ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
 ASAN_DISPATCH_SETTINGS_CACHE_SECONDS = _env_int("ASAN_DISPATCH_SETTINGS_CACHE_SECONDS", 300, 30)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR", 3, 0)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT", 10, 1)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS", 10000, 1)
+ELS_BOT_API_URL = os.environ.get("ELS_BOT_API_URL", "http://127.0.0.1:2931").rstrip("/")
 
 dispatch_sync_gate = StableFileSyncGate(
     quiet_seconds=ASAN_DISPATCH_SYNC_QUIET_SECONDS,
@@ -691,8 +697,10 @@ SHIPPING_ARCHIVE_RETENTION_DAYS = 365
 SHIPPING_LOOKUP_RETENTION_DAYS = 180
 shipping_cache = {}
 shipping_sync_lock = threading.Lock()
+shipping_container_auto_lookup_lock = threading.Lock()
 shipping_db_available = True
 shipping_history_cleanup_last_date = None
+shipping_container_auto_lookup_last_date = None
 
 def resolve_asan_shipping_file(rel_path=None):
     rel_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
@@ -884,6 +892,283 @@ def _shipping_fetch_rows_in_chunks(query_factory, start, end, chunk_size=1000):
         cursor = chunk_end + 1
 
     return rows, total
+
+def _shipping_normalize_container_no(value):
+    return re.sub(r"\s+", "", str(value or "")).upper()
+
+def _shipping_is_container_no_shape(value):
+    return bool(re.fullmatch(r"[A-Z]{4}\d{7}", _shipping_normalize_container_no(value)))
+
+def _shipping_is_actual_history_row(row):
+    if not isinstance(row, (list, tuple)) or len(row) < 4:
+        return False
+    if not re.fullmatch(r"\d+", str(row[1] or "").strip()):
+        return False
+    text = "|".join(str(cell or "") for cell in row[2:14])
+    return any(token in text for token in ("수입", "수출", "반입", "반출", "양하", "적하"))
+
+def _shipping_lookup_main_status(record):
+    main_row = record.get("main_row") if isinstance(record, dict) else None
+    if isinstance(main_row, list) and len(main_row) > 3:
+        return str(main_row[3] or "").strip()
+    return str((record or {}).get("main_status") or "").strip()
+
+def _shipping_latest_lookup_statuses(normalized_path, containers):
+    statuses = {}
+    if not supabase or not containers:
+        return statuses
+    ordered = [_shipping_normalize_container_no(cn) for cn in containers if _shipping_is_container_no_shape(cn)]
+    for i in range(0, len(ordered), 500):
+        chunk = ordered[i:i + 500]
+        try:
+            res = supabase.from_("branch_shipping_container_lookups") \
+                .select("container_no,main_status,main_row,looked_up_at") \
+                .eq("branch_id", "asan") \
+                .eq("file_path", normalized_path) \
+                .in_("container_no", chunk) \
+                .order("looked_up_at", desc=True) \
+                .execute()
+        except Exception as exc:
+            app.logger.warning(f"[컨테이너자동조회] 기존 이력 조회 실패: {exc}")
+            return statuses
+        for item in res.data or []:
+            cn = _shipping_normalize_container_no(item.get("container_no"))
+            if cn and cn not in statuses:
+                statuses[cn] = _shipping_lookup_main_status(item)
+    return statuses
+
+def _shipping_container_auto_lookup_enabled():
+    try:
+        settings = get_asan_dispatch_settings(force=True) or {}
+        return settings.get("shipping_container_auto_lookup_enabled", True) is not False
+    except Exception as exc:
+        app.logger.warning(f"[컨테이너자동조회] 설정 조회 실패, 기본 사용으로 진행: {exc}")
+        return True
+
+def set_asan_shipping_container_auto_lookup_enabled(enabled, reason=""):
+    if not supabase:
+        return False
+    try:
+        settings = get_asan_dispatch_settings(force=True) or {}
+        payload = {
+            "shipping_container_auto_lookup_enabled": bool(enabled),
+            "updated_at": datetime.now(KST).isoformat(),
+        }
+        supabase.from_("branch_dispatch_settings").update(payload).eq("branch_id", "asan").execute()
+        dispatch_settings_cache["data"] = {**settings, **payload}
+        dispatch_settings_cache["loaded_at"] = time.time()
+        suffix = f" ({reason})" if reason else ""
+        app.logger.warning(f"[컨테이너자동조회] 사용 여부 {bool(enabled)} 저장{suffix}")
+        return True
+    except Exception as exc:
+        app.logger.warning(f"[컨테이너자동조회] 사용 여부 저장 실패: {exc}")
+        return False
+
+def _shipping_auto_lookup_targets(rel_path=None, max_targets=ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS):
+    normalized_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
+    if not normalized_path.startswith("/"):
+        normalized_path = f"/{normalized_path}"
+
+    meta_res = supabase.from_("branch_shipping_files").select("*").eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+    meta = meta_res.data[0] if meta_res.data else None
+    if not meta:
+        return normalized_path, [], 0, 0
+
+    headers = meta.get("headers") or []
+    container_idx = -1
+    for i, header in enumerate(headers):
+        text = str(header or "").upper()
+        if "CONTAINER" in text or "컨테이너" in text:
+            container_idx = i
+            break
+
+    rows = []
+    cursor = 0
+    chunk_size = 1000
+    while len(rows) < max_targets:
+        end = min(cursor + chunk_size - 1, max_targets - 1)
+        res = supabase.from_("branch_shipping_rows") \
+            .select("row_values,row_index,container_no") \
+            .eq("branch_id", "asan") \
+            .eq("file_path", normalized_path) \
+            .order("row_index", desc=False) \
+            .range(cursor, end) \
+            .execute()
+        chunk = res.data or []
+        rows.extend(chunk)
+        if len(chunk) < (end - cursor + 1):
+            break
+        cursor = end + 1
+
+    seen = set()
+    containers = []
+    for item in rows:
+        row = item.get("row_values") or []
+        cn = _shipping_normalize_container_no(item.get("container_no") or (row[container_idx] if 0 <= container_idx < len(row) else ""))
+        if not _shipping_is_container_no_shape(cn) or cn in seen:
+            continue
+        seen.add(cn)
+        containers.append(cn)
+
+    statuses = _shipping_latest_lookup_statuses(normalized_path, containers)
+    targets = [cn for cn in containers if statuses.get(cn) != "적하"]
+    skipped = len(containers) - len(targets)
+    return normalized_path, targets, len(containers), skipped
+
+def _shipping_group_actual_lookup_rows(rows):
+    grouped = {}
+    for row in rows or []:
+        if not _shipping_is_actual_history_row(row):
+            continue
+        cn = _shipping_normalize_container_no(row[0] if row else "")
+        if not cn:
+            continue
+        grouped.setdefault(cn, []).append(list(row))
+    for cn in list(grouped):
+        grouped[cn].sort(key=lambda item: int(item[1]) if str(item[1]).isdigit() else 999)
+    return grouped
+
+def _save_asan_shipping_container_lookup_rows(normalized_path, rows, lookup_source="asan_shipping_auto"):
+    grouped = _shipping_group_actual_lookup_rows(rows)
+    if not grouped:
+        return 0
+
+    containers = list(grouped.keys())
+    supabase.from_("branch_shipping_container_lookups") \
+        .delete() \
+        .eq("branch_id", "asan") \
+        .eq("file_path", normalized_path) \
+        .in_("container_no", containers) \
+        .execute()
+
+    looked_up_at = datetime.now(KST).isoformat()
+    run_id = str(uuid.uuid4())
+    payload = []
+    for cn, container_rows in grouped.items():
+        main_row = next((row for row in container_rows if str(row[1]).strip() == "1"), container_rows[0])
+        payload.append({
+            "run_id": run_id,
+            "branch_id": "asan",
+            "file_path": normalized_path,
+            "container_no": cn,
+            "result_rows": container_rows,
+            "main_row": main_row,
+            "main_status": str(main_row[2] if len(main_row) > 2 else ""),
+            "terminal": str(main_row[4] if len(main_row) > 4 else ""),
+            "move_time": str(main_row[5] if len(main_row) > 5 else ""),
+            "vehicle_no": str(main_row[13] if len(main_row) > 13 else ""),
+            "lookup_source": lookup_source,
+            "looked_up_at": looked_up_at,
+            "updated_at": looked_up_at,
+        })
+    supabase.from_("branch_shipping_container_lookups").insert(payload).execute()
+    return len(payload)
+
+def _shipping_lookup_rows_failed(rows):
+    if not rows:
+        return True
+    first = rows[0] if isinstance(rows[0], (list, tuple)) else []
+    return str(first[1] if len(first) > 1 else "").strip().upper() == "ERROR"
+
+def run_asan_shipping_container_auto_lookup():
+    if not shipping_container_auto_lookup_lock.acquire(blocking=False):
+        app.logger.info("[컨테이너자동조회] 이미 실행 중이라 건너뜀")
+        return
+    try:
+        if not _shipping_container_auto_lookup_enabled():
+            app.logger.info("[컨테이너자동조회] 설정 OFF 상태라 실행하지 않음")
+            return
+        if not supabase or not shipping_db_available:
+            app.logger.warning("[컨테이너자동조회] Supabase/선적관리 DB 미사용 상태라 실행 불가")
+            return
+
+        normalized_path, containers, total_containers, skipped_loaded = _shipping_auto_lookup_targets()
+        app.logger.info(
+            f"[컨테이너자동조회] 시작: 전체 컨테이너 {total_containers}건, 적하 제외 {skipped_loaded}건, 조회대상 {len(containers)}건"
+        )
+        if not containers:
+            return
+
+        try:
+            cap = requests.get(f"{ELS_BOT_API_URL}/api/els/capabilities", timeout=5).json()
+            if cap.get("progress", {}).get("is_running"):
+                app.logger.warning("[컨테이너자동조회] 기존 컨테이너 조회가 진행 중이라 오늘 자동조회는 건너뜀")
+                return
+        except Exception as exc:
+            app.logger.warning(f"[컨테이너자동조회] 봇 상태 확인 실패: {exc}")
+
+        failed_count = 0
+        completed_count = 0
+        saved_count = 0
+        response = None
+        try:
+            response = requests.post(
+                f"{ELS_BOT_API_URL}/api/els/run",
+                json={"containers": containers, "reserveSingle": False},
+                stream=True,
+                timeout=(10, 900),
+            )
+            response.raise_for_status()
+            response.encoding = "utf-8"
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                if line.startswith("LOG:"):
+                    app.logger.info(f"[컨테이너자동조회] {line[4:].strip()}")
+                    continue
+                if line.startswith("RESULT_PARTIAL:"):
+                    payload = json.loads(line[15:])
+                    rows = payload.get("result") or []
+                    if _shipping_lookup_rows_failed(rows):
+                        failed_count += 1
+                    else:
+                        completed_count += 1
+                        saved_count += _save_asan_shipping_container_lookup_rows(normalized_path, rows)
+                    if failed_count >= ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT:
+                        reason = f"조회 실패 {failed_count}회 도달"
+                        set_asan_shipping_container_auto_lookup_enabled(False, reason=reason)
+                        app.logger.error(f"[컨테이너자동조회] {reason}로 자동조회 중지")
+                        try:
+                            if response is not None:
+                                response.close()
+                        finally:
+                            try:
+                                requests.post(f"{ELS_BOT_API_URL}/api/els/stop-daemon", timeout=5)
+                            except Exception:
+                                pass
+                        return
+                elif line.startswith("RESULT:"):
+                    payload = json.loads(line[7:])
+                    if payload.get("ok") is False:
+                        raise RuntimeError(payload.get("error") or "컨테이너 자동조회 실패")
+            app.logger.info(
+                f"[컨테이너자동조회] 완료: 조회완료 {completed_count}건, 조회실패 {failed_count}건, 저장 {saved_count}건"
+            )
+        except Exception as exc:
+            set_asan_shipping_container_auto_lookup_enabled(False, reason=f"실행 오류: {exc}")
+            app.logger.error(f"[컨테이너자동조회] 실행 오류로 중지: {exc}", exc_info=True)
+        finally:
+            if response is not None:
+                try:
+                    response.close()
+                except Exception:
+                    pass
+    finally:
+        shipping_container_auto_lookup_lock.release()
+
+def maybe_run_asan_shipping_container_auto_lookup(now=None):
+    global shipping_container_auto_lookup_last_date
+    now = now or datetime.now(KST)
+    today_key = now.date().isoformat()
+    minute_end = min(60, ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE + 2)
+    in_window = (
+        now.hour == ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR
+        and ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE <= now.minute < minute_end
+    )
+    if not in_window or shipping_container_auto_lookup_last_date == today_key:
+        return
+    shipping_container_auto_lookup_last_date = today_key
+    threading.Thread(target=run_asan_shipping_container_auto_lookup, daemon=True).start()
 
 def _shipping_sort_value(value):
     s = str(value if value is not None else "").strip()
@@ -1160,6 +1445,7 @@ def asan_shipping_sync_scheduler():
         try:
             now = datetime.now(KST)
             maybe_cleanup_asan_shipping_history(now)
+            maybe_run_asan_shipping_container_auto_lookup(now)
             if 6 <= now.hour <= 23:
                 sync_asan_shipping_python()
             time.sleep(ASAN_SHIPPING_SYNC_POLL_SECONDS)

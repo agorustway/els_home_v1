@@ -1,3 +1,24 @@
+## [2026-05-19] 아산 선적관리 컨테이너 자동조회 설정과 새벽 스케줄 (v5.14.69)
+### 핵심
+- 동기화가 빠르게 끝나는 경우는 파일 수정일·크기 기준으로 새 변경이 없어 DB 반영을 건너뛰는 정상 흐름으로 해석했습니다.
+- 선적관리 설정 모달의 파일 경로 아래에 `컨테이너 자동조회` 체크박스를 추가하고 기본 ON으로 두었습니다. 변경값은 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`에 저장하도록 API를 확장했습니다.
+- 컨테이너 이력조회 봇 데몬 일일 리셋을 05:00에서 03:00 KST로 변경하고, NAS Core는 03:10 KST에 선적관리 전체 컨테이너 자동조회를 시작하도록 했습니다.
+- 자동조회 대상은 전체 선적관리 리스트에서 최신 저장 이력의 `이력 구분`이 `적하`인 컨테이너를 제외한 건입니다.
+- 자동조회 중 `ERROR` 결과가 10건에 도달하거나 실행 자체가 실패하면 자동조회 설정을 OFF로 저장하고 봇 중지 요청을 보내 남은 조회를 멈추게 했습니다.
+- 운영 DB 적용용 SQL `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql`을 추가했습니다.
+- 운영 Supabase 읽기 확인 결과 신규 컬럼은 아직 적용 전입니다(`42703`). 적용 전까지 체크박스 저장과 자동 OFF 저장은 실패할 수 있어 `.tmp_issues/20260519_asan_shipping_auto_lookup_db_migration.md`에 남겼습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 35개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/settings/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py docker/els-backend/app.py elsbot/els_web_runner_daemon.py`: 통과
+- 운영 Supabase 읽기 확인: `branch_dispatch_settings.shipping_container_auto_lookup_enabled` 미존재(42703)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`, `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/app/api/branches/asan/settings/route.js`, `web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql`
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`, `elsbot/els_web_runner_daemon.py`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 구성·차량 성과 통합 카드 보정 (v5.14.68)
 ### 핵심
 - `구성 분석`과 `차량 성과 TOP`을 `구성·차량 성과` 단일 카드로 합쳤습니다.

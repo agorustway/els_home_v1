@@ -1100,7 +1100,7 @@ def session_keeper():
                 pool.return_driver(driver)
 
 def daily_reset_scheduler():
-    """매일 새벽 5시 드라이버 풀 완전 초기화 + 자동 재로그인 (세션 장기 만료 방지)"""
+    """매일 새벽 3시 드라이버 풀 완전 초기화 + 자동 재로그인 (세션 장기 만료 방지)"""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     last_reset_date = None
@@ -1111,10 +1111,10 @@ def daily_reset_scheduler():
             now = datetime.now(KST)
             today = now.date()
 
-            # 새벽 5:00 ~ 5:02 사이에 오늘 아직 리셋 안 했으면 실행
-            if now.hour == 5 and now.minute < 2 and last_reset_date != today:
+            # 새벽 3:00 ~ 3:02 사이에 오늘 아직 리셋 안 했으면 실행
+            if now.hour == 3 and now.minute < 2 and last_reset_date != today:
                 last_reset_date = today
-                pool.add_log("⏰ [일일리셋] 새벽 5시 자동 드라이버 풀 초기화 시작...")
+                pool.add_log("⏰ [일일리셋] 새벽 3시 자동 드라이버 풀 초기화 시작...")
 
                 with pool.lock:
                     saved_user = dict(pool.current_user) if pool.current_user else None
@@ -1183,7 +1183,7 @@ if __name__ == '__main__':
     print("========================================")
     print("   ELS NAS STABLE DAEMON STARTED")
     print("   SESSION AUTO-RECOVERY ENABLED")
-    print("   DAILY RESET @ 05:00 KST ENABLED")
+    print("   DAILY RESET @ 03:00 KST ENABLED")
     print("========================================")
 
     # 세션 관리기 백그라운드 스레드 시작

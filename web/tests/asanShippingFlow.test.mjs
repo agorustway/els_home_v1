@@ -250,6 +250,45 @@ test('아산 NAS 파일 동기화 스케줄러는 기본 주기와 로그를 저
   assert.match(performanceSource, /ASAN_PERFORMANCE_SYNC_POLL_SECONDS", 300, 60/);
 });
 
+test('선적관리 컨테이너 자동조회는 DB 설정과 새벽 스케줄을 사용한다', () => {
+  const shipping = fs.readFileSync(
+    path.join(repoRoot, 'web/app/(main)/employees/branches/asan/AsanShipping.js'),
+    'utf8',
+  );
+  const settingsRoute = fs.readFileSync(
+    path.join(repoRoot, 'web/app/api/branches/asan/settings/route.js'),
+    'utf8',
+  );
+  const migration = fs.readFileSync(
+    path.join(repoRoot, 'web/supabase_sql/20260519_asan_shipping_container_auto_lookup.sql'),
+    'utf8',
+  );
+  const daemon = fs.readFileSync(path.join(repoRoot, 'elsbot/els_web_runner_daemon.py'), 'utf8');
+
+  assert.match(shipping, /const \[containerAutoLookupEnabled, setContainerAutoLookupEnabled\] = useState\(true\);/);
+  assert.match(shipping, /shipping_container_auto_lookup_enabled: checked/);
+  assert.match(shipping, /컨테이너 자동조회/);
+  assert.match(shipping, /컨테이너이력조회초기화 매일 03:00/);
+  assert.match(shipping, /컨테이너 자동조회 03:10/);
+  assert.match(shipping, /조건 모든 항목에서 &quot;적하&quot;외 컨테이너 조회/);
+  assert.match(settingsRoute, /shipping_container_auto_lookup_enabled/);
+  assert.match(settingsRoute, /data\.shipping_container_auto_lookup_enabled !== false/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS shipping_container_auto_lookup_enabled BOOLEAN DEFAULT true/);
+  assert.match(daemon, /now\.hour == 3 and now\.minute < 2/);
+  assert.match(daemon, /DAILY RESET @ 03:00 KST ENABLED/);
+
+  for (const rel of backendFiles) {
+    const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
+    assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR", 3, 0\)/);
+    assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0\)/);
+    assert.match(source, /def maybe_run_asan_shipping_container_auto_lookup\(now=None\):/);
+    assert.match(source, /maybe_run_asan_shipping_container_auto_lookup\(now\)/);
+    assert.match(source, /targets = \[cn for cn in containers if statuses\.get\(cn\) != "적하"\]/);
+    assert.match(source, /failed_count >= ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT/);
+    assert.match(source, /set_asan_shipping_container_auto_lookup_enabled\(False, reason=reason\)/);
+  }
+});
+
 test('선적관리 조회 이력은 최신값/보존기간 인덱스를 가진다', () => {
   const migration = fs.readFileSync(
     path.join(repoRoot, 'web/supabase_sql/20260516_asan_shipping_lookup_retention_indexes.sql'),
