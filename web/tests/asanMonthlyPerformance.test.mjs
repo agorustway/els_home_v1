@@ -156,8 +156,9 @@ test('아산 월간실적 NAS Core는 여러 월 파일을 첫 번째 시트 기
   assert.match(backend, /ASAN_MONTHLY_PERFORMANCE_STALE_POLL_SECONDS", 120, 60/);
   assert.match(backend, /ASAN_MONTHLY_PERFORMANCE_SYNC_START_HOUR", 0, 0/);
   assert.match(backend, /"start_hour": monthly_auto_start_hour/);
+  assert.match(backend, /def _monthly_focus_slot/);
   assert.match(backend, /def _monthly_auto_scheduler/);
-  assert.match(backend, /latest_enabled_key = _monthly_slot_key\(enabled_slots\[-1\]\)/);
+  assert.match(backend, /latest_enabled_key = _monthly_slot_key\(focus_slot\)/);
   assert.match(backend, /"files_only": True/);
   assert.match(backend, /@app\.route\("\/api\/branches\/asan\/performance\/monthly", methods=\["GET", "POST"\]\)/);
   assert.match(backend, /"--dataset-type", "monthly"/);

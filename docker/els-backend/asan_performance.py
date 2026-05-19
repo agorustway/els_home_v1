@@ -766,6 +766,13 @@ def register_asan_performance_routes(app, supabase, kst):
     def _monthly_slot_key(slot):
         return f"{slot.get('period')}::{slot.get('path')}::{slot.get('sheet_name') or FIRST_SHEET_TOKEN}"
 
+    def _monthly_focus_slot(enabled_slots):
+        for slot in reversed(enabled_slots):
+            file_path, _ = _resolve_performance_file(slot.get("path"))
+            if file_path.exists():
+                return slot
+        return enabled_slots[-1] if enabled_slots else None
+
     def _update_monthly_auto_state(**patch):
         with monthly_auto_state_lock:
             monthly_auto_state.update(patch)
@@ -1497,7 +1504,8 @@ def register_asan_performance_routes(app, supabase, kst):
                     time.sleep(monthly_auto_tick_seconds)
                     continue
 
-                latest_enabled_key = _monthly_slot_key(enabled_slots[-1])
+                focus_slot = _monthly_focus_slot(enabled_slots)
+                latest_enabled_key = _monthly_slot_key(focus_slot)
                 due_slot = None
                 for slot in reversed(enabled_slots):
                     key = _monthly_slot_key(slot)
