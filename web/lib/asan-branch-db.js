@@ -620,16 +620,19 @@ function annualRowToValues(row, headers) {
     });
 }
 
-async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
-    const baseOrdered = query
-        .order('year_value', { ascending: true, nullsFirst: false })
-        .order('month_value', { ascending: true, nullsFirst: false })
-        .order('file_path', { ascending: true })
-        .order('row_index', { ascending: true });
+    const baseOrdered = orderBySnapshot
+        ? query
+            .order('snapshot_id', { ascending: true })
+            .order('row_index', { ascending: true })
+        : query
+            .order('file_path', { ascending: true })
+            .order('sheet_name', { ascending: true })
+            .order('row_index', { ascending: true });
     const attachHeaders = row => ({
         ...row,
         source_headers: metaBySnapshot.get(row.snapshot_id)?.headers || metaBySnapshot.get(`${row.file_path}::${row.sheet_name}`)?.headers || [],
@@ -839,6 +842,7 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         sortDir,
         maxSortRows: 19999,
         fallbackTotal,
+        orderBySnapshot: allMetasHaveSnapshot,
     });
 
     return {

@@ -26,6 +26,10 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   const source = read('web/app/api/branches/asan/performance/annual/route.js');
   const monthlyRoute = read('web/app/api/branches/asan/performance/monthly/route.js');
   const dbReader = read('web/lib/asan-branch-db.js');
+  const annualPagedRowsSource = dbReader.slice(
+    dbReader.indexOf('async function getAnnualPagedRows'),
+    dbReader.indexOf('function mergeAnnualSummaries'),
+  );
   assert.match(source, /queryAsanAnnualPerformanceFromSupabase/);
   assert.match(source, /source !== 'excel'[\s\S]*queryAsanAnnualPerformanceFromSupabase\(url\.searchParams\)/);
   assert.match(source, /proxyToBackend\(req, '\/api\/branches\/asan\/performance\/annual'\)/);
@@ -42,6 +46,9 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.match(dbReader, /annual\.allCurrentSnapshots/);
   assert.match(dbReader, /currentSnapshotIds/);
   assert.match(dbReader, /const allMetasHaveSnapshot = snapshotIds\.length === metas\.length/);
+  assert.match(dbReader, /orderBySnapshot/);
+  assert.match(dbReader, /\.order\('snapshot_id', \{ ascending: true \}\)[\s\S]*\.order\('row_index', \{ ascending: true \}\)/);
+  assert.equal(annualPagedRowsSource.includes(".order('year_value'"), false);
   assert.match(dbReader, /String\(mode \|\| ''\)\.toLowerCase\(\) === 'and'/);
   assert.match(dbReader, /nextQuery\.ilike\('search_text'/);
   assert.match(dbReader, /totalEstimated/);

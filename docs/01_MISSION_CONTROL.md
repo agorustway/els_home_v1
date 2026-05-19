@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.14.26 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.27 / APK v5.11.17)
 
-> 최신 업데이트: 아산 월간실적 화면을 매출보고서 중심으로 재구성하고 파일 슬롯 노출을 설정으로 내렸습니다.
+> 최신 업데이트: 아산 연간실적 통합 원장 조회가 snapshot 인덱스를 타도록 정렬을 보정했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.26
+- **웹 버전**: v5.14.27
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 아산 연간실적 통합 원장 조회는 `snapshot_id,row_index` 순서로 읽어 Supabase statement timeout을 피한다.
   - 아산 월간실적 본문은 월별 파일 슬롯 대신 `아산매출보고서` 표를 우선 표시한다.
   - 월별 파일공간/경로/시트/제목행은 설정 모달에서만 관리하고, 저장 후 동기화한다.
   - 월별 보고서 표에서 거래처별 순매출/순매입/매출이익, 계산서 매출/매입/이익, 이월 매출/매입/차익을 도출.
@@ -45,6 +46,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.27**: 아산 연간실적 `aggregate=all` 테이블 조회가 `year_value/month_value` 대용량 정렬을 타며 Supabase statement timeout이 나던 문제를 보정. 현재 스냅샷이 확정된 통합 조회는 `snapshot_id,row_index` 보조 인덱스 순서로 페이징하고, exact count 없이 파일 메타 건수를 사용한다. 운영 DB 직접 조회에서 snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7`의 첫 301행이 즉시 반환됨을 확인했다.
 - **v5.14.26**: 아산 월간실적 분석 첫 화면에서 `월별 파일 공간` 카드 노출을 제거하고 설정 모달로 한정. 스크린샷 기준에 맞춰 `YYYY년 M월 아산매출보고서`, `통합 IN/OUT-BOUND`, `단위 : 원`, 매출/이월 섹션 표를 최상단 보고서 형태로 재구성했다.
 - **v5.14.25**: 아산 연간실적 통합 조회의 `allMetasHaveSnapshot` 스코프 오류를 수정해 `aggregate=all`이 Supabase current snapshots를 정상 조회하게 했다. 연간/월간실적 GET에서 DB 조회 예외가 나도 NAS 프록시로 떨어지지 않도록 바꿔, NAS Docker 빌드 중에는 DB 직조회 화면이 NAS 상태에 끌려가지 않게 했다. 운영 DB 확인 결과 annual 메타 1개/368,617행은 존재하고, monthly 메타는 아직 0개라 월간은 최초 동기화 전 상태다.
 - **v5.14.24**: AI 어시스턴트 전체 삭제 후 10초 뒤 purge가 삭제마커까지 제거해, 늦게 도착한 옛 자동저장이 대화 목록을 되살릴 수 있던 문제를 보강. 서버는 빈 삭제마커와 `clearedAt`을 유지하고, 클라이언트는 이를 받으면 로컬 옛 목록도 무효화한다.
@@ -64,6 +66,10 @@
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
 
 ## VERIFICATION
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- Supabase 직접 조회: annual snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7` 301행 즉시 반환
 - `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
 - `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
 - `npm.cmd run lint`: 통과

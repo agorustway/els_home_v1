@@ -18,6 +18,7 @@
 - Next API: `/api/branches/asan/performance/annual`
   - `GET`: 기본 `source=supabase`로 Next 서버에서 Supabase 현재 원장 페이지 직접 조회
   - `GET aggregate=all`: `dataset_type=annual` 파일 메타 전체의 `currentSnapshotId`를 모아 통합 원장처럼 조회. 화면 기본값이며 2015~2025 기존 파일과 2026 이후 분할 파일을 합산한다.
+  - 통합 원장 페이징은 snapshot이 모두 확정된 경우 `snapshot_id,row_index` 순서로 조회해 `idx_branch_performance_rows_snapshot_row_index` 인덱스를 탄다. `year_value/month_value` 전역 정렬은 대용량 statement timeout 위험이 있어 기본 페이징에서 쓰지 않는다.
   - `GET source=supabase` 조회 실패는 NAS로 우회하지 않고 JSON 오류를 반환한다. NAS Docker 빌드/재시작 중에도 DB 직조회 화면이 NAS 상태에 끌려가지 않게 하기 위함이다.
   - `GET source=excel`: 운영 점검용 NAS Excel 프리뷰, NAS Core 경유
   - `POST async=true`: NAS 엑셀 동기화를 백그라운드로 시작하고 현재 Supabase 조회값과 `sync_status` 반환
@@ -78,7 +79,7 @@
   - 조사범위 날짜 선택은 `직접` 모드에서만 활성화하고, 전체/최근 기간 프리셋에서는 잠금 상태로 표시한다.
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
-  - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count timeout을 피한다.
+  - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count/sort timeout을 피한다.
 
 ## 3. 데이터 처리 원칙
 - 엑셀에서 행이 수정되면 기존 행은 `superseded_by_excel`로 종료하고 새 행을 추가한다.

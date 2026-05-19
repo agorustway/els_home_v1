@@ -1,3 +1,18 @@
+## [2026-05-19] 아산 연간실적 통합 조회 timeout 최적화 (v5.14.27)
+### 핵심
+- 연간실적 `aggregate=all` 조회가 Supabase에서 36만 행 current snapshot을 읽을 때 `year_value/month_value` 정렬을 타며 statement timeout이 나던 문제를 보정했습니다.
+- 모든 annual 메타에 `currentSnapshotId`가 있는 통합 조회는 `snapshot_id,row_index` 정렬로 페이징하게 바꿔, 이미 적용된 `idx_branch_performance_rows_snapshot_row_index` 인덱스를 사용하도록 했습니다.
+- exact count는 계속 피하고 파일 메타의 `current_row_count/row_count`를 기준 건수로 사용합니다. 운영 DB 직접 조회에서 snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7`의 301행이 즉시 반환됨을 확인했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] 아산 월간실적 매출보고서 중심 화면 재구성 (v5.14.26)
 ### 핵심
 - 월간실적 분석 화면에서 `월별 파일 공간` 카드 노출을 제거했습니다. 파일 슬롯/경로/시트/제목행은 설정 모달에서만 관리합니다.
