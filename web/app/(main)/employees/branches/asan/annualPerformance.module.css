@@ -3079,6 +3079,111 @@
     text-align: left;
 }
 
+.carryoverClientPanel {
+    width: calc(100% - 16px);
+    margin: 0 8px 10px;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    background: #fffbeb;
+    overflow: hidden;
+}
+
+.carryoverClientTitle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 9px;
+    border-bottom: 1px solid #fde68a;
+}
+
+.carryoverClientTitle strong {
+    color: #92400e;
+    font-size: 0.76rem;
+    font-weight: 950;
+}
+
+.carryoverClientTitle span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.carryoverClientRows {
+    display: flex;
+    flex-direction: column;
+    overflow-x: auto;
+    padding: 0 8px 8px;
+}
+
+.carryoverClientHead,
+.carryoverClientRow {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 128px 128px 118px;
+    align-items: center;
+    gap: 8px;
+    min-width: 600px;
+}
+
+.carryoverClientHead {
+    min-height: 27px;
+    border-bottom: 1px solid #fef3c7;
+}
+
+.carryoverClientHead span {
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 950;
+    text-align: right;
+}
+
+.carryoverClientHead span:first-child {
+    text-align: left;
+}
+
+.carryoverClientRow {
+    min-height: 31px;
+    border-bottom: 1px solid rgba(253, 230, 138, 0.72);
+}
+
+.carryoverClientRow:last-child {
+    border-bottom: 0;
+}
+
+.carryoverClientRow span,
+.carryoverClientRow strong,
+.carryoverClientRow em,
+.carryoverClientRow b {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.carryoverClientRow span {
+    text-align: left;
+}
+
+.carryoverClientRow strong {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+}
+
+.carryoverClientRow strong i {
+    display: block;
+    justify-self: end;
+    max-width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: #f59e0b;
+}
+
 .monthlyModal {
     width: min(1120px, 96vw);
 }
@@ -3469,6 +3574,12 @@
     .dimensionDiagram,
     .dimensionSummary {
         grid-template-columns: 1fr;
+    }
+
+    .carryoverClientTitle {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
     }
 
     .kpi {

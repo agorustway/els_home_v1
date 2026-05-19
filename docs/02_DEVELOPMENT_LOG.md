@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 세분화 탭/이월 표 정리 (v5.14.46)
+### 핵심
+- 세분화 분석에서 관리 의미가 약하거나 중복되는 `구분별`, `청구픽업별`, `포트별`, `노선별`, `이월구분별`, `계약별` 계열 탭을 제거하고 `청구처별`, `작업지별`, `지급처별`만 남겼습니다.
+- 기존 `운송사(명의)별` 탭은 지급 기준으로 읽히도록 `지급처별`로 변경했습니다.
+- 이월금액은 세분화 탭이 아니라 `청구처 이월` 표에서 청구처별 `이월청구`, `이월하불`, `차액`으로 표시합니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
+- Browser 자동화는 인앱 브라우저가 `No active Codex browser pane available`, Chrome 대체 탭이 `Grouping is not supported by tabs in this window`로 막혀 실제 클릭 검증은 완료하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 마감월 기준 주간/요일 분석 (v5.14.45)
 ### 핵심
 - 월간실적 `daily` 집계를 작업일자 월이 아니라 파일 마감월 `sourcePeriod` 기준으로 병합해, 정리기간 작업일자인 `2025-12`가 월별·일별 트리 최상위 월로 노출되지 않게 했습니다.

@@ -39,12 +39,7 @@ const REPORT_METRIC_KEYS = [
 const DIMENSION_HINTS = [
     { key: 'client', label: '청구처별', words: ['청구처', '거래처', '화주'] },
     { key: 'work_site', label: '작업지별', words: ['작업지', '상차', '하차'] },
-    { key: 'carrier', label: '운송사(명의)별', words: ['운송사', '명의'] },
-    { key: 'category', label: '구분별', words: ['구분', '계약'] },
-    { key: 'pickup', label: '청구픽업별', words: ['픽업', '청구픽업'] },
-    { key: 'port', label: '포트별', words: ['포트', 'port'] },
-    { key: 'route', label: '노선별', words: ['노선', '구간'] },
-    { key: 'vehicle', label: '차량별', words: ['영업넘버', '차량'] },
+    { key: 'payee', label: '지급처별', words: ['지급처', '운송사', '명의'] },
 ];
 const EMPTY_LIST = Object.freeze([]);
 
@@ -400,12 +395,7 @@ function normalizeDimensionSections(breakdowns = []) {
         selected.push({ ...match, key: hint.key, label: hint.label });
     });
 
-    sections.forEach((section, idx) => {
-        if (used.has(idx)) return;
-        selected.push({ ...section, key: `extra_${idx}`, label: `${section.column}별` });
-    });
-
-    return selected.slice(0, 10);
+    return selected;
 }
 
 function groupDailyByMonth(monthly = [], daily = []) {
@@ -537,6 +527,18 @@ function buildWeekdayCards(daily = []) {
         bucket.rowCount += safeNumber(item.rowCount);
     });
     return cards;
+}
+
+function carryoverClientItemsFromReport(report = null) {
+    return safeObjectList(report?.groups)
+        .map(group => ({
+            name: group.name || '미분류',
+            carryoverRevenue: safeNumber(group.carryoverRevenue),
+            carryoverPurchase: safeNumber(group.carryoverPurchase),
+            carryoverProfit: safeNumber(group.carryoverProfit || safeNumber(group.carryoverRevenue) - safeNumber(group.carryoverPurchase)),
+        }))
+        .filter(item => item.carryoverRevenue || item.carryoverPurchase || item.carryoverProfit)
+        .sort((a, b) => Math.abs(b.carryoverRevenue) - Math.abs(a.carryoverRevenue));
 }
 
 function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
@@ -942,6 +944,9 @@ export default function AsanMonthlyPerformance() {
         ? (allReport?.carryover || summary.carryover || {})
         : (analysisScope === ANALYSIS_SCOPE_MONTH ? (scopeReport?.carryover || {}) : {});
     const carryoverRevenue = safeNumber(scopeCarryover.revenue);
+    const carryoverClientReport = analysisScope === ANALYSIS_SCOPE_ALL ? allReport : (scopeReport || null);
+    const carryoverClientItems = useMemo(() => carryoverClientItemsFromReport(carryoverClientReport), [carryoverClientReport]);
+    const carryoverClientMax = Math.max(1, ...carryoverClientItems.map(item => Math.abs(item.carryoverRevenue)));
     const reportCarryoverRevenue = safeNumber(reportCarryover.revenue);
     const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
     const reportTitleText = selectedReportPeriod === REPORT_ALL_KEY ? '매출보고서' : formatReportTitle(selectedReport?.period || selectedReportPeriod);
@@ -1559,7 +1564,7 @@ export default function AsanMonthlyPerformance() {
                             </div>
                         </div>
                         {scopedDimensionSections.length === 0 ? (
-                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 청구처, 작업지, 운송사, 구분, 픽업, 포트 컬럼이 있으면 동기화 후 자동 분석됩니다.</div>
+                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 청구처, 작업지, 지급처 컬럼이 있으면 동기화 후 자동 분석됩니다.</div>
                         ) : (
                             <>
                                 <div className={styles.dimensionTabs}>
@@ -1605,6 +1610,33 @@ export default function AsanMonthlyPerformance() {
                                     ))}
                                 </div>
                             </>
+                        )}
+                        {carryoverClientItems.length > 0 && (
+                            <div className={styles.carryoverClientPanel}>
+                                <div className={styles.carryoverClientTitle}>
+                                    <strong>청구처 이월</strong>
+                                    <span>{analysisScope === ANALYSIS_SCOPE_ALL ? '전체' : (selectedScopePeriod || '-')} · 청구처 기준</span>
+                                </div>
+                                <div className={styles.carryoverClientRows}>
+                                    <div className={styles.carryoverClientHead}>
+                                        <span>청구처</span>
+                                        <span>이월청구</span>
+                                        <span>이월하불</span>
+                                        <span>차액</span>
+                                    </div>
+                                    {carryoverClientItems.map(item => (
+                                        <div className={styles.carryoverClientRow} key={item.name}>
+                                            <span>{item.name}</span>
+                                            <strong>
+                                                {formatPerformanceAmount(item.carryoverRevenue)}
+                                                <i style={{ width: metricWidth(item.carryoverRevenue, carryoverClientMax) }} />
+                                            </strong>
+                                            <em>{formatPerformanceAmount(item.carryoverPurchase)}</em>
+                                            <b className={item.carryoverProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.carryoverProfit)}</b>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </section>
 

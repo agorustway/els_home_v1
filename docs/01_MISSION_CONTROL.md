@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.45 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.46 / APK v5.11.17)
 
-> 최신 업데이트: 아산 월간실적 일별 트리를 마감월 기준으로 고정하고 주간 선택·요일별 카드를 추가했습니다.
+> 최신 업데이트: 아산 월간실적 세분화 탭을 관리 기준으로 줄이고 청구처별 이월 표를 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.45
+- **웹 버전**: v5.14.46
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -11,7 +11,7 @@
   - 아산 연간실적 통합 원장 조회와 NAS 동기화 응답은 `snapshot_id,row_index`/메타 기반으로 처리해 Supabase statement timeout을 피한다.
   - 아산 월간/연간실적 화면은 별도 `source=status` polling으로 NAS 백그라운드 동기화 상태를 페이지 재진입 후에도 표시한다.
   - 아산 월간실적 NAS importer는 공용 summary helper를 top-level로 사용해 `diff-current` 중단을 방지한다.
-  - 아산 월간실적 본문은 분석 기준(전체/월별/주간/일별), 카드형 추세 그래프, 도넛 KPI, 구성/세분화/트리/요일 카드 순서로 표시하며 TOP 항목은 제목/탭 클릭으로 전체 전환한다.
+  - 아산 월간실적 본문은 분석 기준(전체/월별/주간/일별), 카드형 추세 그래프, 도넛 KPI, 구성/세분화/트리/요일 카드 순서로 표시하며 세분화 탭은 청구처/작업지/지급처 중심으로 유지한다.
   - 월간 보고서는 마감월 기준 흐름만 월별 성과와 월별·일별 트리에 반영하고, 실제 작업일자는 마감월 하위 일자/요일 분석으로 분리 표시한다.
   - 구성 분석은 `ELS직계약차량`과 `외부/타운송사`만 유지해 직계약 전체 중복 의미를 제거한다.
   - 연간실적 분석 화면은 `annualAnalytics` 전용 세로 레이아웃과 `stretch` 폭 고정으로 월간실적 카드 그리드와 분리한다.
@@ -52,6 +52,7 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.46**: 월간실적 세분화 분석에서 `구분별/청구픽업별/포트별/노선별/이월구분별/계약별`처럼 관리 의미가 약하거나 중복되는 탭을 제거했다. `운송사(명의)별`은 `지급처별`로 명칭을 바꾸고, 이월금액은 별도 `청구처 이월` 표에서 청구처별 이월청구·이월하불·차액으로 표시한다.
 - **v5.14.45**: 월간실적 일별 원장은 작업일자 월이 아니라 파일 마감월 `sourcePeriod`로 묶어 `2025-12` 같은 정리기간 작업일자 월이 트리 최상단에 노출되지 않게 했다. 분석 기준에는 `주간 선택`을 추가해 `YYYY-MM N주차` 단위로 조회하고, 선택 범위 기준 `요일별 카드`를 함께 표시한다.
 - **v5.14.44**: 선적관리 테이블이 `width:100%`로 눌리며 가로 overflow가 생기지 않아 하단 슬라이더가 사라진 문제를 보정. 테이블은 `max-content` 기준으로 실제 컬럼 폭을 유지하고, 래퍼는 가로/세로 overflow와 100% 폭을 고정해 브라우저 하단 안쪽에 가로 스크롤바가 표시된다.
 - **v5.14.43**: 월간실적 세분화 분석의 항목 탭은 같은 탭을 다시 누르면 상위 12개/전체 항목을 토글한다. `세분화 분석` 제목도 현재 탭 전체 전환을 지원하고, `차량 성과 TOP` 제목은 상위 5대/전체 차량 목록을 전환한다.
@@ -70,7 +71,6 @@
 - **v5.14.29**: 연간실적 `NAS 동기화` POST가 백그라운드 작업 시작 직후 NAS Core `_query()`로 원장 count/페이지를 다시 읽으며 timeout을 노출하던 문제를 수정. 동기화 응답은 `sync_only` 메타만 반환하고 프론트는 기존 화면 데이터를 덮어쓰지 않는다. 중복된 `10년 흐름` 분석 탭은 개요의 장기 흐름 그래프로 통합했다.
 - **v5.14.28**: 월간실적 NAS 동기화가 Excel 파싱 후 `ReferenceError: finalizeSeries is not defined`로 실패하던 문제를 수정. `finalizeBreakdowns()`가 쓰는 `finalizeSeries()`를 공용 top-level helper로 올려 monthly `diff-current` importer에서도 접근되게 했다. NAS 로그 기준 실패 위치는 `web/scripts/import-asan-annual-performance.mjs:764`.
 - **v5.14.27**: 아산 연간실적 `aggregate=all` 테이블 조회가 `year_value/month_value` 대용량 정렬을 타며 Supabase statement timeout이 나던 문제를 보정. 현재 스냅샷이 확정된 통합 조회는 `snapshot_id,row_index` 보조 인덱스 순서로 페이징하고, exact count 없이 파일 메타 건수를 사용한다. 운영 DB 직접 조회에서 snapshot `1c6d280d-3ac0-4f03-8f6c-271bb91980c7`의 첫 301행이 즉시 반환됨을 확인했다.
-- **v5.14.26**: 아산 월간실적 분석 첫 화면에서 `월별 파일 공간` 카드 노출을 제거하고 설정 모달로 한정. 스크린샷 기준에 맞춰 `YYYY년 M월 아산매출보고서`, `통합 IN/OUT-BOUND`, `단위 : 원`, 매출/이월 섹션 표를 최상단 보고서 형태로 재구성했다.
 ## VERIFICATION
 - `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
 - `node --check web\lib\asan-branch-db.js`: 통과
