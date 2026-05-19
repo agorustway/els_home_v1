@@ -1,3 +1,20 @@
+## [2026-05-19] 아산 월간실적 매출보고서 중심 화면 재구성 (v5.14.26)
+### 핵심
+- 월간실적 분석 화면에서 `월별 파일 공간` 카드 노출을 제거했습니다. 파일 슬롯/경로/시트/제목행은 설정 모달에서만 관리합니다.
+- 분석 첫 화면을 `YYYY년 M월 아산매출보고서` 제목, `통합 IN/OUT-BOUND`, `단위 : 원`, 매출/이월 섹션이 있는 보고서 표 중심으로 재구성했습니다.
+- 기존 KPI 카드보다 스크린샷의 월별 보고서 표가 먼저 보이도록 순서를 바꾸고, 월별/일별 집계는 보고서 아래 보조 분석으로 유지했습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- Local HTTP: `http://localhost:3011/employees/branches/asan?debug=true` 200 확인. Codex 브라우저 패널은 active pane 없음으로 클릭 검증 불가.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 실적관리 DB 조회 NAS 우회 차단 (v5.14.25)
 ### 핵심
 - 연간실적 `aggregate=all` 조회에서 `allMetasHaveSnapshot` 변수가 잘못된 스코프에 있어 런타임 예외가 날 수 있던 문제를 수정했습니다.

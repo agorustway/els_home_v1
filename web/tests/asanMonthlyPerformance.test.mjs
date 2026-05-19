@@ -124,6 +124,11 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /NAS 동기화/);
   assert.match(component, /저장 후 동기화/);
   assert.match(component, /saveSettingsAndSync/);
+  assert.doesNotMatch(component, /월별 파일 공간/);
+  assert.match(component, /formatReportTitle/);
+  assert.match(component, /아산매출보고서/);
+  assert.match(component, /IN\/OUT-BOUND/);
+  assert.match(component, /단위 : 원/);
   assert.match(component, /이월/);
   assert.match(component, /월별 보고서/);
   assert.match(component, /일별 데이터/);

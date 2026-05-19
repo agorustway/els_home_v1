@@ -1927,6 +1927,61 @@
     overflow: hidden;
 }
 
+.monthlyReportSheet {
+    overflow: hidden;
+    border: 1px solid #0f172a;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.reportSheetTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid #0f172a;
+}
+
+.reportSheetTop h3 {
+    margin: 0 0 8px;
+    color: #020617;
+    font-size: 1.1rem;
+    font-weight: 950;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.reportSheetTop strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #020617;
+    font-size: 0.78rem;
+    font-weight: 950;
+}
+
+.reportSheetTop strong span {
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.reportSheetTop > div:last-child {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 34px;
+    color: #475569;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.reportSheetTop b {
+    color: #020617;
+    font-size: 0.7rem;
+}
+
 .reportPeriodTabs {
     display: flex;
     flex-wrap: wrap;
@@ -1955,7 +2010,7 @@
 
 .monthlyReportScroll {
     overflow: auto;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #0f172a;
 }
 
 .monthlyReportTable {
@@ -1967,9 +2022,9 @@
 
 .monthlyReportTable th,
 .monthlyReportTable td {
-    height: 34px;
-    padding: 6px 8px;
-    border: 1px dotted #94a3b8;
+    height: 32px;
+    padding: 5px 8px;
+    border: 1px dotted #475569;
     color: #0f172a;
     font-size: 0.74rem;
     font-weight: 850;
@@ -1978,7 +2033,7 @@
 }
 
 .monthlyReportTable thead th {
-    background: #bfdbfe;
+    background: #b7c9e8;
     font-size: 0.76rem;
     font-weight: 950;
     text-align: center;
@@ -1999,12 +2054,35 @@
 
 .reportSectionRow td {
     height: 28px;
-    background: #fde68a;
+    background: #ffe99a;
     color: #111827;
     font-size: 0.78rem;
     font-weight: 950;
     text-align: center !important;
     letter-spacing: 0;
+}
+
+.reportSummaryStrip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid #0f172a;
+    background: #f8fafc;
+}
+
+.reportSummaryStrip span {
+    min-width: 0;
+    padding: 8px;
+    border-right: 1px dotted #94a3b8;
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reportSummaryStrip span:last-child {
+    border-right: 0;
 }
 
 .dailyList {
@@ -2127,6 +2205,25 @@
 
     .monthlySlotGrid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .reportSheetTop {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .reportSheetTop h3 {
+        text-align: left;
+    }
+
+    .reportSheetTop > div:last-child {
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .reportSummaryStrip {
+        grid-template-columns: 1fr 1fr;
     }
 
     .scopeTitle {

@@ -109,8 +109,14 @@ function slotsForApi(slots) {
     }));
 }
 
-function fileName(path) {
-    return String(path || '').split('/').filter(Boolean).pop() || '-';
+function formatReportPeriod(period) {
+    const match = String(period || '').match(/^(\d{4})-(\d{1,2})$/);
+    if (!match) return period || '월간';
+    return `${match[1]}년 ${Number(match[2])}월`;
+}
+
+function formatReportTitle(period) {
+    return `${formatReportPeriod(period)} 아산매출보고서`;
 }
 
 export default function AsanMonthlyPerformance() {
@@ -273,8 +279,6 @@ export default function AsanMonthlyPerformance() {
     }, [colOrder, headers, hiddenCols]);
     const chartMax = getPerformanceChartMax(monthly, ['revenue', 'purchase', 'profit']);
     const monthRange = monthly.length ? `${monthly[0].period} ~ ${monthly[monthly.length - 1].period}` : DEFAULT_MONTHLY_RANGE_HINT;
-    const sourceSlots = Array.isArray(summary.monthlyFileSlots) ? summary.monthlyFileSlots : fileSlots;
-    const syncedSlotCount = safeNumber(summary.monthlyFileCount);
     const totalRevenue = safeNumber(summary.totalRevenue);
     const totalPurchase = safeNumber(summary.totalPurchase);
     const totalProfit = safeNumber(summary.totalProfit);
@@ -287,6 +291,8 @@ export default function AsanMonthlyPerformance() {
     const carryoverPurchase = safeNumber(carryover.purchase);
     const carryoverProfit = safeNumber(carryover.profit);
     const latestDaily = daily.slice(-31);
+    const reportPeriodText = formatReportPeriod(selectedReport?.period || selectedReportPeriod);
+    const reportColumnCount = reportGroups.length + 3;
 
     useEffect(() => {
         if (!monthlyReports.length) {
@@ -432,7 +438,6 @@ export default function AsanMonthlyPerformance() {
                         <span>{monthRange}</span>
                         <span>{payload?.source || '대기'}</span>
                         <span>{totalRowsLabel}행</span>
-                        <span>파일 {syncedSlotCount.toLocaleString('ko-KR')} / {sourceSlots.length.toLocaleString('ko-KR')}</span>
                         <span>동기화 {fmtTs(payload?.synced_at)}</span>
                         {syncStatus?.running && <span className={styles.syncBadge}>동기화 진행중</span>}
                     </div>
@@ -442,7 +447,7 @@ export default function AsanMonthlyPerformance() {
                         <button className={activeTab === 'analytics' ? styles.segmentActive : ''} onClick={() => setActiveTab('analytics')}>분석</button>
                         <button className={activeTab === 'table' ? styles.segmentActive : ''} onClick={() => setActiveTab('table')}>테이블</button>
                     </div>
-                    <button className={styles.ghostBtn} onClick={() => setShowSettings(true)}>파일 설정</button>
+                    <button className={styles.ghostBtn} onClick={() => setShowSettings(true)}>설정</button>
                     <button className={styles.primaryBtn} onClick={() => syncNow({ force: true })} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
                 </div>
             </div>
@@ -454,51 +459,16 @@ export default function AsanMonthlyPerformance() {
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : activeTab === 'analytics' ? (
                 <div className={styles.analytics}>
-                    <section className={styles.commandPanel}>
-                        <div className={styles.commandMain}>
-                            <div className={styles.commandTitleRow}>
-                                <h3>월간 성과 리포트</h3>
-                                <span className={styles.gradeBadge}>{DEFAULT_MONTHLY_RANGE_HINT}</span>
+                    <section className={styles.monthlyReportSheet}>
+                        <div className={styles.reportSheetTop}>
+                            <div>
+                                <h3>{formatReportTitle(selectedReport?.period || selectedReportPeriod)}</h3>
+                                <strong>통합 <span>IN/OUT-BOUND</span></strong>
                             </div>
-                            <div className={styles.commandMeta}>
-                                <span>기준연도 {baseYear}</span>
-                                <span>정리기간 {extraMonths}개월</span>
-                                <span>월별 {summary.monthlyBasis || '파일월'} 기준</span>
+                            <div>
+                                <span>{DEFAULT_MONTHLY_RANGE_HINT}</span>
+                                <b>단위 : 원</b>
                             </div>
-                        </div>
-                        <div className={styles.commandNotes}>
-                            <div className={styles.noteLine}>연간실적으로 넘기기 전 월별 마감 원장을 같은 DB 구조로 고정합니다.</div>
-                            <div className={styles.noteLine}>이월 구간은 기준연도 다음 해 파일까지 별도 슬롯으로 보존합니다.</div>
-                        </div>
-                    </section>
-
-                    <div className={styles.kpiGrid}>
-                        <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>매출</span>
-                            <strong>{formatPerformanceAmount(totalRevenue)}</strong>
-                            <em>{safeNumber(summary.analysisRows).toLocaleString('ko-KR')}건</em>
-                        </div>
-                        <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>매입</span>
-                            <strong>{formatPerformanceAmount(totalPurchase)}</strong>
-                            <em>{totalRevenue ? formatPercent((totalPurchase / totalRevenue) * 100) : '-'}</em>
-                        </div>
-                        <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>손익</span>
-                            <strong className={totalProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totalProfit)}</strong>
-                            <em>손익률 {formatPercent(totalProfitRate, 2)}</em>
-                        </div>
-                        <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>이월금액</span>
-                            <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
-                            <em>매입 {formatPerformanceAmount(carryoverPurchase)} · 차액 {formatPerformanceAmount(carryoverProfit)}</em>
-                        </div>
-                    </div>
-
-                    <section className={`${styles.panel} ${styles.monthlyReportPanel}`}>
-                        <div className={styles.panelHeader}>
-                            <h3>월별 보고서</h3>
-                            <span>{selectedReport?.period || '보고서 데이터 없음'} · 이월금액 포함</span>
                         </div>
                         {monthlyReports.length > 0 && (
                             <div className={styles.reportPeriodTabs}>
@@ -521,21 +491,21 @@ export default function AsanMonthlyPerformance() {
                                 <table className={styles.monthlyReportTable}>
                                     <thead>
                                         <tr>
-                                            <th>구분</th>
+                                            <th>{reportPeriodText}</th>
                                             {reportGroups.map(group => <th key={group.name}>{group.name}</th>)}
                                             <th>매출합계</th>
-                                            <th>이익율</th>
+                                            <th>이익율<br />(%)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr className={styles.reportSectionRow}><td colSpan={reportGroups.length + 3}>매출</td></tr>
+                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>매 출</td></tr>
                                         {renderReportRow('순매출', 'netRevenue', 'netProfitRate')}
                                         {renderReportRow('순매입', 'netPurchase')}
                                         {renderReportRow('매출이익/순매출', 'netProfit')}
                                         {renderReportRow('매출(계산서)', 'invoiceRevenue', 'invoiceProfitRate')}
                                         {renderReportRow('매입(계산서)', 'invoicePurchase')}
                                         {renderReportRow('매출이익(계산서)', 'invoiceProfit')}
-                                        <tr className={styles.reportSectionRow}><td colSpan={reportGroups.length + 3}>이월</td></tr>
+                                        <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>이 월</td></tr>
                                         {renderReportRow('매출 이월', 'carryoverRevenue')}
                                         {renderReportRow('매입 이월', 'carryoverPurchase')}
                                         {renderReportRow('이월 차액', 'carryoverProfit')}
@@ -543,6 +513,13 @@ export default function AsanMonthlyPerformance() {
                                 </table>
                             </div>
                         )}
+                        <div className={styles.reportSummaryStrip}>
+                            <span>순매출 {formatPerformanceAmount(safeNumber(reportTotals.netRevenue) || totalRevenue)}</span>
+                            <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
+                            <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
+                            <span>이월금액 {formatPerformanceAmount(carryoverRevenue)}</span>
+                            <span>손익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
+                        </div>
                     </section>
 
                     <section className={`${styles.panel} ${styles.monthPanel}`}>
@@ -600,23 +577,6 @@ export default function AsanMonthlyPerformance() {
                         )}
                     </section>
 
-                    <section className={styles.panel}>
-                        <div className={styles.panelHeader}>
-                            <h3>월별 파일 공간</h3>
-                            <span>{baseYear}년 + 이월 {extraMonths}개월</span>
-                        </div>
-                        <div className={styles.monthlySlotGrid}>
-                            {sourceSlots.map((slot) => (
-                                <div className={styles.monthlySlotCard} key={slot.period}>
-                                    <div>
-                                        <strong>{slot.period}</strong>
-                                        {slot.carryover && <em>이월</em>}
-                                    </div>
-                                    <span>{fileName(slot.path)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
                 </div>
             ) : (
                 <div className={styles.tableArea}>
