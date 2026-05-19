@@ -73,17 +73,20 @@
 - **v5.14.69**: 선적관리 설정에 `컨테이너 자동조회` 체크박스를 추가해 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`로 저장한다. 봇 데몬 일일 리셋은 03:00, NAS Core 자동조회는 03:10 실행으로 맞췄고, 전체 선적관리 컨테이너 중 최신 이력구분이 `적하`인 건은 제외한다. 자동조회 중 어떤 이유든 `ERROR` 10건에 도달하면 설정을 OFF로 저장하고 남은 조회를 중단한다.
 
 ## VERIFICATION
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_web_runner_daemon.py`: 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 15개 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `python -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
 - `git diff --check`: 통과
 - `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
+- `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/nas-deploy.sh"`: 통합 NAS 재배포 완료, Core health ok, 월간 자동 감지 `2026-05 db-current` 확인
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
-- 월간실적 자동 감지 변경은 로컬 검증 완료. NAS 전체 재배포 후 `/api/branches/asan/performance/monthly?source=status`의 `monthly_auto_status`로 첫 동작 확인 예정.
+- 없음. 월간실적 자동 감지는 NAS 재배포 후 `/api/branches/asan/performance/monthly?source=status`에서 `start_hour=0`, `active_poll_seconds=60`, `stale_poll_seconds=120`, `last_target=2026-05`, `last_result=db-current` 확인 완료.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

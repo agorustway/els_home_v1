@@ -61,6 +61,7 @@
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
 - `C:\Program Files\Git\bin\bash.exe -n scripts/nas-deploy.sh scripts/deploy-core.sh scripts/deploy-bot.sh`: 통과
 - `npm.cmd run build`: 통과. 정적 생성 중 외부 fetch EACCES 경고가 출력됐지만 빌드는 정상 종료했습니다.
+- `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/nas-deploy.sh"`: 통합 NAS 재배포 완료. Core health ok, 월간 자동 감지 상태 `start_hour=0`, `active_poll_seconds=60`, `stale_poll_seconds=120`, `last_target=2026-05`, `last_result=db-current` 확인.
 ### 변경 파일
 - `docker/els-backend/asan_performance.py`
 - `scripts/nas-deploy.sh`, `scripts/deploy-core.sh`, `scripts/deploy-bot.sh`
