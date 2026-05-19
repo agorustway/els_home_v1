@@ -34,6 +34,7 @@ public class OverlayPlugin extends Plugin {
     private static final int REQ_OVERLAY = 2001;
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
+    private static final String KEY_START_TIME = "LAST_START_TIME";
 
     // JS → 오버레이 권한 확인
     @PluginMethod
@@ -84,10 +85,14 @@ public class OverlayPlugin extends Plugin {
         String status = call.getString("status", "driving");
         String driverId = call.getString("driverId", "");
         long startTime = call.getLong("startTimeMillis", System.currentTimeMillis());
+        Boolean visible = call.getBoolean("visible");
 
         if (tripId != null && !tripId.trim().isEmpty()) {
             getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putString(KEY_TRIP_ID, tripId).apply();
+                .edit()
+                .putString(KEY_TRIP_ID, tripId)
+                .putLong(KEY_START_TIME, startTime)
+                .apply();
         }
 
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
@@ -96,6 +101,7 @@ public class OverlayPlugin extends Plugin {
         intent.putExtra("status", status);
         intent.putExtra("driverId", driverId);
         intent.putExtra("startTimeMillis", startTime);
+        intent.putExtra("visible", visible != null && visible);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getContext().startForegroundService(intent);
@@ -103,6 +109,39 @@ public class OverlayPlugin extends Plugin {
             getContext().startService(intent);
         }
         call.resolve(new JSObject().put("started", true));
+    }
+
+    // JS → 운행 시작 직후 네이티브 PiP 진입 요청
+    @PluginMethod
+    public void enterPipMode(PluginCall call) {
+        boolean entered = false;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getActivity() instanceof MainActivity) {
+                entered = ((MainActivity) getActivity()).enterPipIfActiveTrip();
+            }
+            call.resolve(new JSObject().put("entered", entered));
+        } catch (Exception e) {
+            call.resolve(new JSObject().put("entered", false).put("error", e.getMessage()));
+        }
+    }
+
+    // JS → PiP 진입 실패 시 오버레이 위젯을 즉시 표시
+    @PluginMethod
+    public void setWidgetVisible(PluginCall call) {
+        boolean visible = call.getBoolean("visible", true);
+        Intent intent = new Intent(getContext(), FloatingWidgetService.class);
+        intent.setAction("SET_VISIBILITY");
+        intent.putExtra("visible", visible);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+            call.resolve(new JSObject().put("visible", visible));
+        } catch (Exception e) {
+            call.resolve(new JSObject().put("visible", false).put("error", e.getMessage()));
+        }
     }
 
     // JS → 서비스 상태 업데이트
@@ -135,9 +174,17 @@ public class OverlayPlugin extends Plugin {
     @PluginMethod
     public void stopService(PluginCall call) {
         getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).apply();
-        Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        getContext().stopService(intent);
+            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
+        Intent stopCommand = new Intent(getContext(), FloatingWidgetService.class);
+        stopCommand.setAction("STOP_SERVICE");
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(stopCommand);
+            } else {
+                getContext().startService(stopCommand);
+            }
+        } catch (Exception ignored) {}
+        getContext().stopService(new Intent(getContext(), FloatingWidgetService.class));
         call.resolve(new JSObject().put("stopped", true));
     }
 
@@ -149,8 +196,15 @@ public class OverlayPlugin extends Plugin {
         context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
             .edit().putString("EXPLICIT_EXIT", "true").apply();
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).apply();
+            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
         try {
+            Intent stopCommand = new Intent(context, FloatingWidgetService.class);
+            stopCommand.setAction("STOP_SERVICE");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(stopCommand);
+            } else {
+                context.startService(stopCommand);
+            }
             context.stopService(new Intent(context, FloatingWidgetService.class));
         } catch (Exception ignored) {}
         if (getActivity() != null) {

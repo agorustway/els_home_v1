@@ -1,3 +1,24 @@
+## [2026-05-19] Galaxy S24/S25 운행시작 PiP 및 종료 정리 보강 (v5.14.57 / APK v5.11.21)
+### 핵심
+- 운행시작 버튼은 Overlay 서비스를 숨김 상태로만 시작하던 기존 흐름에서, 서비스 시작 직후 네이티브 `enterPipMode`를 직접 요청하도록 바꿨습니다.
+- 네이티브 PiP 진입이 거부되거나 실패하면 `setWidgetVisible({ visible: true })`로 오버레이 위젯을 즉시 띄워 Galaxy S24/S25에서도 운행 시작 후 표시가 끊기지 않게 했습니다.
+- 운행 종료는 TRIP_END 기록과 서버 완료 처리 후 `stopOverlayService()`와 `exitAppForce()`를 이어 호출해 전경서비스, 오버레이, PiP/앱 태스크가 남지 않도록 정리했습니다.
+- `OverlayPlugin`/`FloatingWidgetService`는 시작 시 표시 여부, PiP 직접 호출, 위젯 표시 제어, 종료 시 `LAST_TRIP_ID/LAST_START_TIME` 제거를 지원합니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 6개 통과
+- `node --check web/driver-src/modules/trip.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `git diff --check`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.21 (5162) 빌드/배포 복사 완료, APK 내부 버전 검증 통과
+### 변경 파일
+- `web/driver-src/modules/trip.js`
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`
+- `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 종합실적 연간+월간 합산 대시보드 추가 (v5.14.56)
 ### 핵심
 - `종합실적` placeholder를 실제 운영판으로 교체하고, `/api/branches/asan/performance/summary` 라우트를 추가했습니다.

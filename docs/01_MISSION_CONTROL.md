@@ -1,11 +1,11 @@
-# ELS MISSION CONTROL (v5.14.56 / APK v5.11.20)
+# ELS MISSION CONTROL (v5.14.57 / APK v5.11.21)
 
-> 최신 업데이트: 아산 종합실적에 연간+월간 Supabase 합산 API와 임원용 요약 대시보드를 추가했습니다.
+> 최신 업데이트: Galaxy S24/S25 기준 운행시작 즉시 PiP 복구와 운행종료 후 앱/오버레이 정리를 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.56
+- **웹 버전**: v5.14.57
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
-- **APK 버전**: v5.11.20
+- **APK 버전**: v5.11.21
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 차량 active API는 운행별 최근 좌표를 따로 읽어 전역 1만건 제한으로 최신점이 잘리는 문제를 제거한다.
@@ -13,7 +13,7 @@
   - Android 앱 지도는 운행 중 상세보기에서 지나온 경로를 그리지 않고 실시간 위치만 표시한다. 완료 후에는 전체 경로를 표시한다.
   - 지도 카메라는 사용자 확대/이동 후 15초간 자동추적을 쉬고, 내 위치는 차량 최신점/최근 GPS를 우선 사용해 튐을 줄인다.
   - 모바일 웹 관제 전체지도/상세 패널은 390px급 화면에서 bottom sheet/반응형 폭으로 동작한다.
-  - Android PiP를 Manifest/MainActivity에 복구하고, 설정 화면에 권한 설정/점검 버튼을 추가했다.
+  - Android PiP는 Galaxy S24/S25 기준 운행시작 즉시 네이티브 PiP를 직접 요청하고 실패 시 오버레이를 표시하며, 운행 종료 후 오버레이/앱 태스크를 함께 정리한다.
   - Android 앱 지도 진입은 차량 최신 좌표 조회/초기 포커스 후 전경 GPS 샘플링을 시작하고, 이동+확대는 단일 카메라 동작으로 처리한다.
   - Android 앱 완료경로 필터도 method 기반 TRIP_END를 끝점으로 보존하고, PiP 판단용 운행 ID를 서비스 시작 즉시 네이티브에 저장한다.
   - 선적관리 컨테이너 조회는 `조회 멈춤`으로 봇 중지 신호와 브라우저 요청 중단을 함께 처리하고, `ERROR` 행의 사유를 화면에 요약 표시한다.
@@ -30,7 +30,7 @@
 | Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 잔여 Chrome 정리 보강 |
-| Android 드라이버 앱 | 정상 | APK v5.11.20 빌드 완료 |
+| Android 드라이버 앱 | 정상 | APK v5.11.21 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -45,10 +45,11 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.56: 아산 연간+월간 합산 API 및 종합실적 대시보드
+- [x] v5.14.57: Galaxy S24/S25 운행시작 PiP 및 종료 정리 보강
 - [ ] Next: 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.57**: 운행시작 버튼에서 Overlay 서비스만 숨김 상태로 시작하던 흐름을 바꿔, 서비스 시작 직후 네이티브 PiP를 직접 요청하고 실패하면 오버레이 위젯을 즉시 표시한다. 운행 종료는 TRIP_END/API 완료 후 Overlay 서비스와 앱 태스크를 함께 정리해 PiP/전경서비스가 남지 않게 했다. APK v5.11.21.
 - **v5.14.56**: 종합실적 탭을 준비중 placeholder에서 연간+월간 합산 대시보드로 교체했다. `/api/branches/asan/performance/summary`는 annual current summary와 monthly diff-current summary를 `page_size=1`로 읽어 합산하고, 화면은 통합 매출/손익/손익률/매입률/최근월, 합산 흐름도, 최근 12개월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도만 압축 표시한다. 실제 DB 기준 합산값은 매출 196,151,544,233.1원, 손익률 10.68%, 응답 34.6KB로 확인했다.
 - **v5.14.55**: 운영 DB에 `marker_type` 컬럼이 없어도 `method=TRIP_END/TRIP_START`를 명시 마커로 인식하게 서버/앱 경로 필터를 통일했다. 2026-05-19 KST 데이터 재분석 결과 194서2632는 raw/server/app clean 모두 18:54:32 TRIP_END까지 보존된다. 운행 중 위치보기는 matched-route/complete 호출 없이 실시간 위치만 보도록 회귀 테스트를 추가했고, PiP는 운행 ID를 서비스 시작 즉시 저장하며 Android 12+ auto-enter를 설정한다. APK v5.11.20.
 - **v5.14.54**: 월간실적 분석 기준 버튼을 `월/주차/일`로 줄이고, 선택 월에 속한 주차와 일자만 셀렉트에 표시한다. `누적` 그래프는 청구/하불/손익 평균선을 추가하고, 주요 포인트마다 청구 금액과 건수를 SVG 라벨로 표시해 별도 표를 보지 않아도 흐름을 읽을 수 있게 했다.
@@ -68,15 +69,14 @@
 - **v5.14.39**: 월간실적 분석 상단에 `전체/월별 선택/일별 선택` 기준을 추가하고, 월별 누적 흐름을 주식 차트형 라인 그래프로 올렸다. 월별 성과는 파일 마감월만 사용해 이월/작업일자 때문에 2025-12가 끼지 않게 했고, KPI 카드에는 도넛 비중을 넣었다. 구성 분석은 `ELS직계약차량`과 `외부/타운송사` 두 축만 남겼다.
 - **v5.14.38**: 월간실적 반응형 카드 그리드가 공통 `.analytics` 스타일로 연간실적까지 적용되어 연간 리포트가 가로로 찢어지던 문제를 수정. 연간 컴포넌트는 `annualAnalytics` 전용 flex column 흐름과 `align-items: stretch` 폭 고정을 덧붙였고, 원장 장기 흐름 그래프는 220px 높이의 기준선 차트로 압축했다.
 - **v5.14.37**: 월간실적 분석 섹션을 고정 폭 세로 나열에서 반응형 카드 그리드로 변경. 인포그래픽은 전체 행을 사용하고 구성/세분화는 넓은 화면에서 2칸, 월별 흐름·트리·차량 TOP은 카드 단위로 자동 배치되며 모바일에서는 1열로 떨어진다.
-- **v5.14.36**: 월간실적 `월별·일별 트리`와 `세분화 분석`은 내부 표만 좁아지고 외곽 패널이 화면 끝까지 벌어져 튀어나온 것처럼 보이던 문제를 보정. 트리 패널은 696px, 세분화 패널은 980px 안쪽으로 외곽선과 헤더까지 함께 묶었다.
 ## VERIFICATION
+- `node --test web\tests\driverMapCamera.test.mjs`: 6개 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.21 (5162) 빌드/배포 복사/내부 버전 검증 통과
 - `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
 - `npm.cmd run build`: 통과 (Google Fonts fetch 때문에 네트워크 허용으로 검증)
 - 브라우저: `http://127.0.0.1:3014/employees/branches/asan` 실데이터 종합실적 렌더 확인. screenshot은 in-app browser CDP timeout으로 실패.
-- `node --test web\tests\asanMonthlyPerformance.test.mjs`: 6개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs`: 통과
-- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
 - `npm.cmd run lint -- lib/asan-branch-db.js scripts/import-asan-annual-performance.mjs "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 통과
 - `npm.cmd run build`: 통과 (정적 생성 중 외부 WebDAV/원격 fetch는 sandbox 네트워크 제한으로 비치명 경고 출력)
 - `node --test web\tests\vehicleLocation.test.mjs`: 14개 통과

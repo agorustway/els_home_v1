@@ -205,6 +205,8 @@ public class FloatingWidgetService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        boolean initialVisible = intent != null && intent.getBooleanExtra("visible", false);
+
         // [v4.3.22] EXPLICIT_EXIT 플래그 체크: exitApp() 호출 후 Android가 START_STICKY로
         // 서비스를 재시작 시도할 때, 이 플래그가 있으면 즉시 자멸 → 알림 생성 원천 차단
         SharedPreferences capPrefs = getSharedPreferences("CapacitorStorage", MODE_PRIVATE);
@@ -226,7 +228,11 @@ public class FloatingWidgetService extends Service {
             String action = intent.getAction();
             if ("STOP_SERVICE".equals(action)) {
                 // [Fix] 운행 종료 시 명시적으로 LAST_TRIP_ID 삭제하여 좀비 알람 부활 방지
-                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(KEY_TRIP_ID).apply();
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .remove(KEY_TRIP_ID)
+                    .remove(KEY_START_TIME)
+                    .apply();
                 stopSelf();
                 return START_NOT_STICKY;
             }
@@ -273,7 +279,8 @@ public class FloatingWidgetService extends Service {
                 return START_STICKY;
             }
             if ("SET_VISIBILITY".equals(action)) {
-                String savedTripId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_TRIP_ID, "");
+                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                String savedTripId = prefs.getString(KEY_TRIP_ID, "");
                 if ((mTripId == null || mTripId.trim().isEmpty())
                     && (savedTripId == null || savedTripId.trim().isEmpty())) {
                     Log.d(TAG, "SET_VISIBILITY ignored — no active trip, stopping service");
@@ -281,9 +288,14 @@ public class FloatingWidgetService extends Service {
                     return START_NOT_STICKY;
                 }
                 if (mTripId == null || mTripId.trim().isEmpty()) mTripId = savedTripId;
+                if (mStartTimeMillis == 0) {
+                    mStartTimeMillis = prefs.getLong(KEY_START_TIME, System.currentTimeMillis());
+                }
                 boolean visible = intent.getBooleanExtra("visible", true);
                 if (mFloatingWidget != null) {
                     mFloatingWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
+                } else if (visible) {
+                    setupFloatingWidget(true);
                 }
                 return START_STICKY;
             }
@@ -325,7 +337,7 @@ public class FloatingWidgetService extends Service {
         updateNotification("ELS 운송관리 실행 중");
 
         if (mTripId != null) {
-            setupFloatingWidget();
+            setupFloatingWidget(initialVisible);
             startLocationTracking();
             startGyroListener();
             startNativeTimer();
@@ -335,8 +347,11 @@ public class FloatingWidgetService extends Service {
     }
 
     // ─── 오버레이 위젯 ────────────────────────────────────────────
-    private void setupFloatingWidget() {
-        if (mFloatingWidget != null) return;
+    private void setupFloatingWidget(boolean initialVisible) {
+        if (mFloatingWidget != null) {
+            if (initialVisible) mFloatingWidget.setVisibility(View.VISIBLE);
+            return;
+        }
 
         android.provider.Settings.canDrawOverlays(this);
         if (!android.provider.Settings.canDrawOverlays(this)) {
@@ -432,7 +447,7 @@ public class FloatingWidgetService extends Service {
             }
         });
 
-        mFloatingWidget.setVisibility(View.GONE);
+        mFloatingWidget.setVisibility(initialVisible ? View.VISIBLE : View.GONE);
         mWindowManager.addView(mFloatingWidget, mParams);
         updateWidgetDisplay();
     }

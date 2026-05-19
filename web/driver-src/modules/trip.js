@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5161';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5161';
+import { Store, State, BASE_URL } from './store.js?v=5162';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5162';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5161';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5161';
+} from './gps.js?v=5162';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5162';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -142,15 +142,49 @@ export function saveChecklist() {
 }
 
 // ─── 오버레이 서비스 ─────────────────────────────────────────────
-export function startOverlayService() {
+async function requestTripStartPipFallback() {
   const overlay = Overlay();
   if (!overlay) return;
-  overlay.startService({
-    tripId:          State.trip.id,
-    container:       State.trip.containerNo || '미입력',
-    status:          'driving',
-    startTimeMillis: State.trip.startTime,
-  }).catch(() => { });
+  try {
+    const pip = await overlay.enterPipMode?.();
+    if (pip?.entered) return;
+    await overlay.setWidgetVisible?.({ visible: true });
+  } catch (e) {
+    remoteLog('PiP enter fallback to overlay: ' + (e?.message || e), 'PIP_FALLBACK');
+    try { await overlay.setWidgetVisible?.({ visible: true }); } catch (_) {}
+  }
+}
+
+function scheduleAppExitAfterTripEnd() {
+  const overlay = Overlay();
+  setTimeout(() => {
+    if (overlay?.exitAppForce) {
+      overlay.exitAppForce().catch?.(() => {});
+    } else if (window.Capacitor?.Plugins?.App?.exitApp) {
+      window.Capacitor.Plugins.App.exitApp();
+    }
+  }, 900);
+}
+
+export async function startOverlayService(options = {}) {
+  const overlay = Overlay();
+  if (!overlay) return { started: false };
+  try {
+    const result = await overlay.startService({
+      tripId:          State.trip.id,
+      container:       State.trip.containerNo || '미입력',
+      status:          'driving',
+      startTimeMillis: State.trip.startTime,
+      visible:         options.visible === true,
+    });
+    if (options.enterPip === true) {
+      setTimeout(() => { requestTripStartPipFallback(); }, 350);
+    }
+    return result;
+  } catch (e) {
+    remoteLog('Overlay startService error: ' + (e?.message || e), 'OVERLAY_ERR');
+    return { started: false, error: e?.message || String(e) };
+  }
 }
 
 export function updateOverlayStatus() {
@@ -366,7 +400,7 @@ export async function startTrip() {
     document.getElementById('trip-date-display').textContent = `운송시작: ${formatDate(new Date())}`;
     setTripStatus('driving');
     updateTripUI();
-    startOverlayService();
+    startOverlayService({ enterPip: true });
     startGPS();
     startTripStatusTimer();
 
@@ -428,7 +462,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5161');
+  const gpsModule = await import('./gps.js?v=5162');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -507,6 +541,7 @@ export async function endTrip() {
       State.pendingUpdate = false;
       setTimeout(() => window.App?.checkUpdate(true), 1500);
     }
+    scheduleAppExitAfterTripEnd();
   } catch (e) { showToast('종료 실패: ' + e.message); }
 }
 

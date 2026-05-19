@@ -22,6 +22,7 @@ public class MainActivity extends BridgeActivity {
     private static final int REQ_PERMISSION_CODE = 101;
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
+    private static final String KEY_START_TIME = "LAST_START_TIME";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -88,7 +89,7 @@ public class MainActivity extends BridgeActivity {
         return builder.build();
     }
 
-    private boolean enterPipIfActiveTrip() {
+    public boolean enterPipIfActiveTrip() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
         if (!hasActiveTripForService() || isFinishing() || isInPictureInPictureMode()) return false;
         try {
@@ -109,9 +110,15 @@ public class MainActivity extends BridgeActivity {
         getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
             .edit().putString("EXPLICIT_EXIT", "true").apply();
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).apply();
+            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
         try {
             Intent stopIntent = new Intent(this, FloatingWidgetService.class);
+            stopIntent.setAction("STOP_SERVICE");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(stopIntent);
+            } else {
+                startService(stopIntent);
+            }
             stopService(stopIntent);
         } catch (Exception ignored) {}
         finishAffinity();
