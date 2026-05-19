@@ -355,6 +355,9 @@
           <button class="btn" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.checkUpdate()">
             <span>앱 업데이트 확인</span><span id="app-version-display" style="color:var(--text-muted);font-weight:400;"></span>
           </button>
+          <button class="btn btn-primary" style="justify-content:space-between;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.openPermissionSetup()">
+            <span>권한 설정/점검</span><span style="font-size:12px;font-weight:700;">위치 · 배터리 · 오버레이</span>
+          </button>
           <button class="btn btn-warn" style="justify-content:flex-start;text-align:left;height:38px;padding: 0 16px; font-size:14px;" onclick="App.clearCache()">
             <span>캐시 지우기 (새로고침)</span>
           </button>
@@ -485,6 +488,6 @@
 
 <div id="toast"></div>
 <input type="file" id="file-input-hidden" accept="image/*" multiple style="display:none" onchange="App.onFileSelected(event)">
-  <script type="module" src="app.js?v=5158"></script>
+  <script type="module" src="app.js?v=5159"></script>
 </body>
 </html>

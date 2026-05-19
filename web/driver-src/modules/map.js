@@ -6,13 +6,13 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5158';
-import { smartFetch, remoteLog } from './bridge.js?v=5158';
-import { showToast } from './utils.js?v=5158';
-import { showScreen } from './nav.js?v=5158';
-import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5158';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5158';
-import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5158';
+import { State, BASE_URL } from './store.js?v=5159';
+import { smartFetch, remoteLog } from './bridge.js?v=5159';
+import { showToast } from './utils.js?v=5159';
+import { showScreen } from './nav.js?v=5159';
+import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5159';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5159';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5159';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -24,6 +24,11 @@ const MAP_NAV_CRUISE_ZOOM = 15;
 const MAP_NAV_CITY_ZOOM = 16;
 const MAP_NAV_SLOW_ZOOM = 17;
 const MAP_ALL_MAX_ZOOM = 12;
+const MAP_AUTO_FOLLOW_HOLD_MS = 15000;
+const VEHICLE_MARKER_Z = 420;
+const OWN_VEHICLE_MARKER_Z = 460;
+const WAYPOINT_MARKER_Z = 120;
+const MY_LOCATION_MARKER_Z = 520;
 
 // ─── 모듈 내부 상태 ────────────────────────────────────────────────
 let _map         = null;           // naver.maps.Map 인스턴스
@@ -43,9 +48,42 @@ let _lastRouteAppendPoint = null;  // 실시간 경로선에 마지막으로 붙
 let _lastMotionSample = null;      // GPS 공백 중 화면 예측 이동용 마지막 안정 샘플
 let _coastTimer = null;            // 터널/음영구간 UI 관성 이동 타이머
 let _lastAutoZoomAt = 0;           // 속도 기반 자동 줌 변경 쿨다운
+let _programmaticCameraUntil = 0;  // 코드가 움직인 카메라 이벤트 무시 구간
+let _manualCameraHoldUntil = 0;    // 사용자가 지도를 만진 뒤 자동추적 일시 정지
 
 function getVisibleTrips(trips, includeCompleted = false) {
   return filterTripsForMapVisibility(prepareLiveTrips(trips), State.profile, includeCompleted);
+}
+
+function markProgrammaticCamera(duration = 700) {
+  _programmaticCameraUntil = Date.now() + duration + 250;
+}
+
+function suspendAutoFollowForManualCamera() {
+  if (Date.now() < _programmaticCameraUntil) return;
+  if (_autoFollow) _manualCameraHoldUntil = Date.now() + MAP_AUTO_FOLLOW_HOLD_MS;
+}
+
+function canAutoFollow() {
+  return _autoFollow && Date.now() >= _manualCameraHoldUntil;
+}
+
+function panMapTo(position, options = {}) {
+  if (!_map || !position) return;
+  markProgrammaticCamera(Number(options.duration) || 700);
+  _map.panTo(position, options);
+}
+
+function setMapZoom(zoom, animate = true) {
+  if (!_map || !Number.isFinite(Number(zoom))) return;
+  markProgrammaticCamera(500);
+  _map.setZoom(zoom, animate);
+}
+
+function fitMapBounds(bounds, options = {}) {
+  if (!_map || !bounds) return;
+  markProgrammaticCamera(800);
+  _map.fitBounds(bounds, options);
 }
 
 // ─── SDK 동적 로드 (openMap 시점에 lazy) ───────────────────────────
@@ -108,6 +146,11 @@ function initNaverMap() {
       position: naver.maps.Position.RIGHT_CENTER,
     },
   });
+
+  naver.maps.Event.addListener(_map, 'dragstart', suspendAutoFollowForManualCamera);
+  naver.maps.Event.addListener(_map, 'zoom_changed', suspendAutoFollowForManualCamera);
+  el.addEventListener('touchstart', suspendAutoFollowForManualCamera, { passive: true });
+  el.addEventListener('wheel', suspendAutoFollowForManualCamera, { passive: true });
 
   remoteLog('[MAP] naver.maps.Map 초기화 완료', 'MAP_INIT');
 }
@@ -223,12 +266,12 @@ function navigationZoomForSpeed(speedValue) {
 }
 
 function applyAutoFollowZoom(speedValue, { force = false } = {}) {
-  if (!_map || !_autoFollow) return;
+  if (!_map || !canAutoFollow()) return;
   const nextZoom = navigationZoomForSpeed(speedValue);
   const now = Date.now();
   if (!force && now - _lastAutoZoomAt < 2500 && Math.abs((_map.getZoom?.() || nextZoom) - nextZoom) < 1) return;
   _lastAutoZoomAt = now;
-  if (_map.getZoom?.() !== nextZoom) _map.setZoom(nextZoom, true);
+  if (_map.getZoom?.() !== nextZoom) setMapZoom(nextZoom, true);
 }
 
 function shouldAppendLiveRoutePoint(prev, next) {
@@ -281,8 +324,8 @@ function applyPredictedMapPosition() {
   if (_routeTripId && String(_routeTripId) === String(State.trip.id) && _endMarker) {
     setMarkerPositionSmooth(_endMarker, predicted.lat, predicted.lng, 900);
   }
-  if (_autoFollow) {
-    _map.panTo(new naver.maps.LatLng(predicted.lat, predicted.lng), { duration: 900, easing: 'easeOutCubic' });
+  if (canAutoFollow()) {
+    panMapTo(new naver.maps.LatLng(predicted.lat, predicted.lng), { duration: 900, easing: 'easeOutCubic' });
     applyAutoFollowZoom(speed);
   }
 }
@@ -312,7 +355,7 @@ function handleForegroundGpsSample(event) {
       map: _map,
       icon: makeVehicleIcon(label, '#10b981'),
       title: label,
-      zIndex: 120,
+        zIndex: OWN_VEHICLE_MARKER_Z,
     }));
   }
 
@@ -335,8 +378,8 @@ function handleForegroundGpsSample(event) {
     ? { ...t, lastLocation: { ...(t.lastLocation || {}), lat, lng, recorded_at: new Date().toISOString() } }
     : t);
 
-  if (_autoFollow) {
-    _map.panTo(pos, { duration: 900, easing: 'easeOutCubic' });
+  if (canAutoFollow()) {
+    panMapTo(pos, { duration: 900, easing: 'easeOutCubic' });
     applyAutoFollowZoom(speed);
   }
 }
@@ -397,7 +440,7 @@ function updateVehicleMarkers(trips) {
         const dist = Math.abs(pLat - lat) + Math.abs(pLng - lng);
         if (dist > 0.00001 && dist < 0.5) {
           // 적당한 거리면 애니메이션, 너무 멀면 즉시 이동
-          animateMarker(m, pLat, pLng, lat, lng, 600);
+          animateMarker(m, pLat, pLng, lat, lng, 900);
         } else {
           m.setPosition(pos);
         }
@@ -405,13 +448,14 @@ function updateVehicleMarkers(trips) {
         m.setPosition(pos);
       }
       m.setIcon(makeVehicleIcon(label, color));
+      m.setZIndex?.(isMe ? OWN_VEHICLE_MARKER_Z : VEHICLE_MARKER_Z);
     } else {
       const m = new naver.maps.Marker({
         position : pos,
         map      : _map,
         icon     : makeVehicleIcon(label, color),
         title    : label,
-        zIndex   : 100,
+        zIndex   : isMe ? OWN_VEHICLE_MARKER_Z : VEHICLE_MARKER_Z,
       });
       // 클릭 시 경로/상세보기 조회 + 줌 토글
       naver.maps.Event.addListener(m, 'click', () => handleVehicleMarkerClick(trip));
@@ -420,11 +464,11 @@ function updateVehicleMarkers(trips) {
   }
 
   // 자동 추적 모드: 내 차량이 있으면 부드럽게 지도 이동 (네비게이션 스타일)
-  if (_autoFollow) {
+  if (canAutoFollow()) {
     const myTrip = visible.find(t => isMyTrip(t));
     if (myTrip?.lastLocation) {
       const pos = new naver.maps.LatLng(myTrip.lastLocation.lat, myTrip.lastLocation.lng);
-      _map.panTo(pos, { duration: 500, easing: 'easeOutCubic' });
+      panMapTo(pos, { duration: 500, easing: 'easeOutCubic' });
       applyAutoFollowZoom(myTrip.lastLocation.speed, { force: false });
     }
   }
@@ -434,7 +478,8 @@ async function handleVehicleMarkerClick(trip) {
   if (isMyTrip(trip) && trip.status === 'driving') {
     _routeTripId = null;
     _autoFollow = true;
-    toggleVehicleZoom(trip, { navigation: true });
+    _manualCameraHoldUntil = 0;
+    toggleVehicleZoom(trip, { navigation: true, forceFocus: true });
     showToast('내 차량 추적을 유지합니다.');
     return;
   }
@@ -474,29 +519,29 @@ function drawPolyline(path, options = {}) {
     position : latLngs[0],
     map      : _map,
     icon     : makeWaypointIcon('#16a34a'),
-    zIndex   : 200,
+    zIndex   : WAYPOINT_MARKER_Z,
   });
 
   _endMarker = new naver.maps.Marker({
     position : latLngs[latLngs.length - 1],
     map      : _map,
     icon     : makeWaypointIcon(endColor),
-    zIndex   : 201,
+    zIndex   : WAYPOINT_MARKER_Z + 1,
   });
 
   // 하단 패널 높이를 감안한 여백으로 fitBounds
   try {
     if (options.fitBounds === false) {
       const last = latLngs[latLngs.length - 1];
-      _map.panTo(last, { duration: 450, easing: 'easeOutCubic' });
-      if (_map.getZoom() < MAP_FOCUS_ZOOM) _map.setZoom(MAP_FOCUS_ZOOM, true);
+      panMapTo(last, { duration: 450, easing: 'easeOutCubic' });
+      if (_map.getZoom() < MAP_FOCUS_ZOOM) setMapZoom(MAP_FOCUS_ZOOM, true);
     } else {
       const bounds = _polyline.getBounds();
-      _map.fitBounds(bounds, { top: 60, right: 20, bottom: 230, left: 20 });
+      fitMapBounds(bounds, { top: 60, right: 20, bottom: 230, left: 20 });
     }
   } catch (_) {
-    _map.setCenter(latLngs[latLngs.length - 1]);
-    _map.setZoom(13, true);
+    panMapTo(latLngs[latLngs.length - 1], { duration: 300, easing: 'easeOutCubic' });
+    setMapZoom(13, true);
   }
 }
 
@@ -533,7 +578,7 @@ function renderTripList(trips) {
         ${trip.driver_name || '-'} · ${trip.status === 'completed' ? '운행완료' : '운행중'} · ${contractTypeLabel(trip.driver_contract_type || trip.contract_type)} · ${trip.lastLocation?.address || '위치 정보 없음'}
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-        <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;height:24px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;" onclick="event.stopPropagation(); App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">상세보기</button>
+        <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;height:24px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;" onclick="event.stopPropagation(); App.showTripRouteOnMap(${JSON.stringify(trip).replace(/"/g, '&quot;')})">${trip.status === 'completed' ? '상세보기' : '위치보기'}</button>
       </div>
     </div>
   `).join('');
@@ -595,6 +640,7 @@ function buildRouteStats(trip, points) {
 export async function openMap() {
   showScreen('map');
   _autoFollow = true;  // 지도 열 때 자동추적 모드 ON
+  _manualCameraHoldUntil = 0;
   _routeTripId = null;
   _lastRouteAppendPoint = null;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -638,7 +684,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5158');
+    const { loadCurrentTrip } = await import('./trip.js?v=5159');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -656,28 +702,61 @@ export async function refreshMapData() {
   }
 }
 
+function getStableOwnMapLocation() {
+  const visible = getVisibleTrips(_trips, true);
+  const ownTrip = visible.find(t => isMyTrip(t) && t.status !== 'completed' && t.lastLocation)
+    || visible.find(t => isMyTrip(t) && t.lastLocation);
+  const loc = ownTrip?.lastLocation || null;
+  if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng))) {
+    return { lat: Number(loc.lat), lng: Number(loc.lng), speed: loc.speed, source: 'vehicle' };
+  }
+  if (_lastMotionSample && Number.isFinite(_lastMotionSample.lat) && Number.isFinite(_lastMotionSample.lng)) {
+    return { lat: _lastMotionSample.lat, lng: _lastMotionSample.lng, speed: _lastMotionSample.speed, source: 'gps' };
+  }
+  if (Number.isFinite(Number(State._lastLat)) && Number.isFinite(Number(State._lastLng))) {
+    return { lat: Number(State._lastLat), lng: Number(State._lastLng), source: 'gps' };
+  }
+  return null;
+}
+
+function setMyLocationMarker(position) {
+  if (_myMarker) {
+    _myMarker.setPosition(position);
+  } else {
+    _myMarker = new naver.maps.Marker({
+      position,
+      map   : _map,
+      icon  : makeMyLocIcon(),
+      zIndex: MY_LOCATION_MARKER_Z,
+    });
+  }
+}
+
 /** 내 위치로 이동 */
 export function centerMyLocation() {
   _autoFollow = true;  // 내 위치 버튼 누르면 자동추적 ON
+  _manualCameraHoldUntil = 0;
+  const stable = getStableOwnMapLocation();
+  if (stable && _map) {
+    const position = new naver.maps.LatLng(stable.lat, stable.lng);
+    setMyLocationMarker(position);
+    panMapTo(position, { duration: 450, easing: 'easeOutCubic' });
+    setMapZoom(Math.max(MAP_FOCUS_ZOOM, navigationZoomForSpeed(stable.speed)), true);
+    _zoomedTripId = null;
+    showToast(stable.source === 'vehicle' ? '내 차량 위치로 이동했습니다.' : '최근 GPS 위치로 이동했습니다.');
+    return;
+  }
+
   navigator.geolocation.getCurrentPosition(
     pos => {
       if (!_map) return;
       const { latitude: lat, longitude: lng } = pos.coords;
       const position = new naver.maps.LatLng(lat, lng);
 
-      if (_myMarker) {
-        _myMarker.setPosition(position);
-      } else {
-        _myMarker = new naver.maps.Marker({
-          position,
-          map   : _map,
-          icon  : makeMyLocIcon(),
-          zIndex: 150,
-        });
-      }
+      setMyLocationMarker(position);
 
-      _map.panTo(position, { duration: 400, easing: 'easeOutCubic' });
-      _map.setZoom(MAP_DEFAULT_ZOOM, true);
+      panMapTo(position, { duration: 400, easing: 'easeOutCubic' });
+      setMapZoom(MAP_FOCUS_ZOOM, true);
       _zoomedTripId = null;
       showToast('내 위치로 이동했습니다.');
     },
@@ -697,20 +776,20 @@ export function showAllMapVehicles() {
   try {
     if (visible.length === 1) {
       const only = visible[0].lastLocation;
-      _map.panTo(new naver.maps.LatLng(only.lat, only.lng), { duration: 350, easing: 'easeOutCubic' });
-      _map.setZoom(MAP_ALL_MAX_ZOOM, true);
+      panMapTo(new naver.maps.LatLng(only.lat, only.lng), { duration: 350, easing: 'easeOutCubic' });
+      setMapZoom(MAP_ALL_MAX_ZOOM, true);
       return;
     }
     const bounds = new naver.maps.LatLngBounds();
     visible.forEach(t => bounds.extend(new naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng)));
-    _map.fitBounds(bounds, { top: 70, right: 35, bottom: 240, left: 35 });
+    fitMapBounds(bounds, { top: 70, right: 35, bottom: 240, left: 35 });
     requestAnimationFrame(() => {
-      if (_map?.getZoom?.() > MAP_ALL_MAX_ZOOM) _map.setZoom(MAP_ALL_MAX_ZOOM, true);
+      if (_map?.getZoom?.() > MAP_ALL_MAX_ZOOM) setMapZoom(MAP_ALL_MAX_ZOOM, true);
     });
   } catch {
     const first = visible[0].lastLocation;
-    _map.setCenter(new naver.maps.LatLng(first.lat, first.lng));
-    _map.setZoom(MAP_ALL_MAX_ZOOM, true);
+    panMapTo(new naver.maps.LatLng(first.lat, first.lng), { duration: 300, easing: 'easeOutCubic' });
+    setMapZoom(MAP_ALL_MAX_ZOOM, true);
   }
 }
 
@@ -719,8 +798,8 @@ export function focusVehicleOnMap(trip) {
   if (!_map || !trip.lastLocation) return;
   _autoFollow = false;  // 수동 이동 시 자동추적 OFF
   const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
-  _map.panTo(pos, { duration: 400, easing: 'easeOutCubic' });
-  _map.setZoom(MAP_FOCUS_ZOOM, true);
+  panMapTo(pos, { duration: 400, easing: 'easeOutCubic' });
+  setMapZoom(MAP_FOCUS_ZOOM + 1, true);
   _zoomedTripId = trip.id;
   showToast(`${trip.vehicle_number} 차량 위치로 이동했습니다.`);
 }
@@ -729,21 +808,37 @@ function toggleVehicleZoom(trip, options = {}) {
   if (!_map || !trip?.lastLocation) return;
   const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
   const isSameZoomed = String(_zoomedTripId) === String(trip.id) && _map.getZoom() > MAP_DEFAULT_ZOOM;
-  _map.panTo(pos, { duration: 350, easing: 'easeOutCubic' });
+  panMapTo(pos, { duration: 350, easing: 'easeOutCubic' });
   const focusZoom = options.navigation
-    ? Math.max(MAP_FOCUS_ZOOM, navigationZoomForSpeed(trip.lastLocation.speed))
-    : MAP_FOCUS_ZOOM;
-  _map.setZoom(isSameZoomed ? MAP_DEFAULT_ZOOM : focusZoom, true);
-  _zoomedTripId = isSameZoomed ? null : trip.id;
-  if (options.navigation && !isSameZoomed) {
+    ? Math.max(MAP_FOCUS_ZOOM + 1, navigationZoomForSpeed(trip.lastLocation.speed))
+    : MAP_FOCUS_ZOOM + 1;
+  setMapZoom(isSameZoomed && !options.forceFocus ? MAP_DEFAULT_ZOOM : focusZoom, true);
+  _zoomedTripId = (isSameZoomed && !options.forceFocus) ? null : trip.id;
+  if (options.navigation && (!isSameZoomed || options.forceFocus)) {
     _autoFollow = true;
+    _manualCameraHoldUntil = 0;
     _lastAutoZoomAt = Date.now();
   }
 }
 
 /** 특정 차량의 경로를 지도 위에 표시 */
 export async function showTripRouteOnMap(trip, options = {}) {
-  const isActiveOwnTrip = isMyTrip(trip) && trip.status === 'driving';
+  if (trip.status !== 'completed') {
+    const isActiveOwnTrip = isMyTrip(trip) && trip.status === 'driving';
+    clearMapRoute();
+    _autoFollow = isActiveOwnTrip;
+    _manualCameraHoldUntil = 0;
+    if (_map && trip.lastLocation) {
+      const pos = new naver.maps.LatLng(trip.lastLocation.lat, trip.lastLocation.lng);
+      panMapTo(pos, { duration: 450, easing: 'easeOutCubic' });
+      setMapZoom(Math.max(MAP_FOCUS_ZOOM + 1, navigationZoomForSpeed(trip.lastLocation.speed)), true);
+      _zoomedTripId = trip.id;
+    }
+    showToast('운행 중에는 실시간 위치만 표시합니다. 종료 후 전체 경로를 볼 수 있습니다.', 3500);
+    return;
+  }
+
+  const isActiveOwnTrip = false;
   _autoFollow = isActiveOwnTrip; // 내 운행 중 차량은 상세 경로를 봐도 네비 추적을 유지한다.
   _routeTripId = trip.id;
   remoteLog(`[MAP] 경로 조회: ${trip.vehicle_number}`, 'MAP_ROUTE');

@@ -52,6 +52,7 @@ export default function VehicleTrackingPage() {
     // 탭 상태
     const [activeTab, setActiveTab] = useState('live'); // 'live' | 'records' | 'education'
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
 
     // 상세 조회 상태
     const [selectedTrip, setSelectedTrip] = useState(null);
@@ -99,6 +100,13 @@ export default function VehicleTrackingPage() {
     // 모바일 리스트 팝업 토글
     const [isMobileListOpen, setIsMobileListOpen] = useState(false);
 
+    useEffect(() => {
+        const syncViewport = () => setIsMobileViewport(window.matchMedia('(max-width: 768px)').matches);
+        syncViewport();
+        window.addEventListener('resize', syncViewport);
+        return () => window.removeEventListener('resize', syncViewport);
+    }, []);
+
     // 운행 기록 (검색/필터)
     const [records, setRecords] = useState([]);
     const [recordsLoading, setRecordsLoading] = useState(false);
@@ -129,7 +137,7 @@ export default function VehicleTrackingPage() {
                         });
                         // [v4.5.32] isEmpty가 함수인지 한 번 더 체크 (인증 실패 대비)
                         if (typeof bounds.isEmpty === 'function' && !bounds.isEmpty()) {
-                            mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60, maxZoom: 14 });
+                            mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60, maxZoom: 12 });
                         }
                     }
                 }
@@ -340,8 +348,9 @@ export default function VehicleTrackingPage() {
             markersRef.current.push(pointMarker);
         });
 
-
-        map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100, maxZoom: 14 });
+        if (options.fitBounds !== false) {
+            map.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100, maxZoom: options.maxZoom || 14 });
+        }
     };
 
     // [공통] 주소 역지오코딩 헬퍼 (캐시 적용)
@@ -438,18 +447,14 @@ export default function VehicleTrackingPage() {
                 const rows = Array.isArray(data?.data) ? data.data : (Array.isArray(data?.trips) ? data.trips : []);
                 setLiveTrips(prepareLiveTrips(rows));
 
-                // [추가] 상세보기와 동기화 (LIVE 동안 상세 지도의 경로와 위치 리스트 최신화)
+                // LIVE 중에는 위치 목록만 갱신한다. 경로 재그리기는 카메라를 되돌리므로 완료 운행에서만 수행한다.
                 if (tripId && window.location.pathname.includes('/vehicle-tracking')) {
-                    const locRes = await fetch(`/api/vehicle-tracking/trips/${tripId}/matched-route`);
+                    const locRes = await fetch(`/api/vehicle-tracking/trips/${tripId}/locations`);
                     const locData = await locRes.json();
                     if (locData.locations && locData.locations.length > 0) {
                         const cleanLocations = filterRouteLocations(locData.locations);
-                        const matchedPath = Array.isArray(locData.matchedPath) && locData.matchedPath.length >= 2
-                            ? locData.matchedPath
-                            : cleanLocations;
                         setSelectedTripLocations(cleanLocations);
-                        setSelectedMatchedPath(matchedPath);
-                        drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15', isCompleted: false });
+                        setSelectedMatchedPath([]);
                     }
                 }
             } catch (e) { console.error('실시간 추적 오류:', e); }
@@ -497,9 +502,8 @@ export default function VehicleTrackingPage() {
         setTripLogs([]);
 
         try {
-            const [tripRes, locRes, logRes] = await Promise.all([
+            const [tripRes, logRes] = await Promise.all([
                 fetch(`/api/vehicle-tracking/trips/${trip.id}`),
-                fetch(`/api/vehicle-tracking/trips/${trip.id}/matched-route`),
                 fetch(`/api/vehicle-tracking/trips/${trip.id}/logs`)
             ]);
 
@@ -507,16 +511,30 @@ export default function VehicleTrackingPage() {
             const detailTrip = tripData && !tripData.error ? tripData : trip;
             if (tripData && !tripData.error) setSelectedTrip(tripData);
 
+            const isCompletedTrip = detailTrip.status === 'completed';
+            const locEndpoint = isCompletedTrip
+                ? `/api/vehicle-tracking/trips/${trip.id}/matched-route`
+                : `/api/vehicle-tracking/trips/${trip.id}/locations`;
+            const locRes = await fetch(locEndpoint);
             const locData = await locRes.json();
             if (locData.locations) {
                 const locations = filterRouteLocations(locData.locations);
-                const matchedPath = Array.isArray(locData.matchedPath) && locData.matchedPath.length >= 2
+                const matchedPath = isCompletedTrip && Array.isArray(locData.matchedPath) && locData.matchedPath.length >= 2
                     ? locData.matchedPath
                     : locations;
 
                 setSelectedTripLocations(locations);
-                setSelectedMatchedPath(matchedPath);
-                drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15', isCompleted: detailTrip.status === 'completed' });
+                setSelectedMatchedPath(isCompletedTrip ? matchedPath : []);
+                if (isCompletedTrip) {
+                    drawTripPath(matchedPath, 5, { alreadyMatched: locData.source === 'naver-directions15', isCompleted: true, fitBounds: true });
+                } else {
+                    if (polylineRef.current) {
+                        polylineRef.current.setMap(null);
+                        polylineRef.current = null;
+                    }
+                    markersRef.current.forEach(m => m?.setMap?.(null));
+                    markersRef.current = [];
+                }
 
                 if (locations.length > 0) {
                     // 시작/종료 주소만 즉시 조회 (상세보기용)
@@ -828,9 +846,7 @@ export default function VehicleTrackingPage() {
             }
 
             // 실시간 추적 중인 차량이면 지도 중심 부드럽게 따라감 (네비게이션 모드)
-            if (realtimeTarget && String(realtimeTarget) === String(trip.id)) {
-                map.panTo(pos, { duration: 500, easing: 'easeOutCubic' });
-            }
+            // realtimeTarget은 강조 상태만 유지하고 지도 중심은 사용자의 포커스 버튼에서만 이동한다.
         });
     }, [liveTrips, mapReady, activeTab, cargoGroupFilter, contractGroupFilter, partnerCompanyFilter, liveSearchKeyword, realtimeTarget]);
 
@@ -1194,7 +1210,7 @@ export default function VehicleTrackingPage() {
                             )}
                             {isFullscreen && (
                                 <>
-                                    <div style={{ position: 'absolute', top: 12, left: 12, right: 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
+                                    <div style={{ position: 'absolute', top: isMobileViewport ? 8 : 12, left: 12, right: isMobileViewport ? 12 : 390, zIndex: 2002, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', maxHeight: isMobileViewport ? '30dvh' : 'none', overflowY: isMobileViewport ? 'auto' : 'visible', background: 'rgba(255,255,255,0.96)', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 20px rgba(15,23,42,0.12)' }}>
                                         <button className={styles.fullscreenBtn} style={{ position: 'relative', top: 'auto', left: 'auto', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsFullscreen(false)}>
                                             X 전체화면 닫기
                                         </button>
@@ -1212,7 +1228,7 @@ export default function VehicleTrackingPage() {
                                                     if (t.lastLocation) bounds.extend(new window.naver.maps.LatLng(t.lastLocation.lat, t.lastLocation.lng));
                                                 });
                                                 if (!bounds.isEmpty()) {
-                                                    mapInstanceRef.current.fitBounds(bounds, { top: 30, right: 380, bottom: 30, left: 30 });
+                                                    mapInstanceRef.current.fitBounds(bounds, { top: 30, right: isMobileViewport ? 30 : 380, bottom: isMobileViewport ? 230 : 30, left: 30, maxZoom: 12 });
                                                 }
                                             }
                                         }}>
@@ -1234,7 +1250,7 @@ export default function VehicleTrackingPage() {
                                             </select>
                                         )}
                                     </div>
-                                    <div style={{ position: 'absolute', top: 12, right: 12, bottom: 12, width: 360, zIndex: 2002, background: 'rgba(255,255,255,0.97)', border: '1px solid #dbe3ef', borderRadius: 12, boxShadow: '0 12px 28px rgba(15,23,42,0.16)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <div style={{ position: 'absolute', top: isMobileViewport ? 'auto' : 12, left: isMobileViewport ? 12 : 'auto', right: 12, bottom: 12, width: isMobileViewport ? 'auto' : 360, maxHeight: isMobileViewport ? '42dvh' : 'none', zIndex: 2002, background: 'rgba(255,255,255,0.97)', border: '1px solid #dbe3ef', borderRadius: 12, boxShadow: '0 12px 28px rgba(15,23,42,0.16)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                                         <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#0f172a' }}>운행현황</div>
                                             <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#2563eb' }}>{filteredLiveTrips.length}대</div>

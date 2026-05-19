@@ -1,9 +1,9 @@
 /**
  * permissions.js — 권한 요청/상태 관리, Android 16 가이드, 앱 설정 유틸
  */
-import { Store, State } from './store.js?v=5158';
-import { Overlay, remoteLog } from './bridge.js?v=5158';
-import { showScreen } from './nav.js?v=5158';
+import { Store, State } from './store.js?v=5159';
+import { Overlay, remoteLog } from './bridge.js?v=5159';
+import { showScreen } from './nav.js?v=5159';
 
 // ─── 콜백 주입 (init.js → setupPermNav 호출로 순환 참조 해소) ────
 let _showMain     = () => showScreen('main');
@@ -376,6 +376,7 @@ export function clearCache() {
 export function openPermissionSetup() {
   showScreen('permission');
   updatePermStatuses();
+  showToast('미설정 권한 버튼이 깜빡입니다. 설정 후 새로고침을 눌러 확인하세요.', 3500);
 }
 
 export function resetApp() {

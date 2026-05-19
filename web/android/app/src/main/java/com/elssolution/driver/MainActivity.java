@@ -1,5 +1,6 @@
 package com.elssolution.driver;
 
+import android.app.PictureInPictureParams;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -8,11 +9,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Rational;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import android.Manifest;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
@@ -76,6 +77,19 @@ public class MainActivity extends BridgeActivity {
     private boolean hasActiveTripForService() {
         String tripId = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(KEY_TRIP_ID, "");
         return tripId != null && !tripId.trim().isEmpty();
+    }
+
+    @Override
+    public void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasActiveTripForService() && !isInPictureInPictureMode()) {
+            PictureInPictureParams params = new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(9, 16))
+                .build();
+            try {
+                enterPictureInPictureMode(params);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void cleanExitApp() {
@@ -144,7 +158,9 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         // [v4.3.01] 방어 코드: 위치 권한이 있을 때만 백그라운드 오버레이 전환 시도
-        if (hasActiveTripForService()
+        boolean inPipMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode();
+        if (!inPipMode
+            && hasActiveTripForService()
             && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(this, FloatingWidgetService.class);
             intent.setAction("SET_VISIBILITY");

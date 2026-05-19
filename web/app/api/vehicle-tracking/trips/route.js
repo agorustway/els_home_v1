@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
-import { displaySpeedKmh, filterRouteLocations, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
+import { displaySpeedKmh, filterRouteLocations, pickLatestDisplayLocation, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -82,14 +82,18 @@ export async function GET(request) {
             const tripIds = data.map(t => t.id);
             let locations = [];
             if (tripIds.length > 0) {
-                const { data: locData, error: locError } = await supabase
-                    .from('vehicle_locations')
-                    .select('trip_id, lat, lng, accuracy, speed, address, recorded_at')
-                    .in('trip_id', tripIds)
-                    .order('recorded_at', { ascending: true })
-                    .limit(10000);
+                const locationBatches = await Promise.all(tripIds.map(async (tripId) => {
+                    const { data: locData, error: locError } = await supabase
+                        .from('vehicle_locations')
+                        .select('trip_id, lat, lng, accuracy, speed, address, recorded_at')
+                        .eq('trip_id', tripId)
+                        .order('recorded_at', { ascending: false })
+                        .limit(300);
+                    if (locError || !locData) return [];
+                    return locData.slice().reverse();
+                }));
 
-                if (!locError && locData) locations = locData;
+                locations = locationBatches.flat();
 
                 const { data: logData, error: logError } = await supabase
                     .from('vehicle_trip_logs')
@@ -114,8 +118,7 @@ export async function GET(request) {
                 groupedLocations[l.trip_id].push(l);
             });
             Object.entries(groupedLocations).forEach(([tripId, list]) => {
-                const clean = filterRouteLocations(list);
-                locationMap[tripId] = clean[clean.length - 1] || list[list.length - 1] || null;
+                locationMap[tripId] = pickLatestDisplayLocation(list);
             });
 
             const enriched = await attachDriverMeta(supabase, data);
@@ -186,7 +189,7 @@ export async function GET(request) {
                     Object.entries(grouped).forEach(([tripId, list]) => {
                         const clean = filterRouteLocations(list);
                         const route = clean.length ? clean : list;
-                        locMap[tripId] = route[route.length - 1] || null;
+                        locMap[tripId] = pickLatestDisplayLocation(list) || route[route.length - 1] || null;
                         route.forEach(l => {
                             const speed = displaySpeedKmh(l.speed);
                             if (!maxSpeedMap[tripId] || speed > maxSpeedMap[tripId]) {

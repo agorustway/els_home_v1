@@ -1,3 +1,39 @@
+## [2026-05-19] 차량위치관제 현재점/지도 UX/PiP 보정 (v5.14.48 / APK v5.11.18)
+### 핵심
+- 2026-05-19 오후 데이터 기준 12가0140(17:09~18:51 KST), 194서2632(16:59~18:54 KST)를 재분석했습니다. 기존에는 경로 보정용 중복 제거가 마지막 정차/종료 좌표까지 떨어뜨려 194서2632가 18:25 지점에서 멈춘 것처럼 보였습니다.
+- `filterRouteLocations()`는 불가능한 끝점은 버리되, 정상적인 마지막 heartbeat/TRIP_END 좌표는 보존합니다. active API는 전체 좌표 1만건 전역 제한 대신 운행별 최근 300건을 조회해 최신점 절단을 막습니다.
+- Android 앱 지도는 운행 중 상세보기에서 지나온 경로를 그리지 않고 실시간 위치만 보여줍니다. 완료 운행만 전체 경로를 표시하며, 차량 마커 z-index가 시작/종료점보다 위에 오도록 조정했습니다.
+- 지도 자동추적은 사용자가 확대/이동하면 15초간 쉬고, `내 위치`는 브라우저 raw GPS보다 내 차량 최신점/최근 안정 GPS를 우선 사용합니다. 전체보기 1대 확대는 최대 12로 제한했습니다.
+- 모바일 웹 관제 전체지도와 상세 패널을 390px급 화면에 맞춰 bottom sheet/반응형 폭으로 보정했고, active 상세 실시간 갱신은 경로 재그리기 없이 위치 목록만 갱신합니다.
+- Android PiP manifest/MainActivity 구성을 복구하고, 앱 설정에 `권한 설정/점검` 버튼을 추가해 미설정 필수 권한 버튼이 깜빡이게 했습니다.
+### 검증
+- `node --test web\tests\vehicleLocation.test.mjs`: 14개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.18 (5159) 빌드/배포 복사/내부 버전 검증 통과
+- 3001 dev HTTP 200 확인. Browser 플러그인은 기존 3000 탭 응답 불능 후 `No active Codex browser pane available`로 시각 자동화는 완료하지 못했습니다.
+### 변경 파일
+- `web/utils/vehicleLocation.mjs`, `web/app/api/vehicle-tracking/trips/route.js`
+- `web/driver-src/`, `web/android/app/`, `web/public/apk/`
+- `web/app/(main)/employees/vehicle-tracking/`, `web/tests/vehicleLocation.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-19] 아산 선적관리 컨테이너 조회 중단/실패 사유 표시 (v5.14.47)
+### 핵심
+- 선적관리 컨테이너 조회 실행 중 `조회 멈춤` 버튼을 표시하고, 클릭 시 `/api/els/stop-daemon` 중지 요청과 브라우저 `AbortController` 중단을 함께 수행합니다.
+- 중단 상태는 완료/실패/미조회 건수를 분리해 남기며, 정상 종료라도 `ERROR` 행이 있으면 실패 상태와 사유 요약을 유지합니다.
+- 봇 로그 확인 결과, 이번 실패 흐름은 컨테이너 저장 실패가 아니라 이트랜스 세션 만료/로그인 모달 감지로 불확실 재조회가 반복된 쪽에 가깝습니다. 앞으로는 `ERROR` 행의 사유를 상태줄에 바로 표시합니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanShipping.js"`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `git diff --check -- 'web/app/(main)/employees/branches/asan/AsanShipping.js' 'web/app/(main)/employees/branches/asan/shipping.module.css' 'web/tests/asanShippingFlow.test.mjs'`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 세분화 탭/이월 표 정리 (v5.14.46)
 ### 핵심
 - 세분화 분석에서 관리 의미가 약하거나 중복되는 `구분별`, `청구픽업별`, `포트별`, `노선별`, `이월구분별`, `계약별` 계열 탭을 제거하고 `청구처별`, `작업지별`, `지급처별`만 남겼습니다.

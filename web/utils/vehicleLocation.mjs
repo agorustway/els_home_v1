@@ -314,7 +314,33 @@ export function filterRouteLocations(locations = []) {
 
         filtered.push(current);
     }
+
+    const terminal = ordered[ordered.length - 1];
+    const last = filtered[filtered.length - 1];
+    if (terminal && last && terminal !== last && getPointTime(terminal) > getPointTime(last)) {
+        const forcedTerminal = Boolean(terminal.marker_type);
+        const decision = shouldAcceptLocation({ current: terminal, previous: last, forced: forcedTerminal });
+        if (decision.ok) {
+            const distKm = haversineKm(last.lat, last.lng, terminal.lat, terminal.lng);
+            const elapsedMs = Math.max(0, getPointTime(terminal) - getPointTime(last));
+            const closeStableTail = distKm <= 0.035 || elapsedMs >= 45 * 1000;
+            if (forcedTerminal || closeStableTail) filtered.push(terminal);
+        }
+    }
+
     return filtered;
+}
+
+export function pickLatestDisplayLocation(locations = []) {
+    const ordered = locations
+        .filter(Boolean)
+        .map((l) => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
+        .filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
+        .sort((a, b) => getPointTime(a) - getPointTime(b));
+
+    if (!ordered.length) return null;
+    const clean = filterRouteLocations(ordered);
+    return clean[clean.length - 1] || trimEndpointOutliers(ordered).at(-1) || ordered[ordered.length - 1] || null;
 }
 
 export function simplifyRouteLocations(locations = []) {

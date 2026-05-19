@@ -492,6 +492,13 @@
         border-right: none;
     }
 
+    .mapFullscreen {
+        width: 100vw !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
     .fullscreenBtn {
         padding: 5px 9px;
         font-size: 0.72rem;
@@ -813,6 +820,7 @@
         gap: 12px;
         width: 100%;
         box-sizing: border-box;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
     }
 
     .detailHero {
@@ -846,8 +854,13 @@
     .sectionTitle > div { flex-wrap: wrap; }
 
     .detailInfoGrid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
         gap: 8px;
+    }
+
+    .detailInfoGrid > * {
+        grid-column: auto !important;
+        min-width: 0;
     }
 
     .infoLabel { font-size: 0.68rem; }
@@ -1696,4 +1709,19 @@
 
 .saveBtn:hover {
     background: #1d4ed8;
+}
+
+@media (max-width: 768px) {
+    .mapFullscreen {
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 0 !important;
+    }
+
+    .detailOverlay {
+        height: 92dvh;
+        max-height: 92dvh;
+        z-index: 3000;
+    }
 }

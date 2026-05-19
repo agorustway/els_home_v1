@@ -6,6 +6,7 @@ import {
   filterRouteLocations,
   isForwardProgressCandidate,
   pathDistanceKm,
+  pickLatestDisplayLocation,
   prepareLiveTrips,
   sampleRouteWaypoints,
   sanitizeRecordedAt,
@@ -99,6 +100,20 @@ test('불가능한 종료 마커는 경로 끝점에서 제외하고 마지막 �
   const filtered = filterRouteLocations(locations);
   assert.equal(filtered.length, 2);
   assert.equal(filtered[filtered.length - 1].lat, 36.5010);
+});
+
+test('정차 중 마지막 heartbeat 좌표는 관제 현재점으로 보존한다', () => {
+  const locations = [
+    { lat: 36.920000, lng: 127.040000, speed: 0, accuracy: 8, recorded_at: at(0) },
+    { lat: 36.920500, lng: 127.040300, speed: 18, accuracy: 8, recorded_at: at(60) },
+    { lat: 36.920520, lng: 127.040310, speed: 0, accuracy: 8, recorded_at: at(220) },
+  ];
+
+  const filtered = filterRouteLocations(locations);
+  const latest = pickLatestDisplayLocation(locations);
+
+  assert.equal(filtered[filtered.length - 1].recorded_at, at(220));
+  assert.equal(latest.recorded_at, at(220));
 });
 
 test('경로 매칭용 waypoint는 단지·저속 구간의 촘촘한 지그재그를 줄이고 끝점은 보존한다', () => {
