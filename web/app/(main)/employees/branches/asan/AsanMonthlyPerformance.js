@@ -41,12 +41,8 @@ const DIMENSION_HINTS = [
     { key: 'client', label: '청구처별', words: ['청구처', '거래처', '화주', '업체', '고객', '상호'] },
     { key: 'work_site', label: '작업지별', words: ['작업지', '작업지명', '작업장', '현장', '상차지', '하차지', '출발지', '도착지'] },
     { key: 'payee', label: '지급처별', words: ['지급처', '운송사', '명의', '기사', '차주', '협력사', '배차처'] },
-    { key: 'category', label: '구분별', words: ['구분', '작업구분', '운송구분', '분류', '형태'] },
-    { key: 'billing_pickup', label: '청구픽업별', words: ['청구픽업', '청구 픽업', '픽업'] },
     { key: 'port', label: '포트별', words: ['포트명', '포트', '터미널', 'port', 'pod', 'pol'] },
-    { key: 'route', label: '노선별', words: ['노선', '라인', 'line', '구간', '권역', '지역'] },
     { key: 'carryover_type', label: '이월구분별', words: ['이월구분', '이월 구분', '이월', '전월', '차월'] },
-    { key: 'contract', label: '계약별', words: ['계약', '직계약', '계약구분', '계약형태', '운영구분'] },
     { key: 'shipping', label: '선적별', words: ['선적', '선사', '선명', '모선', '항차', 'vessel', 'voyage'] },
     { key: 'invoice', label: '계산서', words: ['계산서'] },
 ];
@@ -55,12 +51,8 @@ const DIMENSION_ORDER = [
     'client',
     'work_site',
     'payee',
-    'category',
-    'billing_pickup',
     'port',
-    'route',
     'carryover_type',
-    'contract',
     'shipping',
     'carryover_client',
     'invoice',
@@ -175,6 +167,28 @@ function sumMetricItems(items = []) {
         profit: sum.profit + safeNumber(item.profit),
         rowCount: sum.rowCount + safeNumber(item.rowCount),
     }), { revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+}
+
+function aggregateFlowByYear(items = []) {
+    const byYear = new Map();
+    safeObjectList(items).filter(isMetricActive).forEach((item) => {
+        const year = String(item.year || String(item.period || '').slice(0, 4) || '').trim();
+        if (!year) return;
+        const bucket = byYear.get(year) || {
+            year,
+            period: year,
+            revenue: 0,
+            purchase: 0,
+            profit: 0,
+            rowCount: 0,
+        };
+        bucket.revenue += safeNumber(item.revenue);
+        bucket.purchase += safeNumber(item.purchase);
+        bucket.profit += safeNumber(item.profit);
+        bucket.rowCount += safeNumber(item.rowCount);
+        byYear.set(year, bucket);
+    });
+    return Array.from(byYear.values()).sort((a, b) => String(a.year).localeCompare(String(b.year)));
 }
 
 function maxBy(items = [], key) {
@@ -408,10 +422,22 @@ function aggregateMonthlyReports(reports = []) {
     };
 }
 
+function isHiddenDimensionColumn(value = '') {
+    const compact = String(value || '').replace(/\s+/g, '').toLowerCase();
+    if (!compact) return false;
+    if (compact.includes('이월구분')) return false;
+    if (compact.includes('odcy')) return true;
+    if (compact === '구분' || compact === '구분별' || compact.endsWith('구분') || compact.endsWith('구분별') || compact.includes('작업구분') || compact.includes('운송구분')) return true;
+    if (compact.includes('노선') || compact === '노선별' || compact === '라인' || compact === 'line' || compact.includes('route')) return true;
+    if (compact.includes('계약') || compact === '계약별') return true;
+    return false;
+}
+
 function normalizeDimensionSections(breakdowns = []) {
     const sections = safeObjectList(breakdowns)
         .map(section => ({ ...section, items: safeObjectList(section.items), label: section.column || '분류별' }))
-        .filter(section => section.items.length);
+        .filter(section => section.items.length)
+        .filter(section => !isHiddenDimensionColumn(section.column || section.label));
     const selected = [];
     const used = new Set();
 
@@ -437,7 +463,13 @@ function normalizeDimensionSections(breakdowns = []) {
                 : `${section.column || section.label || '기타항목'}별`,
         }));
 
-    return [...selected, ...extras];
+    const dedupedByLabel = new Map();
+    [...selected, ...extras].forEach((section) => {
+        const label = String(section.label || section.column || section.key || '').trim();
+        const key = label || section.key;
+        if (key) dedupedByLabel.set(key, section);
+    });
+    return Array.from(dedupedByLabel.values());
 }
 
 function buildReportDimensionSection(report = null, config = {}) {
@@ -1155,24 +1187,23 @@ export default function AsanMonthlyPerformance() {
                 }));
         }
         if (analysisScope === ANALYSIS_SCOPE_DAY) {
-            return monthDays.map(item => ({
+            return scopedDaily.map(item => ({
                 ...item,
-                isSelected: item.scopeKey === activeAnalysisDayValue,
                 scopeLabel: shortDateLabel(item.date),
                 _scopeKey: item.scopeKey || item.date,
             }));
         }
-        return scopedMonthly.map(item => ({
+        return aggregateFlowByYear(scopedMonthly).map(item => ({
             ...item,
-            scopeLabel: item.period,
-            _scopeKey: item.period,
+            scopeLabel: `${item.year}년`,
+            _scopeKey: item.year,
         }));
-    }, [activeAnalysisDayValue, activeAnalysisWeek, analysisScope, monthDays, monthWeeks, scopedMonthly]);
+    }, [activeAnalysisWeek, analysisScope, monthDays, monthWeeks, scopedDaily, scopedMonthly]);
     const scopeFlowRange = scopeFlowItems.length
         ? `${scopeFlowItems[0].scopeLabel || '-'} ~ ${scopeFlowItems[scopeFlowItems.length - 1].scopeLabel || '-'}`
         : scopedMonthRange;
-    const scopeFlowBasisLabel = analysisScope === ANALYSIS_SCOPE_MONTH ? '주차' : ([ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월');
-    const scopeFlowUnitLabel = analysisScope === ANALYSIS_SCOPE_MONTH ? '주' : ([ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '일' : '개월');
+    const scopeFlowBasisLabel = analysisScope === ANALYSIS_SCOPE_ALL ? '연도' : (analysisScope === ANALYSIS_SCOPE_MONTH ? '주차' : '작업일자');
+    const scopeFlowUnitLabel = analysisScope === ANALYSIS_SCOPE_ALL ? '년' : (analysisScope === ANALYSIS_SCOPE_MONTH ? '주' : '일');
     const latestFlowItem = [...scopeFlowItems].reverse().find(isMetricActive) || null;
     const previousFlowItem = previousMetricItem(scopeFlowItems, latestFlowItem, '_scopeKey');
     const bestRevenueItem = maxBy(scopeFlowItems, 'revenue');
@@ -1208,6 +1239,9 @@ export default function AsanMonthlyPerformance() {
             ? `주간 ${activeAnalysisWeek?.label || '-'}`
             : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${activeAnalysisDay?.date || '-'}` : '전체'));
     const scopeBasisLabel = [ANALYSIS_SCOPE_WEEK, ANALYSIS_SCOPE_DAY].includes(analysisScope) ? '작업일자' : '마감월';
+    const monthSelectDisabled = analysisScope === ANALYSIS_SCOPE_ALL || !availableMonths.length;
+    const weekSelectDisabled = analysisScope !== ANALYSIS_SCOPE_WEEK || !monthWeeks.length;
+    const daySelectDisabled = analysisScope !== ANALYSIS_SCOPE_DAY || !monthDays.length;
     const analysisResetKey = `${analysisScope}:${activeAnalysisMonthValue}:${activeAnalysisWeekValue}:${activeAnalysisDayValue}:${totalRows}:${payload?.synced_at || ''}`;
     const changeAnalysisScope = (nextScope) => {
         if (nextScope === ANALYSIS_SCOPE_MONTH && !activeAnalysisMonthValue) return;
@@ -1495,22 +1529,20 @@ export default function AsanMonthlyPerformance() {
                         <div className={styles.analysisScopeSelects}>
                             <select
                                 aria-label="분석 월 선택"
-                                disabled={!availableMonths.length}
+                                disabled={monthSelectDisabled}
                                 value={activeAnalysisMonthValue}
                                 onChange={e => {
                                     setSelectedAnalysisMonth(e.target.value);
-                                    if (analysisScope === ANALYSIS_SCOPE_ALL) setAnalysisScope(ANALYSIS_SCOPE_MONTH);
                                 }}
                             >
                                 {availableMonths.map(item => <option key={item.period} value={item.period}>{shortMonthLabel(item.period)}</option>)}
                             </select>
                             <select
                                 aria-label="분석 주간 선택"
-                                disabled={analysisScope === ANALYSIS_SCOPE_ALL || !monthWeeks.length}
+                                disabled={weekSelectDisabled}
                                 value={activeAnalysisWeekValue}
                                 onChange={e => {
                                     setSelectedAnalysisWeek(e.target.value);
-                                    setAnalysisScope(ANALYSIS_SCOPE_WEEK);
                                 }}
                             >
                                 {monthWeeks.map(item => (
@@ -1521,11 +1553,10 @@ export default function AsanMonthlyPerformance() {
                             </select>
                             <select
                                 aria-label="분석 일 선택"
-                                disabled={analysisScope === ANALYSIS_SCOPE_ALL || !monthDays.length}
+                                disabled={daySelectDisabled}
                                 value={activeAnalysisDayValue}
                                 onChange={e => {
                                     setSelectedAnalysisDay(e.target.value);
-                                    setAnalysisScope(ANALYSIS_SCOPE_DAY);
                                 }}
                             >
                                 {monthDays.map(item => <option key={item.scopeKey} value={item.scopeKey}>{shortDayOptionLabel(item)}</option>)}
@@ -1538,7 +1569,6 @@ export default function AsanMonthlyPerformance() {
                         scopeLabel={scopeLabel}
                         basisLabel={scopeFlowBasisLabel}
                         unitLabel={scopeFlowUnitLabel}
-                        highlightKey={analysisScope === ANALYSIS_SCOPE_DAY ? activeAnalysisDayValue : ''}
                     />
 
                     <section className={`${styles.panel} ${styles.monthlySummaryPanel}`}>
@@ -1739,7 +1769,7 @@ export default function AsanMonthlyPerformance() {
                             </div>
                         </div>
                         {scopedDimensionSections.length === 0 ? (
-                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 매출, 청구처별, 작업지별, 지급처별, 구분별, 청구픽업별, 포트별, 노선별, 이월구분별, 계약별, 선적별, 이월(청구처기준), 계산서 데이터를 동기화 후 자동 분석합니다.</div>
+                            <div className={styles.emptyPanel}>세분화 가능한 컬럼을 아직 찾지 못했습니다. 매출, 청구처별, 작업지별, 지급처별, 청구픽업별, 포트별, 이월구분별, 선적별, 이월(청구처기준), 계산서 데이터를 동기화 후 자동 분석합니다.</div>
                         ) : (
                             <>
                                 <div className={styles.dimensionTabs}>

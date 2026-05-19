@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 그래프 단위와 세분화 탭 기준 보정 (v5.14.67)
+### 핵심
+- `누적` 그래프 기준을 전체=연도별, 월=선택월 주차별, 주차=선택주 일자별, 일=해당일 단일 데이터로 다시 맞췄습니다.
+- 전체 상태에서는 월/주차/일 셀렉트를 회색 잠금 처리하고, 월·주차·일 선택 때도 현재 단계에 필요한 셀렉트만 활성화합니다.
+- 세분화 분석에서 `구분별`, `노선별`, `계약별`, `ODCY구분별` 후보를 제거하고, 중복되는 `청구픽업별`은 같은 제목 기준으로 뒤쪽 실제 컬럼만 남기게 했습니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- Browser 자동화: Codex 브라우저 세션에 연결 가능한 활성 pane이 없어 실행하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리 (v5.14.66 / APK v5.11.23)
 ### 핵심
 - 사용자 관점의 운행 흐름에서 백그라운드 위치수신이 핵심임을 기준으로, 앱 최소화/플로팅 위젯 표시가 GPS 수신을 멈추지 않는지 테스트를 추가했습니다.

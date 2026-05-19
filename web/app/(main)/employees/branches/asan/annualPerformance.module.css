@@ -2967,6 +2967,9 @@
 .analysisScopeButtons button:disabled,
 .analysisScopeSelects select:disabled {
     cursor: not-allowed;
+    border-color: #e2e8f0;
+    background: #f1f5f9;
+    color: #94a3b8;
     opacity: 0.48;
 }
 
