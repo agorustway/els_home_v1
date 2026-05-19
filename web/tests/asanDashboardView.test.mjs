@@ -589,3 +589,32 @@ test('아산 배차 NAS 스케줄러는 컨테이너 재시작 후 DB 최신 파
     assert.match(source, /gc\.collect\(\)/);
   }
 });
+
+test('아산 배차 동기화는 파일에서 빠진 날짜 시트를 DB 누적 스냅샷으로 보존한다', () => {
+  const core = fs.readFileSync(
+    path.join(webRoot, '../docker/els-backend/app_core.py'),
+    'utf8',
+  );
+  const legacySync = fs.readFileSync(
+    path.join(webRoot, 'lib/asan-dispatch.js'),
+    'utf8',
+  );
+  const spec = fs.readFileSync(
+    path.join(webRoot, '../docs/09_DISPATCH_BOARD_SPEC.md'),
+    'utf8',
+  );
+
+  assert.match(core, /파일에서 삭제된 과거 시트는 DB 마감 스냅샷으로 보존합니다/);
+  assert.doesNotMatch(
+    core,
+    /branch_dispatch"\)\.delete\(\)\.eq\("branch_id", "asan"\)\.eq\("type", dtype\)\.eq\("target_date", db_date\)/,
+  );
+  assert.doesNotMatch(core, /엑셀에 없는 과거 시트 .*DB에서 삭제 완료/);
+  assert.match(legacySync, /\.upsert\(\{/);
+  assert.match(legacySync, /onConflict: 'branch_id,type,target_date'/);
+  assert.doesNotMatch(
+    legacySync,
+    /\.delete\(\)\.eq\('branch_id', 'asan'\)\.eq\('type', type\)/,
+  );
+  assert.match(spec, /삭제된 시트는 변경이 끝난 마감 스냅샷/);
+});

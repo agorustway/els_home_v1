@@ -168,10 +168,6 @@ async function syncAsanDispatch() {
 
             let syncCount = 0;
 
-            // 기존 데이터 삭제 (깨끗하게 다시 삽입)
-            await supabase.from('branch_dispatch')
-                .delete().eq('branch_id', 'asan').eq('type', type);
-
             for (const sheet of workbook.worksheets) {
                 const targetDate = sheetNameToDate(sheet.name);
                 if (!targetDate) continue; // 날짜 시트가 아니면 스킵
@@ -179,7 +175,8 @@ async function syncAsanDispatch() {
                 const parsed = parseSheet(sheet, type);
                 if (!parsed || parsed.rows.length === 0) continue;
 
-                const { error: insErr } = await supabase.from('branch_dispatch').insert({
+                // 파일에서 사라진 과거 시트는 마감 스냅샷으로 보존하고, 현재 파일 날짜만 갱신한다.
+                const { error: insErr } = await supabase.from('branch_dispatch').upsert({
                     branch_id: 'asan',
                     type,
                     target_date: targetDate,
@@ -188,9 +185,11 @@ async function syncAsanDispatch() {
                     comments: parsed.comments || {},
                     file_modified_at: fileModifiedAt,
                     updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'branch_id,type,target_date'
                 });
 
-                if (insErr) console.error(`Insert error (${sheet.name}):`, insErr.message);
+                if (insErr) console.error(`Upsert error (${sheet.name}):`, insErr.message);
                 else syncCount++;
             }
 

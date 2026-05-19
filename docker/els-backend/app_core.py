@@ -214,7 +214,7 @@ def sync_asan_dispatch_python(force=False):
                 app.logger.error(f"[자동동기화] {dtype} 로컬 임시 파일 복사 실패: {e}")
                 continue
             
-            # [v5.10.19] 삭제된 시트 추적용 리스트
+            # 파일에 현재 남아있는 날짜 시트. 파일에서 사라진 날짜는 마감 스냅샷으로 DB에 보존한다.
             valid_dates = []
             
             # 엑셀 읽기
@@ -249,7 +249,7 @@ def sync_asan_dispatch_python(force=False):
                     if m == 12 and now.month == 1: year -= 1
                     elif m == 1 and now.month == 12: year += 1
                     target_date = f"{year}-{m:02d}-{d:02d}"
-                    valid_dates.append(target_date) # [v5.10.19] 유효한 날짜 수집
+                    valid_dates.append(target_date)
                     
                     # 시트 파싱
                     df = pd.read_excel(xl, sheet_name=sheet_name, header=None)
@@ -349,24 +349,13 @@ def sync_asan_dispatch_python(force=False):
                 last_mtime_cache[dtype] = mtime
                 dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
                 
-                # [v5.10.19] 엑셀에서 삭제된 시트는 DB에서도 제거
+                # [v5.14.21] 엑셀에서 삭제된 과거 시트는 "마감된 자료"로 간주해 DB에 보존한다.
+                # 현행 파일은 진행 중 입력판이고, branch_dispatch는 삭제된 시트까지 포함하는 조회 원장이다.
                 if valid_dates:
-                    try:
-                        res = supabase.from_("branch_dispatch").select("target_date").eq("branch_id", "asan").eq("type", dtype).execute()
-                        db_dates = [r["target_date"] for r in res.data]
-                        deleted_count = 0
-                        for db_date in db_dates:
-                            if db_date not in valid_dates:
-                                supabase.from_("branch_dispatch").delete().eq("branch_id", "asan").eq("type", dtype).eq("target_date", db_date).execute()
-                                # 캐시 정리
-                                for k in list(last_sheet_hash_cache.keys()):
-                                    if k.startswith(f"{dtype}:") and f"{int(db_date[5:7])}.{int(db_date[8:10])}" in k:
-                                        del last_sheet_hash_cache[k]
-                                deleted_count += 1
-                        if deleted_count > 0:
-                            app.logger.info(f"[자동동기화] {dtype} 엑셀에 없는 과거 시트 {deleted_count}개 DB에서 삭제 완료.")
-                    except Exception as clean_err:
-                        app.logger.error(f"[자동동기화] {dtype} 삭제된 시트 정리 실패: {clean_err}")
+                    app.logger.info(
+                        f"[자동동기화] {dtype} 현재 파일 날짜 {len(valid_dates)}개 확인. "
+                        "파일에서 삭제된 과거 시트는 DB 마감 스냅샷으로 보존합니다."
+                    )
 
                 # [v5.10.15] 메모용 워크북 메모리 해제
                 if wb_comments:
