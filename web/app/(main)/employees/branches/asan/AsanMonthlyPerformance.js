@@ -561,6 +561,8 @@ export default function AsanMonthlyPerformance() {
     const [selectedAnalysisDay, setSelectedAnalysisDay] = useState('');
     const [expandedDailyMonths, setExpandedDailyMonths] = useState(new Set());
     const [activeDimensionKey, setActiveDimensionKey] = useState('');
+    const [expandedDimensionKeys, setExpandedDimensionKeys] = useState(new Set());
+    const [showAllVehicles, setShowAllVehicles] = useState(false);
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchMode, setSearchMode] = useState('or');
@@ -817,11 +819,15 @@ export default function AsanMonthlyPerformance() {
         scopeDimensionSections(dimensionSections, analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue)
     ), [activeAnalysisDayValue, activeAnalysisMonthValue, analysisScope, dimensionSections, scopeRevenue]);
     const activeDimension = scopedDimensionSections.find(section => section.key === activeDimensionKey) || scopedDimensionSections[0] || null;
-    const topDimensionItem = activeDimension?.items?.[0] || null;
+    const activeDimensionItems = safeObjectList(activeDimension?.items);
+    const activeDimensionExpanded = Boolean(activeDimension?.key && expandedDimensionKeys.has(activeDimension.key));
+    const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
+    const topDimensionItem = activeDimensionItems[0] || null;
     const dailyTree = useMemo(() => groupDailyByMonth(scopedMonthly, scopedDaily), [scopedDaily, scopedMonthly]);
-    const topVehicles = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 5);
+    const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDayValue, scopeRevenue, 999);
+    const visibleVehicles = showAllVehicles ? scopedVehicleItems : scopedVehicleItems.slice(0, 5);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
-    const vehicleMax = Math.max(1, ...topVehicles.map(item => Math.abs(safeNumber(item.revenue))));
+    const vehicleMax = Math.max(1, ...scopedVehicleItems.map(item => Math.abs(safeNumber(item.revenue))));
     const chartMax = getPerformanceChartMax(scopedMonthly, ['revenue', 'purchase', 'profit']);
     const scopeLabel = analysisScope === ANALYSIS_SCOPE_MONTH
         ? `월별 ${activeAnalysisMonthValue || '-'}`
@@ -885,6 +891,25 @@ export default function AsanMonthlyPerformance() {
             else next.add(period);
             return next;
         });
+    };
+
+    const toggleDimensionExpanded = (key = activeDimension?.key) => {
+        if (!key) return;
+        setExpandedDimensionKeys(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
+    const selectDimensionSection = (sectionKey) => {
+        if (!sectionKey) return;
+        if (activeDimension?.key === sectionKey) {
+            toggleDimensionExpanded(sectionKey);
+            return;
+        }
+        setActiveDimensionKey(sectionKey);
     };
 
     const syncNow = async ({ force = true, nextSlots = fileSlots, nextBaseYear = baseYear, nextExtraMonths = extraMonths } = {}) => {
@@ -1302,8 +1327,15 @@ export default function AsanMonthlyPerformance() {
 
                     <section className={`${styles.panel} ${styles.dimensionPanel}`}>
                         <div className={styles.panelHeader}>
-                            <h3>세분화 분석</h3>
-                            <span>{scopeLabel} · 청구·하불·손익·건수 기준</span>
+                            <button
+                                type="button"
+                                className={styles.panelHeaderTitleButton}
+                                onClick={() => toggleDimensionExpanded()}
+                                disabled={!activeDimensionItems.length}
+                            >
+                                세분화 분석
+                            </button>
+                            <span>{activeDimensionExpanded ? `전체 ${activeDimensionItems.length.toLocaleString('ko-KR')}건` : `상위 ${Math.min(12, activeDimensionItems.length).toLocaleString('ko-KR')}건`} · {scopeLabel}</span>
                         </div>
                         <div className={styles.dimensionDiagram}>
                             <div>
@@ -1337,9 +1369,9 @@ export default function AsanMonthlyPerformance() {
                                             key={section.key}
                                             type="button"
                                             className={activeDimension?.key === section.key ? styles.dimensionTabActive : ''}
-                                            onClick={() => setActiveDimensionKey(section.key)}
+                                            onClick={() => selectDimensionSection(section.key)}
                                         >
-                                            {section.label}
+                                            {section.label}{expandedDimensionKeys.has(section.key) ? ' 전체' : ''}
                                         </button>
                                     ))}
                                 </div>
@@ -1357,11 +1389,11 @@ export default function AsanMonthlyPerformance() {
                                         <span>건수</span>
                                         <span>률</span>
                                     </div>
-                                    {(activeDimension?.items || []).slice(0, 12).map(item => (
+                                    {visibleDimensionItems.map(item => (
                                         <button
                                             type="button"
                                             className={styles.dimensionRow}
-                                            key={`${activeDimension.key}-${item.name}`}
+                                            key={`${activeDimension.key}-${item.name || item.label || 'item'}`}
                                             onClick={() => openDetailSearch([item.name], 'and')}
                                         >
                                             <span>{item.name || '미분류'}</span>
@@ -1377,14 +1409,20 @@ export default function AsanMonthlyPerformance() {
                         )}
                     </section>
 
-                    {topVehicles.length > 0 && (
+                    {scopedVehicleItems.length > 0 && (
                         <section className={`${styles.panel} ${styles.vehicleInsightPanel}`}>
                             <div className={styles.panelHeader}>
-                                <h3>차량 성과 TOP</h3>
-                                <span>청구액 기준</span>
+                                <button
+                                    type="button"
+                                    className={styles.panelHeaderTitleButton}
+                                    onClick={() => setShowAllVehicles(prev => !prev)}
+                                >
+                                    차량 성과 {showAllVehicles ? '전체' : 'TOP'}
+                                </button>
+                                <span>{showAllVehicles ? `전체 ${scopedVehicleItems.length.toLocaleString('ko-KR')}대` : `상위 ${visibleVehicles.length.toLocaleString('ko-KR')}대`} · 청구액 기준</span>
                             </div>
                             <div className={styles.vehicleInsightRows}>
-                                {topVehicles.map((vehicle, idx) => (
+                                {visibleVehicles.map((vehicle, idx) => (
                                     <button
                                         key={vehicle.vehicleNo || vehicle.name || idx}
                                         type="button"

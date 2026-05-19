@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 TOP 항목 전체 보기 토글 (v5.14.43)
+### 핵심
+- 세분화 분석의 현재 탭 또는 `세분화 분석` 제목을 누르면 상위 12개와 전체 항목 표시를 전환합니다.
+- `청구처별`, `작업지별`, `운송사(명의)별` 등 세분화 탭은 다른 탭 선택은 기존대로 이동하고, 같은 탭 재클릭은 전체 보기 토글로 동작합니다.
+- `차량 성과 TOP` 제목을 누르면 상위 5대와 전체 차량 목록을 전환합니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 범위 전환 데이터 정규화 (v5.14.42)
 ### 핵심
 - 월별/일별 선택 시 화면에 쓰는 `monthly`, `daily`, `monthlyReports`, `breakdowns`, `strategicSegments`, `vehiclePerformance`를 모두 안전한 객체 배열로 정규화했습니다.

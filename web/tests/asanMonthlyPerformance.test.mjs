@@ -164,6 +164,10 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /청구픽업별/);
   assert.match(component, /포트별/);
   assert.match(component, /dimensionDiagram/);
+  assert.match(component, /expandedDimensionKeys/);
+  assert.match(component, /visibleDimensionItems/);
+  assert.match(component, /selectDimensionSection/);
+  assert.match(component, /activeDimensionExpanded \? `전체/);
   assert.match(component, /openDetailSearch\(\[item\.name\], 'and'\)/);
   assert.match(component, /분석 기준/);
   assert.match(component, /월별 선택/);
@@ -193,7 +197,10 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /구성 분석/);
   assert.match(component, /ELS직계약차량/);
   assert.match(component, /외부\/타운송사/);
-  assert.match(component, /차량 성과 TOP/);
+  assert.match(component, /차량 성과 \{showAllVehicles \? '전체' : 'TOP'\}/);
+  assert.match(component, /scopedVehicleItems/);
+  assert.match(component, /visibleVehicles/);
+  assert.match(component, /setShowAllVehicles/);
   assert.match(component, /reportTableReady/);
   assert.match(component, /매출보고서 표 미감지/);
   assert.match(component, /이월금액/);
@@ -214,6 +221,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.dimensionPanel\s*{[\s\S]*order: 50/);
   assert.match(css, /\.analysisScopePanel\s*{[\s\S]*order: 5/);
   assert.match(css, /\.monthlyTrendPanel\s*{[\s\S]*order: 8/);
+  assert.match(css, /\.panelHeaderTitleButton\s*{[\s\S]*cursor: pointer/);
   assert.match(css, /\.analysisScopeButtons button:disabled/);
   assert.match(css, /\.monthlyTrendSvg\s*{[\s\S]*width: 100%/);
   assert.match(css, /\.monthlyTrendAxis\s*{[\s\S]*display: grid/);
