@@ -154,16 +154,17 @@
 }
 
 .analytics {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 580px), 1fr));
+    align-items: start;
+    gap: 8px;
     min-height: 0;
     overflow: visible;
     padding-bottom: 4px;
 }
 
 .analytics > * {
-    flex: 0 0 auto;
+    min-width: 0;
 }
 
 .commandPanel {
@@ -1191,8 +1192,7 @@
 }
 
 .monthPanel {
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
 }
 
@@ -1939,22 +1939,30 @@
 .segmentInsightPanel,
 .vehicleInsightPanel,
 .reportNoticePanel {
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
     overflow: hidden;
 }
 
+.monthlySummaryPanel,
+.reportNoticePanel,
+.monthlyReportSheet {
+    grid-column: 1 / -1;
+}
+
+.segmentInsightPanel,
+.dimensionPanel {
+    grid-column: span 2;
+}
+
 .dailyTreePanel {
-    width: min(100%, 696px);
-    max-width: 696px;
+    width: 100%;
     box-sizing: border-box;
     overflow: hidden;
 }
 
 .dimensionPanel {
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -2161,8 +2169,7 @@
 .vehicleInsightRows {
     display: flex;
     flex-direction: column;
-    width: min(100%, 780px);
-    max-width: 780px;
+    width: 100%;
     padding: 8px;
     box-sizing: border-box;
 }
@@ -2229,8 +2236,7 @@
 }
 
 .monthlyReportSheet {
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
     overflow: hidden;
     border: 1px solid #0f172a;
@@ -2398,8 +2404,7 @@
 .dailyTree {
     display: flex;
     flex-direction: column;
-    width: min(100%, 680px);
-    max-width: 680px;
+    width: 100%;
     overflow-x: auto;
     padding: 7px 8px 8px;
 }
@@ -2409,7 +2414,7 @@
     top: 0;
     z-index: 1;
     display: grid;
-    grid-template-columns: 124px 118px 118px 118px 64px;
+    grid-template-columns: minmax(112px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) 64px;
     align-items: center;
     gap: 6px;
     width: 100%;
@@ -2445,7 +2450,7 @@
 .dailyMonthRow,
 .dailyRow {
     display: grid;
-    grid-template-columns: 124px 118px 118px 118px 64px;
+    grid-template-columns: minmax(112px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) minmax(94px, 1fr) 64px;
     align-items: center;
     gap: 6px;
     width: 100%;
@@ -2496,8 +2501,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 7px;
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
     padding: 8px;
     border-bottom: 1px solid #e2e8f0;
@@ -2545,8 +2549,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    width: min(100%, 980px);
-    max-width: 980px;
+    width: 100%;
     box-sizing: border-box;
     padding: 8px 8px 0;
 }
@@ -2575,8 +2578,7 @@
     grid-template-columns: 80px minmax(190px, 1fr) 180px;
     gap: 8px;
     align-items: center;
-    width: min(100% - 16px, 780px);
-    max-width: 780px;
+    width: calc(100% - 16px);
     margin: 8px;
     padding: 7px 8px;
     border: 1px solid #ccfbf1;
@@ -2605,8 +2607,7 @@
 .dimensionRows {
     display: flex;
     flex-direction: column;
-    width: min(100%, 780px);
-    max-width: 780px;
+    width: 100%;
     box-sizing: border-box;
     padding: 0 8px 9px;
     overflow-x: auto;
@@ -2615,7 +2616,7 @@
 .dimensionHead,
 .dimensionRow {
     display: grid;
-    grid-template-columns: 190px 112px 112px 112px 64px 58px;
+    grid-template-columns: minmax(170px, 1fr) 112px 112px 112px 64px 58px;
     align-items: center;
     gap: 7px;
     min-width: 680px;
@@ -2774,6 +2775,14 @@
 
     .reportSummaryStrip {
         grid-template-columns: 1fr 1fr;
+    }
+
+    .monthlySummaryPanel,
+    .reportNoticePanel,
+    .segmentInsightPanel,
+    .dimensionPanel,
+    .monthlyReportSheet {
+        grid-column: 1 / -1;
     }
 
     .monthlyInfographicGrid,

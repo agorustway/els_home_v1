@@ -1,3 +1,17 @@
+## [2026-05-19] 아산 월간실적 반응형 카드 그리드 전환 (v5.14.37)
+### 핵심
+- 월간실적 분석 화면을 고정 폭 세로 나열에서 반응형 카드 그리드로 바꿨습니다.
+- 상단 인포그래픽은 전체 행을 쓰고, 구성 분석/세분화 분석은 넓은 화면에서 2칸을 사용하며 월별 흐름·일별 트리·차량 TOP은 카드 단위로 화면을 채웁니다.
+- 모바일에서는 모든 분석 카드가 1열로 떨어지도록 `grid-column`을 보정했습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 트리/세분화 패널 폭 정리 (v5.14.36)
 ### 핵심
 - 월별·일별 트리와 세분화 분석에서 내부 표만 좁아지고 외곽 패널은 브라우저 전체 폭으로 벌어져 튀어나온 것처럼 보이던 부분을 정리했습니다.
