@@ -181,6 +181,465 @@
     box-sizing: border-box;
 }
 
+.summaryExecutive {
+    gap: 8px;
+}
+
+.summaryDashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.summaryKpiGrid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.summaryKpiCard,
+.summaryPanel,
+.summarySignal {
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.summaryKpiCard {
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: 3px;
+    min-height: 92px;
+    padding: 10px 11px;
+    border-top: 3px solid #94a3b8;
+}
+
+.summaryKpiCard span,
+.summaryKpiCard em,
+.summarySignal span,
+.summarySignal em {
+    min-width: 0;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryKpiCard strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: clamp(1.02rem, 1.35vw, 1.42rem);
+    font-weight: 950;
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryTone_good {
+    border-top-color: #0f766e;
+    background: linear-gradient(180deg, #f0fdfa 0%, #fff 72%);
+}
+
+.summaryTone_watch {
+    border-top-color: #d97706;
+    background: linear-gradient(180deg, #fffbeb 0%, #fff 72%);
+}
+
+.summaryTone_danger {
+    border-top-color: #dc2626;
+    background: linear-gradient(180deg, #fef2f2 0%, #fff 72%);
+}
+
+.summaryMainGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+    gap: 8px;
+    align-items: start;
+}
+
+.summaryPanel {
+    padding: 9px 10px;
+}
+
+.summaryPanelHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.summaryPanelHead h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 950;
+}
+
+.summaryPanelHead span {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.summaryFlowDiagram {
+    display: grid;
+    grid-template-columns: minmax(190px, 0.82fr) 58px minmax(0, 1.25fr);
+    align-items: stretch;
+    gap: 8px;
+}
+
+.summarySourceStack {
+    display: grid;
+    gap: 6px;
+}
+
+.summarySourceStack div,
+.summaryFlowTotal,
+.summaryFlowBars div,
+.summaryConcentration > div:first-child {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+
+.summarySourceStack span,
+.summaryFlowTotal span,
+.summaryFlowBars span,
+.summaryConcentration span {
+    display: block;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.summarySourceStack strong,
+.summaryFlowTotal strong,
+.summaryConcentration strong {
+    display: block;
+    margin: 3px 0 6px;
+    color: #0f172a;
+    font-size: 0.86rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summarySourceStack i,
+.summaryYearMatrix i {
+    display: block;
+    height: 5px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #0f766e, #2563eb);
+}
+
+.summaryFlowArrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 950;
+}
+
+.summaryFlowCore {
+    display: grid;
+    grid-template-columns: minmax(130px, 0.55fr) minmax(0, 1fr);
+    gap: 7px;
+}
+
+.summaryFlowTotal {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: #ecfeff;
+    border-color: #a5f3fc;
+}
+
+.summaryFlowBars {
+    display: grid;
+    gap: 6px;
+}
+
+.summaryFlowBars div {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 86px;
+    align-items: center;
+    gap: 8px;
+}
+
+.summaryFlowBars b {
+    display: block;
+    height: 9px;
+    border-radius: 999px;
+    background: #475569;
+}
+
+.summaryFlowBars em {
+    color: #0f172a;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 950;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.summaryPositiveBar {
+    background: #0f766e !important;
+}
+
+.summaryNegativeBar {
+    background: #dc2626 !important;
+}
+
+.summarySignalGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.summarySignal {
+    display: grid;
+    gap: 3px;
+    min-height: 76px;
+    padding: 8px;
+    border-top-width: 3px;
+}
+
+.summarySignal strong {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.88rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryTrendPanel {
+    grid-column: span 1;
+}
+
+.summaryTrendChart {
+    position: relative;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.summaryTrendSvg {
+    display: block;
+    width: max(100%, 760px);
+    height: 168px;
+}
+
+.summaryRevenueBar {
+    fill: #99f6e4;
+}
+
+.summaryProfitLine {
+    fill: none;
+    stroke: #2563eb;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.summaryProfitPoint {
+    fill: #2563eb;
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.summaryTrendLabel {
+    fill: #64748b;
+    font-size: 10px;
+    font-weight: 850;
+}
+
+.summaryTrendLegend {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 3px;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 850;
+}
+
+.summaryTrendLegend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.summaryYearMatrix {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.summaryYearMatrix button {
+    min-width: 0;
+    min-height: 84px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.summaryYearMatrix span,
+.summaryYearMatrix em,
+.summaryConcentration em {
+    display: block;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.summaryYearMatrix strong {
+    display: block;
+    margin: 3px 0;
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 950;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryConcentration {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.45fr) minmax(0, 1fr);
+    gap: 8px;
+}
+
+.summaryVehicleList {
+    display: grid;
+    gap: 5px;
+}
+
+.summaryVehicleList button {
+    display: grid;
+    grid-template-columns: 24px minmax(72px, 1fr) 86px 50px;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 28px;
+    padding: 5px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.summaryVehicleList span,
+.summaryVehicleList strong,
+.summaryVehicleList em,
+.summaryVehicleList b {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summaryVehicleList span {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+}
+
+.summaryVehicleList strong {
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 950;
+}
+
+.summaryVehicleList em,
+.summaryVehicleList b {
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 900;
+    text-align: right;
+}
+
+.summarySourceRows {
+    display: grid;
+    gap: 4px;
+}
+
+.summarySourceHead,
+.summarySourceRow {
+    display: grid;
+    grid-template-columns: 76px minmax(100px, 1fr) 64px 94px 112px;
+    align-items: center;
+    gap: 7px;
+}
+
+.summarySourceHead {
+    min-height: 24px;
+    padding: 0 7px;
+    color: #64748b;
+    font-size: 0.64rem;
+    font-weight: 950;
+}
+
+.summarySourceRow {
+    min-height: 33px;
+    padding: 5px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.summarySourceRow span,
+.summarySourceRow strong,
+.summarySourceRow em,
+.summarySourceRow b,
+.summarySourceRow small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.summarySourceRow span {
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 950;
+}
+
+.summarySourceRow strong,
+.summarySourceRow em,
+.summarySourceRow b,
+.summarySourceRow small {
+    color: #475569;
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 850;
+    text-align: right;
+}
+
 .commandPanel {
     display: grid;
     grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.8fr);
@@ -3396,6 +3855,35 @@
         justify-content: stretch;
     }
 
+    .summaryKpiGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .summaryMainGrid,
+    .summaryFlowDiagram,
+    .summaryFlowCore,
+    .summaryConcentration {
+        grid-template-columns: 1fr;
+    }
+
+    .summaryFlowArrow {
+        min-height: 30px;
+    }
+
+    .summaryYearMatrix {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .summarySourceHead,
+    .summarySourceRow {
+        grid-template-columns: 72px minmax(92px, 1fr) 58px 82px;
+    }
+
+    .summarySourceHead span:nth-child(5),
+    .summarySourceRow small {
+        display: none;
+    }
+
     .segmented,
     .ghostBtn,
     .primaryBtn {
@@ -3595,6 +4083,56 @@
     .actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
+    }
+
+    .summaryKpiGrid,
+    .summarySignalGrid,
+    .summaryYearMatrix {
+        grid-template-columns: 1fr;
+    }
+
+    .summaryKpiCard {
+        min-height: 78px;
+    }
+
+    .summaryPanel {
+        padding: 8px;
+    }
+
+    .summaryPanelHead {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .summaryFlowBars div {
+        grid-template-columns: 38px minmax(0, 1fr);
+    }
+
+    .summaryFlowBars em {
+        grid-column: 1 / -1;
+        text-align: left;
+    }
+
+    .summaryTrendSvg {
+        width: 720px;
+    }
+
+    .summaryVehicleList button {
+        grid-template-columns: 22px minmax(74px, 1fr) 76px;
+    }
+
+    .summaryVehicleList b {
+        display: none;
+    }
+
+    .summarySourceHead,
+    .summarySourceRow {
+        grid-template-columns: 68px minmax(90px, 1fr) 54px;
+    }
+
+    .summarySourceHead span:nth-child(4),
+    .summarySourceRow b {
+        display: none;
     }
 
     .segmented {

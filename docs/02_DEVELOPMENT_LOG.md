@@ -1,3 +1,24 @@
+## [2026-05-19] 아산 종합실적 연간+월간 합산 대시보드 추가 (v5.14.56)
+### 핵심
+- `종합실적` placeholder를 실제 운영판으로 교체하고, `/api/branches/asan/performance/summary` 라우트를 추가했습니다.
+- API는 Supabase `annual` current summary와 `monthly` diff-current summary를 `page_size=1`로 조회해 통합 매출/매입/손익, 월별·연도별 시리즈, 계약/차량 집중도, 경영 판단 신호를 생성합니다.
+- 화면은 사장 관점으로 `통합 매출`, `통합 손익`, `손익률`, `매입률`, `최근월`을 최상단에 두고, 합산 흐름도·최근 12개월 차트·연도 매트릭스·원장 신뢰도를 압축 배치했습니다.
+- 원본 annual/monthly summary 전체를 응답에 싣던 payload를 제거해 실데이터 응답을 약 34.6KB로 줄였습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (Google Fonts fetch 때문에 네트워크 허용)
+- Supabase 실데이터 확인: annual 1개, monthly 5개 메타 조회. Summary API 응답 `매출 196,151,544,233.1원 / 손익률 10.68% / 월별 137개 / 차량 30개 / 34,614 bytes`.
+- Browser 플러그인: `http://127.0.0.1:3014/employees/branches/asan`에서 종합실적 탭 실데이터 렌더 확인. CDP screenshot은 timeout으로 실패.
+### 변경 파일
+- `web/app/api/branches/asan/performance/summary/route.js`
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] Android 완료경로 끝점/PiP/종료 동작 재점검 (v5.14.55 / APK v5.11.20)
 ### 핵심
 - 2026-05-19 KST 194서2632 운행을 재분석해 raw 마지막점은 `18:54:32 method=TRIP_END`인데, 앱 내부 필터만 `18:25:18`에서 멈추던 문제를 확인했습니다.

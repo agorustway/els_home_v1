@@ -5,6 +5,7 @@ import AsanDashboard from './AsanDashboard';
 import AsanShipping from './AsanShipping';
 import AsanAnnualPerformance from './AsanAnnualPerformance';
 import AsanMonthlyPerformance from './AsanMonthlyPerformance';
+import AsanSummaryPerformance from './AsanSummaryPerformance';
 import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
 
 // ===== 상수 =====
@@ -1089,24 +1090,15 @@ function AsanDispatchContent() {
     );
 }
 
-function PerformancePlaceholder({ title }) {
-    return (
-        <div className={styles.performancePlaceholder}>
-            <strong>{title}</strong>
-            <span>준비중</span>
-        </div>
-    );
-}
-
 function AsanPerformanceManagement() {
-    const [activePerformanceTab, setActivePerformanceTab] = useState('annual-performance');
+    const [activePerformanceTab, setActivePerformanceTab] = useState('summary-performance');
 
     useEffect(() => {
         try {
             const saved = localStorage.getItem(ASAN_PERFORMANCE_TAB_KEY);
-            setActivePerformanceTab(PERFORMANCE_TABS.includes(saved) ? saved : 'annual-performance');
+            setActivePerformanceTab(PERFORMANCE_TABS.includes(saved) ? saved : 'summary-performance');
         } catch {
-            setActivePerformanceTab('annual-performance');
+            setActivePerformanceTab('summary-performance');
         }
     }, []);
 
@@ -1141,7 +1133,12 @@ function AsanPerformanceManagement() {
             </div>
 
             <div className={styles.performanceContent}>
-                {activePerformanceTab === 'summary-performance' && <PerformancePlaceholder title="종합실적" />}
+                {activePerformanceTab === 'summary-performance' && (
+                    <AsanSummaryPerformance
+                        onOpenAnnual={() => switchPerformanceTab('annual-performance')}
+                        onOpenMonthly={() => switchPerformanceTab('monthly-performance')}
+                    />
+                )}
                 {activePerformanceTab === 'monthly-performance' && <AsanMonthlyPerformance />}
                 {activePerformanceTab === 'annual-performance' && <AsanAnnualPerformance />}
             </div>

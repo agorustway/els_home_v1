@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.55 / APK v5.11.20)
+# ELS MISSION CONTROL (v5.14.56 / APK v5.11.20)
 
-> 최신 업데이트: Android 앱 완료경로 끝점 보존, 운행 중 경로조회 차단 검증, PiP/종료 동작을 보강했습니다.
+> 최신 업데이트: 아산 종합실적에 연간+월간 Supabase 합산 API와 임원용 요약 대시보드를 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.55
+- **웹 버전**: v5.14.56
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.20
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -21,6 +21,7 @@
   - 월간실적 세분화는 `매출/지역/청구픽업/포트명/선적/이월(청구처기준)/계산서` 축을 우선 표시하고, 차량 TOP에는 금액 컬럼 제목을 노출한다.
   - 월간실적 분석 선택은 `월/주차/일` 짧은 버튼과 월 기준 주차·일자 목록으로 좁히고, 누적 그래프에는 평균선과 포인트별 청구·건수를 표시한다.
   - 연간실적 계약/차량 월별 흐름은 매출/손익 선, 평균선, 최고/최근 포인트, 평균 손익률 요약을 함께 표시한다.
+  - 종합실적은 연간+월간 Supabase summary를 합산해 통합 KPI, 흐름도, 최근월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도를 표시한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -44,9 +45,11 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
+- [x] v5.14.56: 아산 연간+월간 합산 API 및 종합실적 대시보드
+- [ ] Next: 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.56**: 종합실적 탭을 준비중 placeholder에서 연간+월간 합산 대시보드로 교체했다. `/api/branches/asan/performance/summary`는 annual current summary와 monthly diff-current summary를 `page_size=1`로 읽어 합산하고, 화면은 통합 매출/손익/손익률/매입률/최근월, 합산 흐름도, 최근 12개월 추세, 연도 매트릭스, 계약/차량 집중도, 원장 신뢰도만 압축 표시한다. 실제 DB 기준 합산값은 매출 196,151,544,233.1원, 손익률 10.68%, 응답 34.6KB로 확인했다.
 - **v5.14.55**: 운영 DB에 `marker_type` 컬럼이 없어도 `method=TRIP_END/TRIP_START`를 명시 마커로 인식하게 서버/앱 경로 필터를 통일했다. 2026-05-19 KST 데이터 재분석 결과 194서2632는 raw/server/app clean 모두 18:54:32 TRIP_END까지 보존된다. 운행 중 위치보기는 matched-route/complete 호출 없이 실시간 위치만 보도록 회귀 테스트를 추가했고, PiP는 운행 ID를 서비스 시작 즉시 저장하며 Android 12+ auto-enter를 설정한다. APK v5.11.20.
 - **v5.14.54**: 월간실적 분석 기준 버튼을 `월/주차/일`로 줄이고, 선택 월에 속한 주차와 일자만 셀렉트에 표시한다. `누적` 그래프는 청구/하불/손익 평균선을 추가하고, 주요 포인트마다 청구 금액과 건수를 SVG 라벨로 표시해 별도 표를 보지 않아도 흐름을 읽을 수 있게 했다.
 - **v5.14.53**: Android 앱 지도 탭 진입 시 기본 지도/브라우저 GPS 기준으로 먼저 확대되던 흐름을 막고, `/trips?mode=active` 차량 최신점 조회와 초기 포커스를 끝낸 뒤 전경 GPS 샘플링을 시작한다. `panTo + setZoom` 조합은 `morph` 우선 helper로 묶어 중심좌표 확정 후 확대되게 했다. APK v5.11.19.
@@ -66,10 +69,11 @@
 - **v5.14.38**: 월간실적 반응형 카드 그리드가 공통 `.analytics` 스타일로 연간실적까지 적용되어 연간 리포트가 가로로 찢어지던 문제를 수정. 연간 컴포넌트는 `annualAnalytics` 전용 flex column 흐름과 `align-items: stretch` 폭 고정을 덧붙였고, 원장 장기 흐름 그래프는 220px 높이의 기준선 차트로 압축했다.
 - **v5.14.37**: 월간실적 분석 섹션을 고정 폭 세로 나열에서 반응형 카드 그리드로 변경. 인포그래픽은 전체 행을 사용하고 구성/세분화는 넓은 화면에서 2칸, 월별 흐름·트리·차량 TOP은 카드 단위로 자동 배치되며 모바일에서는 1열로 떨어진다.
 - **v5.14.36**: 월간실적 `월별·일별 트리`와 `세분화 분석`은 내부 표만 좁아지고 외곽 패널이 화면 끝까지 벌어져 튀어나온 것처럼 보이던 문제를 보정. 트리 패널은 696px, 세분화 패널은 980px 안쪽으로 외곽선과 헤더까지 함께 묶었다.
-- **v5.14.35**: 월간실적 분석 첫 화면을 원본 보고서 표 중심에서 인포그래픽 중심으로 재배치. 표 미감지 시 큰 빈 보고서 박스를 제거하고 얇은 상태 줄만 표시하며, 청구/하불/손익/이월/건당 청구 KPI, 청구→하불→손익 흐름, 최고 청구월/손익월/손익일/최근월 증감, 계약·운영 구분 구성 분석, 차량 성과 TOP을 추가했다.
-- **v5.14.34**: 선적관리 원본 엑셀에는 2026-05-18 작업일 81건이 있으나 화면/API가 첫 1,000건만 읽어 뒤쪽 57건이 필터 범위 밖으로 밀리던 문제를 수정. Next 직조회와 NAS Core 모두 Supabase range를 1,000건 단위로 나눠 읽어 `page_size=10000` 전체 필터가 실제 전체 row를 대상으로 동작한다.
-- **v5.14.33**: 월별·일별 트리 금액 컬럼 위에 `월/일`, `청구`, `하불`, `손익`, `건수` 헤더를 추가하고 표 폭을 680px 안쪽으로 제한해 제목과 값의 시선 거리를 줄였다. 세분화 분석도 780~980px 안쪽 블록으로 묶었고, 내부 키 `all`이 제목으로 보이지 않도록 전체 보고서 제목을 `매출보고서`로 보정했다.
 ## VERIFICATION
+- `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (Google Fonts fetch 때문에 네트워크 허용으로 검증)
+- 브라우저: `http://127.0.0.1:3014/employees/branches/asan` 실데이터 종합실적 렌더 확인. screenshot은 in-app browser CDP timeout으로 실패.
 - `node --test web\tests\asanMonthlyPerformance.test.mjs`: 6개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs`: 통과
 - `node --test web\tests\asanMonthlyPerformance.test.mjs web\tests\asanAnnualPerformance.test.mjs`: 18개 통과
