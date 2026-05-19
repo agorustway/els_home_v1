@@ -1,3 +1,18 @@
+## [2026-05-19] 아산 월간실적 그래프/분석범위 안정화 (v5.14.40)
+### 핵심
+- 월간실적 `월별 누적 흐름`을 연간용 대형 그래프 스타일에서 분리하고, 월간 전용 카드형 스파크라인과 2×2 요약칩으로 다시 구성했습니다.
+- 분석 카드 그리드는 640px 최소 폭 기준으로 조정해 초광폭 화면에서 4열로 벌어지지 않고 2~3열 중심으로 정렬되게 했습니다.
+- `전체` 기준일 때 월/일 선택 셀렉트를 비활성화하고, 월별/일별 선택 버튼은 선택 가능한 데이터가 있을 때만 동작하게 해 빈 값 전환 오류를 막았습니다.
+### 검증
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 분석 기준/마감월 흐름 정리 (v5.14.39)
 ### 핵심
 - 월간실적 분석 상단에 `전체`, `월별 선택`, `일별 선택` 기준을 추가해 아래 KPI/트리/세분화 데이터의 범위를 먼저 확인하게 했습니다.
@@ -23,6 +38,8 @@
 ### 핵심
 - 월간실적 카드 그리드용으로 바뀐 공통 `.analytics` 스타일이 연간실적에도 적용되어 연간 리포트가 가로 컬럼으로 찢어지던 문제를 수정했습니다.
 - 연간실적 컴포넌트에 `annualAnalytics` 전용 클래스를 추가하고, 해당 컨테이너만 세로 flex 흐름을 사용하게 분리했습니다.
+- 공통 `.analytics`의 `align-items: start`가 남아 KPI/포트폴리오 카드가 내용 폭만큼만 잡히던 부분을 `stretch`와 `width: 100%`로 고정해 행 단위 카드 각을 맞췄습니다.
+- 원장 장기 흐름 그래프는 기준선 역할에 맞춰 차트 높이를 300px에서 220px로 줄이고 요약 카드 여백을 압축했습니다.
 - 월간실적 반응형 카드 그리드는 유지하면서 연간실적은 상단 리포트, 조사범위, 분석섹션, 장기흐름, KPI/근거 카드가 위에서 아래로 이어지게 했습니다.
 ### 검증
 - `node --test --test-name-pattern "화면은 분석/테이블" web/tests/asanAnnualPerformance.test.mjs`: 통과

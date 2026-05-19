@@ -155,7 +155,7 @@
 
 .analytics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 580px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr));
     align-items: start;
     gap: 8px;
     min-height: 0;
@@ -170,11 +170,15 @@
 .annualAnalytics {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 6px;
 }
 
 .annualAnalytics > * {
     flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .commandPanel {
@@ -463,14 +467,14 @@
     border: 1px solid #dbeafe;
     border-radius: 7px;
     background: #fff;
-    min-height: 410px;
+    min-height: 0;
     overflow: visible;
 }
 
 .marketFlowChartWrap {
     width: 100%;
-    height: 300px;
-    min-height: 300px;
+    height: 220px;
+    min-height: 220px;
     overflow-x: auto;
     overflow-y: visible;
     background: linear-gradient(#ffffff, #f8fafc);
@@ -528,7 +532,7 @@
 
 .marketFlowSvg {
     display: block;
-    width: max(100%, 1800px);
+    width: max(100%, 1500px);
     height: 100%;
     min-height: 0;
 }
@@ -587,14 +591,14 @@
 .marketFlowStats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 7px;
-    padding: 8px 10px 10px;
+    gap: 6px;
+    padding: 6px 8px 8px;
     border-top: 1px solid #e2e8f0;
 }
 
 .marketFlowStats div {
     min-width: 0;
-    padding: 7px 8px;
+    padding: 6px 7px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background: #fff;
@@ -1966,7 +1970,7 @@
     order: 5;
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: minmax(220px, 0.65fr) minmax(280px, 1fr) minmax(280px, 0.8fr);
+    grid-template-columns: minmax(180px, 0.5fr) minmax(250px, 0.8fr) minmax(240px, 0.7fr);
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
@@ -2021,6 +2025,12 @@
     cursor: pointer;
 }
 
+.analysisScopeButtons button:disabled,
+.analysisScopeSelects select:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
 .analysisScopeActive {
     border-color: #0f766e !important;
     background: #0f766e !important;
@@ -2047,12 +2057,14 @@
 
 .monthlyTrendPanel {
     order: 8;
-    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .monthlySummaryPanel {
     order: 10;
-    grid-column: 1 / -1;
 }
 
 .reportNoticePanel {
@@ -2062,7 +2074,6 @@
 
 .segmentInsightPanel {
     order: 30;
-    grid-column: 1 / -1;
 }
 
 .vehicleInsightPanel {
@@ -2071,7 +2082,6 @@
 
 .dailyTreePanel {
     order: 60;
-    grid-column: 1 / -1;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -2079,7 +2089,6 @@
 
 .dimensionPanel {
     order: 50;
-    grid-column: 1 / -1;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
@@ -2091,15 +2100,180 @@
 }
 
 @media (min-width: 1240px) {
-    .monthPanel,
-    .vehicleInsightPanel {
+    .dimensionPanel {
         grid-column: span 2;
     }
 }
 
+@media (min-width: 1840px) {
+    .dailyTreePanel,
+    .segmentInsightPanel,
+    .vehicleInsightPanel,
+    .monthPanel {
+        grid-column: span 1;
+    }
+}
+
+.monthlyTrendHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px 7px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.monthlyTrendHeader h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 950;
+}
+
+.monthlyTrendHeader span {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 850;
+}
+
+.monthlyTrendLegend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.monthlyTrendLegend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #475569;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.monthlyTrendLegend i {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+}
+
+.monthlyTrendChartShell {
+    padding: 8px 10px 5px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.monthlyTrendSvg {
+    display: block;
+    width: 100%;
+    height: 128px;
+    min-width: 0;
+}
+
+.monthlyTrendGridLine {
+    stroke: #e8eef5;
+    stroke-width: 1;
+}
+
+.monthlyTrendRevenueArea {
+    stroke: none;
+}
+
+.monthlyTrendRevenueLine,
+.monthlyTrendPurchaseLine,
+.monthlyTrendProfitLine {
+    fill: none;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.monthlyTrendRevenueLine {
+    stroke: #0f766e;
+}
+
+.monthlyTrendPurchaseLine {
+    stroke: #d97706;
+}
+
+.monthlyTrendProfitLine {
+    stroke: #2563eb;
+}
+
+.monthlyTrendRevenuePoint,
+.monthlyTrendPurchasePoint,
+.monthlyTrendProfitPoint {
+    stroke: #fff;
+    stroke-width: 2;
+}
+
+.monthlyTrendRevenuePoint {
+    fill: #0f766e;
+}
+
+.monthlyTrendPurchasePoint {
+    fill: #d97706;
+}
+
+.monthlyTrendProfitPoint {
+    fill: #2563eb;
+}
+
+.monthlyTrendAxis {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.monthlyTrendStats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 10px 10px;
+}
+
+.monthlyTrendStats div {
+    min-width: 0;
+    padding: 6px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.monthlyTrendStats span,
+.monthlyTrendStats em {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-style: normal;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.monthlyTrendStats strong {
+    display: block;
+    min-width: 0;
+    margin: 2px 0;
+    overflow: hidden;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .monthlyInfographicGrid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 7px;
     padding: 8px;
 }
@@ -3010,8 +3184,8 @@
 
     .marketFlowChartWrap {
         border-bottom: 1px solid #e2e8f0;
-        height: 260px;
-        min-height: 260px;
+        height: 220px;
+        min-height: 220px;
     }
 
     .marketFlowStats {
@@ -3019,7 +3193,7 @@
     }
 
     .marketFlowSvg {
-        width: max(100%, 1180px);
+        width: max(100%, 1080px);
         height: 100%;
         min-height: 0;
     }
@@ -3166,7 +3340,7 @@
     }
 
     .marketFlowSvg {
-        width: 980px;
+        width: 900px;
         height: 100%;
         min-height: 0;
     }
@@ -3177,6 +3351,20 @@
     }
 
     .marketFlowStats {
+        grid-template-columns: 1fr;
+    }
+
+    .monthlyTrendHeader {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .monthlyTrendLegend {
+        justify-content: flex-start;
+    }
+
+    .monthlyTrendStats {
         grid-template-columns: 1fr;
     }
 

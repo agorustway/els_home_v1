@@ -168,6 +168,9 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /분석 기준/);
   assert.match(component, /월별 선택/);
   assert.match(component, /일별 선택/);
+  assert.match(component, /changeAnalysisScope/);
+  assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableMonths\.length\}/);
+  assert.match(component, /disabled=\{analysisScope === ANALYSIS_SCOPE_ALL \|\| !availableDays\.length\}/);
   assert.match(component, /MonthlyLedgerFlowChart/);
   assert.match(component, /월별 누적 흐름/);
   assert.match(component, /MetricDonut/);
@@ -187,6 +190,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.tableArea\s*{[\s\S]*height: calc\(100vh - 212px\)/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*max-height: calc\(100vh - 292px\)/);
   assert.match(css, /\.analytics\s*{[\s\S]*grid-template-columns: repeat\(auto-fit/);
+  assert.match(css, /minmax\(min\(100%, 640px\), 1fr\)/);
   assert.match(css, /\.dailyTreeHead/);
   assert.match(css, /\.dailyTreePanel\s*{[\s\S]*width: 100%/);
   assert.match(css, /\.dailyTree\s*{[\s\S]*width: 100%/);
@@ -196,13 +200,14 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.dimensionPanel\s*{[\s\S]*order: 50/);
   assert.match(css, /\.analysisScopePanel\s*{[\s\S]*order: 5/);
   assert.match(css, /\.monthlyTrendPanel\s*{[\s\S]*order: 8/);
-  assert.match(css, /\.monthlySummaryPanel[\s\S]*grid-column: 1 \/ -1/);
+  assert.match(css, /\.analysisScopeButtons button:disabled/);
+  assert.match(css, /\.monthlyTrendSvg\s*{[\s\S]*width: 100%/);
+  assert.match(css, /\.monthlyTrendStats\s*{[\s\S]*grid-template-columns: repeat\(2/);
   assert.match(css, /\.monthlyInfographicGrid/);
   assert.match(css, /\.metricDonut/);
-  assert.match(css, /\.marketProfitLine/);
+  assert.match(css, /\.monthlyTrendProfitLine/);
   assert.match(css, /\.reportNoticePanel/);
-  assert.match(css, /\.segmentInsightPanel[\s\S]*grid-column: 1 \/ -1/);
-  assert.match(css, /@media \(min-width: 1240px\)[\s\S]*\.monthPanel,\s*\.vehicleInsightPanel/);
+  assert.match(css, /@media \(min-width: 1240px\)[\s\S]*\.dimensionPanel\s*{[\s\S]*grid-column: span 2/);
   assert.match(css, /\.segmentInsightGrid/);
   assert.match(css, /\.vehicleInsightRow/);
   assert.match(css, /\.dailyMonthRow/);

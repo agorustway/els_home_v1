@@ -393,74 +393,96 @@ function MetricDonut({ value = 0, max = 1, tone = 'revenue' }) {
 
 function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-' }) {
     const series = (items || []).filter(isMetricActive);
-    const width = 1400;
-    const height = 238;
-    const pad = { left: 56, right: 34, top: 26, bottom: 38 };
+    const width = 640;
+    const height = 142;
+    const pad = { left: 10, right: 10, top: 12, bottom: 12 };
     const chartW = width - pad.left - pad.right;
     const chartH = height - pad.top - pad.bottom;
-    const maxValue = Math.max(1, ...series.flatMap(item => [Math.abs(safeNumber(item.revenue)), Math.abs(safeNumber(item.purchase)), Math.abs(safeNumber(item.profit))]));
+    const values = series.flatMap(item => [safeNumber(item.revenue), safeNumber(item.purchase), safeNumber(item.profit)]);
+    const maxValue = Math.max(1, ...values);
+    const minValue = Math.min(0, ...values);
+    const valueRange = Math.max(1, maxValue - minValue);
     const xAt = idx => pad.left + (series.length <= 1 ? 0 : (idx / (series.length - 1)) * chartW);
-    const yAt = value => pad.top + chartH - (safeNumber(value) / maxValue) * chartH;
+    const yAt = value => pad.top + ((maxValue - safeNumber(value)) / valueRange) * chartH;
     const toPoints = field => series.map((item, idx) => `${xAt(idx).toFixed(1)},${yAt(item[field]).toFixed(1)}`).join(' ');
     const revenuePoints = toPoints('revenue');
     const purchasePoints = toPoints('purchase');
     const profitPoints = toPoints('profit');
+    const baselineY = yAt(0);
+    const revenueArea = series.length
+        ? `${pad.left},${baselineY.toFixed(1)} ${revenuePoints} ${(series.length > 1 ? pad.left + chartW : pad.left).toFixed(1)},${baselineY.toFixed(1)}`
+        : '';
     const start = series[0]?.period || '-';
     const end = series[series.length - 1]?.period || '-';
     const high = maxBy(series, 'revenue');
     const last = series[series.length - 1] || null;
-    const grid = [0.25, 0.5, 0.75, 1].map(ratio => ({
-        y: pad.top + chartH - chartH * ratio,
-        value: maxValue * ratio,
-    }));
+    const previous = series.length >= 2 ? series[series.length - 2] : null;
+    const recentDelta = last && previous ? safeNumber(last.revenue) - safeNumber(previous.revenue) : 0;
+    const recentDeltaRate = previous?.revenue ? (recentDelta / Math.abs(previous.revenue)) * 100 : 0;
+    const lastIdx = Math.max(0, series.length - 1);
+    const grid = [0.25, 0.5, 0.75].map(ratio => pad.top + chartH * ratio);
 
     return (
-        <section className={`${styles.marketFlowPanel} ${styles.monthlyTrendPanel}`}>
-            <div className={styles.marketFlowHeader}>
+        <section className={`${styles.panel} ${styles.monthlyTrendPanel}`}>
+            <div className={styles.monthlyTrendHeader}>
                 <div>
                     <h3>월별 누적 흐름</h3>
                     <span>{start} ~ {end} · {scopeLabel} · 마감월 기준</span>
                 </div>
-                <div className={styles.marketFlowLegend}>
+                <div className={styles.monthlyTrendLegend}>
                     <span><i className={styles.revenueDot} />청구</span>
                     <span><i className={styles.purchaseDot} />하불</span>
                     <span><i className={styles.profitDot} />손익</span>
                 </div>
             </div>
-            {series.length < 2 ? (
+            {series.length === 0 ? (
                 <div className={styles.emptyPanel}>월별 추세를 그릴 마감월 데이터가 부족합니다.</div>
             ) : (
                 <>
-                    <div className={styles.marketFlowChartWrap}>
+                    <div className={styles.monthlyTrendChartShell}>
                         <svg
-                            className={styles.marketFlowSvg}
+                            className={styles.monthlyTrendSvg}
                             viewBox={`0 0 ${width} ${height}`}
                             preserveAspectRatio="none"
                             role="img"
                             aria-label="월별 누적 흐름 차트"
                         >
-                            {grid.map(item => (
-                                <g key={item.y}>
-                                    <line x1={pad.left} x2={pad.left + chartW} y1={item.y} y2={item.y} className={styles.marketGridLine} />
-                                    <text x={pad.left - 8} y={item.y + 3} className={styles.marketAxisText} textAnchor="end">{formatPerformanceAmount(item.value)}</text>
-                                </g>
+                            <defs>
+                                <linearGradient id="monthlyTrendRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stopColor="#0f766e" stopOpacity="0.18" />
+                                    <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
+                                </linearGradient>
+                            </defs>
+                            {grid.map(y => (
+                                <line key={y} x1={pad.left} x2={pad.left + chartW} y1={y} y2={y} className={styles.monthlyTrendGridLine} />
                             ))}
-                            <polyline points={revenuePoints} className={styles.marketRevenueLine} />
-                            <polyline points={purchasePoints} className={styles.marketPurchaseLine} />
-                            <polyline points={profitPoints} className={styles.marketProfitLine} />
-                            {series.map((item, idx) => {
-                                const showTick = idx === 0 || idx === series.length - 1 || idx % Math.max(1, Math.ceil(series.length / 8)) === 0;
-                                return showTick ? (
-                                    <text key={item.period} x={xAt(idx)} y={height - 14} className={styles.marketAxisText} textAnchor="middle">{item.period}</text>
-                                ) : null;
-                            })}
+                            <line x1={pad.left} x2={pad.left + chartW} y1={baselineY} y2={baselineY} className={styles.zeroLine} />
+                            {revenueArea && <polygon points={revenueArea} className={styles.monthlyTrendRevenueArea} style={{ fill: 'url(#monthlyTrendRevenueArea)' }} />}
+                            <polyline points={revenuePoints} className={styles.monthlyTrendRevenueLine} />
+                            <polyline points={purchasePoints} className={styles.monthlyTrendPurchaseLine} />
+                            <polyline points={profitPoints} className={styles.monthlyTrendProfitLine} />
+                            {last && (
+                                <g>
+                                    <circle cx={xAt(lastIdx)} cy={yAt(last.revenue)} r="3.8" className={styles.monthlyTrendRevenuePoint} />
+                                    <circle cx={xAt(lastIdx)} cy={yAt(last.purchase)} r="3.8" className={styles.monthlyTrendPurchasePoint} />
+                                    <circle cx={xAt(lastIdx)} cy={yAt(last.profit)} r="3.8" className={styles.monthlyTrendProfitPoint} />
+                                </g>
+                            )}
                         </svg>
+                        <div className={styles.monthlyTrendAxis}>
+                            <span>{start}</span>
+                            <span>{end}</span>
+                        </div>
                     </div>
-                    <div className={styles.marketFlowStats}>
+                    <div className={styles.monthlyTrendStats}>
                         <div><span>최고 청구월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
                         <div><span>최근 마감월</span><strong>{last?.period || '-'}</strong><em>{last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
                         <div><span>누적 청구</span><strong>{formatPerformanceAmount(sumMetricItems(series).revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}개월</em></div>
-                        <div><span>누적 손익</span><strong>{formatPerformanceAmount(sumMetricItems(series).profit)}</strong><em>마감월 누적</em></div>
+                        <div>
+                            <span>최근 증감</span>
+                            <strong className={recentDelta < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(recentDelta)}</strong>
+                            <em>{formatPercent(recentDeltaRate, 1)}</em>
+                        </div>
                     </div>
                 </>
             )}
@@ -744,6 +766,15 @@ export default function AsanMonthlyPerformance() {
         ? `월별 ${selectedAnalysisMonth || '-'}`
         : (analysisScope === ANALYSIS_SCOPE_DAY ? `일별 ${selectedAnalysisDay || '-'}` : '전체');
     const scopeBasisLabel = analysisScope === ANALYSIS_SCOPE_DAY ? '작업일자' : '마감월';
+    const activeAnalysisMonthValue = selectedAnalysisMonth || availableMonths[availableMonths.length - 1]?.period || '';
+    const activeAnalysisDayValue = selectedAnalysisDay || availableDays[availableDays.length - 1]?.date || '';
+    const changeAnalysisScope = (nextScope) => {
+        if (nextScope === ANALYSIS_SCOPE_MONTH && !activeAnalysisMonthValue) return;
+        if (nextScope === ANALYSIS_SCOPE_DAY && !activeAnalysisDayValue) return;
+        if (nextScope === ANALYSIS_SCOPE_MONTH && !selectedAnalysisMonth) setSelectedAnalysisMonth(activeAnalysisMonthValue);
+        if (nextScope === ANALYSIS_SCOPE_DAY && !selectedAnalysisDay) setSelectedAnalysisDay(activeAnalysisDayValue);
+        setAnalysisScope(nextScope);
+    };
 
     useEffect(() => {
         if (!monthlyReports.length) {
@@ -961,21 +992,23 @@ export default function AsanMonthlyPerformance() {
                             <button
                                 type="button"
                                 className={analysisScope === ANALYSIS_SCOPE_ALL ? styles.analysisScopeActive : ''}
-                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_ALL)}
+                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_ALL)}
                             >
                                 전체
                             </button>
                             <button
                                 type="button"
                                 className={analysisScope === ANALYSIS_SCOPE_MONTH ? styles.analysisScopeActive : ''}
-                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_MONTH)}
+                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_MONTH)}
+                                disabled={!activeAnalysisMonthValue}
                             >
                                 월별 선택
                             </button>
                             <button
                                 type="button"
                                 className={analysisScope === ANALYSIS_SCOPE_DAY ? styles.analysisScopeActive : ''}
-                                onClick={() => setAnalysisScope(ANALYSIS_SCOPE_DAY)}
+                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_DAY)}
+                                disabled={!activeAnalysisDayValue}
                             >
                                 일별 선택
                             </button>
@@ -983,7 +1016,8 @@ export default function AsanMonthlyPerformance() {
                         <div className={styles.analysisScopeSelects}>
                             <select
                                 aria-label="분석 월 선택"
-                                value={selectedAnalysisMonth || availableMonths[availableMonths.length - 1]?.period || ''}
+                                disabled={analysisScope === ANALYSIS_SCOPE_ALL || !availableMonths.length}
+                                value={activeAnalysisMonthValue}
                                 onChange={e => {
                                     setSelectedAnalysisMonth(e.target.value);
                                     setAnalysisScope(ANALYSIS_SCOPE_MONTH);
@@ -993,7 +1027,8 @@ export default function AsanMonthlyPerformance() {
                             </select>
                             <select
                                 aria-label="분석 일 선택"
-                                value={selectedAnalysisDay || availableDays[availableDays.length - 1]?.date || ''}
+                                disabled={analysisScope === ANALYSIS_SCOPE_ALL || !availableDays.length}
+                                value={activeAnalysisDayValue}
                                 onChange={e => {
                                     setSelectedAnalysisDay(e.target.value);
                                     setAnalysisScope(ANALYSIS_SCOPE_DAY);
