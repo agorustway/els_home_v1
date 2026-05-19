@@ -297,6 +297,18 @@ function normalizeStrategicSegment(segment = {}) {
     return null;
 }
 
+function vehicleCarrierLabel(vehicle = {}) {
+    const label = String(vehicle.carriers || vehicle.carrier || vehicle.carrierName || vehicle.payee || '').split(',')[0]?.trim() || '';
+    return label && label !== '-' ? label : '';
+}
+
+function vehicleDisplayName(vehicle = {}) {
+    const vehicleNo = String(vehicle.vehicleNo || vehicle.name || '').trim();
+    const carrier = vehicleCarrierLabel(vehicle);
+    if (carrier && vehicleNo && !vehicleNo.startsWith(carrier)) return `${carrier} ${vehicleNo}`;
+    return vehicleNo || carrier || '-';
+}
+
 function scopeDimensionSections(sections = [], scope, selectedMonth, selectedDay, selectedWeek, totalForShare = 0) {
     const safeSections = safeObjectList(sections)
         .map(section => ({ ...section, items: safeObjectList(section.items) }))
@@ -901,7 +913,6 @@ export default function AsanMonthlyPerformance() {
     const [selectedAnalysisDay, setSelectedAnalysisDay] = useState('');
     const [activeDimensionKey, setActiveDimensionKey] = useState('');
     const [expandedDimensionKeys, setExpandedDimensionKeys] = useState(new Set());
-    const [showAllVehicles, setShowAllVehicles] = useState(false);
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchMode, setSearchMode] = useState('or');
@@ -1227,7 +1238,7 @@ export default function AsanMonthlyPerformance() {
     const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
     const topDimensionItem = activeDimensionItems[0] || null;
     const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 999);
-    const visibleVehicles = showAllVehicles ? scopedVehicleItems : scopedVehicleItems.slice(0, 5);
+    const visibleVehicles = scopedVehicleItems.slice(0, 10);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
     const vehicleMax = Math.max(1, ...scopedVehicleItems.map(item => Math.abs(safeNumber(item.revenue))));
     const chartMax = getPerformanceChartMax(scopeFlowItems, ['revenue', 'purchase', 'profit']);
@@ -1660,26 +1671,55 @@ export default function AsanMonthlyPerformance() {
                         </section>
                     )}
 
-                    {scopedSegmentItems.length > 0 && (
+                    {(scopedSegmentItems.length > 0 || scopedVehicleItems.length > 0) && (
                         <section className={`${styles.panel} ${styles.segmentInsightPanel}`}>
                             <div className={styles.panelHeader}>
-                                <h3>구성 분석</h3>
-                                <span>ELS직계약차량 · 외부/타운송사</span>
+                                <h3>구성·차량 성과</h3>
+                                <span>{scopeLabel} · 차량 TOP10 · 청구액 기준</span>
                             </div>
-                            <div className={styles.segmentInsightGrid}>
-                                {scopedSegmentItems.map(segment => (
-                                    <button
-                                        key={segment.key || segment.label}
-                                        type="button"
-                                        className={styles.segmentInsightCard}
-                                        onClick={() => openDetailSearch((segment.filterTerms || []).length ? segment.filterTerms : [segment.label || segment.name], 'and')}
-                                    >
-                                        <span>{segment.label || segment.name}</span>
-                                        <strong>{formatPerformanceAmount(segment.revenue)}</strong>
-                                        <em>{formatPerformanceAmount(segment.profit)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
-                                        <i style={{ width: metricWidth(segment.revenue, segmentMax) }} />
-                                    </button>
-                                ))}
+                            <div className={styles.compositionCardBody}>
+                                {scopedSegmentItems.length > 0 && (
+                                    <div className={styles.segmentInsightGrid}>
+                                        {scopedSegmentItems.map(segment => (
+                                            <button
+                                                key={segment.key || segment.label}
+                                                type="button"
+                                                className={styles.segmentInsightCard}
+                                                onClick={() => openDetailSearch((segment.filterTerms || []).length ? segment.filterTerms : [segment.label || segment.name], 'and')}
+                                            >
+                                                <span>{segment.label || segment.name}</span>
+                                                <strong>{formatPerformanceAmount(segment.revenue)}</strong>
+                                                <em>{formatPerformanceAmount(segment.profit)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
+                                                <i style={{ width: metricWidth(segment.revenue, segmentMax) }} />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {scopedVehicleItems.length > 0 && (
+                                    <div className={styles.vehicleInsightRows}>
+                                        <div className={styles.vehicleInsightHead}>
+                                            <span>순위</span>
+                                            <span>운송사/차량번호</span>
+                                            <span>비중</span>
+                                            <span>청구액</span>
+                                            <span>손익·건수</span>
+                                        </div>
+                                        {visibleVehicles.map((vehicle, idx) => (
+                                            <button
+                                                key={`${vehicleCarrierLabel(vehicle)}-${vehicle.vehicleNo || vehicle.name || idx}`}
+                                                type="button"
+                                                className={styles.vehicleInsightRow}
+                                                onClick={() => openDetailSearch([vehicleCarrierLabel(vehicle), vehicle.vehicleNo || vehicle.name].filter(Boolean), 'and')}
+                                            >
+                                                <span>{idx + 1}</span>
+                                                <strong>{vehicleDisplayName(vehicle)}</strong>
+                                                <i><b style={{ width: metricWidth(vehicle.revenue, vehicleMax) }} /></i>
+                                                <em>{formatPerformanceAmount(vehicle.revenue)}</em>
+                                                <small>{formatPerformanceAmount(vehicle.profit)} · {safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </section>
                     )}
@@ -1817,44 +1857,6 @@ export default function AsanMonthlyPerformance() {
                             </>
                         )}
                     </section>
-
-                    {scopedVehicleItems.length > 0 && (
-                        <section className={`${styles.panel} ${styles.vehicleInsightPanel}`}>
-                            <div className={styles.panelHeader}>
-                                <button
-                                    type="button"
-                                    className={styles.panelHeaderTitleButton}
-                                    onClick={() => setShowAllVehicles(prev => !prev)}
-                                >
-                                    차량 성과 {showAllVehicles ? '전체' : 'TOP'}
-                                </button>
-                                <span>{showAllVehicles ? `전체 ${scopedVehicleItems.length.toLocaleString('ko-KR')}대` : `상위 ${visibleVehicles.length.toLocaleString('ko-KR')}대`} · 청구액 기준</span>
-                            </div>
-                            <div className={styles.vehicleInsightRows}>
-                                <div className={styles.vehicleInsightHead}>
-                                    <span>순위</span>
-                                    <span>차량번호</span>
-                                    <span>비중</span>
-                                    <span>청구액</span>
-                                    <span>손익·건수</span>
-                                </div>
-                                {visibleVehicles.map((vehicle, idx) => (
-                                    <button
-                                        key={vehicle.vehicleNo || vehicle.name || idx}
-                                        type="button"
-                                        className={styles.vehicleInsightRow}
-                                        onClick={() => openDetailSearch([vehicle.vehicleNo || vehicle.name], 'and')}
-                                    >
-                                        <span>{idx + 1}</span>
-                                        <strong>{vehicle.vehicleNo || vehicle.name || '-'}</strong>
-                                        <i><b style={{ width: metricWidth(vehicle.revenue, vehicleMax) }} /></i>
-                                        <em>{formatPerformanceAmount(vehicle.revenue)}</em>
-                                        <small>{formatPerformanceAmount(vehicle.profit)} · {safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
 
                     {reportTableReady && (
                         <section className={styles.monthlyReportSheet}>

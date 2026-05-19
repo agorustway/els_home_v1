@@ -1,3 +1,21 @@
+## [2026-05-19] 아산 월간실적 구성·차량 성과 통합 카드 보정 (v5.14.68)
+### 핵심
+- `구성 분석`과 `차량 성과 TOP`을 `구성·차량 성과` 단일 카드로 합쳤습니다.
+- 차량 성과는 전체/월/주차/일 선택 범위마다 같은 기준으로 집계하고, 항상 청구액 기준 TOP10을 보여줍니다.
+- 신규 동기화 summary부터 차량별 `운송사(명의)`를 보존하고, 화면에서는 `운송사 차량번호` 형태로 표시합니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 그래프 단위와 세분화 탭 기준 보정 (v5.14.67)
 ### 핵심
 - `누적` 그래프 기준을 전체=연도별, 월=선택월 주차별, 주차=선택주 일자별, 일=해당일 단일 데이터로 다시 맞췄습니다.

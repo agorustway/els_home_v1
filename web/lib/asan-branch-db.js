@@ -622,6 +622,7 @@ function mergeVehiclePerformance(metas, totalRevenue) {
                     ...vehicle,
                     name: vehicle.name || key,
                     vehicleNo: vehicle.vehicleNo || key,
+                    carrierSet: new Set(),
                     driverSet: new Set(),
                     revenue: 0,
                     purchase: 0,
@@ -639,13 +640,16 @@ function mergeVehiclePerformance(metas, totalRevenue) {
             bucket.daily = mergeInlineSeries(bucket.daily, metricWithSourcePeriod(vehicle, sourcePeriod).daily, 'dateKey');
             bucket.yearly = mergeInlineSeries(bucket.yearly, vehicle.yearly, 'year');
             bucket.weekday = mergeInlineSeries(bucket.weekday, vehicle.weekday, 'day');
+            String(vehicle.carriers || vehicle.carrier || vehicle.carrierName || vehicle.payee || '').split(',').map(item => item.trim()).filter(Boolean).forEach(carrier => bucket.carrierSet.add(carrier));
             String(vehicle.drivers || '').split(',').map(item => item.trim()).filter(Boolean).forEach(driver => bucket.driverSet.add(driver));
         }
     }
     return Array.from(vehicles.values())
         .map((item) => {
             const finalized = finalizeMetricItem(item, totalRevenue);
+            finalized.carriers = Array.from(item.carrierSet || []).slice(0, 5).join(', ');
             finalized.drivers = Array.from(item.driverSet || []).slice(0, 5).join(', ');
+            delete finalized.carrierSet;
             delete finalized.driverSet;
             return finalized;
         })

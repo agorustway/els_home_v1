@@ -606,6 +606,7 @@ function createAdvancedAccumulator(headers) {
       vehicles.set(vehicleNo, {
         name: vehicleNo,
         vehicleNo,
+        carriers: new Set(),
         drivers: new Set(),
         revenue: 0,
         purchase: 0,
@@ -660,6 +661,7 @@ function createAdvancedAccumulator(headers) {
       vehicle.purchase += purchase;
       vehicle.profit += profit;
       vehicle.rowCount += 1;
+      if (carrier) vehicle.carriers.add(carrier);
       if (driver) vehicle.drivers.add(driver);
       if (monthKey) addMetric(vehicle.monthly, monthKey, { period: monthKey, year, month }, revenue, purchase, profit);
       if (dateInfo) {
@@ -748,6 +750,7 @@ function createAdvancedAccumulator(headers) {
         const rounded = roundItem({
           name: vehicle.name,
           vehicleNo: vehicle.vehicleNo,
+          carriers: Array.from(vehicle.carriers).slice(0, 5).join(', '),
           drivers: Array.from(vehicle.drivers).slice(0, 5).join(', '),
           revenue: vehicle.revenue,
           purchase: vehicle.purchase,
