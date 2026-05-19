@@ -80,11 +80,11 @@
 - **v5.14.41**: 월별/일별 선택 시 해당 범위 데이터가 없는 세부 항목이 `null`로 내려와 화면 전체가 오류 페이지로 바뀔 수 있던 문제를 수정했다. 세부 항목 `monthly/daily` 시리즈는 배열/객체 모두 안전하게 읽고, 월별 누적 흐름 그래프는 시작·끝뿐 아니라 중간 월 라벨도 포인트 위치에 맞춰 표시한다.
 - **v5.14.40**: 월간실적 월별 누적 흐름을 연간용 대형 그래프 재사용에서 분리해 카드형 스파크라인/요약칩으로 압축했다. 분석 그리드는 640px 기준으로 2~3열을 유지하게 조정했고, `전체` 기준에서는 월/일 선택 셀렉트를 비활성화하며 월별·일별 전환 시 빈 값으로 터지지 않게 했다.
 ## VERIFICATION
-- `node --test web\tests\asanSummaryPerformance.test.mjs`: 4개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/api/branches/asan/performance/summary/route.js" utils/asanPerformanceSummary.mjs tests/asanSummaryPerformance.test.mjs`: 통과
-- `npm.cmd run build`: 통과 (외부 WebDAV/원격 fetch 때문에 네트워크 허용으로 검증)
-- 전체 `asanMonthlyPerformance + asanAnnualPerformance + asanSummaryPerformance` 묶음은 작업 전부터 섞인 연간/월간 테스트 기대값 2건 불일치로 분리 검증.
-- Browser 자동화: 기존 3014 dev 서버 CSS 청크가 꼬여 시각 검증 불안정. 프로덕션 빌드와 종합실적 테스트/린트로 대체 검증.
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test web\tests\asanAnnualPerformance.test.mjs web\tests\asanMonthlyPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 외부 WebDAV/원격 fetch는 sandbox EACCES 경고만 출력.
+- Browser 자동화: 로컬 dev `/employees/ask`가 환경성 500으로 떨어져 프로덕션 빌드와 테스트/린트로 대체 검증.
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

@@ -8,6 +8,7 @@
 - `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
 - `node --test web\tests\asanAnnualPerformance.test.mjs web\tests\asanMonthlyPerformance.test.mjs web\tests\asanSummaryPerformance.test.mjs`: 22개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 외부 WebDAV/원격 fetch는 sandbox EACCES 경고만 출력.
 - `git diff --check -- "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "web/app/(main)/employees/branches/asan/annualPerformance.module.css" web/tests/asanAnnualPerformance.test.mjs`: 통과
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
