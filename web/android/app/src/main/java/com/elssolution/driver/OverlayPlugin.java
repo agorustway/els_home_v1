@@ -85,6 +85,11 @@ public class OverlayPlugin extends Plugin {
         String driverId = call.getString("driverId", "");
         long startTime = call.getLong("startTimeMillis", System.currentTimeMillis());
 
+        if (tripId != null && !tripId.trim().isEmpty()) {
+            getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString(KEY_TRIP_ID, tripId).apply();
+        }
+
         Intent intent = new Intent(getContext(), FloatingWidgetService.class);
         intent.putExtra("tripId", tripId);
         intent.putExtra("container", container);
@@ -150,7 +155,11 @@ public class OverlayPlugin extends Plugin {
         } catch (Exception ignored) {}
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
+                getActivity().finishAffinity();
                 getActivity().finishAndRemoveTask();
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    android.os.Process.killProcess(android.os.Process.myPid());
+                }, 250);
             });
         }
         call.resolve(new JSObject().put("exited", true));

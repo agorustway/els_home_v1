@@ -79,17 +79,30 @@ public class MainActivity extends BridgeActivity {
         return tripId != null && !tripId.trim().isEmpty();
     }
 
+    private PictureInPictureParams buildPipParams() {
+        PictureInPictureParams.Builder builder = new PictureInPictureParams.Builder()
+            .setAspectRatio(new Rational(9, 16));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setAutoEnterEnabled(true);
+        }
+        return builder.build();
+    }
+
+    private boolean enterPipIfActiveTrip() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
+        if (!hasActiveTripForService() || isFinishing() || isInPictureInPictureMode()) return false;
+        try {
+            setPictureInPictureParams(buildPipParams());
+            return enterPictureInPictureMode(buildPipParams());
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     @Override
     public void onUserLeaveHint() {
         super.onUserLeaveHint();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasActiveTripForService() && !isInPictureInPictureMode()) {
-            PictureInPictureParams params = new PictureInPictureParams.Builder()
-                .setAspectRatio(new Rational(9, 16))
-                .build();
-            try {
-                enterPictureInPictureMode(params);
-            } catch (Exception ignored) {}
-        }
+        enterPipIfActiveTrip();
     }
 
     private void cleanExitApp() {
@@ -101,7 +114,11 @@ public class MainActivity extends BridgeActivity {
             Intent stopIntent = new Intent(this, FloatingWidgetService.class);
             stopService(stopIntent);
         } catch (Exception ignored) {}
+        finishAffinity();
         finishAndRemoveTask();
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }, 250);
     }
 
     // ─── 배터리 최적화 제외 요청 (JS에서 호출) ────────────────────
@@ -144,6 +161,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasActiveTripForService()) {
+            try { setPictureInPictureParams(buildPipParams()); } catch (Exception ignored) {}
+        }
         // [v4.3.01] 방어 코드: 위치 권한이 없는 상태에서 서비스를 시작하면 안드로이드 14+에서 즉시 크래시 발생
         if (hasActiveTripForService()
             && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {

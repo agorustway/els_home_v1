@@ -4,6 +4,7 @@ import {
   bearingDeg,
   detectStaleReplayLocation,
   filterRouteLocations,
+  isRouteMarker,
   isForwardProgressCandidate,
   pathDistanceKm,
   pickLatestDisplayLocation,
@@ -114,6 +115,18 @@ test('정차 중 마지막 heartbeat 좌표는 관제 현재점으로 보존한�
 
   assert.equal(filtered[filtered.length - 1].recorded_at, at(220));
   assert.equal(latest.recorded_at, at(220));
+});
+
+test('marker_type 컬럼이 없어도 method=TRIP_END 끝점은 보존한다', () => {
+  const locations = [
+    { lat: 37.272003, lng: 126.938207, speed: 4, accuracy: 10, method: 'android_bg', recorded_at: at(0) },
+    { lat: 37.272002, lng: 126.938205, speed: 0, accuracy: 10, method: 'native_bg', recorded_at: at(600) },
+    { lat: 37.271955, lng: 126.938121, speed: 8, accuracy: 15, method: 'TRIP_END', recorded_at: at(2400) },
+  ];
+
+  const filtered = filterRouteLocations(locations);
+  assert.equal(isRouteMarker(locations[2]), true);
+  assert.equal(filtered[filtered.length - 1].recorded_at, at(2400));
 });
 
 test('경로 매칭용 waypoint는 단지·저속 구간의 촘촘한 지그재그를 줄이고 끝점은 보존한다', () => {

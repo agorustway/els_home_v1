@@ -11,6 +11,7 @@ const STATIONARY_SPEED_KMH = 4;
 const LOW_SPEED_JUMP_KM = 0.08;
 const STATIONARY_JUMP_KM = 0.06;
 const STALE_REPLAY_RADIUS_KM = 0.008;
+const ROUTE_MARKER_METHODS = new Set(['TRIP_START', 'TRIP_END', 'TRIP_PAUSE', 'TRIP_RESUME', 'GPS_TURN', 'NATIVE_FORCED']);
 
 export function toTripTime(trip) {
     const raw = trip?.lastLocation?.recorded_at
@@ -101,6 +102,11 @@ export function getPointTime(point) {
     const raw = point?.recorded_at || point?.timestamp || point?.created_at;
     const time = raw ? new Date(raw).getTime() : 0;
     return Number.isFinite(time) ? time : 0;
+}
+
+export function isRouteMarker(point) {
+    const marker = String(point?.marker_type || point?.method || point?.source || '').toUpperCase();
+    return ROUTE_MARKER_METHODS.has(marker);
 }
 
 export function sanitizeRecordedAt(value, nowMs = Date.now()) {
@@ -309,7 +315,7 @@ export function filterRouteLocations(locations = []) {
             const distKm = haversineKm(previous.lat, previous.lng, current.lat, current.lng);
             const speedKmh = normalizeSpeedKmh(current.speed || previous.speed);
             const minMoveKm = speedKmh < 10 ? 0.02 : speedKmh < 40 ? 0.035 : 0.06;
-            if (distKm < minMoveKm && !current.marker_type) continue;
+            if (distKm < minMoveKm && !isRouteMarker(current)) continue;
         }
 
         filtered.push(current);
@@ -318,7 +324,7 @@ export function filterRouteLocations(locations = []) {
     const terminal = ordered[ordered.length - 1];
     const last = filtered[filtered.length - 1];
     if (terminal && last && terminal !== last && getPointTime(terminal) > getPointTime(last)) {
-        const forcedTerminal = Boolean(terminal.marker_type);
+        const forcedTerminal = isRouteMarker(terminal);
         const decision = shouldAcceptLocation({ current: terminal, previous: last, forced: forcedTerminal });
         if (decision.ok) {
             const distKm = haversineKm(last.lat, last.lng, terminal.lat, terminal.lng);
@@ -358,7 +364,7 @@ export function simplifyRouteLocations(locations = []) {
         const previous = simplified[simplified.length - 1];
         const next = points[i + 1];
 
-        if (current.marker_type) {
+        if (isRouteMarker(current)) {
             simplified.push(current);
             continue;
         }
@@ -389,7 +395,7 @@ export function simplifyRouteLocations(locations = []) {
 
     const last = points[points.length - 1];
     const prev = simplified[simplified.length - 1];
-    if (!prev || haversineKm(prev.lat, prev.lng, last.lat, last.lng) > 0.01 || last.marker_type) {
+    if (!prev || haversineKm(prev.lat, prev.lng, last.lat, last.lng) > 0.01 || isRouteMarker(last)) {
         simplified.push(last);
     }
 
@@ -502,7 +508,7 @@ export function trimEndpointOutliers(points = []) {
     let list = points.filter((p) => isCoordinateInKorea(Number(p.lat), Number(p.lng)));
     if (list.length < 3) return list;
 
-    const hasMarker = (point) => Boolean(point?.marker_type);
+    const hasMarker = (point) => isRouteMarker(point);
     const hasHardBadAccuracy = (point) => Number(point?.accuracy || 0) > 120;
 
     const shouldDropFirst = () => {

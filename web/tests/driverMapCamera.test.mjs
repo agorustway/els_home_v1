@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const mapSource = readFileSync(new URL('../driver-src/modules/map.js', import.meta.url), 'utf8');
+const mainActivitySource = readFileSync(new URL('../android/app/src/main/java/com/elssolution/driver/MainActivity.java', import.meta.url), 'utf8');
+const overlayPluginSource = readFileSync(new URL('../android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java', import.meta.url), 'utf8');
 
 test('앱 지도 진입은 차량 데이터 초기 포커스 후 GPS 샘플링을 시작한다', () => {
   const openMapStart = mapSource.indexOf('export async function openMap()');
@@ -27,4 +29,28 @@ test('지도 이동+확대 helper는 중심 좌표를 먼저 확정한 뒤 줌�
     helperBody.indexOf('_map.setCenter(position)') < helperBody.indexOf('setMapZoom(targetZoom'),
     'fallback camera order should be center first, zoom second'
   );
+});
+
+test('운행 중 위치보기는 matched-route 조회나 complete 호출을 하지 않는다', () => {
+  const routeStart = mapSource.indexOf('export async function showTripRouteOnMap');
+  const routeEnd = mapSource.indexOf('/** 경로 표시 초기화 */', routeStart);
+  const routeBody = mapSource.slice(routeStart, routeEnd);
+  const activeBranch = routeBody.slice(
+    routeBody.indexOf("if (trip.status !== 'completed')"),
+    routeBody.indexOf('const isActiveOwnTrip = false')
+  );
+
+  assert.ok(activeBranch.includes('return;'), 'active route branch should exit before completed route logic');
+  assert.equal(activeBranch.includes('matched-route'), false, 'active route branch must not fetch matched-route');
+  assert.equal(activeBranch.includes("action: 'complete'"), false, 'active route branch must not complete trip');
+});
+
+test('PiP 판단용 운행 ID는 서비스 시작 즉시 네이티브 prefs에 저장한다', () => {
+  const startServiceStart = overlayPluginSource.indexOf('public void startService');
+  const startServiceEnd = overlayPluginSource.indexOf('// JS → 서비스 상태 업데이트', startServiceStart);
+  const startServiceBody = overlayPluginSource.slice(startServiceStart, startServiceEnd);
+
+  assert.ok(startServiceBody.includes('putString(KEY_TRIP_ID, tripId)'), 'startService should persist active trip before service startup');
+  assert.ok(mainActivitySource.includes('setAutoEnterEnabled(true)'), 'Android 12+ should enable auto PiP entry');
+  assert.ok(mainActivitySource.includes('enterPipIfActiveTrip()'), 'home/leave flow should call PiP entry helper');
 });

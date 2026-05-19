@@ -1,3 +1,24 @@
+## [2026-05-19] Android 완료경로 끝점/PiP/종료 동작 재점검 (v5.14.55 / APK v5.11.20)
+### 핵심
+- 2026-05-19 KST 194서2632 운행을 재분석해 raw 마지막점은 `18:54:32 method=TRIP_END`인데, 앱 내부 필터만 `18:25:18`에서 멈추던 문제를 확인했습니다.
+- 운영 DB에는 `marker_type` 컬럼이 없어도 `method=TRIP_END/TRIP_START`가 저장되므로, 서버/앱 필터 모두 method 기반 마커를 끝점으로 보존하게 통일했습니다.
+- 운행 중 위치보기/마커 클릭은 matched-route 조회나 complete 호출 없이 실시간 위치만 표시하도록 회귀 테스트를 추가했습니다.
+- PiP 판단용 운행 ID를 Overlay 서비스 시작 즉시 네이티브 prefs에 저장하고, Android 12+ auto-enter PiP 파라미터를 설정했습니다. 명시적 앱 종료는 Overlay 플러그인 등록 helper를 사용하고 task 제거 후 프로세스 종료까지 보강했습니다.
+### 검증
+- `node .tmp_test/analyze_vehicle_routes_today.mjs`: 194서2632/12가0140 raw/server/app clean 끝점이 모두 TRIP_END까지 보존되는 것 확인
+- `node --test web/tests/vehicleLocation.test.mjs web/tests/driverLocationFilter.test.mjs web/tests/driverMapCamera.test.mjs`: 20개 통과
+- `node --check web/driver-src/modules/map.js web/driver-src/modules/locationFilter.js web/app/api/vehicle-tracking/location/route.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/map.js driver-src/modules/locationFilter.js driver-src/modules/init.js tests/driverMapCamera.test.mjs tests/driverLocationFilter.test.mjs tests/vehicleLocation.test.mjs app/api/vehicle-tracking/location/route.js`: 통과
+- `npm.cmd run build`: 통과 (정적 생성 중 외부 WebDAV/원격 fetch는 sandbox 네트워크 제한으로 비치명 경고 출력)
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.20 (5161) 빌드/배포 복사 완료, APK 내부 `store.js` 버전 재검증 통과
+### 변경 파일
+- `web/utils/vehicleLocation.mjs`, `web/app/api/vehicle-tracking/location/route.js`
+- `web/driver-src/modules/locationFilter.js`, `web/driver-src/modules/init.js`
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`, `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/tests/vehicleLocation.test.mjs`, `web/tests/driverLocationFilter.test.mjs`, `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 월간실적 월/주차/일 선택과 누적 그래프 보강 (v5.14.54)
 ### 핵심
 - 분석 기준 버튼 문구를 `월`, `주차`, `일`로 줄여 상단 컨트롤 폭을 줄였습니다.

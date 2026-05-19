@@ -25,11 +25,17 @@ const LOW_SPEED_KMH = 15;
 const STATIONARY_SPEED_KMH = 4;
 const LOW_SPEED_JUMP_KM = 0.08;
 const STATIONARY_JUMP_KM = 0.06;
+const ROUTE_MARKER_METHODS = new Set(['TRIP_START', 'TRIP_END', 'TRIP_PAUSE', 'TRIP_RESUME', 'GPS_TURN', 'NATIVE_FORCED']);
 
 function pointTime(point) {
   const raw = point?.recorded_at || point?.timestamp || point?.created_at;
   const time = raw ? new Date(raw).getTime() : 0;
   return Number.isFinite(time) ? time : 0;
+}
+
+function isRouteMarker(point) {
+  const marker = String(point?.marker_type || point?.method || point?.source || '').toUpperCase();
+  return ROUTE_MARKER_METHODS.has(marker);
 }
 
 function speedKmh(speed) {
@@ -55,7 +61,7 @@ function trimEndpointOutliers(points = []) {
   let list = points.filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && l.lat >= 33 && l.lat <= 39.5 && l.lng >= 124 && l.lng <= 132);
   if (list.length < 3) return list;
 
-  const hasMarker = point => Boolean(point?.marker_type);
+  const hasMarker = point => isRouteMarker(point);
   const hasHardBadAccuracy = point => Number(point?.accuracy || 0) > 120;
 
   const dropFirst = () => {
@@ -124,9 +130,25 @@ export function filterRouteLocations(locations = []) {
     }
 
     const minMoveKm = sensor < 10 ? 0.02 : sensor < 40 ? 0.035 : 0.06;
-    if (distKm < minMoveKm && !curr.marker_type) continue;
+    if (distKm < minMoveKm && !isRouteMarker(curr)) continue;
     filtered.push(curr);
   }
+
+  const terminal = ordered[ordered.length - 1];
+  const last = filtered[filtered.length - 1];
+  if (terminal && last && terminal !== last && pointTime(terminal) > pointTime(last)) {
+    const forcedTerminal = isRouteMarker(terminal);
+    const distKm = haversineKm(last.lat, last.lng, terminal.lat, terminal.lng);
+    const elapsedMs = Math.max(0, pointTime(terminal) - pointTime(last));
+    const timeSec = Math.max(1, elapsedMs / 1000);
+    const implied = distKm / (timeSec / 3600);
+    const sensor = speedKmh(terminal.speed || last.speed);
+    const terminalLooksPlausible = forcedTerminal
+      ? !(distKm > 0.5 && implied > adaptiveSpeedLimit(sensor))
+      : (distKm <= 0.035 || elapsedMs >= 45_000);
+    if (terminalLooksPlausible) filtered.push(terminal);
+  }
+
   return filtered;
 }
 

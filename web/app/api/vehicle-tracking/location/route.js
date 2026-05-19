@@ -52,7 +52,8 @@ export async function POST(request) {
 
         const latestLocation = previousLocations?.[0] || null;
         const olderLocation = previousLocations?.[1] || null;
-        const currentPoint = { lat, lng, accuracy, speed: speedKmh, recorded_at: recordedAt, marker_type, method: source || method, source };
+        const resolvedMethod = markerType || source || method;
+        const currentPoint = { lat, lng, accuracy, speed: speedKmh, recorded_at: recordedAt, marker_type, method: resolvedMethod, source };
         let previousForDecision = latestLocation;
 
         if (!marker_type) {
@@ -149,7 +150,7 @@ export async function POST(request) {
             lng,
             accuracy: accuracy || null,
             speed: Number.isFinite(speedKmh) ? Math.max(0, Math.min(speedKmh, 160)) : null,
-            method: source || method,
+            method: resolvedMethod,
             address,
             // 일부 운영 DB에는 marker_type/gyro 컬럼이 아직 없을 수 있어 실패 시 아래에서 재시도한다.
             ...(marker_type ? { marker_type } : {}),
