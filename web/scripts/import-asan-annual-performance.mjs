@@ -71,6 +71,7 @@ function usage() {
     '  --confirm-large-import  Required when importing more than 100,000 rows',
   '  --force             Import even when Supabase file_modified_at matches the Excel mtime',
   '  --diff-current      Compare current rows by hash before insert. Slower; requires DB index health',
+  '                      monthly dataset uses this cumulative mode by default.',
   '  --retire-previous-current  After publishing the new snapshot, best-effort retire previous current rows. Optional.',
   '  --summary-only      Recalculate Excel summary and update branch_performance_files only. No row insert/update.',
   '  --snapshot-id <id>  Snapshot id to keep as currentSnapshotId during --summary-only.',
@@ -1669,6 +1670,7 @@ async function importExcelStreaming({
   summary.datasetType = key.datasetType;
   summary.currentSnapshotId = snapshotId;
   summary.importMode = 'diff-current';
+  summary.currentSelectionMode = 'is_current';
   return {
     mode: 'diff-current',
     headers: parsed.headers,
@@ -1843,7 +1845,8 @@ async function run() {
   }
 
   supabase = supabase || createSupabaseClient();
-  const importer = args['diff-current'] ? importExcelStreaming : importExcelSnapshotStreaming;
+  const useDiffCurrentImport = args['diff-current'] || datasetType === 'monthly';
+  const importer = useDiffCurrentImport ? importExcelStreaming : importExcelSnapshotStreaming;
   const result = await importer({
     filePath,
     preferredSheetName,

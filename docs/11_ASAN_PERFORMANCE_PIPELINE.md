@@ -94,6 +94,8 @@
 ## 4. 월별실적 확장 현황
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.
 - 월별 마감자료는 연간실적보다 컬럼이 더 많은 원장으로 보고, 추가 컬럼은 `row_values/row_data`에 그대로 보존한다.
+- 월간실적은 기본적으로 `diff-current` 누적 모드다. 같은 파일/시트/행의 `source_row_hash`가 같으면 기존 current를 유지하고, 바뀌면 새 행을 current로 추가한 뒤 이전 행을 `superseded_by_excel`로 종료한다.
+- 파일에서 사라진 행은 `removed_from_excel`로 종료한다. 따라서 월간 원장은 변경 이력을 보존하면서 화면 조회는 `is_current=true`만 사용한다.
 - 기본 파일공간은 기준연도 12개월 + 정리기간 3개월이다. 2026년 기준 `2026-01`부터 `2027-03`까지 15개 슬롯을 만든다.
 - 기본 경로는 `/아산지점/B_총무/C_마감/{연도}/{월}월/{연도}년_실적-{월}월 컨테이너 운송 마감자료.xlsx`이며, 화면에서 월별 경로/시트/제목행을 수정할 수 있다.
 - 월별 파일은 첫 번째 시트를 기본 대상으로 읽는다. 화면과 importer에서는 `__first__` 토큰으로 표현한다.
@@ -101,15 +103,16 @@
 - importer는 월별 보고서 표의 `순매출/순매입/매출이익`, `매출(계산서)/매입(계산서)/매출이익(계산서)`, `매출/매입 이월` 행을 인식해 거래처별 보고서 summary를 만든다.
 - 원장 행은 파일월 기준 월별 흐름과 작업일자 기준 일별 흐름을 함께 집계한다. 화면은 이 summary로 `월별 보고서`, `일별 데이터`, `이월금액`을 표시한다.
 - Next API는 `/api/branches/asan/performance/monthly`이며 GET은 Supabase monthly dataset을 직접 조회하고, POST는 NAS Core 백그라운드 동기화로 프록시한다.
+- diff-current 월간 메타가 있는 경우 Next 조회는 `summary.currentSnapshotId`가 아니라 `is_current=true` 기준으로 각 월 파일의 최신 원장을 읽는다.
 - NAS Core는 존재하지 않는 미래/정리기간 파일은 실패가 아니라 `missing` skip으로 기록하고, 존재하는 파일만 순차 적재한다.
-- 연간+월별 합산은 DB view 또는 백엔드 집계 API로 분리해 웹에서 전체 원장을 직접 합산하지 않는다.
+- 연간+월별 합산은 DB view 또는 백엔드 집계 API로 분리해 웹에서 전체 원장을 직접 합산하지 않는다. 2026년 마감 후 월간 누적 원장에서 연간 형식과 호환되는 컬럼만 이관하는 기능은 별도 승인 워크플로우로 설계한다.
 
 ## 5. TODO
-- NAS Core 재빌드 후 웹 `NAS 동기화` 버튼으로 동일 파일 summary-only 경로와 파일 변경 snapshot-import 경로를 운영에서 확인.
+- NAS Core 재빌드 후 웹 `NAS 동기화` 버튼으로 월간 `diff-current` 신규/변경/삭제 행 전환을 운영에서 확인.
 - Supabase 운영 DB에 `20260517_asan_annual_performance.sql` 적용. (완료)
 - NAS Core/Gateway 배포 후 화면의 `NAS 동기화`로 최초 백그라운드 동기화. timeout 발생 시 직접 주입 스크립트로 우회.
 - 운영 NAS에서 `/app/data/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 존재 확인.
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
 - 연간실적 `year_value/month_value` 과거 오집계 행은 화면 summary에는 영향 없지만, 향후 DB 직접 분석용으로 별도 저부하 backfill SQL 검토.
 - 운영 NAS에서 2026년 월별 마감자료 실제 경로를 확인하고 월간실적 `NAS 동기화` 최초 적재.
-- 연간실적과 월간실적 합산 API 설계.
+- 연간실적과 월간실적 합산 API, 월간 마감 후 연간 이관 워크플로우 설계. 이월 행은 연간 이관 대상에서 제외하는 정책 검토.

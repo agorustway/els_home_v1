@@ -951,6 +951,7 @@ def register_asan_performance_routes(app, supabase, kst):
                     "--file", str(file_path),
                     "--db-path", normalized_path,
                     "--sheet", slot.get("sheet_name") or FIRST_SHEET_TOKEN,
+                    "--diff-current",
                     "--source-year", str(slot["year"]),
                     "--source-month", str(slot["month"]),
                     "--chunk-size", external_chunk_size,

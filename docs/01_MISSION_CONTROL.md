@@ -1,10 +1,10 @@
-# ELS MISSION CONTROL (v5.14.21 / APK v5.11.17)
+# ELS MISSION CONTROL (v5.14.23 / APK v5.11.17)
 
-> 최신 업데이트: 아산 배차판 AI RAG를 도표형 스키마 추론 기반으로 분리했습니다.
+> 최신 업데이트: 아산 연간실적 조회를 여러 연간 파일의 현재 스냅샷 통합 방식으로 전환했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.21
-- **동기화 정책**: 연간실적은 외부 Node importer `summary-only/snapshot import` 유지. 월간실적은 `dataset_type=monthly`로 월별 파일을 순차 백그라운드 적재하고, 저장 후 자동 동기화한다.
+- **웹 버전**: v5.14.23
+- **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.17
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
@@ -13,7 +13,8 @@
   - 월간실적 `NAS 동기화` 버튼과 파일 설정 `저장 후 동기화`를 추가.
   - 월별 보고서 표에서 거래처별 순매출/순매입/매출이익, 계산서 매출/매입/이익, 이월 매출/매입/차익을 도출.
   - 월간 원장 summary에는 월별/일별 흐름과 이월 합계를 함께 저장해 화면 분석에 사용.
-  - 월간 원장은 `branch_performance_files/rows`의 `dataset_type=monthly`로 보존.
+  - 월간 원장은 같은 파일/시트/행 기준으로 변경 행만 신규 current로 추가하고 기존 행은 종료해 누적 보존.
+  - 연간실적 화면은 2015~2025 기존 파일과 2026 이후 분할 파일을 `annual` current snapshots 통합 조회로 합산한다.
   - 아산 배차판 RAG는 `branch_dispatch` 헤더/셀 패턴으로 오더·픽업지역·메모시간 스키마를 먼저 만든 뒤 답변한다.
   - 선적관리 수동 동기화는 파일 변경 시에만 재적재하고, Core는 이미 동기화 중이면 중복 파싱을 건너뜀.
   - 선적관리/안전운임/연간실적 v5.14 개선사항 운영 유지.
@@ -22,7 +23,7 @@
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
-| Supabase 인증/DB | 정상 | 연간실적 current snapshot 368,617행 기준 조회, 월간실적 monthly dataset 준비 |
+| Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 잔여 Chrome 정리 보강 |
 | Android 드라이버 앱 | 정상 | APK v5.11.17 빌드 완료 |
@@ -43,6 +44,8 @@
 - [ ] Next: 아산 연간+월간 합산 API 및 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.23**: 아산 연간실적 GET 조회에 `aggregate=all` 통합 모드를 추가. 파일 설정/동기화 대상은 선택 파일로 유지하면서, 화면 분석·테이블은 `dataset_type=annual`의 모든 파일 메타에서 `currentSnapshotId`를 모아 합산 조회한다. 2015~2025 대용량 파일을 보존하고 2026 이후 새 연간 파일을 별도 동기화해도 웹은 전체 기간을 하나의 연간 원장처럼 표시한다.
+- **v5.14.22**: 아산 월간실적 동기화를 `diff-current` 누적형으로 전환. 파일이 교체되면 같은 파일/시트/행의 해시를 비교해 변경 행만 신규 current로 추가하고 기존 행은 `superseded_by_excel`, 사라진 행은 `removed_from_excel`로 종료한다. 월간 조회도 `currentSnapshotId` 단일 스냅샷이 아니라 `is_current=true` 원장을 읽도록 보정했다.
 - **v5.14.21**: 아산 배차판 RAG를 `web/utils/asanDispatchRag.mjs`로 분리. Supabase `branch_dispatch`의 헤더와 셀 패턴에서 도표형 스키마(오더 컬럼, 픽업지역/상차지 컬럼, 메모/시간 컬럼)를 동적으로 추론하고, `이지1.대신3` 같은 지역칸 업체·대수와 메모 시간 필터를 서버에서 구조화해 주입한다.
 - **v5.14.20**: 아산 월간실적 화면/API/Core 동기화를 추가. 2026년 기준 2027년 3월까지 15개 파일 슬롯을 만들고, 각 월 파일의 첫 번째 시트를 `dataset_type=monthly`로 Supabase에 적재한다. 월별 보고서 표, 일별 흐름, 이월금액을 분석 화면에 표시하고 파일 설정 저장 시 자동 동기화한다.
 - **v5.14.19**: 아산 연간실적 조사범위 날짜 선택은 `직접` 모드에서만 활성화하고, 전체/최근 기간 프리셋에서는 잠금 상태로 표시하도록 보정.
@@ -57,6 +60,13 @@
 - **v5.14.10**: 안전운임 기본 조회의 주소→행정동 자동 선택을 동기 정규화로 보정하고, 지도 기반 구간조회에서 `인천항국제여객터미널`이 `[왕복] 인천국제여객` 구간운임으로 매칭되도록 터미널 기점 판정을 강화.
 
 ## VERIFICATION
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint`: 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
+- `git diff --check`: 통과
 - `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanDashboardView.test.mjs`: 31개 통과
 - `npm.cmd run lint -- app/api/chat/route.js utils/asanDispatchRag.mjs tests/asanDispatchRag.test.mjs`: 통과
 - `npm.cmd run build`: 통과 (정적 생성 중 외부 fetch EACCES 경고만 발생)

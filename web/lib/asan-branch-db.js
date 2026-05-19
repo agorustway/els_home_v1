@@ -694,13 +694,18 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const snapshotIds = metas
         .map(meta => meta.summary?.currentSnapshotId || meta.summary?.snapshotId)
         .filter(Boolean);
+    const usesDiffCurrent = metas.some(meta => (
+        meta.summary?.importMode === 'diff-current' || meta.summary?.currentSelectionMode === 'is_current'
+    ));
     const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
     let query = supabase
         .from('branch_performance_rows')
         .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
         .eq('branch_id', 'asan')
         .eq('dataset_type', 'monthly');
-    if (snapshotIds.length) {
+    if (usesDiffCurrent) {
+        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+    } else if (snapshotIds.length) {
         query = query.in('snapshot_id', snapshotIds);
     } else {
         query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));

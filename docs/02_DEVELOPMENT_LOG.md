@@ -1,3 +1,40 @@
+## [2026-05-19] 아산 연간실적 다중 파일 통합 조회 (v5.14.23)
+### 핵심
+- 연간실적 조회 API에 `aggregate=all` 모드를 추가했습니다.
+- 파일 설정과 `NAS 동기화`는 선택한 엑셀 파일 1개를 대상으로 유지하되, 화면의 분석/테이블 조회는 `dataset_type=annual` 파일 메타 전체의 `currentSnapshotId`를 모아 읽습니다.
+- 기존 2015~2025 대용량 파일은 DB에 그대로 두고, 2026년 이후 새 연간 파일을 별도 경로로 동기화해도 웹에서는 전체 기간을 하나의 원장처럼 합산합니다.
+- 통합 조회는 파일별 원장 행을 물리 삭제하지 않고 현재 스냅샷만 합산하며, 테이블에는 `원본파일` 컬럼을 추가해 행 출처를 구분할 수 있게 했습니다.
+- 연도/월/일/주차/요일, breakdown, 직계약/차량, 차량별 손익 summary를 파일별 summary에서 합산해 브라우저가 전체 원장을 재집계하지 않도록 유지했습니다.
+### 검증
+- `node --check web\lib\asan-branch-db.js`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+## [2026-05-19] 아산 월간실적 누적 원장 전환 (v5.14.22)
+### 핵심
+- 월간실적 importer는 `dataset_type=monthly`일 때 기본으로 `diff-current` 누적 모드를 사용합니다.
+- NAS Core 월간 동기화도 `--diff-current`를 붙여 실행하므로, 파일 교체 시 같은 파일/시트/행의 해시를 비교해 변경 행만 신규 current로 추가하고 기존 행은 `superseded_by_excel`로 종료합니다.
+- 월별 파일에서 사라진 행은 `removed_from_excel`로 종료하고, 동일 행은 기존 current를 유지해 월간 자료를 차곡차곡 누적합니다.
+- 월간 조회 API는 diff-current 메타가 있는 경우 `currentSnapshotId` 단일 스냅샷 대신 `is_current=true` 원장을 읽습니다. 이월 행은 월간 보고서에는 표시하되, 향후 연간 이관 단계에서는 제외 정책을 별도로 확정합니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint`: 통과
+- `node --check web/scripts/import-asan-annual-performance.mjs`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\asan_performance.py`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `docker/els-backend/asan_performance.py`
+- `web/lib/asan-branch-db.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] 아산 배차판 RAG 도표형 스키마 추론 분리 (v5.14.21)
 ### 핵심
 - 채팅 API 안에 있던 아산 배차판 RAG inline 파서를 `web/utils/asanDispatchRag.mjs`로 분리했습니다.
