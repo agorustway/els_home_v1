@@ -1,3 +1,45 @@
+## [2026-05-19] 아산 배차판 RAG 도표형 스키마 추론 분리 (v5.14.21)
+### 핵심
+- 채팅 API 안에 있던 아산 배차판 RAG inline 파서를 `web/utils/asanDispatchRag.mjs`로 분리했습니다.
+- Supabase `branch_dispatch` 조회 후 헤더와 셀 값 패턴으로 `오더 컬럼`, `픽업지역/상차지 컬럼`, `메모/시간 컬럼`, `기본정보 컬럼`을 먼저 도표형 스키마로 주입합니다.
+- `이지1.대신3`, `대신10,자차3.이지5`처럼 업체명과 대수가 붙은 지역칸을 구조화하고, 메모에 적힌 업체별 시간은 시간 질문 필터에 사용합니다.
+- `1145 4/23 작업지는?`, `내일 13시 부산 배차 몇대야?` 같은 실무식 질문에서 날짜/차번/작업지 단어가 행 필터를 망치지 않도록 의도 분석과 검색 키워드 정제를 분리했습니다.
+- 신규 픽업지역 컬럼은 지역명 하드코딩에만 의존하지 않고 셀 패턴으로 추론합니다. 선적/실적 RAG도 같은 “DB 표 → 스키마 요약 → 조건 매칭” 방향으로 확장할 기준을 남겼습니다.
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs`: 6개 통과
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanDashboardView.test.mjs`: 31개 통과
+- `npm.cmd run lint -- app/api/chat/route.js utils/asanDispatchRag.mjs tests/asanDispatchRag.test.mjs`: 통과
+- `npm.cmd run build`: 통과 (정적 생성 중 외부 fetch EACCES 경고만 발생)
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/api/chat/route.js`
+- `web/utils/asanDispatchRag.mjs`
+- `web/tests/asanDispatchRag.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DISPATCH_BOARD_SPEC.md`
+
+## [2026-05-19] 아산 월간실적 파일 슬롯 및 월별 보고서 분석 (v5.14.20)
+### 핵심
+- `실적관리 > 월간실적` 화면을 추가하고, 2026년 기준 2026-01부터 2027-03까지 15개 월별 파일공간을 기본 생성했습니다.
+- 월별 마감자료 파일 경로/시트/제목행을 개별 수정할 수 있게 했고, 파일 설정 저장 시 `저장 후 동기화`로 NAS 백그라운드 동기화를 자동 시작합니다.
+- 월간 원장은 기존 `branch_performance_files/rows`를 `dataset_type=monthly`로 재사용하며, 파일별 첫 번째 시트를 읽고 파일월을 `sourceYear/sourceMonth/sourcePeriod`와 `year_value/month_value` fallback으로 남깁니다.
+- Next 조회 API는 월별 파일 헤더가 달라도 `row_data` 기준 union 테이블을 구성해 부수 컬럼과 `이월` 구간을 보존합니다.
+- 월별 보고서 표를 파싱해 거래처별 순매출/순매입/매출이익, 계산서 매출/매입/이익, 이월 매출/매입/차익을 도출합니다.
+- 원장 행의 작업일자 기준 일별 데이터와 파일월 기준 월별 흐름을 summary에 저장하고, 화면에서 `월별 보고서`, `일별 데이터`, `이월금액` 섹션으로 보여줍니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint`: 통과
+- `node --check "web\app\(main)\employees\branches\asan\AsanMonthlyPerformance.js"` / `page.js` / `web\utils\asanPerformanceView.mjs`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/asan_performance.py`: 통과
+- Local HTTP: `http://localhost:3010/employees/branches/asan` 200 확인. 브라우저 패널은 활성 탭 종료로 재검증 불가, 월간 API 운영 호출은 NAS 프록시 네트워크 제한(EACCES)으로 보류.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/app/api/branches/asan/performance/monthly/route.js`
+- `web/lib/asan-branch-db.js`, `web/utils/asanPerformanceView.mjs`
+- `web/scripts/import-asan-annual-performance.mjs`, `docker/els-backend/asan_performance.py`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
 ## [2026-05-19] 아산 연간실적 조사범위 날짜 선택 잠금 (v5.14.19)
 ### 핵심
 - 연간실적 조사범위에서 전체/최근 12개월/최근 24개월/최근 3년/최근 5년 프리셋을 선택한 경우 시작월/종료월 select를 비활성화했습니다.

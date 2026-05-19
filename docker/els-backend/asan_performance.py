@@ -21,6 +21,9 @@ from file_sync_gate import StableFileSyncGate
 
 DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = "/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx"
 DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET = "합계"
+DEFAULT_ASAN_MONTHLY_PERFORMANCE_BASE_DIR = "/아산지점/B_총무/C_마감"
+DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS = 3
+FIRST_SHEET_TOKEN = "__first__"
 ASAN_VOLUME_BRANCH_ROOTS = ("아산지점",)
 
 
@@ -46,6 +49,7 @@ def _normalize_performance_path(rel_path=None):
         raw = raw[1:]
     if not raw.startswith("/"):
         raw = f"/{raw}"
+    raw = re.sub(r"^/volume[12]/", "/", raw)
     if raw.startswith("/B_총무/"):
         raw = f"/아산지점{raw}"
     return raw
@@ -54,6 +58,7 @@ def _normalize_performance_path(rel_path=None):
 def _resolve_performance_file(rel_path=None):
     normalized = _normalize_performance_path(rel_path)
     raw = str(rel_path or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH).strip()
+    branchless = re.sub(r"^/아산지점/", "/", normalized)
 
     candidates = []
     if raw:
@@ -65,6 +70,8 @@ def _resolve_performance_file(rel_path=None):
 
     for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
         candidates.append(root / normalized.lstrip("/"))
+        if branchless != normalized:
+            candidates.append(root / branchless.lstrip("/"))
         if not normalized.startswith("/아산지점/"):
             for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
                 candidates.append(root / branch_root / normalized.lstrip("/"))
@@ -72,6 +79,8 @@ def _resolve_performance_file(rel_path=None):
     if os.name == "nt":
         for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
             candidates.append(root / normalized.lstrip("/"))
+            if branchless != normalized:
+                candidates.append(root / branchless.lstrip("/"))
             if not normalized.startswith("/아산지점/"):
                 for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
                     candidates.append(root / branch_root / normalized.lstrip("/"))
@@ -89,6 +98,7 @@ def _resolve_performance_file(rel_path=None):
 def _performance_candidate_paths(rel_path=None):
     normalized = _normalize_performance_path(rel_path)
     raw = str(rel_path or DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH).strip()
+    branchless = re.sub(r"^/아산지점/", "/", normalized)
     seen = set()
     paths = []
 
@@ -105,16 +115,80 @@ def _performance_candidate_paths(rel_path=None):
         add(Path(root) / normalized.lstrip("/"))
     for root in (Path("/app/data"), Path("/app/volume2"), Path("/app/volume1")):
         add(root / normalized.lstrip("/"))
+        if branchless != normalized:
+            add(root / branchless.lstrip("/"))
         if not normalized.startswith("/아산지점/"):
             for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
                 add(root / branch_root / normalized.lstrip("/"))
     if os.name == "nt":
         for root in (Path("A:/"), Path("N:/"), Path("C:/Els")):
             add(root / normalized.lstrip("/"))
+            if branchless != normalized:
+                add(root / branchless.lstrip("/"))
             if not normalized.startswith("/아산지점/"):
                 for branch_root in ASAN_VOLUME_BRANCH_ROOTS:
                     add(root / branch_root / normalized.lstrip("/"))
     return paths
+
+
+def _monthly_periods(base_year=None, extra_months=3):
+    try:
+        year = int(base_year or datetime.now().year)
+    except (TypeError, ValueError):
+        year = datetime.now().year
+    try:
+        tail = max(0, min(12, int(extra_months)))
+    except (TypeError, ValueError):
+        tail = DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS
+
+    periods = []
+    for offset in range(12 + tail):
+        period_year = year + ((offset) // 12)
+        period_month = (offset % 12) + 1
+        periods.append({
+            "year": period_year,
+            "month": period_month,
+            "period": f"{period_year}-{period_month:02d}",
+            "carryover": period_year > year,
+        })
+    return periods
+
+
+def _default_monthly_performance_path(year, month, base_dir=DEFAULT_ASAN_MONTHLY_PERFORMANCE_BASE_DIR):
+    return _normalize_performance_path(
+        f"{base_dir}/{year}/{month}월/{year}년_실적-{month}월 컨테이너 운송 마감자료.xlsx"
+    )
+
+
+def _monthly_files_from_payload(body):
+    body = body or {}
+    base_year = body.get("base_year") or body.get("year") or datetime.now().year
+    extra_months = body.get("extra_months", DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS)
+    incoming = body.get("files") if isinstance(body.get("files"), list) else []
+    by_period = {}
+    for item in incoming:
+        if not isinstance(item, dict):
+            continue
+        period = str(item.get("period") or "").strip()
+        if not period:
+            try:
+                period = f"{int(item.get('year'))}-{int(item.get('month')):02d}"
+            except (TypeError, ValueError):
+                continue
+        by_period[period] = item
+
+    slots = []
+    for period in _monthly_periods(base_year, extra_months=extra_months):
+        override = by_period.get(period["period"], {})
+        path = override.get("path") or _default_monthly_performance_path(period["year"], period["month"])
+        slots.append({
+            **period,
+            "enabled": override.get("enabled", True) is not False,
+            "path": _normalize_performance_path(path),
+            "sheet_name": override.get("sheet_name") or override.get("sheetName") or FIRST_SHEET_TOKEN,
+            "header_row": override.get("header_row") or override.get("headerRow"),
+        })
+    return slots
 
 
 def _clean_cell(value):
@@ -229,6 +303,8 @@ def _clean_headers(raw_headers):
 
 def _sheet_name_from_workbook(excel_file, preferred):
     sheets = excel_file.sheet_names
+    if not preferred or preferred == FIRST_SHEET_TOKEN or str(preferred).lower() == "first":
+        return sheets[0]
     if preferred in sheets:
         return preferred
     for sheet_name in sheets:
@@ -560,6 +636,17 @@ def register_asan_performance_routes(app, supabase, kst):
         "pid": None,
         "log_path": None,
     }
+    monthly_sync_state_lock = threading.Lock()
+    monthly_sync_state = {
+        "running": False,
+        "started_at": None,
+        "finished_at": None,
+        "last_error": None,
+        "last_result": None,
+        "mode": None,
+        "pid": None,
+        "log_path": None,
+    }
 
     def _sync_status():
         with sync_state_lock:
@@ -568,6 +655,15 @@ def register_asan_performance_routes(app, supabase, kst):
     def _attach_sync_status(data):
         payload = dict(data or {})
         payload["sync_status"] = _sync_status()
+        return payload
+
+    def _monthly_sync_status():
+        with monthly_sync_state_lock:
+            return dict(monthly_sync_state)
+
+    def _attach_monthly_sync_status(data):
+        payload = dict(data or {})
+        payload["sync_status"] = _monthly_sync_status()
         return payload
 
     def _start_background_sync(rel_path, sheet_name, header_row, force):
@@ -602,6 +698,43 @@ def register_asan_performance_routes(app, supabase, kst):
             finally:
                 with sync_state_lock:
                     sync_state.update({
+                        "running": False,
+                        "finished_at": datetime.now(kst).isoformat(),
+                        "last_error": error,
+                        "last_result": result,
+                    })
+
+        threading.Thread(target=runner, daemon=True).start()
+        return True
+
+    def _start_monthly_background_sync(body, force):
+        with monthly_sync_state_lock:
+            if monthly_sync_state["running"]:
+                return False
+            monthly_sync_state.update({
+                "running": True,
+                "started_at": datetime.now(kst).isoformat(),
+                "finished_at": None,
+                "last_error": None,
+                "last_result": None,
+                "mode": "external-monthly",
+                "pid": None,
+                "log_path": None,
+            })
+
+        def runner():
+            result = None
+            error = None
+            try:
+                result = _sync_monthly_external(body=body, force=force)
+                if not result:
+                    error = state.get("last_sync_error") or "월간실적 NAS 동기화에 실패했습니다."
+            except Exception as exc:
+                error = str(exc)
+                app.logger.error(f"[월간실적DB] 백그라운드 동기화 실패: {exc}", exc_info=True)
+            finally:
+                with monthly_sync_state_lock:
+                    monthly_sync_state.update({
                         "running": False,
                         "finished_at": datetime.now(kst).isoformat(),
                         "last_error": error,
@@ -763,6 +896,110 @@ def register_asan_performance_routes(app, supabase, kst):
             "file_modified_at": datetime.fromtimestamp(file_stat.st_mtime, tz=kst).isoformat(),
             "synced_at": datetime.now(kst).isoformat(),
             "summary_only": run_summary_only,
+        }
+
+    def _sync_monthly_external(body=None, force=False):
+        if not external_sync_enabled:
+            state["last_sync_error"] = "월간실적 외부 동기화가 비활성화되어 있습니다."
+            return None
+        if not supabase or not state["db_available"]:
+            state["last_sync_error"] = "Supabase 클라이언트가 없거나 월간실적 테이블이 비활성화되어 있습니다."
+            return None
+
+        script_path = external_repo_root / "web" / "scripts" / "import-asan-annual-performance.mjs"
+        if not script_path.exists():
+            state["last_sync_error"] = f"월간실적 동기화 스크립트를 찾을 수 없습니다: {script_path}"
+            return None
+        if not shutil.which(external_node_bin):
+            state["last_sync_error"] = f"월간실적 외부 동기화에 필요한 Node.js를 찾을 수 없습니다: {external_node_bin}"
+            return None
+
+        slots = _monthly_files_from_payload(body or {})
+        external_log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = external_log_dir / f"asan-monthly-performance-web-sync-{datetime.now(kst).strftime('%Y%m%d-%H%M%S')}.log"
+        results = []
+        synced_count = 0
+        failed_count = 0
+        skipped_count = 0
+        env = os.environ.copy()
+        env.setdefault("NODE_OPTIONS", "--max-old-space-size=1536")
+
+        app.logger.info(f"[월간실적DB] 외부 동기화 시작 slots={len(slots)} log={log_path}")
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            for slot in slots:
+                if not slot.get("enabled", True):
+                    skipped_count += 1
+                    results.append({**slot, "status": "skipped", "reason": "disabled"})
+                    continue
+
+                file_path, normalized_path = _resolve_performance_file(slot.get("path"))
+                if not file_path.exists():
+                    skipped_count += 1
+                    results.append({
+                        **slot,
+                        "path": normalized_path,
+                        "status": "skipped",
+                        "reason": "missing",
+                        "checked_paths": _performance_candidate_paths(slot.get("path"))[:6],
+                    })
+                    continue
+
+                command = [
+                    external_node_bin,
+                    str(script_path),
+                    "--dataset-type", "monthly",
+                    "--file", str(file_path),
+                    "--db-path", normalized_path,
+                    "--sheet", slot.get("sheet_name") or FIRST_SHEET_TOKEN,
+                    "--source-year", str(slot["year"]),
+                    "--source-month", str(slot["month"]),
+                    "--chunk-size", external_chunk_size,
+                    "--confirm-large-import",
+                ]
+                if slot.get("header_row"):
+                    command.extend(["--header-row", str(slot["header_row"])])
+                if force:
+                    command.append("--force")
+
+                log_file.write(f"\n[monthly {slot['period']}] file={file_path}\n")
+                log_file.flush()
+                wrapped = _wrap_low_priority_command(command)
+                proc = subprocess.Popen(
+                    wrapped,
+                    cwd=str(external_repo_root),
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    text=True,
+                )
+                with monthly_sync_state_lock:
+                    monthly_sync_state["pid"] = proc.pid
+                    monthly_sync_state["log_path"] = str(log_path)
+                exit_code = proc.wait()
+                if exit_code == 0:
+                    synced_count += 1
+                    results.append({**slot, "path": normalized_path, "status": "synced", "exit_code": exit_code})
+                else:
+                    failed_count += 1
+                    results.append({**slot, "path": normalized_path, "status": "failed", "exit_code": exit_code})
+
+        cache.clear()
+        gc.collect()
+        if failed_count:
+            state["last_sync_error"] = f"월간실적 외부 동기화 일부 실패({failed_count}건). 로그: {log_path}\n{_tail_log(log_path)}"
+            app.logger.error(state["last_sync_error"])
+        else:
+            state["last_sync_error"] = None
+
+        return {
+            "mode": "external-monthly",
+            "external": True,
+            "log_path": str(log_path),
+            "synced_count": synced_count,
+            "skipped_count": skipped_count,
+            "failed_count": failed_count,
+            "files": results,
+            "synced_at": datetime.now(kst).isoformat(),
         }
 
     def _sync(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
@@ -1027,6 +1264,54 @@ def register_asan_performance_routes(app, supabase, kst):
         threading.Thread(target=_scheduler, daemon=True).start()
     else:
         app.logger.info("[스케줄러] 아산 연간실적 core 자동 동기화 비활성화 (NAS 스크립트 전용)")
+
+    @app.route("/api/branches/asan/performance/monthly", methods=["GET", "POST"])
+    def asan_monthly_performance():
+        try:
+            if request.method == "GET":
+                return jsonify({
+                    "data": _attach_monthly_sync_status({
+                        "source": "core-status",
+                        "monthlyFileSlots": _monthly_files_from_payload({
+                            "base_year": request.args.get("year") or request.args.get("base_year"),
+                            "extra_months": request.args.get("extra_months", DEFAULT_ASAN_MONTHLY_PERFORMANCE_EXTRA_MONTHS),
+                        }),
+                    })
+                })
+
+            body = request.get_json(silent=True) or {}
+            force = body.get("force", False)
+            if isinstance(force, str):
+                force = force.lower() in ("1", "true", "yes", "y")
+            run_async = body.get("async", True)
+            if isinstance(run_async, str):
+                run_async = run_async.lower() in ("1", "true", "yes", "y")
+
+            if not external_sync_enabled:
+                return jsonify({
+                    "ok": False,
+                    "error": "월간실적 NAS 동기화는 외부 Node importer가 필요합니다.",
+                    "data": _attach_monthly_sync_status({"monthlyFileSlots": _monthly_files_from_payload(body)}),
+                }), 409
+
+            if run_async:
+                started = _start_monthly_background_sync(body, bool(force))
+                status = _monthly_sync_status()
+                return jsonify({
+                    "ok": True,
+                    "status": "syncing" if status.get("running") else "idle",
+                    "message": "월간실적 NAS 동기화를 시작했습니다." if started else "월간실적 NAS 동기화가 이미 진행 중입니다.",
+                    "data": _attach_monthly_sync_status({"monthlyFileSlots": _monthly_files_from_payload(body)}),
+                }), 202 if status.get("running") else 200
+
+            result = _sync_monthly_external(body=body, force=bool(force))
+            if not result:
+                return jsonify({"ok": False, "error": state.get("last_sync_error") or "월간실적 NAS 동기화에 실패했습니다."}), 500
+            status_code = 207 if result.get("failed_count") else 200
+            return jsonify({"ok": result.get("failed_count", 0) == 0, "data": _attach_monthly_sync_status(result)}), status_code
+        except Exception as exc:
+            app.logger.error(f"월간실적 처리 오류: {exc}", exc_info=True)
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/branches/asan/performance/annual", methods=["GET", "POST"])
     def asan_annual_performance():

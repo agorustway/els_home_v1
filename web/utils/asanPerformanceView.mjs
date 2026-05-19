@@ -1,8 +1,235 @@
 export const DEFAULT_ANNUAL_PERFORMANCE_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
 export const DEFAULT_ANNUAL_PERFORMANCE_SHEET = '합계';
+export const DEFAULT_MONTHLY_PERFORMANCE_BASE_DIR = '/아산지점/B_총무/C_마감';
+export const DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS = 3;
+export const FIRST_SHEET_TOKEN = '__first__';
+
+export function buildMonthlyPerformancePeriods(baseYear, extraMonths = DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS) {
+  const parsedYear = Number.parseInt(baseYear, 10);
+  const year = Number.isFinite(parsedYear) && parsedYear > 1900 ? parsedYear : new Date().getFullYear();
+  const parsedExtra = Number.parseInt(extraMonths, 10);
+  const tailMonths = Number.isFinite(parsedExtra) && parsedExtra >= 0 ? Math.min(parsedExtra, 12) : DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS;
+  const periods = [];
+
+  for (let offset = 0; offset < 12 + tailMonths; offset += 1) {
+    const date = new Date(Date.UTC(year, offset, 1));
+    const periodYear = date.getUTCFullYear();
+    const periodMonth = date.getUTCMonth() + 1;
+    periods.push({
+      year: periodYear,
+      month: periodMonth,
+      period: `${periodYear}-${String(periodMonth).padStart(2, '0')}`,
+      carryover: periodYear > year,
+    });
+  }
+
+  return periods;
+}
+
+export function buildMonthlyPerformancePath({
+  year,
+  month,
+  baseDir = DEFAULT_MONTHLY_PERFORMANCE_BASE_DIR,
+  yearFolder = '',
+  monthFolder = '',
+  fileName = '',
+} = {}) {
+  const y = Number.parseInt(year, 10);
+  const m = Number.parseInt(month, 10);
+  const safeYear = Number.isFinite(y) ? y : new Date().getFullYear();
+  const safeMonth = Number.isFinite(m) && m >= 1 && m <= 12 ? m : 1;
+  const folderYear = String(yearFolder || safeYear);
+  const folderMonth = String(monthFolder || `${safeMonth}월`);
+  const name = String(fileName || `${safeYear}년_실적-${safeMonth}월 컨테이너 운송 마감자료.xlsx`);
+  return normalizePerformancePath(`${baseDir}/${folderYear}/${folderMonth}/${name}`);
+}
+
+export function buildMonthlyPerformanceFileSlots(baseYear, options = {}) {
+  return buildMonthlyPerformancePeriods(
+    baseYear,
+    options.extraMonths ?? DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS,
+  ).map(period => ({
+    ...period,
+    enabled: true,
+    path: buildMonthlyPerformancePath({
+      ...period,
+      baseDir: options.baseDir || DEFAULT_MONTHLY_PERFORMANCE_BASE_DIR,
+    }),
+    sheetName: FIRST_SHEET_TOKEN,
+    headerRow: '',
+  }));
+}
+
+function parsePerformanceAmountValue(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const text = normalizePerformanceFilterValue(value);
+  if (!text || text === '₩' || text === '#') return null;
+  const negative = /^\s*-\s*/.test(text) || (text.startsWith('(') && text.endsWith(')'));
+  const cleaned = text
+    .replace(/,/g, '')
+    .replace(/원/g, '')
+    .replace(/₩/g, '')
+    .replace(/#/g, '')
+    .replace(/%/g, '')
+    .replace(/[()]/g, '')
+    .trim();
+  const match = cleaned.match(/\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const amount = Number(match[0]);
+  if (!Number.isFinite(amount)) return null;
+  return negative ? -Math.abs(amount) : amount;
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function compactReportText(value) {
+  return normalizePerformanceFilterValue(value)
+    .replace(/\s+/g, '')
+    .toLocaleLowerCase('ko-KR');
+}
+
+function reportMetricKey(label) {
+  const compact = compactReportText(label);
+  if (!compact) return '';
+  if (compact.includes('이월') && compact.includes('매출')) return 'carryoverRevenue';
+  if (compact.includes('이월') && compact.includes('매입')) return 'carryoverPurchase';
+  if (compact.includes('계산서') && compact.includes('매출이익')) return 'invoiceProfit';
+  if (compact.includes('계산서') && compact.includes('매출') && !compact.includes('매출이익')) return 'invoiceRevenue';
+  if (compact.includes('계산서') && compact.includes('매입')) return 'invoicePurchase';
+  if (compact.includes('매출이익') || compact.includes('손익') || compact.includes('이익')) return 'netProfit';
+  if (compact.includes('순매출')) return 'netRevenue';
+  if (compact.includes('순매입')) return 'netPurchase';
+  return '';
+}
+
+function isMeaningfulReportHeader(header) {
+  const text = normalizePerformanceFilterValue(header);
+  if (!text || /^col_\d+$/i.test(text) || text === '₩' || text === '#') return false;
+  const compact = compactReportText(text);
+  return !['매출', '이월', '단위:원', '단위원'].includes(compact);
+}
+
+function isReportTotalHeader(header) {
+  const compact = compactReportText(header);
+  return compact.includes('매출합계') || compact === '합계' || compact === '총계';
+}
+
+function isReportRateHeader(header) {
+  const compact = compactReportText(header);
+  return compact.includes('이익율') || compact.includes('이익률') || compact.includes('%');
+}
+
+function resolveReportGroupName(headers, idx) {
+  for (let offset = 0; offset <= 2; offset += 1) {
+    const candidate = headers[idx - offset];
+    if (isMeaningfulReportHeader(candidate)) return normalizePerformanceFilterValue(candidate);
+  }
+  return '';
+}
+
+function blankMonthlyReportMetric(name = '') {
+  return {
+    name,
+    netRevenue: 0,
+    netPurchase: 0,
+    netProfit: 0,
+    netProfitRate: 0,
+    invoiceRevenue: 0,
+    invoicePurchase: 0,
+    invoiceProfit: 0,
+    invoiceProfitRate: 0,
+    carryoverRevenue: 0,
+    carryoverPurchase: 0,
+    carryoverProfit: 0,
+  };
+}
+
+export function buildMonthlyPerformanceReport(headers = [], rows = [], options = {}) {
+  const groups = new Map();
+  const totals = blankMonthlyReportMetric('매출합계');
+  const order = [];
+
+  const ensureGroup = (name) => {
+    const key = name || '미분류';
+    if (!groups.has(key)) {
+      groups.set(key, blankMonthlyReportMetric(key));
+      order.push(key);
+    }
+    return groups.get(key);
+  };
+
+  const setMetric = (target, metric, value) => {
+    if (metric === 'carryoverRevenue') target.carryoverRevenue += value;
+    else if (metric === 'carryoverPurchase') target.carryoverPurchase += value;
+    else target[metric] += value;
+  };
+
+  for (const row of rows || []) {
+    const label = row.slice(0, 3).map(normalizePerformanceFilterValue).find(Boolean) || '';
+    const metric = reportMetricKey(label);
+    if (!metric) continue;
+
+    row.forEach((cell, idx) => {
+      if (idx === 0) return;
+      const text = normalizePerformanceFilterValue(cell);
+      if (!text) return;
+      const header = resolveReportGroupName(headers, idx);
+      if (isReportRateHeader(header) || text.includes('%')) {
+        const rateValue = parsePerformanceAmountValue(text);
+        if (rateValue != null && metric === 'netRevenue') totals.netProfitRate = rateValue;
+        if (rateValue != null && metric === 'invoiceRevenue') totals.invoiceProfitRate = rateValue;
+        return;
+      }
+      const amount = parsePerformanceAmountValue(text);
+      if (amount == null || amount === 0) return;
+      if (!header) return;
+      if (isReportTotalHeader(header)) {
+        setMetric(totals, metric, amount);
+      } else {
+        setMetric(ensureGroup(header), metric, amount);
+      }
+    });
+  }
+
+  const finalize = item => {
+    const next = { ...item };
+    if (!next.netProfit && (next.netRevenue || next.netPurchase)) next.netProfit = next.netRevenue - next.netPurchase;
+    if (!next.invoiceProfit && (next.invoiceRevenue || next.invoicePurchase)) next.invoiceProfit = next.invoiceRevenue - next.invoicePurchase;
+    next.carryoverProfit = next.carryoverRevenue - next.carryoverPurchase;
+    next.netProfitRate = next.netProfitRate || (next.netRevenue ? (next.netProfit / next.netRevenue) * 100 : 0);
+    next.invoiceProfitRate = next.invoiceProfitRate || (next.invoiceRevenue ? (next.invoiceProfit / next.invoiceRevenue) * 100 : 0);
+    for (const key of Object.keys(next)) {
+      if (typeof next[key] === 'number') next[key] = roundMoney(next[key]);
+    }
+    return next;
+  };
+
+  const finalizedGroups = order
+    .map(key => finalize(groups.get(key)))
+    .filter(item => item.netRevenue || item.netPurchase || item.invoiceRevenue || item.invoicePurchase || item.carryoverRevenue || item.carryoverPurchase);
+  const finalizedTotals = finalize(totals);
+  const carryover = {
+    revenue: finalizedTotals.carryoverRevenue || roundMoney(finalizedGroups.reduce((sum, item) => sum + item.carryoverRevenue, 0)),
+    purchase: finalizedTotals.carryoverPurchase || roundMoney(finalizedGroups.reduce((sum, item) => sum + item.carryoverPurchase, 0)),
+  };
+  carryover.profit = roundMoney(carryover.revenue - carryover.purchase);
+
+  return {
+    period: options.period || '',
+    title: options.title || '',
+    groups: finalizedGroups,
+    totals: finalizedTotals,
+    carryover,
+    hasReportRows: finalizedGroups.length > 0 || Boolean(finalizedTotals.netRevenue || finalizedTotals.invoiceRevenue || carryover.revenue || carryover.purchase),
+  };
+}
 
 export function normalizePerformancePath(path = DEFAULT_ANNUAL_PERFORMANCE_PATH) {
-  const raw = String(path || DEFAULT_ANNUAL_PERFORMANCE_PATH).replace(/\\/g, '/').trim();
+  let raw = String(path || DEFAULT_ANNUAL_PERFORMANCE_PATH).replace(/\\/g, '/').trim();
+  raw = raw.replace(/^\/?volume[12]\//, '/');
   if (raw.startsWith('/B_총무/')) return `/아산지점${raw}`;
   if (raw.startsWith('B_총무/')) return `/아산지점/${raw}`;
   if (!raw.startsWith('/')) return `/${raw}`;

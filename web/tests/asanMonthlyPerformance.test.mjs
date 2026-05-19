@@ -1,0 +1,128 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS,
+  FIRST_SHEET_TOKEN,
+  buildMonthlyPerformanceReport,
+  buildMonthlyPerformanceFileSlots,
+  buildMonthlyPerformancePeriods,
+} from '../utils/asanPerformanceView.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '..', '..');
+
+function read(relPath) {
+  return fs.readFileSync(path.join(repoRoot, relPath), 'utf8');
+}
+
+test('아산 월간실적 기본 파일 슬롯은 기준연도 12개월과 정리기간 3개월을 만든다', () => {
+  const periods = buildMonthlyPerformancePeriods(2026, DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS);
+  assert.equal(DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS, 3);
+  assert.equal(periods.length, 15);
+  assert.deepEqual(periods[0], { year: 2026, month: 1, period: '2026-01', carryover: false });
+  assert.deepEqual(periods[14], { year: 2027, month: 3, period: '2027-03', carryover: true });
+
+  const slots = buildMonthlyPerformanceFileSlots(2026);
+  const april = slots.find(slot => slot.period === '2026-04');
+  assert.equal(FIRST_SHEET_TOKEN, '__first__');
+  assert.equal(april.sheetName, FIRST_SHEET_TOKEN);
+  assert.equal(
+    april.path,
+    '/아산지점/B_총무/C_마감/2026/4월/2026년_실적-4월 컨테이너 운송 마감자료.xlsx',
+  );
+});
+
+test('아산 월간실적 보고서 표는 거래처별 매출·매입·이익과 이월금액을 도출한다', () => {
+  const headers = ['2026년 4월', '글로비스 아산KD', 'col_3', '모비스', 'col_5', '매출합계', '이익율 (%)'];
+  const rows = [
+    ['매 출'],
+    ['순매출', '₩', '1,116,441,400', '₩', '517,692,000', '1,921,067,400', '13.66%'],
+    ['순매입', '₩', '959,974,350', '₩', '446,978,900', '1,658,692,350', ''],
+    ['매출이익/순매출', '₩', '156,467,050', '₩', '70,713,100', '262,375,050', ''],
+    ['매출(계산서)', '₩', '1,125,839,300', '₩', '523,259,200', '1,957,143,600', '13.36%'],
+    ['매입(계산서)', '₩', '974,684,400', '₩', '444,959,400', '1,695,660,400', ''],
+    ['매출이익(계산서)', '₩', '151,154,900', '₩', '78,299,800', '261,483,200', ''],
+    ['이 월'],
+    ['매출 (5월이월)', '', '241,185,000', '', '224,096,200', '484,932,800', ''],
+    ['매입 (5월이월)', '', '202,534,100', '', '195,513,300', '410,156,300', ''],
+  ];
+
+  const report = buildMonthlyPerformanceReport(headers, rows, { period: '2026-04' });
+  assert.equal(report.period, '2026-04');
+  assert.equal(report.groups[0].name, '글로비스 아산KD');
+  assert.equal(report.groups[0].netRevenue, 1116441400);
+  assert.equal(report.groups[1].name, '모비스');
+  assert.equal(report.groups[1].invoiceProfit, 78299800);
+  assert.equal(report.totals.netProfit, 262375050);
+  assert.equal(report.totals.invoiceProfit, 261483200);
+  assert.equal(report.carryover.revenue, 484932800);
+  assert.equal(report.carryover.purchase, 410156300);
+  assert.equal(report.carryover.profit, 74776500);
+  assert.equal(report.totals.netProfitRate, 13.66);
+});
+
+test('아산 월간실적 Next 라우트는 Supabase monthly 조회와 NAS 백엔드 동기화를 제공한다', () => {
+  const route = read('web/app/api/branches/asan/performance/monthly/route.js');
+  const dbReader = read('web/lib/asan-branch-db.js');
+  assert.match(route, /queryAsanMonthlyPerformanceFromSupabase/);
+  assert.match(route, /\/api\/branches\/asan\/performance\/monthly/);
+  assert.match(route, /dynamic = 'force-dynamic'/);
+  assert.match(dbReader, /dataset_type', 'monthly'/);
+  assert.match(dbReader, /buildMonthlyPerformanceFileSlots/);
+  assert.match(dbReader, /currentSnapshotId/);
+  assert.match(dbReader, /row_data/);
+  assert.match(dbReader, /monthlyFileSlots/);
+  assert.match(dbReader, /monthlyReports/);
+  assert.match(dbReader, /carryover/);
+  assert.match(dbReader, /daily/);
+});
+
+test('아산 월간실적 NAS Core는 여러 월 파일을 첫 번째 시트 기준으로 백그라운드 동기화한다', () => {
+  const backend = read('docker/els-backend/asan_performance.py');
+  assert.match(backend, /DEFAULT_ASAN_MONTHLY_PERFORMANCE_BASE_DIR/);
+  assert.match(backend, /FIRST_SHEET_TOKEN = "__first__"/);
+  assert.match(backend, /def _monthly_periods/);
+  assert.match(backend, /extra_months=3/);
+  assert.match(backend, /@app\.route\("\/api\/branches\/asan\/performance\/monthly", methods=\["GET", "POST"\]\)/);
+  assert.match(backend, /"--dataset-type", "monthly"/);
+  assert.match(backend, /"--source-year"/);
+  assert.match(backend, /"--source-month"/);
+  assert.match(backend, /월간실적 NAS 동기화/);
+});
+
+test('아산 월간실적 직접 주입 스크립트는 monthly dataset과 파일월 fallback을 지원한다', () => {
+  const importer = read('web/scripts/import-asan-annual-performance.mjs');
+  assert.match(importer, /--dataset-type <annual\|monthly>/);
+  assert.match(importer, /datasetType: args\['dataset-type'\] \|\| 'annual'/);
+  assert.match(importer, /sourceYear/);
+  assert.match(importer, /sourceMonth/);
+  assert.match(importer, /fallbackPeriod/);
+  assert.match(importer, /summary\.sourcePeriod/);
+  assert.match(importer, /monthlyReport/);
+  assert.match(importer, /buildMonthlyPerformanceReport/);
+  assert.match(importer, /daily: finalizeSeries\(daily/);
+  assert.match(importer, /FIRST_SHEET_TOKEN/);
+});
+
+test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와 이월 월 슬롯을 제공한다', () => {
+  const component = read('web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js');
+  const page = read('web/app/(main)/employees/branches/asan/page.js');
+  assert.match(page, /import AsanMonthlyPerformance/);
+  assert.match(page, /activePerformanceTab === 'monthly-performance' && <AsanMonthlyPerformance \/>/);
+  assert.match(component, /월간실적/);
+  assert.match(component, /\/api\/branches\/asan\/performance\/monthly/);
+  assert.match(component, /파일 설정/);
+  assert.match(component, /NAS 동기화/);
+  assert.match(component, /저장 후 동기화/);
+  assert.match(component, /saveSettingsAndSync/);
+  assert.match(component, /이월/);
+  assert.match(component, /월별 보고서/);
+  assert.match(component, /일별 데이터/);
+  assert.match(component, /이월금액/);
+  assert.match(component, /selectedReportPeriod/);
+  assert.match(component, /2027-03/);
+  assert.match(component, /buildMonthlyPerformanceFileSlots/);
+});

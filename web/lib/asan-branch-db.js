@@ -1,9 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { findWorkDateColumnIndex } from '@/utils/asanShippingView.mjs';
+import {
+    buildMonthlyPerformanceFileSlots,
+    buildMonthlyPerformancePeriods,
+} from '@/utils/asanPerformanceView.mjs';
 
 const DEFAULT_ASAN_SHIPPING_PATH = '/아산지점/2026_자체보관리스트.xlsx';
 const DEFAULT_ASAN_ANNUAL_PERFORMANCE_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
 const DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET = '합계';
+const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 
 let adminClient;
 
@@ -34,6 +39,7 @@ function normalizePerformancePath(path) {
     normalized = normalized.replace(/^[A-Za-z]:/, '');
     while (normalized.startsWith('//')) normalized = normalized.slice(1);
     if (!normalized.startsWith('/')) normalized = `/${normalized}`;
+    normalized = normalized.replace(/^\/volume[12]\//, '/');
     if (normalized.startsWith('/B_총무/')) normalized = `/아산지점${normalized}`;
     return normalized;
 }
@@ -396,5 +402,345 @@ export async function queryAsanAnnualPerformanceFromSupabase(searchParams) {
         sort_dir: paged.sortDir,
         source: 'supabase',
         read_path: 'next-direct',
+    };
+}
+
+function monthlyPeriodKey(year, month) {
+    const y = Number.parseInt(year, 10);
+    const m = Number.parseInt(month, 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return '';
+    return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+function metaSourcePeriod(meta = {}) {
+    const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
+    if (summary.sourcePeriod) return String(summary.sourcePeriod);
+    return monthlyPeriodKey(summary.sourceYear, summary.sourceMonth);
+}
+
+function mergeMonthlySummaries(metas, monthlyFileSlots) {
+    const monthly = new Map();
+    const daily = new Map();
+    const yearly = new Map();
+    const monthlyReports = [];
+    const carryover = { revenue: 0, purchase: 0, profit: 0 };
+    const detected = {
+        numericColumns: new Set(),
+        revenueColumns: new Set(),
+        purchaseColumns: new Set(),
+        profitColumns: new Set(),
+        groupColumns: new Set(),
+    };
+    let totalRows = 0;
+    let analysisRows = 0;
+    let totalRevenue = 0;
+    let totalPurchase = 0;
+    let totalProfit = 0;
+
+    const addMetric = (period, seed = {}) => {
+        if (!period) return null;
+        if (!monthly.has(period)) {
+            const [yearText, monthText] = period.split('-');
+            monthly.set(period, {
+                period,
+                year: Number(yearText),
+                month: Number(monthText),
+                revenue: 0,
+                purchase: 0,
+                profit: 0,
+                rowCount: 0,
+                ...seed,
+            });
+        }
+        return monthly.get(period);
+    };
+
+    for (const meta of metas) {
+        const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
+        const sourcePeriod = metaSourcePeriod(meta);
+        const report = summary.monthlyReport && typeof summary.monthlyReport === 'object' ? summary.monthlyReport : null;
+        const hasReport = Boolean(report?.hasReportRows);
+        const reportTotals = report?.totals || {};
+        const reportRevenue = Number(reportTotals.netRevenue || 0) || 0;
+        const reportPurchase = Number(reportTotals.netPurchase || 0) || 0;
+        const reportProfit = Number(reportTotals.netProfit || 0) || 0;
+        const metricRevenue = hasReport ? reportRevenue : (Number(summary.totalRevenue || 0) || 0);
+        const metricPurchase = hasReport ? reportPurchase : (Number(summary.totalPurchase || 0) || 0);
+        const metricProfit = hasReport ? reportProfit : (Number(summary.totalProfit || 0) || 0);
+        totalRows += Number(meta.current_row_count || meta.row_count || summary.totalRows || 0) || 0;
+        analysisRows += Number(summary.analysisRows || meta.current_row_count || meta.row_count || 0) || 0;
+        totalRevenue += metricRevenue;
+        totalPurchase += metricPurchase;
+        totalProfit += metricProfit;
+
+        const sourceMetric = addMetric(sourcePeriod);
+        if (sourceMetric) {
+            sourceMetric.revenue += metricRevenue;
+            sourceMetric.purchase += metricPurchase;
+            sourceMetric.profit += metricProfit;
+            sourceMetric.rowCount += Number(summary.analysisRows || meta.current_row_count || meta.row_count || 0) || 0;
+        }
+
+        if (hasReport) {
+            const nextReport = {
+                ...report,
+                period: report.period || sourcePeriod,
+                filePath: meta.file_path,
+                fileName: String(meta.file_path || '').split('/').filter(Boolean).pop() || meta.file_path,
+            };
+            monthlyReports.push(nextReport);
+            carryover.revenue += Number(report.carryover?.revenue || 0) || 0;
+            carryover.purchase += Number(report.carryover?.purchase || 0) || 0;
+            carryover.profit += Number(report.carryover?.profit || 0) || 0;
+        }
+
+        for (const item of summary.daily || []) {
+            const date = String(item.date || '').trim();
+            if (!date) continue;
+            if (!daily.has(date)) {
+                daily.set(date, {
+                    date,
+                    period: date.slice(0, 7),
+                    revenue: 0,
+                    purchase: 0,
+                    profit: 0,
+                    rowCount: 0,
+                });
+            }
+            const bucket = daily.get(date);
+            bucket.revenue += Number(item.revenue || 0) || 0;
+            bucket.purchase += Number(item.purchase || 0) || 0;
+            bucket.profit += Number(item.profit || 0) || 0;
+            bucket.rowCount += Number(item.rowCount || 0) || 0;
+        }
+
+        for (const item of summary.monthly || []) {
+            const period = String(item.period || '').trim();
+            const metric = addMetric(period);
+            if (!metric || period === sourcePeriod) continue;
+            metric.revenue += Number(item.revenue || 0) || 0;
+            metric.purchase += Number(item.purchase || 0) || 0;
+            metric.profit += Number(item.profit || 0) || 0;
+            metric.rowCount += Number(item.rowCount || 0) || 0;
+        }
+
+        for (const key of Object.keys(detected)) {
+            for (const value of summary.detected?.[key] || []) detected[key].add(value);
+        }
+    }
+
+    const monthlyList = Array.from(monthly.values())
+        .map(item => ({
+            ...item,
+            revenue: Math.round(item.revenue * 100) / 100,
+            purchase: Math.round(item.purchase * 100) / 100,
+            profit: Math.round(item.profit * 100) / 100,
+        }))
+        .sort((a, b) => a.period.localeCompare(b.period));
+
+    for (const item of monthlyList) {
+        const yearKey = String(item.year || '미지정');
+        if (!yearly.has(yearKey)) yearly.set(yearKey, { year: yearKey, revenue: 0, purchase: 0, profit: 0, rowCount: 0 });
+        const bucket = yearly.get(yearKey);
+        bucket.revenue += Number(item.revenue || 0) || 0;
+        bucket.purchase += Number(item.purchase || 0) || 0;
+        bucket.profit += Number(item.profit || 0) || 0;
+        bucket.rowCount += Number(item.rowCount || 0) || 0;
+    }
+
+    return {
+        totalRows,
+        analysisRows,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalPurchase: Math.round(totalPurchase * 100) / 100,
+        totalProfit: Math.round(totalProfit * 100) / 100,
+        profitRate: totalRevenue ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+        yearly: Array.from(yearly.values()).sort((a, b) => String(a.year).localeCompare(String(b.year), 'ko-KR')),
+        monthly: monthlyList,
+        daily: Array.from(daily.values())
+            .map(item => ({
+                ...item,
+                revenue: Math.round(item.revenue * 100) / 100,
+                purchase: Math.round(item.purchase * 100) / 100,
+                profit: Math.round(item.profit * 100) / 100,
+            }))
+            .sort((a, b) => a.date.localeCompare(b.date)),
+        monthlyBasis: '파일월',
+        monthlyFileCount: metas.length,
+        monthlyFileSlots,
+        monthlyReports: monthlyReports.sort((a, b) => String(a.period || '').localeCompare(String(b.period || ''))),
+        carryover: {
+            revenue: Math.round(carryover.revenue * 100) / 100,
+            purchase: Math.round(carryover.purchase * 100) / 100,
+            profit: Math.round(carryover.profit * 100) / 100,
+        },
+        detected: Object.fromEntries(Object.entries(detected).map(([key, set]) => [key, Array.from(set)])),
+    };
+}
+
+function buildMonthlyHeaders(metas) {
+    const seen = new Set(['마감월', '원본파일']);
+    const headers = ['마감월', '원본파일'];
+    for (const meta of metas) {
+        for (const header of meta.headers || []) {
+            if (seen.has(header)) continue;
+            seen.add(header);
+            headers.push(header);
+        }
+    }
+    return headers;
+}
+
+function monthlyRowToValues(row, headers) {
+    const rowData = row.row_data && typeof row.row_data === 'object' ? row.row_data : {};
+    const period = monthlyPeriodKey(row.year_value, row.month_value);
+    const fileName = String(row.file_path || '').split('/').filter(Boolean).pop() || row.file_path || '';
+    return headers.map((header) => {
+        if (header === '마감월') return period;
+        if (header === '원본파일') return fileName;
+        return rowData[header] ?? '';
+    });
+}
+
+async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize - 1;
+    const sortIdx = headers.indexOf(sortKey);
+    const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
+    const baseOrdered = query
+        .order('year_value', { ascending: true })
+        .order('month_value', { ascending: true })
+        .order('row_index', { ascending: true });
+
+    if (sortIdx >= 0) {
+        const { data, error } = await baseOrdered.range(0, maxSortRows);
+        if (error) throw new Error(error.message);
+        const sortable = [];
+        const blanks = [];
+        for (const item of data || []) {
+            const values = monthlyRowToValues(item, headers);
+            const value = sortValue(values[sortIdx]);
+            if (!value) blanks.push({ ...item, mapped_values: values });
+            else sortable.push([value, { ...item, mapped_values: values }]);
+        }
+        sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
+        const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
+        return {
+            rows: ordered.slice(start, end + 1),
+            total: Math.max(fallbackTotal, ordered.length),
+            sortKey,
+            sortDir: sortDesc ? 'desc' : 'asc',
+        };
+    }
+
+    const { data, error } = await baseOrdered.range(start, end + 1);
+    if (error) throw new Error(error.message);
+    const rows = data || [];
+    const hasMore = rows.length > pageSize;
+    const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+    const loadedThrough = start + pageRows.length;
+    return {
+        rows: pageRows.map(item => ({ ...item, mapped_values: monthlyRowToValues(item, headers) })),
+        total: Math.max(Number(fallbackTotal) || 0, loadedThrough + (hasMore ? 1 : 0)),
+        totalEstimated: hasMore && !(Number(fallbackTotal) || 0),
+        sortKey: '',
+        sortDir: sortDesc ? 'desc' : 'asc',
+    };
+}
+
+export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
+    const supabase = getSupabaseAdmin();
+    const defaultYear = new Date().getFullYear();
+    const baseYear = parsePositiveInt(searchParams.get('year'), defaultYear, 2100);
+    const extraMonths = parsePositiveInt(searchParams.get('extra_months'), 3, 12);
+    const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
+    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
+    const search = (searchParams.get('search') || '').trim();
+    const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
+    const sortKey = (searchParams.get('sort_key') || '').trim();
+    const sortDir = searchParams.get('sort_dir') || 'asc';
+    const monthlyFileSlots = buildMonthlyPerformanceFileSlots(baseYear, { extraMonths });
+    const periodSet = new Set(buildMonthlyPerformancePeriods(baseYear, extraMonths).map(item => item.period));
+
+    const { data: allMetas, error: metaError } = await supabase
+        .from('branch_performance_files')
+        .select(MONTHLY_META_SELECT)
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'monthly');
+    if (metaError) throw new Error(metaError.message);
+
+    const metas = (allMetas || [])
+        .filter(meta => periodSet.has(metaSourcePeriod(meta)))
+        .sort((a, b) => metaSourcePeriod(a).localeCompare(metaSourcePeriod(b)) || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR'));
+    const headers = buildMonthlyHeaders(metas);
+    const summary = mergeMonthlySummaries(metas, monthlyFileSlots);
+
+    if (!metas.length) {
+        return {
+            ...emptyPerformanceData({
+                path: '/아산지점/B_총무/C_마감',
+                sheetName: '월간실적',
+                page,
+                pageSize,
+            }),
+            headers,
+            summary,
+            base_year: baseYear,
+            extra_months: extraMonths,
+            monthlyFileSlots,
+        };
+    }
+
+    const snapshotIds = metas
+        .map(meta => meta.summary?.currentSnapshotId || meta.summary?.snapshotId)
+        .filter(Boolean);
+    const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
+    let query = supabase
+        .from('branch_performance_rows')
+        .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'monthly');
+    if (snapshotIds.length) {
+        query = query.in('snapshot_id', snapshotIds);
+    } else {
+        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+    }
+    query = applySearch(query, search, searchMode);
+
+    const paged = await getMonthlyPagedRows({
+        query,
+        headers,
+        page,
+        pageSize,
+        sortKey,
+        sortDir,
+        maxSortRows: 19999,
+        fallbackTotal,
+    });
+
+    return {
+        headers,
+        data: paged.rows.map(row => row.mapped_values || monthlyRowToValues(row, headers)),
+        summary,
+        file_path: '/아산지점/B_총무/C_마감',
+        sheet_name: '월간실적',
+        header_row: null,
+        file_modified_at: metas.reduce((latest, meta) => (
+            !latest || new Date(meta.file_modified_at || 0) > new Date(latest) ? meta.file_modified_at : latest
+        ), ''),
+        synced_at: metas.reduce((latest, meta) => (
+            !latest || new Date(meta.synced_at || 0) > new Date(latest) ? meta.synced_at : latest
+        ), ''),
+        total: paged.total || fallbackTotal,
+        total_is_estimated: Boolean(paged.totalEstimated),
+        page,
+        page_size: pageSize,
+        sort_key: paged.sortKey,
+        sort_dir: paged.sortDir,
+        source: 'supabase',
+        read_path: 'next-direct',
+        base_year: baseYear,
+        extra_months: extraMonths,
+        monthlyFileSlots,
     };
 }

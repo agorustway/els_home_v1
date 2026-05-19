@@ -91,10 +91,17 @@
 - 월별 summary가 잘못 계산된 경우 원장 행을 재주입하지 않고 current snapshot의 `row_data->>'마감월'` 기준으로 `20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`을 실행해 복구한다.
 - 분석 summary가 비어 있거나 구조가 바뀐 경우 `20260517_asan_performance_rebuild_analytics_workbench_summary.sql`을 실행한다. 운영 검증 기준은 current snapshot 368,617행, 월별 summary 불일치 0건, raw 재집계 차이 0원이다.
 
-## 4. 월별실적 확장 계획
+## 4. 월별실적 확장 현황
 - 같은 `branch_performance_files/rows` 테이블을 `dataset_type='monthly'`로 재사용한다.
 - 월별 마감자료는 연간실적보다 컬럼이 더 많은 원장으로 보고, 추가 컬럼은 `row_values/row_data`에 그대로 보존한다.
-- 월별 페이지는 파일 여러 개 또는 폴더 단위 취합을 지원하도록 별도 sync endpoint를 만든다.
+- 기본 파일공간은 기준연도 12개월 + 정리기간 3개월이다. 2026년 기준 `2026-01`부터 `2027-03`까지 15개 슬롯을 만든다.
+- 기본 경로는 `/아산지점/B_총무/C_마감/{연도}/{월}월/{연도}년_실적-{월}월 컨테이너 운송 마감자료.xlsx`이며, 화면에서 월별 경로/시트/제목행을 수정할 수 있다.
+- 월별 파일은 첫 번째 시트를 기본 대상으로 읽는다. 화면과 importer에서는 `__first__` 토큰으로 표현한다.
+- `실적관리 > 월간실적` 화면은 `NAS 동기화` 버튼과 파일 설정 `저장 후 동기화`를 제공한다.
+- importer는 월별 보고서 표의 `순매출/순매입/매출이익`, `매출(계산서)/매입(계산서)/매출이익(계산서)`, `매출/매입 이월` 행을 인식해 거래처별 보고서 summary를 만든다.
+- 원장 행은 파일월 기준 월별 흐름과 작업일자 기준 일별 흐름을 함께 집계한다. 화면은 이 summary로 `월별 보고서`, `일별 데이터`, `이월금액`을 표시한다.
+- Next API는 `/api/branches/asan/performance/monthly`이며 GET은 Supabase monthly dataset을 직접 조회하고, POST는 NAS Core 백그라운드 동기화로 프록시한다.
+- NAS Core는 존재하지 않는 미래/정리기간 파일은 실패가 아니라 `missing` skip으로 기록하고, 존재하는 파일만 순차 적재한다.
 - 연간+월별 합산은 DB view 또는 백엔드 집계 API로 분리해 웹에서 전체 원장을 직접 합산하지 않는다.
 
 ## 5. TODO
@@ -104,5 +111,5 @@
 - 운영 NAS에서 `/app/data/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx` 존재 확인.
 - 실제 엑셀 샘플 기준으로 매출/매입/손익 컬럼 자동 추론 키워드 보정.
 - 연간실적 `year_value/month_value` 과거 오집계 행은 화면 summary에는 영향 없지만, 향후 DB 직접 분석용으로 별도 저부하 backfill SQL 검토.
-- 월별실적 파일 위치와 마감자료 파일명 규칙 확정.
-- 월별실적 페이지 제작 후 연간실적과 합산 API 설계.
+- 운영 NAS에서 2026년 월별 마감자료 실제 경로를 확인하고 월간실적 `NAS 동기화` 최초 적재.
+- 연간실적과 월간실적 합산 API 설계.

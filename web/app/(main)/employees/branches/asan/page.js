@@ -4,6 +4,7 @@ import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 import AsanShipping from './AsanShipping';
 import AsanAnnualPerformance from './AsanAnnualPerformance';
+import AsanMonthlyPerformance from './AsanMonthlyPerformance';
 import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
 
 // ===== 상수 =====
@@ -1141,7 +1142,7 @@ function AsanPerformanceManagement() {
 
             <div className={styles.performanceContent}>
                 {activePerformanceTab === 'summary-performance' && <PerformancePlaceholder title="종합실적" />}
-                {activePerformanceTab === 'monthly-performance' && <PerformancePlaceholder title="월간실적" />}
+                {activePerformanceTab === 'monthly-performance' && <AsanMonthlyPerformance />}
                 {activePerformanceTab === 'annual-performance' && <AsanAnnualPerformance />}
             </div>
         </div>

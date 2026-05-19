@@ -8,6 +8,8 @@ import dotenv from 'dotenv';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
 import {
+  FIRST_SHEET_TOKEN,
+  buildMonthlyPerformanceReport,
   isPerformanceDateHeader,
   isPerformanceMonthHeader,
   normalizeAnnualPerformanceRow,
@@ -32,6 +34,7 @@ const FALLBACK_FILE_PATHS = [
 const DEFAULT_DB_PATH = '/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx';
 const DEFAULT_SHEET_NAME = '합계';
 const DEFAULT_CHUNK_SIZE = 200;
+const DATASET_TYPES = new Set(['annual', 'monthly']);
 
 function parseArgs(argv) {
   const args = {};
@@ -57,7 +60,11 @@ function usage() {
     'Options:',
     '  --file <path>        Excel file path. Default: ASAN_ANNUAL_PERFORMANCE_FILE or /volume2/아산지점/...',
     '  --db-path <path>     Supabase logical file_path. Default: /아산지점/B_총무/...',
+    '  --dataset-type <annual|monthly>  Supabase dataset_type. Default: annual',
     '  --sheet <name>       Sheet name. Default: 합계',
+    `                       Use ${FIRST_SHEET_TOKEN} for the first worksheet.`,
+    '  --source-year <yyyy> Monthly file year fallback',
+    '  --source-month <m>   Monthly file month fallback',
     '  --header-row <n>     1-based title row override',
     '  --chunk-size <n>     Insert/update chunk size. Default: 200',
     '  --dry-run           Parse only; do not write Supabase',
@@ -95,6 +102,7 @@ function normalizeDbPath(value) {
   normalized = normalized.replace(/^[A-Za-z]:/, '');
   while (normalized.startsWith('//')) normalized = normalized.slice(1);
   if (!normalized.startsWith('/')) normalized = `/${normalized}`;
+  normalized = normalized.replace(/^\/volume[12]\//, '/');
   if (normalized.startsWith('/B_총무/')) normalized = `/아산지점${normalized}`;
   return normalized;
 }
@@ -190,6 +198,7 @@ function cleanHeaders(rawHeaders) {
 function sheetNameFromWorkbook(workbook, preferred) {
   const sheets = workbook.SheetNames || [];
   if (!sheets.length) throw new Error('Excel sheet가 없습니다.');
+  if (!preferred || preferred === FIRST_SHEET_TOKEN || String(preferred).toLowerCase() === 'first') return sheets[0];
   if (sheets.includes(preferred)) return preferred;
   return sheets.find(sheet => preferred && sheet.includes(preferred)) || sheets[0];
 }
@@ -373,9 +382,19 @@ function numericColumnIndices(headers, rows) {
   return result;
 }
 
-function inferYearMonth(headers, row) {
+function normalizeFallbackPeriod(fallbackPeriod = {}) {
+  const sourceYear = Number.parseInt(fallbackPeriod.year, 10);
+  const sourceMonth = Number.parseInt(fallbackPeriod.month, 10);
+  return {
+    year: Number.isFinite(sourceYear) ? sourceYear : null,
+    month: Number.isFinite(sourceMonth) && sourceMonth >= 1 && sourceMonth <= 12 ? sourceMonth : null,
+  };
+}
+
+function inferYearMonth(headers, row, fallbackPeriod = {}) {
   let year = null;
   let month = null;
+  const fallback = normalizeFallbackPeriod(fallbackPeriod);
   const dateKeywords = ['일자', '날짜', '년월', '마감월', '마감일'];
   const yearKeywords = ['연도', '년도', '년'];
   const monthKeywords = ['월'];
@@ -403,7 +422,10 @@ function inferYearMonth(headers, row) {
     }
   });
 
-  return { year, month };
+  return {
+    year: year || fallback.year,
+    month: month || fallback.month,
+  };
 }
 
 function yearFromHeader(header) {
@@ -509,6 +531,7 @@ function createAdvancedAccumulator(headers) {
   const pickupIdx = headerIndex(headers, ['픽업'], '픽업');
   const vehicleIdx = headerIndex(headers, ['영업넘버', '차량번호', '차량'], '영업넘버');
   const driverIdx = headerIndex(headers, ['기사'], '기사');
+  const daily = new Map();
   const weekly = new Map();
   const weekday = new Map();
   const segments = new Map();
@@ -595,6 +618,12 @@ function createAdvancedAccumulator(headers) {
   function add(row, year, month, revenue, purchase, profit) {
     const dateInfo = workDateInfo(headers, row);
     if (dateInfo) {
+      addMetric(daily, dateInfo.date, {
+        date: dateInfo.date,
+        period: dateInfo.date.slice(0, 7),
+        day: dateInfo.day,
+        label: dateInfo.weekday,
+      }, revenue, purchase, profit);
       addMetric(weekly, dateInfo.weekStart, {
         weekStart: dateInfo.weekStart,
         weekEnd: dateInfo.weekEnd,
@@ -672,6 +701,7 @@ function createAdvancedAccumulator(headers) {
     }));
 
     return {
+      daily: finalizeSeries(daily, 400, (a, b) => a.date.localeCompare(b.date)),
       weekly: finalizeSeries(weekly, 620, (a, b) => a.weekStart.localeCompare(b.weekStart)),
       weekday: finalizeSeries(weekday, 7, (a, b) => a.day - b.day),
       strategicSegments: Array.from(segments.values()).map((segment) => {
@@ -741,7 +771,7 @@ function finalizeBreakdowns(headers, columnIndices, breakdowns, totalRevenue, ro
   }).filter(item => item.items.length);
 }
 
-function buildSummary(headers, rows) {
+function buildSummary(headers, rows, fallbackPeriod = {}) {
   const analysisRows = rows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisRows);
   const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
@@ -776,7 +806,7 @@ function buildSummary(headers, rows) {
 
   if (revenueCols.length || purchaseCols.length || profitCols.length) {
     for (const row of analysisRows) {
-      const { year, month } = inferYearMonth(headers, row);
+      const { year, month } = inferYearMonth(headers, row, fallbackPeriod);
       const revenue = revenueCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
       const purchase = purchaseCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
       const explicitProfit = profitCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
@@ -863,6 +893,8 @@ function buildSummary(headers, rows) {
   topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
 
   const advancedSummary = advanced.finish(roundItem, totalRevenue);
+  const fallback = normalizeFallbackPeriod(fallbackPeriod);
+  const fallbackPeriodKey = fallback.year && fallback.month ? `${fallback.year}-${String(fallback.month).padStart(2, '0')}` : '';
 
   return {
     totalRows: rows.length,
@@ -874,6 +906,7 @@ function buildSummary(headers, rows) {
     yearly: yearlyList,
     monthly: monthlyList.slice(0, 240),
     monthlyBasis: '마감월',
+    monthlyReport: buildMonthlyPerformanceReport(headers, rows, { period: fallbackPeriodKey }),
     ...advancedSummary,
     topGroups: topGroups.slice(0, 15),
     breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
@@ -887,14 +920,14 @@ function buildSummary(headers, rows) {
   };
 }
 
-async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow) {
+async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow, fallbackPeriod = {}) {
   const sampleRows = [];
   let accumulator = null;
   let ready = null;
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -922,7 +955,7 @@ async function summarizeExcelStreaming(filePath, preferredSheetName, headerRow) 
   };
 }
 
-function createSummaryAccumulator(headers, sampleRows) {
+function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}) {
   const analysisSampleRows = sampleRows.filter(row => !isTotalRow(row));
   const numericCols = numericColumnIndices(headers, analysisSampleRows);
   const salesWords = ['매출', '청구', '수입', '운송수입', '공급가', '운임'];
@@ -964,7 +997,7 @@ function createSummaryAccumulator(headers, sampleRows) {
     analysisRows += 1;
 
     if (revenueCols.length || purchaseCols.length || profitCols.length) {
-      const { year, month } = inferYearMonth(headers, row);
+      const { year, month } = inferYearMonth(headers, row, fallbackPeriod);
       const revenue = revenueCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
       const purchase = purchaseCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
       const explicitProfit = profitCols.reduce((sum, idx) => sum + parseAmount(row[idx] || ''), 0);
@@ -1051,6 +1084,8 @@ function createSummaryAccumulator(headers, sampleRows) {
     topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
 
     const advancedSummary = advanced.finish(roundItem, totalRevenue);
+    const fallback = normalizeFallbackPeriod(fallbackPeriod);
+    const fallbackPeriodKey = fallback.year && fallback.month ? `${fallback.year}-${String(fallback.month).padStart(2, '0')}` : '';
 
     return {
       totalRows,
@@ -1062,6 +1097,7 @@ function createSummaryAccumulator(headers, sampleRows) {
       yearly: yearlyList,
       monthly: monthlyList.slice(0, 240),
       monthlyBasis: '마감월',
+      monthlyReport: buildMonthlyPerformanceReport(headers, sampleRows, { period: fallbackPeriodKey }),
       ...advancedSummary,
       topGroups: topGroups.slice(0, 15),
       breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
@@ -1338,6 +1374,7 @@ function buildRowPayload({
   snapshotId,
   fileModifiedAt,
   nowIso,
+  fallbackPeriod = {},
   isCurrent = true,
   changeStatus = 'current',
 }) {
@@ -1345,7 +1382,7 @@ function buildRowPayload({
   headers.forEach((header, idx) => {
     rowData[header] = row[idx] || '';
   });
-  const { year, month } = inferYearMonth(headers, row);
+  const { year, month } = inferYearMonth(headers, row, fallbackPeriod);
   return {
     branch_id: key.branchId,
     dataset_type: key.datasetType,
@@ -1388,6 +1425,7 @@ async function importExcelSnapshotStreaming({
   fileModifiedAt,
   nowIso,
   currentMeta,
+  fallbackPeriod = {},
 }) {
   const snapshotId = uuidV4();
   const previousCurrentCount = Math.max(0, Number(currentMeta?.current_row_count || currentMeta?.row_count || 0) || 0);
@@ -1401,7 +1439,7 @@ async function importExcelSnapshotStreaming({
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -1436,6 +1474,7 @@ async function importExcelSnapshotStreaming({
         snapshotId,
         fileModifiedAt,
         nowIso,
+        fallbackPeriod,
         isCurrent: !stageBeforeActivation,
         changeStatus: stageBeforeActivation ? 'staged_current' : 'current',
       }));
@@ -1451,6 +1490,12 @@ async function importExcelSnapshotStreaming({
   let supersededCount = 0;
 
   const summary = accumulator.finish();
+  if (fallbackPeriod.year && fallbackPeriod.month) {
+    summary.sourceYear = fallbackPeriod.year;
+    summary.sourceMonth = fallbackPeriod.month;
+    summary.sourcePeriod = `${fallbackPeriod.year}-${String(fallbackPeriod.month).padStart(2, '0')}`;
+  }
+  summary.datasetType = key.datasetType;
   summary.currentSnapshotId = snapshotId;
   summary.previousSnapshotId = previousSnapshotId || null;
   summary.importMode = stageBeforeActivation ? 'snapshot-replace' : 'bootstrap-snapshot';
@@ -1483,6 +1528,7 @@ async function importExcelStreaming({
   chunkSize,
   fileModifiedAt,
   nowIso,
+  fallbackPeriod = {},
 }) {
   const currentRows = await readCurrentRows(supabase, key);
   const snapshotId = uuidV4();
@@ -1500,7 +1546,7 @@ async function importExcelStreaming({
 
   const ensureAccumulator = () => {
     if (accumulator) return;
-    accumulator = createSummaryAccumulator(ready.headers, sampleRows);
+    accumulator = createSummaryAccumulator(ready.headers, sampleRows, fallbackPeriod);
     for (const sampleRow of sampleRows) accumulator.add(sampleRow);
   };
 
@@ -1582,6 +1628,7 @@ async function importExcelStreaming({
           snapshotId,
           fileModifiedAt,
           nowIso,
+          fallbackPeriod,
         }));
         currentRows.delete(rowIndex);
       }
@@ -1614,6 +1661,12 @@ async function importExcelStreaming({
   }
 
   const summary = accumulator.finish();
+  if (fallbackPeriod.year && fallbackPeriod.month) {
+    summary.sourceYear = fallbackPeriod.year;
+    summary.sourceMonth = fallbackPeriod.month;
+    summary.sourcePeriod = `${fallbackPeriod.year}-${String(fallbackPeriod.month).padStart(2, '0')}`;
+  }
+  summary.datasetType = key.datasetType;
   summary.currentSnapshotId = snapshotId;
   summary.importMode = 'diff-current';
   return {
@@ -1648,14 +1701,22 @@ async function run() {
   const dbPath = normalizeDbPath(args['db-path'] || process.env.ASAN_ANNUAL_PERFORMANCE_DB_PATH || DEFAULT_DB_PATH);
   const preferredSheetName = args.sheet || process.env.ASAN_ANNUAL_PERFORMANCE_SHEET || DEFAULT_SHEET_NAME;
   const chunkSize = Math.max(20, Number.parseInt(args['chunk-size'] || DEFAULT_CHUNK_SIZE, 10) || DEFAULT_CHUNK_SIZE);
+  const datasetType = args['dataset-type'] || 'annual';
+  if (!DATASET_TYPES.has(datasetType)) {
+    throw new Error(`지원하지 않는 dataset_type입니다: ${datasetType}`);
+  }
+  const sourceYear = Number.parseInt(args['source-year'], 10);
+  const sourceMonth = Number.parseInt(args['source-month'], 10);
+  const fallbackPeriod = normalizeFallbackPeriod({ year: sourceYear, month: sourceMonth });
+  const resolvedSheetName = readWorkbookSheetNames(filePath, preferredSheetName).actualSheet;
   const fileStat = fs.statSync(filePath);
   const fileModifiedAt = fileStat.mtime.toISOString();
   const nowIso = new Date().toISOString();
   const requestedKey = {
     branchId: 'asan',
-    datasetType: 'annual',
+    datasetType: args['dataset-type'] || 'annual',
     filePath: dbPath,
-    sheetName: preferredSheetName,
+    sheetName: resolvedSheetName,
   };
   let supabase = null;
   let currentMeta = null;
@@ -1685,9 +1746,16 @@ async function run() {
 
   if (args['dry-run']) {
     const parsed = await parseExcel(filePath, preferredSheetName, args['header-row']);
-    const summary = buildSummary(parsed.headers, parsed.data);
+    const summary = buildSummary(parsed.headers, parsed.data, fallbackPeriod);
+    if (fallbackPeriod.year && fallbackPeriod.month) {
+      summary.sourceYear = fallbackPeriod.year;
+      summary.sourceMonth = fallbackPeriod.month;
+      summary.sourcePeriod = `${fallbackPeriod.year}-${String(fallbackPeriod.month).padStart(2, '0')}`;
+    }
+    summary.datasetType = requestedKey.datasetType;
     console.log(JSON.stringify({
       mode: 'dry-run',
+      datasetType: requestedKey.datasetType,
       filePath,
       dbPath,
       sheetName: parsed.sheetName,
@@ -1709,7 +1777,12 @@ async function run() {
   if (args['summary-only']) {
     supabase = supabase || createSupabaseClient();
     currentMeta = currentMeta || await readPerformanceMeta(supabase, requestedKey);
-    const refreshed = await summarizeExcelStreaming(filePath, preferredSheetName, args['header-row'] || currentMeta?.header_row);
+    const refreshed = await summarizeExcelStreaming(
+      filePath,
+      preferredSheetName,
+      args['header-row'] || currentMeta?.header_row,
+      fallbackPeriod,
+    );
     const currentSnapshotId = args['snapshot-id']
       || currentMeta?.summary?.currentSnapshotId
       || currentMeta?.summary?.snapshotId
@@ -1725,6 +1798,12 @@ async function run() {
     if (currentMeta?.summary?.recoveredSnapshotId) {
       refreshed.summary.recoveredSnapshotId = currentMeta.summary.recoveredSnapshotId;
     }
+    if (fallbackPeriod.year && fallbackPeriod.month) {
+      refreshed.summary.sourceYear = fallbackPeriod.year;
+      refreshed.summary.sourceMonth = fallbackPeriod.month;
+      refreshed.summary.sourcePeriod = `${fallbackPeriod.year}-${String(fallbackPeriod.month).padStart(2, '0')}`;
+    }
+    refreshed.summary.datasetType = requestedKey.datasetType;
 
     const { error: summaryError } = await supabase.from('branch_performance_files').upsert({
       branch_id: requestedKey.branchId,
@@ -1775,6 +1854,7 @@ async function run() {
     fileModifiedAt,
     nowIso,
     currentMeta,
+    fallbackPeriod,
   });
 
   let retirePreviousResult = {
