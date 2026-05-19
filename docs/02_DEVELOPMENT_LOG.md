@@ -1,3 +1,14 @@
+## [2026-05-19] 아산 월간실적 월/주차/일 선택과 누적 그래프 보강 (v5.14.54)
+### 핵심
+- 분석 기준 버튼 문구를 `월`, `주차`, `일`로 줄여 상단 컨트롤 폭을 줄였습니다.
+- 월을 선택하면 주차/일자 셀렉트는 해당 월에 속한 값만 보여주도록 cascade 방식으로 바꿨습니다.
+- `누적` 그래프에 청구/하불/손익 평균선을 추가하고, 주요 포인트마다 청구 금액과 건수를 직접 표시했습니다.
+### 검증
+- `node --check web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run build`: 통과
+
 ## [2026-05-19] Android 앱 지도 초기 카메라 순서 보정 (v5.14.53 / APK v5.11.19)
 ### 핵심
 - 지도 탭 진입 직후 기본 중심 또는 raw GPS 기준으로 먼저 확대된 뒤 차량을 찾는 화면 튐을 막았습니다.

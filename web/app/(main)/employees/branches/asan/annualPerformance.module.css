@@ -2289,7 +2289,7 @@
 .monthlyTrendSvg {
     display: block;
     width: 100%;
-    height: 128px;
+    height: 154px;
     min-width: 0;
 }
 
@@ -2306,7 +2306,8 @@
 .monthlyTrendPurchaseLine,
 .monthlyTrendProfitLine {
     fill: none;
-    stroke-width: 2.6;
+    filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.16));
+    stroke-width: 2.8;
     stroke-linecap: round;
     stroke-linejoin: round;
 }
@@ -2321,6 +2322,25 @@
 
 .monthlyTrendProfitLine {
     stroke: #2563eb;
+}
+
+.monthlyTrendRevenueAvgLine,
+.monthlyTrendPurchaseAvgLine,
+.monthlyTrendProfitAvgLine {
+    stroke-width: 1.4;
+    stroke-dasharray: 7 5;
+}
+
+.monthlyTrendRevenueAvgLine {
+    stroke: rgba(15, 118, 110, 0.72);
+}
+
+.monthlyTrendPurchaseAvgLine {
+    stroke: rgba(217, 119, 6, 0.62);
+}
+
+.monthlyTrendProfitAvgLine {
+    stroke: rgba(37, 99, 235, 0.62);
 }
 
 .monthlyTrendRevenuePoint,
@@ -2340,6 +2360,33 @@
 
 .monthlyTrendProfitPoint {
     fill: #2563eb;
+}
+
+.monthlyTrendAvgText,
+.monthlyTrendPointLabel,
+.monthlyTrendPointSubLabel {
+    paint-order: stroke;
+    stroke: #fff;
+    stroke-linejoin: round;
+    font-weight: 950;
+}
+
+.monthlyTrendAvgText {
+    fill: #0f766e;
+    font-size: 10px;
+    stroke-width: 3px;
+}
+
+.monthlyTrendPointLabel {
+    fill: #0f172a;
+    font-size: 10px;
+    stroke-width: 3px;
+}
+
+.monthlyTrendPointSubLabel {
+    fill: #64748b;
+    font-size: 9px;
+    stroke-width: 2.5px;
 }
 
 .monthlyTrendAxis {
@@ -2374,7 +2421,7 @@
 
 .monthlyTrendStats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
     gap: 6px;
     padding: 8px 10px 10px;
 }
