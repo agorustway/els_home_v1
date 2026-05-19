@@ -393,7 +393,7 @@ def _saved_credentials():
         return {"user_id": user_id, "user_pw": user_pw, "source": "els_config.json"}
     return None
 
-def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_timeout=350, source="manual"):
+def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_timeout=350, source="manual", force_restart=False):
     u_id = (u_id or "").strip()
     if not u_id or not u_pw:
         return {
@@ -402,7 +402,7 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
             "log": list(pool.log_buffer),
         }
 
-    if pool.is_same_user(u_id, show_browser):
+    if not force_restart and pool.is_same_user(u_id, show_browser):
         with pool.lock:
             if len(pool.drivers) > 0:
                 return {
@@ -420,7 +420,7 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                 }
 
     with pool.lock:
-        if pool.is_logging_in:
+        if pool.is_logging_in and not force_restart:
             return {
                 "ok": True,
                 "warming": True,
@@ -536,6 +536,39 @@ def _trigger_saved_warmup(source="manual", wait_for_ready=False):
         wait_for_ready=wait_for_ready,
         source=f"{source}/{creds['source']}",
     )
+
+def _daily_reset_once(saved_user=None):
+    if saved_user is None:
+        with pool.lock:
+            saved_user = dict(pool.current_user) if pool.current_user else None
+
+    if not saved_user or not saved_user.get("id") or not saved_user.get("pw"):
+        creds = _saved_credentials()
+        if creds:
+            saved_user = {
+                "id": creds["user_id"],
+                "pw": creds["user_pw"],
+                "show_browser": _bool_env("ELS_SHOW_BROWSER", False),
+            }
+
+    if not saved_user or not saved_user.get("id") or not saved_user.get("pw"):
+        pool.add_log("⚠️ [일일리셋] 저장된 사용자 정보 없음 → 수동 로그인 필요.")
+        return {"ok": False, "error": "저장된 ETRANS 계정이 없습니다.", "log": list(pool.log_buffer)}
+
+    pool.add_log(f"🔄 [일일리셋] '{saved_user['id']}' 계정으로 자동 재로그인 시도...")
+    result = _start_login_pool(
+        saved_user["id"],
+        saved_user["pw"],
+        show_browser=saved_user.get("show_browser", False),
+        wait_for_ready=False,
+        source="daily-reset",
+        force_restart=True,
+    )
+    if result.get("ok"):
+        pool.add_log("⏰ [일일리셋] 자동 리셋 워밍업을 백그라운드로 시작했습니다.")
+    else:
+        pool.add_log(f"❌ [일일리셋] 자동 리셋 워밍업 시작 실패: {result.get('error')}")
+    return result
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -1179,66 +1212,7 @@ def daily_reset_scheduler():
             if now.hour == 3 and now.minute < 2 and last_reset_date != today:
                 last_reset_date = today
                 pool.add_log("⏰ [일일리셋] 새벽 3시 자동 드라이버 풀 초기화 시작...")
-
-                with pool.lock:
-                    saved_user = dict(pool.current_user) if pool.current_user else None
-                    pool.clear()
-
-                if not saved_user or not saved_user.get("id"):
-                    pool.add_log("⚠️ [일일리셋] 저장된 사용자 정보 없음 → 수동 로그인 필요.")
-                    continue
-
-                # 자동 재로그인
-                pool.add_log(f"🔄 [일일리셋] '{saved_user['id']}' 계정으로 자동 재로그인 시도...")
-                with pool.lock:
-                    pool.stop_requested.clear()
-                    pool.current_user = saved_user
-                    pool.is_logging_in = True
-                    pool.active_init_threads = pool.max_drivers
-                    pool.consecutive_login_failures = 0
-                    reset_generation = pool.generation
-
-                def _do_reset_login(idx, _user=saved_user, generation=reset_generation):
-                    try:
-                        target_port = 32000 + idx
-                        if idx > 0:
-                            if not pool.wait_for_init_slot(idx, generation):
-                                return
-                        pool.cleanup_lingering_chrome(target_port)
-                        if pool.is_cancelled(generation):
-                            return
-                        res = login_and_prepare(
-                            _user["id"], _user["pw"],
-                            log_callback=pool.add_log,
-                            show_browser=_user.get("show_browser", False),
-                            port=target_port
-                        )
-                        if res[0]:
-                            if pool.is_cancelled(generation):
-                                try: res[0].quit()
-                                except: pass
-                                return
-                            res[0].used_port = target_port
-                            with pool.lock:
-                                if pool.is_cancelled(generation):
-                                    try: res[0].quit()
-                                    except: pass
-                                    return
-                                pool.consecutive_login_failures = 0
-                                pool.add_driver(res[0])
-                            pool.add_log(f"✅ [일일리셋] 브라우저 #{idx+1} 재시작 완료 (포트:{target_port})")
-                        else:
-                            pool.add_log(f"❌ [일일리셋] 브라우저 #{idx+1} 재시작 실패: {res[1]}")
-                    finally:
-                        with pool.lock:
-                            if generation == pool.generation:
-                                pool.active_init_threads = max(0, pool.active_init_threads - 1)
-                                if pool.active_init_threads == 0:
-                                    pool.is_logging_in = False
-                                    pool.add_log("⏰ [일일리셋] 자동 리셋 완료!")
-
-                for i in range(pool.max_drivers):
-                    threading.Thread(target=_do_reset_login, args=(i,), daemon=True).start()
+                _daily_reset_once()
 
         except Exception as e:
             pool.add_log(f"❌ [일일리셋] 스케줄러 오류: {e}")

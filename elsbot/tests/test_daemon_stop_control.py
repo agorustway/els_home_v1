@@ -245,6 +245,58 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertEqual(len(pool.drivers), 1)
         pool.clear()
 
+    def test_start_login_pool_force_restart_retries_after_menu_timeout(self):
+        with patch.dict(os.environ, {"ELS_MAX_DRIVERS": "1"}):
+            pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
+        pool.wait_unless_cancelled = lambda seconds, generation=None: True
+        old_driver = DummyDriver(32000)
+        pool.current_user = {"id": "ELSUSER", "pw": "OLDPW", "show_browser": False}
+        pool.add_driver(old_driver)
+
+        attempts = [
+            (None, "메뉴 진입 최종 실패"),
+            (DummyDriver(32000), None),
+        ]
+
+        def fake_login_and_prepare(*args, **kwargs):
+            return attempts.pop(0)
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(self.daemon, "login_and_prepare", side_effect=fake_login_and_prepare) as login_mock:
+                result = self.daemon._start_login_pool(
+                    "ELSUSER",
+                    "ELSPW",
+                    wait_for_ready=True,
+                    wait_timeout=2,
+                    source="test",
+                    force_restart=True,
+                )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(login_mock.call_count, 2)
+        self.assertEqual(old_driver.quit_count, 1)
+        self.assertEqual(len(pool.drivers), 1)
+        pool.clear()
+
+    def test_daily_reset_uses_force_restart_warmup(self):
+        pool = self.daemon.DriverPool()
+        pool.current_user = {"id": "ELSUSER", "pw": "ELSPW", "show_browser": False}
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(self.daemon, "_start_login_pool", return_value={"ok": True}) as warmup_mock:
+                result = self.daemon._daily_reset_once()
+
+        self.assertTrue(result["ok"])
+        warmup_mock.assert_called_once_with(
+            "ELSUSER",
+            "ELSPW",
+            show_browser=False,
+            wait_for_ready=False,
+            source="daily-reset",
+            force_restart=True,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

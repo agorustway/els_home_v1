@@ -1,3 +1,16 @@
+## [2026-05-20] ELS Bot 03:00 일일 리셋 워밍업 재시도 보강 (v5.14.79)
+### 핵심
+- 03:00 일일 리셋 로그에서 기존 세션은 유효하지만 `컨테이너이동현황` 메뉴 진입이 1회 타임아웃으로 끝나는 사례를 확인했습니다.
+- 일일 리셋 전용 코드가 `login_and_prepare()`를 직접 한 번 호출하던 흐름을 공통 `_start_login_pool(... force_restart=True)` 경로로 합쳤습니다.
+- 이제 일일 리셋도 기존 워커를 강제 정리한 뒤 저장 계정으로 백그라운드 워밍업을 시작하고, 메뉴 진입 타임아웃 같은 일시 실패는 워커별 최대 3회 재시도합니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_web_runner_daemon.py`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 15개 통과
+### 변경 파일
+- `elsbot/els_web_runner_daemon.py`
+- `elsbot/tests/test_daemon_stop_control.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 월간실적 기준연도별 이월 슬롯 판정 보정 (v5.14.78)
 ### 핵심
 - 월간실적 파일 설정에서 기준연도를 2027년 등으로 바꿀 때 본연도 12개월이 `이월`로 표시될 수 있는 정규화 기준을 보정했습니다.
