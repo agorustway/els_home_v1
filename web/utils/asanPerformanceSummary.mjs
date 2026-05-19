@@ -575,17 +575,40 @@ function scopeBreakdownSections(sections = [], scope = {}, totalRevenue = 0) {
 }
 
 function trendForScope(summary = {}, scope = {}) {
+  if (scope.mode === 'year') {
+    const years = safeList(summary.yearly).map(item => ({
+      ...item,
+      scopeKey: String(item.year || ''),
+      isSelected: String(item.year || '') === String(scope.year || ''),
+    }));
+    return { items: years, basis: '연도별', unit: '년' };
+  }
   if (scope.mode === 'month') {
-    const days = safeList(summary.daily).filter(item => dailyMatches(item, scope)).slice(-40);
-    return days.length ? { items: days, basis: '일별', unit: '일' } : { items: safeList(summary.monthly).filter(item => item.period === scope.month), basis: '월별', unit: '월' };
+    const selectedYear = periodYear(scope.month) || scope.year;
+    const months = safeList(summary.monthly)
+      .filter(item => !selectedYear || String(item.year || periodYear(item.period)) === String(selectedYear))
+      .map(item => ({
+        ...item,
+        scopeKey: item.period,
+        isSelected: item.period === scope.month,
+      }));
+    return { items: months, basis: '월별', unit: '월' };
   }
   if (scope.mode === 'day') {
-    const days = safeList(summary.daily).filter(item => dailyMatches(item, scope)).slice(-40);
+    const days = safeList(summary.daily)
+      .filter(item => dailyMatches(item, scope))
+      .slice(-40)
+      .map(item => ({
+        ...item,
+        scopeKey: dailyScopeKey(item),
+        isSelected: dailyScopeKey(item) === scope.dayKey,
+      }));
     return { items: days, basis: '일별', unit: '일' };
   }
-  const months = scope.mode === 'year'
-    ? safeList(summary.monthly).filter(item => monthlyMatches(item, scope))
-    : safeList(summary.monthly).slice(-12);
+  const months = safeList(summary.monthly).slice(-12).map(item => ({
+    ...item,
+    scopeKey: item.period,
+  }));
   return { items: months, basis: '월별', unit: '월' };
 }
 

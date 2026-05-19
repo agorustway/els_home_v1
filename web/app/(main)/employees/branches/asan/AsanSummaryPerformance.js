@@ -45,10 +45,19 @@ function formatScopeMonth(period = '') {
 }
 
 function metricLabel(item = {}, basis = '월별') {
+    if (basis === '연도별') {
+        return item.year ? `${item.year}년` : String(item.period || item.scopeKey || '-');
+    }
     if (basis === '일별') {
         return item.date ? String(item.date).slice(5) : String(item.period || '').slice(5);
     }
     return String(item.period || item.year || '').slice(5) || item.period || item.year || '-';
+}
+
+function metricTitleLabel(item = {}, basis = '월별') {
+    if (basis === '연도별') return item.year ? `${item.year}년` : String(item.scopeKey || '-');
+    if (basis === '일별') return item.date || item.scopeKey || '-';
+    return item.period || item.scopeKey || '-';
 }
 
 async function readPerformanceJson(res, fallbackMessage) {
@@ -100,6 +109,9 @@ function ScopeControls({
     const years = options?.yearly || [];
     const months = options?.monthly || [];
     const days = options?.daily || [];
+    const yearSelectEnabled = scopeMode === 'year';
+    const monthSelectEnabled = scopeMode === 'month';
+    const daySelectEnabled = scopeMode === 'day';
 
     return (
         <section className={styles.summaryScopePanel}>
@@ -116,10 +128,11 @@ function ScopeControls({
                 ))}
             </div>
             <div className={styles.summaryScopeSelects}>
-                <label>
+                <label className={!yearSelectEnabled ? styles.summaryScopeDisabled : ''}>
                     <span>연도</span>
                     <select
                         value={selectedYear}
+                        disabled={!yearSelectEnabled}
                         onChange={(event) => {
                             setSelectedYear(event.target.value);
                             setScopeMode('year');
@@ -128,10 +141,11 @@ function ScopeControls({
                         {years.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
                     </select>
                 </label>
-                <label>
+                <label className={!monthSelectEnabled ? styles.summaryScopeDisabled : ''}>
                     <span>월</span>
                     <select
                         value={selectedMonth}
+                        disabled={!monthSelectEnabled}
                         onChange={(event) => {
                             setSelectedMonth(event.target.value);
                             setScopeMode('month');
@@ -140,10 +154,11 @@ function ScopeControls({
                         {months.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
                     </select>
                 </label>
-                <label>
+                <label className={!daySelectEnabled ? styles.summaryScopeDisabled : ''}>
                     <span>일</span>
                     <select
                         value={selectedDayKey}
+                        disabled={!daySelectEnabled}
                         onChange={(event) => {
                             setSelectedDayKey(event.target.value);
                             setScopeMode('day');
@@ -218,8 +233,23 @@ function ExecutiveFlowDiagram({ summary }) {
 }
 
 function ExecutiveTrendChart({ summary }) {
-    const items = (summary?.trendItems || summary?.monthly || []).slice(-14);
+    const rawItems = summary?.trendItems || summary?.monthly || [];
+    const selectedIndex = rawItems.findIndex(item => item.isSelected);
+    const visibleStart = rawItems.length <= 14
+        ? 0
+        : selectedIndex >= 0
+            ? Math.max(0, Math.min(selectedIndex - 6, rawItems.length - 14))
+            : rawItems.length - 14;
+    const items = rawItems.slice(visibleStart, visibleStart + 14);
     const basis = summary?.trendBasis || '월별';
+    const scopeMode = summary?.scope?.mode || 'all';
+    const title = basis === '연도별'
+        ? '연도별 매출·손익 흐름'
+        : basis === '일별'
+            ? '일별 매출·손익 흐름'
+            : scopeMode === 'month'
+                ? '월별 매출·손익 흐름'
+                : '최근월 매출·손익 흐름';
     const width = 820;
     const height = 214;
     const maxRevenue = Math.max(1, ...items.map(item => Math.abs(safeNumber(item.revenue))));
@@ -236,8 +266,8 @@ function ExecutiveTrendChart({ summary }) {
         <section className={`${styles.summaryPanel} ${styles.summaryTrendPanel}`}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>{basis === '일별' ? '선택월 일별 흐름' : '최근월 매출·손익 흐름'}</h3>
-                    <span>청록 막대는 매출, 파란 선은 손익 · {summary?.scope?.label || '전체'} 기준</span>
+                    <h3>{title}</h3>
+                    <span>선택 기준 {summary?.scope?.label || '전체'} · 그래프 단위 {basis}</span>
                 </div>
             </div>
             {items.length < 2 ? (
@@ -253,6 +283,7 @@ function ExecutiveTrendChart({ summary }) {
                             const barHeight = Math.max(4, 138 - revenueY(item.revenue));
                             const isBest = item === bestRevenue;
                             const isLatest = item === latest;
+                            const isSelected = Boolean(item.isSelected);
                             return (
                                 <g key={item.scopeKey || item.period || item.date || idx}>
                                     <rect
@@ -261,13 +292,13 @@ function ExecutiveTrendChart({ summary }) {
                                         width="22"
                                         height={barHeight}
                                         rx="4"
-                                        className={isLatest ? styles.summaryRevenueBarActive : styles.summaryRevenueBar}
+                                        className={isSelected || isLatest ? styles.summaryRevenueBarActive : styles.summaryRevenueBar}
                                     >
-                                        <title>{`${item.period || item.date} 매출 ${formatPerformanceAmount(item.revenue)}`}</title>
+                                        <title>{`${metricTitleLabel(item, basis)} 매출 ${formatPerformanceAmount(item.revenue)}`}</title>
                                     </rect>
-                                    {(isBest || isLatest) && (
+                                    {(isSelected || isBest || isLatest) && (
                                         <text x={x} y={Math.max(20, 132 - barHeight)} textAnchor="middle" className={styles.summaryValueLabel}>
-                                            {isBest ? '최고' : '최근'} {formatPerformanceAmount(item.revenue)}
+                                            {isSelected ? '선택' : (isBest ? '최고' : '최근')} {formatPerformanceAmount(item.revenue)}
                                         </text>
                                     )}
                                     <text x={x} y="194" textAnchor="middle" className={styles.summaryTrendLabel}>{metricLabel(item, basis)}</text>
@@ -277,10 +308,11 @@ function ExecutiveTrendChart({ summary }) {
                         <polyline points={profitPoints} className={styles.summaryProfitLine} />
                         {items.map((item, idx) => {
                             const isWorst = item === worstProfit;
+                            const isSelected = Boolean(item.isSelected);
                             return (
                                 <g key={`${item.scopeKey || item.period || item.date || idx}-profit`}>
-                                    <circle cx={xAt(idx)} cy={profitY(item.profit)} r={isWorst ? 4.5 : 3.6} className={isWorst ? styles.summaryProfitPointWarn : styles.summaryProfitPoint}>
-                                        <title>{`${item.period || item.date} 손익 ${formatPerformanceAmount(item.profit)}`}</title>
+                                    <circle cx={xAt(idx)} cy={profitY(item.profit)} r={isSelected ? 5 : (isWorst ? 4.5 : 3.6)} className={isWorst ? styles.summaryProfitPointWarn : (isSelected ? styles.summaryProfitPointActive : styles.summaryProfitPoint)}>
+                                        <title>{`${metricTitleLabel(item, basis)} 손익 ${formatPerformanceAmount(item.profit)}`}</title>
                                     </circle>
                                     {isWorst && (
                                         <text x={xAt(idx)} y={Math.min(184, profitY(item.profit) + 18)} textAnchor="middle" className={styles.summaryWarnLabel}>
@@ -589,8 +621,6 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                 </div>
                 <div className={styles.actions}>
                     <button type="button" className={styles.ghostBtn} onClick={loadSummary} disabled={loading}>새로고침</button>
-                    <button type="button" className={styles.smallBtn} onClick={openMonthly}>월간실적</button>
-                    <button type="button" className={styles.smallBtn} onClick={openAnnual}>연간실적</button>
                 </div>
             </div>
 

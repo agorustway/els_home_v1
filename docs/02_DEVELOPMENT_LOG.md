@@ -1,3 +1,21 @@
+## [2026-05-19] 아산 종합실적 선택 단위별 그래프 보정 (v5.14.70)
+### 핵심
+- 종합실적의 `연도별/월별/일별` 선택과 흐름 그래프 집계 단위를 일치시켰습니다.
+- 연도별은 연도 데이터, 월별은 선택 연도 안의 월 데이터, 일별은 선택 일자 데이터로 표시하고 선택 항목을 그래프에서 강조합니다.
+- 현재 선택 모드에서 쓰지 않는 연도/월/일 셀렉트는 비활성화와 음영으로 처리해 조작 가능한 항목만 보이게 했습니다.
+- 종합실적 상단의 `월간실적/연간실적` 바로가기 버튼은 제거하고 `새로고침`만 남겼습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 4개 통과
+- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과(외부 fetch는 샌드박스 EACCES 경고 후 정적 빌드 완료)
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 선적관리 컨테이너 자동조회 설정과 새벽 스케줄 (v5.14.69)
 ### 핵심
 - 동기화가 빠르게 끝나는 경우는 파일 수정일·크기 기준으로 새 변경이 없어 DB 반영을 건너뛰는 정상 흐름으로 해석했습니다.

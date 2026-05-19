@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.69 / APK v5.11.23)
+# ELS MISSION CONTROL (v5.14.70 / APK v5.11.23)
 
-> 최신 업데이트: 선적관리 컨테이너 자동조회 설정과 새벽 스케줄을 추가했습니다.
+> 최신 업데이트: 종합실적 그래프 단위를 선택 기준과 맞추고 상단 월간/연간 바로가기를 제거했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.69
+- **웹 버전**: v5.14.70
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.23
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -25,6 +25,7 @@
   - 연간실적 계약/차량 월별 흐름은 매출/손익 선, 평균선, 최고/최근 포인트, 평균 손익률 요약을 함께 표시한다.
   - 연간실적 개요의 시간축 분석은 전체=연도별, 최근 12/24개월=월별, 최근 3/5년=3개월별로 자동 집계하고 계약/차량 흐름도 동일한 조사범위 단위를 사용한다.
   - 종합실적은 전체/연도별/월별/일별 선택 기준으로 연간+월간 Supabase summary를 재집계하고, KPI·흐름도·추세·연도 매트릭스·계약/차량 집중도·원장 신뢰도·청구처/지급처 고저마진을 같은 선택 범위로 표시한다.
+  - 종합실적 흐름 그래프는 연도별=연도 단위, 월별=월 단위, 일별=일 단위로 표시하며 현재 단계에서 쓰지 않는 선택 목록은 음영/잠금 처리한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -57,9 +58,11 @@
 - [x] v5.14.66: Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리
 - [x] v5.14.67: 월간실적 그래프 단위와 세분화 탭 기준 보정
 - [x] v5.14.69: 선적관리 컨테이너 자동조회 DB 설정과 03:00/03:10 스케줄
+- [x] v5.14.70: 종합실적 선택 단위별 그래프 단위 보정과 상단 바로가기 제거
 - [ ] Next: 운영 NAS 최초 월간 동기화
 
 ## RECENT CHANGES
+- **v5.14.70**: 종합실적 선택 기준을 `전체/연도별/월별/일별`로 바꿀 때 흐름 그래프도 같은 단위로 집계되도록 맞췄다. 연도별은 연도 데이터, 월별은 선택 연도의 월 데이터, 일별은 선택 일 데이터로 표시하며 해당 모드에서 쓰지 않는 연도/월/일 선택 목록은 비활성 음영 처리한다. 종합실적 상단의 `월간실적/연간실적` 바로가기 버튼은 제거해 화면 역할을 분리했다.
 - **v5.14.69**: 선적관리 설정에 `컨테이너 자동조회` 체크박스를 추가해 `branch_dispatch_settings.shipping_container_auto_lookup_enabled`로 저장한다. 봇 데몬 일일 리셋은 03:00, NAS Core 자동조회는 03:10 실행으로 맞췄고, 전체 선적관리 컨테이너 중 최신 이력구분이 `적하`인 건은 제외한다. 자동조회 중 어떤 이유든 `ERROR` 10건에 도달하면 설정을 OFF로 저장하고 남은 조회를 중단한다.
 - **v5.14.67**: 월간실적 `누적` 그래프를 전체=연도별, 월=선택월 주차별, 주차=선택주 일자별, 일=해당일 단일 데이터로 맞췄다. 전체 상태에서는 월/주차/일 선택을 잠그고, 월·주차·일 선택마다 필요한 셀렉트만 활성화한다. 세분화 분석은 `구분별/노선별/계약별/ODCY구분별`과 중복 `청구픽업별` 왼쪽 탭을 제거했다.
 - **v5.14.66**: 백그라운드 위치수신이 앱 최소화 위젯 표시와 독립적으로 계속 유지되는지 회귀 테스트를 추가했다. Manifest의 background/foreground location 권한, `stopWithTask=false`, 전경 서비스, FusedLocation `requestLocationUpdates`, 서버 전송, 운행 시작 시 네이티브 서비스→JS GPS 순서를 고정했다. 앱 핵심 버튼은 불가/미완료 상태 빨강, 진행 가능 상태 파랑으로 통일했다. APK v5.11.23.
@@ -80,9 +83,10 @@
 - **v5.14.51**: 월간실적 세분화 분석 축을 `매출/지역/청구픽업/포트명/선적/이월(청구처기준)/계산서` 순서로 재구성했다. 매출·계산서는 월간 보고서 그룹값에서, 이월은 청구처 기준 이월값에서 탭을 만들고, 큰 이월 별도 표는 탭 안으로 합쳐 세분화 패널 높이를 줄였다. `차량 성과 TOP`에는 `순위/차량번호/비중/청구액/손익·건수` 헤더를 추가했다.
 - **v5.14.50**: 월간실적 `월별 누적 흐름` 제목을 `누적`, `월간 실적 인포그래픽` 제목을 `실적 인포그래픽`으로 정리했다. 전체/월별/주간/일별 선택 시 누적 그래프, KPI, 성과 흐름, 세분화, 차량 TOP이 같은 선택 범위 데이터를 쓰도록 `scopeFlowItems` 기준으로 통일하고, 세분화/구성/차량 항목에도 일별 시리즈를 누적 저장해 일별 선택에서 월별 fallback이 섞이지 않게 했다.
 ## VERIFICATION
-- `node --test web/tests/asanShippingFlow.test.mjs`: 35개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/settings/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
-- 번들 Python `py_compile`로 `docker/els-backend/app_core.py`, `docker/els-backend/app.py`, `elsbot/els_web_runner_daemon.py` 문법 확인 통과
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 4개 통과
+- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 22개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과(외부 fetch는 샌드박스 EACCES 경고 후 정적 빌드 완료)
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
