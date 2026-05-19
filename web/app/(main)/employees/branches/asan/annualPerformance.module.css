@@ -2543,10 +2543,18 @@
     order: 5;
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: minmax(180px, 0.5fr) minmax(250px, 0.8fr) minmax(240px, 0.7fr);
+    grid-template-columns: minmax(420px, auto) minmax(360px, 1fr);
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 8px 10px;
+}
+
+.analysisScopeLead {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
 }
 
 .analysisScopeTitle {
@@ -2555,6 +2563,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 4px 8px;
+    flex: 1 1 220px;
 }
 
 .analysisScopeTitle span,
@@ -2583,6 +2592,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
+    flex: 0 0 auto;
 }
 
 .analysisScopeButtons button {
@@ -2614,6 +2624,8 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
+    width: min(100%, 720px);
+    justify-self: end;
 }
 
 .analysisScopeSelects select {
@@ -2745,6 +2757,12 @@
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
+.monthlyTrendGraph {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+}
+
 .monthlyTrendSvg {
     display: block;
     width: 100%;
@@ -2821,31 +2839,83 @@
     fill: #2563eb;
 }
 
-.monthlyTrendAvgText,
-.monthlyTrendPointLabel,
-.monthlyTrendPointSubLabel {
-    paint-order: stroke;
-    stroke: #fff;
-    stroke-linejoin: round;
+.monthlyTrendAvgBadge,
+.monthlyTrendDataLabel {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    white-space: nowrap;
+    letter-spacing: 0;
+}
+
+.monthlyTrendAvgBadge {
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 132px;
+    padding: 2px 6px;
+    border: 1px solid rgba(15, 118, 110, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    color: #0f766e;
+    font-size: 0.58rem;
     font-weight: 950;
+    transform: translateY(-50%);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
-.monthlyTrendAvgText {
-    fill: #0f766e;
-    font-size: 10px;
-    stroke-width: 3px;
+.monthlyTrendAvgBadge strong {
+    color: #0f172a;
+    font-size: 0.6rem;
 }
 
-.monthlyTrendPointLabel {
-    fill: #0f172a;
-    font-size: 10px;
-    stroke-width: 3px;
+.monthlyTrendDataLabel {
+    --label-x: -50%;
+    --label-y: -100%;
+    display: grid;
+    gap: 0;
+    min-width: 42px;
+    max-width: 82px;
+    padding: 2px 5px;
+    border: 1px solid rgba(203, 213, 225, 0.86);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #0f172a;
+    font-size: 0.58rem;
+    font-weight: 950;
+    line-height: 1.08;
+    text-align: center;
+    transform: translate(var(--label-x), var(--label-y));
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
-.monthlyTrendPointSubLabel {
-    fill: #64748b;
-    font-size: 9px;
-    stroke-width: 2.5px;
+.monthlyTrendDataLabel strong,
+.monthlyTrendDataLabel span {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.monthlyTrendDataLabel span {
+    color: #64748b;
+    font-size: 0.54rem;
+    font-weight: 900;
+}
+
+.monthlyTrendDataLabelLeft {
+    --label-x: 0;
+    text-align: left;
+}
+
+.monthlyTrendDataLabelRight {
+    --label-x: -100%;
+    text-align: right;
+}
+
+.monthlyTrendDataLabelBelow {
+    --label-y: 0;
 }
 
 .monthlyTrendAxis {
@@ -3945,6 +4015,15 @@
         grid-column: 1 / -1;
     }
 
+    .analysisScopeLead {
+        align-items: flex-start;
+    }
+
+    .analysisScopeSelects {
+        width: 100%;
+        justify-self: stretch;
+    }
+
     .monthlyInfographicGrid,
     .segmentInsightGrid,
     .monthlyInsightStrip {
@@ -4161,10 +4240,26 @@
         grid-template-columns: 1fr;
     }
 
-    .analysisScopeButtons,
     .analysisScopeSelects {
         display: grid;
         grid-template-columns: 1fr;
+    }
+
+    .analysisScopeLead {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .analysisScopeButtons {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .analysisScopeButtons button {
+        min-width: 0;
+        width: 100%;
+        padding: 0 4px;
     }
 
     .scopePresets {

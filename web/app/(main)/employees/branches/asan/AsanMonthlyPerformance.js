@@ -719,7 +719,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
     const profitPoints = toPoints('profit');
     const baselineY = yAt(0);
     const revenueArea = series.length
-        ? `${pad.left},${baselineY.toFixed(1)} ${revenuePoints} ${(series.length > 1 ? pad.left + chartW : pad.left).toFixed(1)},${baselineY.toFixed(1)}`
+        ? `${xAt(0).toFixed(1)},${baselineY.toFixed(1)} ${revenuePoints} ${xAt(series.length - 1).toFixed(1)},${baselineY.toFixed(1)}`
         : '';
     const start = series[0]?.displayLabel || '-';
     const end = series[series.length - 1]?.displayLabel || '-';
@@ -743,7 +743,15 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
         x: xAt(idx),
         y: yAt(item.revenue),
         anchor: idx === 0 ? 'start' : (idx === series.length - 1 ? 'end' : 'middle'),
-    })).filter(point => point.idx === 0 || point.idx === lastIdx || point.idx === highIdx || point.idx % pointLabelStep === 0);
+    })).filter(point => point.idx === 0 || point.idx === lastIdx || point.idx === highIdx || point.idx % pointLabelStep === 0)
+        .map(point => ({
+            ...point,
+            xPercent: Math.max(1, Math.min(99, (point.x / width) * 100)),
+            yPercent: Math.max(8, Math.min(92, ((point.y < 44 ? point.y + 16 : point.y - 10) / height) * 100)),
+            anchorClass: point.anchor === 'start' ? styles.monthlyTrendDataLabelLeft : (point.anchor === 'end' ? styles.monthlyTrendDataLabelRight : ''),
+            placeClass: point.y < 44 ? styles.monthlyTrendDataLabelBelow : '',
+        }));
+    const avgRevenueYPercent = Math.max(8, Math.min(84, ((yAt(avgRevenue) - 6) / height) * 100));
 
     return (
         <section className={`${styles.panel} ${styles.monthlyTrendPanel}`}>
@@ -763,59 +771,57 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
             ) : (
                 <>
                     <div className={styles.monthlyTrendChartShell}>
-                        <svg
-                            className={styles.monthlyTrendSvg}
-                            viewBox={`0 0 ${width} ${height}`}
-                            preserveAspectRatio="none"
-                            role="img"
-                            aria-label="누적 차트"
-                        >
-                            <defs>
-                                <linearGradient id="monthlyTrendRevenueArea" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stopColor="#0f766e" stopOpacity="0.18" />
-                                    <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                            {grid.map(y => (
-                                <line key={y} x1={pad.left} x2={pad.left + chartW} y1={y} y2={y} className={styles.monthlyTrendGridLine} />
-                            ))}
-                            <line x1={pad.left} x2={pad.left + chartW} y1={baselineY} y2={baselineY} className={styles.zeroLine} />
-                            {revenueArea && <polygon points={revenueArea} className={styles.monthlyTrendRevenueArea} style={{ fill: 'url(#monthlyTrendRevenueArea)' }} />}
-                            <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgRevenue)} y2={yAt(avgRevenue)} className={styles.monthlyTrendRevenueAvgLine} />
-                            <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgPurchase)} y2={yAt(avgPurchase)} className={styles.monthlyTrendPurchaseAvgLine} />
-                            <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgProfit)} y2={yAt(avgProfit)} className={styles.monthlyTrendProfitAvgLine} />
-                            <text x={pad.left + chartW - 2} y={Math.max(12, yAt(avgRevenue) - 5)} className={styles.monthlyTrendAvgText} textAnchor="end">청구평균</text>
-                            <polyline points={revenuePoints} className={styles.monthlyTrendRevenueLine} />
-                            <polyline points={purchasePoints} className={styles.monthlyTrendPurchaseLine} />
-                            <polyline points={profitPoints} className={styles.monthlyTrendProfitLine} />
-                            {series.map((item, idx) => (
-                                <g key={`${item.displayLabel}-${idx}`}>
-                                    <circle cx={xAt(idx)} cy={yAt(item.revenue)} r={idx === highIdx ? '4.6' : '3.6'} className={styles.monthlyTrendRevenuePoint} />
-                                    <circle cx={xAt(idx)} cy={yAt(item.purchase)} r="3.2" className={styles.monthlyTrendPurchasePoint} />
-                                    <circle cx={xAt(idx)} cy={yAt(item.profit)} r="3.2" className={styles.monthlyTrendProfitPoint} />
-                                </g>
-                            ))}
+                        <div className={styles.monthlyTrendGraph}>
+                            <svg
+                                className={styles.monthlyTrendSvg}
+                                viewBox={`0 0 ${width} ${height}`}
+                                preserveAspectRatio="none"
+                                role="img"
+                                aria-label="누적 차트"
+                            >
+                                <defs>
+                                    <linearGradient id="monthlyTrendRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="0%" stopColor="#0f766e" stopOpacity="0.18" />
+                                        <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                {grid.map(y => (
+                                    <line key={y} x1={pad.left} x2={pad.left + chartW} y1={y} y2={y} className={styles.monthlyTrendGridLine} />
+                                ))}
+                                <line x1={pad.left} x2={pad.left + chartW} y1={baselineY} y2={baselineY} className={styles.zeroLine} />
+                                {revenueArea && <polygon points={revenueArea} className={styles.monthlyTrendRevenueArea} style={{ fill: 'url(#monthlyTrendRevenueArea)' }} />}
+                                <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgRevenue)} y2={yAt(avgRevenue)} className={styles.monthlyTrendRevenueAvgLine} />
+                                <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgPurchase)} y2={yAt(avgPurchase)} className={styles.monthlyTrendPurchaseAvgLine} />
+                                <line x1={pad.left} x2={pad.left + chartW} y1={yAt(avgProfit)} y2={yAt(avgProfit)} className={styles.monthlyTrendProfitAvgLine} />
+                                <polyline points={revenuePoints} className={styles.monthlyTrendRevenueLine} />
+                                <polyline points={purchasePoints} className={styles.monthlyTrendPurchaseLine} />
+                                <polyline points={profitPoints} className={styles.monthlyTrendProfitLine} />
+                                {series.map((item, idx) => (
+                                    <g key={`${item.displayLabel}-${idx}`}>
+                                        <circle cx={xAt(idx)} cy={yAt(item.revenue)} r={idx === highIdx ? '4.6' : '3.6'} className={styles.monthlyTrendRevenuePoint} />
+                                        <circle cx={xAt(idx)} cy={yAt(item.purchase)} r="3.2" className={styles.monthlyTrendPurchasePoint} />
+                                        <circle cx={xAt(idx)} cy={yAt(item.profit)} r="3.2" className={styles.monthlyTrendProfitPoint} />
+                                    </g>
+                                ))}
+                            </svg>
+                            <div
+                                className={styles.monthlyTrendAvgBadge}
+                                style={{ top: `${avgRevenueYPercent}%` }}
+                            >
+                                <span>청구평균</span>
+                                <strong>{formatPerformanceAmount(avgRevenue)}</strong>
+                            </div>
                             {pointLabels.map(point => (
-                                <g key={`label-${point.item.displayLabel}-${point.idx}`}>
-                                    <text
-                                        x={point.x}
-                                        y={Math.max(12, point.y - 11)}
-                                        className={styles.monthlyTrendPointLabel}
-                                        textAnchor={point.anchor}
-                                    >
-                                        {formatPerformanceAmount(point.item.revenue)}
-                                    </text>
-                                    <text
-                                        x={point.x}
-                                        y={Math.max(24, point.y + 13)}
-                                        className={styles.monthlyTrendPointSubLabel}
-                                        textAnchor={point.anchor}
-                                    >
-                                        {safeNumber(point.item.rowCount).toLocaleString('ko-KR')}건
-                                    </text>
-                                </g>
+                                <div
+                                    key={`label-${point.item.displayLabel}-${point.idx}`}
+                                    className={`${styles.monthlyTrendDataLabel} ${point.anchorClass} ${point.placeClass}`}
+                                    style={{ left: `${point.xPercent}%`, top: `${point.yPercent}%` }}
+                                >
+                                    <strong>{formatPerformanceAmount(point.item.revenue)}</strong>
+                                    <span>{safeNumber(point.item.rowCount).toLocaleString('ko-KR')}건</span>
+                                </div>
                             ))}
-                        </svg>
+                        </div>
                         <div
                             className={styles.monthlyTrendAxis}
                             style={{ gridTemplateColumns: `repeat(${Math.max(1, series.length)}, minmax(0, 1fr))` }}
@@ -1452,43 +1458,45 @@ export default function AsanMonthlyPerformance() {
                 >
                     <div className={styles.analytics}>
                     <section className={`${styles.panel} ${styles.analysisScopePanel}`}>
-                        <div className={styles.analysisScopeTitle}>
-                            <span>분석 기준</span>
-                            <strong>{scopeLabel}</strong>
-                            <em>{scopeRows.toLocaleString('ko-KR')}건 · {scopeBasisLabel} 기준</em>
-                        </div>
-                        <div className={styles.analysisScopeButtons}>
-                            <button
-                                type="button"
-                                className={analysisScope === ANALYSIS_SCOPE_ALL ? styles.analysisScopeActive : ''}
-                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_ALL)}
-                            >
-                                전체
-                            </button>
-                            <button
-                                type="button"
-                                className={analysisScope === ANALYSIS_SCOPE_MONTH ? styles.analysisScopeActive : ''}
-                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_MONTH)}
-                                disabled={!activeAnalysisMonthValue}
-                            >
-                                월
-                            </button>
-                            <button
-                                type="button"
-                                className={analysisScope === ANALYSIS_SCOPE_WEEK ? styles.analysisScopeActive : ''}
-                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_WEEK)}
-                                disabled={!activeAnalysisWeekValue}
-                            >
-                                주차
-                            </button>
-                            <button
-                                type="button"
-                                className={analysisScope === ANALYSIS_SCOPE_DAY ? styles.analysisScopeActive : ''}
-                                onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_DAY)}
-                                disabled={!activeAnalysisDayValue}
-                            >
-                                일
-                            </button>
+                        <div className={styles.analysisScopeLead}>
+                            <div className={styles.analysisScopeTitle}>
+                                <span>분석 기준</span>
+                                <strong>{scopeLabel}</strong>
+                                <em>{scopeRows.toLocaleString('ko-KR')}건 · {scopeBasisLabel} 기준</em>
+                            </div>
+                            <div className={styles.analysisScopeButtons}>
+                                <button
+                                    type="button"
+                                    className={analysisScope === ANALYSIS_SCOPE_ALL ? styles.analysisScopeActive : ''}
+                                    onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_ALL)}
+                                >
+                                    전체
+                                </button>
+                                <button
+                                    type="button"
+                                    className={analysisScope === ANALYSIS_SCOPE_MONTH ? styles.analysisScopeActive : ''}
+                                    onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_MONTH)}
+                                    disabled={!activeAnalysisMonthValue}
+                                >
+                                    월
+                                </button>
+                                <button
+                                    type="button"
+                                    className={analysisScope === ANALYSIS_SCOPE_WEEK ? styles.analysisScopeActive : ''}
+                                    onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_WEEK)}
+                                    disabled={!activeAnalysisWeekValue}
+                                >
+                                    주차
+                                </button>
+                                <button
+                                    type="button"
+                                    className={analysisScope === ANALYSIS_SCOPE_DAY ? styles.analysisScopeActive : ''}
+                                    onClick={() => changeAnalysisScope(ANALYSIS_SCOPE_DAY)}
+                                    disabled={!activeAnalysisDayValue}
+                                >
+                                    일
+                                </button>
+                            </div>
                         </div>
                         <div className={styles.analysisScopeSelects}>
                             <select

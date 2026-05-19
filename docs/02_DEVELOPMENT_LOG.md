@@ -1,3 +1,19 @@
+## [2026-05-19] 아산 월간실적 누적 그래프/분석 기준 배치 보정 (v5.14.58)
+### 핵심
+- `누적` 그래프의 금액/건수 라벨을 SVG `<text>`에서 HTML 배지 레이어로 분리해 해상도별 가로 늘어짐을 막았습니다.
+- 청구평균도 HTML 배지로 표시하고, 선/면적 그래프만 SVG로 유지해 그래프 폭은 자연스럽게 채우되 글자는 선명하게 보이게 했습니다.
+- 분석 기준 바는 `분석 기준` 상태값 바로 옆에 `전체/월/주차/일` 버튼을 붙이고, 월/주차/일 셀렉트는 오른쪽 720px 안쪽으로 묶어 큰 해상도에서 검색열이 따로 떠 보이지 않게 했습니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" tests/asanMonthlyPerformance.test.mjs`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "web/app/(main)/employees/branches/asan/annualPerformance.module.css" web/tests/asanMonthlyPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] Galaxy S24/S25 운행시작 PiP 및 종료 정리 보강 (v5.14.57 / APK v5.11.21)
 ### 핵심
 - 운행시작 버튼은 Overlay 서비스를 숨김 상태로만 시작하던 기존 흐름에서, 서비스 시작 직후 네이티브 `enterPipMode`를 직접 요청하도록 바꿨습니다.
