@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5164';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5164';
+import { Store, State, BASE_URL } from './store.js?v=5165';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5165';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5164';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5164';
+} from './gps.js?v=5165';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5165';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -142,17 +142,6 @@ export function saveChecklist() {
 }
 
 // ─── 오버레이 서비스 ─────────────────────────────────────────────
-function scheduleAppExitAfterTripEnd() {
-  const overlay = Overlay();
-  setTimeout(() => {
-    if (overlay?.exitAppForce) {
-      overlay.exitAppForce().catch?.(() => {});
-    } else if (window.Capacitor?.Plugins?.App?.exitApp) {
-      window.Capacitor.Plugins.App.exitApp();
-    }
-  }, 900);
-}
-
 export async function startOverlayService(options = {}) {
   const overlay = Overlay();
   if (!overlay) return { started: false };
@@ -446,7 +435,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5164');
+  const gpsModule = await import('./gps.js?v=5165');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -525,7 +514,6 @@ export async function endTrip() {
       State.pendingUpdate = false;
       setTimeout(() => window.App?.checkUpdate(true), 1500);
     }
-    scheduleAppExitAfterTripEnd();
   } catch (e) { showToast('종료 실패: ' + e.message); }
 }
 

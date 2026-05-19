@@ -1,3 +1,20 @@
+## [2026-05-20] Android 운행종료 후 앱 화면 유지 복구 (v5.14.82 / APK v5.11.24)
+### 핵심
+- 2026-05-20 아침 테스트에서 운행 진행은 정상이나 `운행종료` 직후 앱이 튕기듯 종료되고 재실행 시 Android 오류 팝업이 뜨는 증상을 확인했습니다.
+- 원인은 이전 수정에서 운행종료 성공 후 `exitAppForce()`를 예약 호출해 앱 태스크/프로세스를 강제 종료하던 흐름이었습니다.
+- `endTrip()`은 이제 TRIP_END 기록, 서버 `complete`, 오버레이 서비스 중지, JS GPS watcher 중지, `activeTrip` 제거, 운행 UI 초기화까지만 수행하고 앱 화면은 계속 유지합니다.
+- 회귀 테스트는 운행종료가 `scheduleAppExitAfterTripEnd`, `exitAppForce`, `finishAndRemoveTask`를 호출하지 못하도록 고정했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 9개 통과
+- `node --check web/driver-src/modules/trip.js web/driver-src/modules/profile.js web/driver-src/modules/permissions.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js driver-src/modules/profile.js driver-src/modules/permissions.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.24 (5165) 빌드/배포 복사 완료, APK 내부 버전 검증 통과
+### 변경 파일
+- `web/driver-src/modules/trip.js`
+- `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 월간실적 모바일 분석 기준 공백 보정 (v5.14.81)
 ### 핵심
 - 모바일 480px 이하에서 월간실적 상단 `분석 기준/전체` 제목 영역이 기존 `flex-basis: 220px`을 세로 높이처럼 가져가 과한 공백이 생길 수 있던 CSS를 보정했습니다.
