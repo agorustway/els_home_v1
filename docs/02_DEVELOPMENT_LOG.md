@@ -1,3 +1,19 @@
+## [2026-05-19] Android 앱 지도 초기 카메라 순서 보정 (v5.14.53 / APK v5.11.19)
+### 핵심
+- 지도 탭 진입 직후 기본 중심 또는 raw GPS 기준으로 먼저 확대된 뒤 차량을 찾는 화면 튐을 막았습니다.
+- `openMap()`은 active 차량 최신점 조회와 초기 포커스를 끝낸 뒤 전경 GPS 샘플링을 시작합니다.
+- 이동+확대는 `panTo + setZoom` 분리 호출 대신 `morph` 우선 helper로 묶어 중심 좌표 확정 후 줌이 적용되게 했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 2개 통과
+- `node --check web/driver-src/modules/map.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/map.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts/build_driver_apk.ps1`: v5.11.19 (5160) 빌드/배포 복사 완료, APK 내부 `store.js` 버전 재검증 통과
+### 변경 파일
+- `web/driver-src/modules/map.js`
+- `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-19] 아산 연간실적 계약/차량 흐름 그래프 해석 보강 (v5.14.52)
 ### 핵심
 - `계약/차량` 탭의 월별 흐름 차트가 매출/손익 선만 보여 의미가 부족하던 문제를 보강했습니다.
