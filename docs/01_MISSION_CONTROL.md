@@ -1,13 +1,15 @@
-# ELS MISSION CONTROL (v5.14.83 / APK v5.11.24)
+# ELS MISSION CONTROL (v5.14.84 / APK v5.11.24)
 
-> 최신 업데이트: 선적관리 대량 컨테이너 자동조회가 900초 스트림 타임아웃 후 봇 전체 stop으로 이어지던 경로를 차단했습니다.
+> 최신 업데이트: 아산지점 메인 페이지의 선적관리/실적관리 하위 화면을 동적 로딩으로 분리해 초기 진입 부담을 줄였습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.83
+- **웹 버전**: v5.14.84
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.24
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
+  - 실적관리 하위 탭은 저장된 탭을 확인한 뒤 해당 화면만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
   - NAS `els-bot`은 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀 워밍업을 백그라운드 시작한다.
   - AI/API 단건 컨테이너 조회는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot 준비를 트리거한다.
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
@@ -62,8 +64,10 @@
 - [x] v5.14.81: 월간실적 모바일 분석 기준 공백 보정
 - [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
+- [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 
 ## RECENT CHANGES
+- **v5.14.84**: 아산지점 메인 번들에서 선적관리와 실적관리 하위 화면을 분리했다. 저장 탭 복원 후 필요한 화면만 mount하고, 나머지는 hover/focus/touch/idle 시점에 미리 받아 탭 이동을 부드럽게 만든다. 선적관리 저장 컨테이너 이력 조회와 실적 동기화 상태 첫 조회도 렌더 직후로 밀어 모바일 초기 화면 부담을 낮췄다.
 - **v5.14.83**: 선적관리 컨테이너 자동조회가 482건 규모에서 900초 read timeout을 만나 스트림이 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출하던 문제를 보정했다. Core 자동조회 스트림 timeout 기본값은 3600초로 늘리고, 명시 `stopOnDisconnect=true`가 아닌 연결 종료는 데몬 전체 stop으로 전파하지 않는다.
 - **v5.14.82**: 운행종료 성공 뒤 `exitAppForce()`를 예약 호출하던 흐름을 제거했다. 이제 운행종료는 TRIP_END 기록, 서버 complete, 오버레이 서비스 중지, JS GPS watcher 중지, activeTrip 제거, 운행 UI 초기화까지만 수행하고 앱 화면은 계속 유지한다. 회귀 테스트도 앱 태스크 제거 금지 조건으로 바꿨다. APK v5.11.24.
 - **v5.14.81**: 월간실적 모바일 480px 이하에서 `분석 기준/전체` 제목 박스가 column flex 안의 기존 `flex-basis: 220px`을 높이로 먹어 상단이 비어 보이던 문제를 수정했다. 모바일에서는 제목 박스가 내용 높이만 쓰고 전체 폭을 차지하도록 보정했다.
@@ -77,13 +81,11 @@
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
 - **v5.14.72**: 월간실적 보고서 표 전용파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview에서 `순매출/순매입/계산서/이월` 표를 복원한다. 파서 결과에는 `quality.primaryReady`를 붙여 완전 표만 월간 총액 기준으로 승격하고, 부분 표는 보조 표시로 남겨 원장 누적값을 덮어쓰지 않게 했다.
 ## VERIFICATION
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_container_lookup_safety`: 13개 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --test web\tests\asanShippingFlow.test.mjs`: 35개 통과
-- `node --test web\tests\driverMapCamera.test.mjs`: 9개 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: v5.11.24 (5165) 빌드/배포 복사/내부 버전 검증 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_els_bot_logic elsbot.tests.test_daemon_stop_control`: 31개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
-- `npm.cmd run build`: 통과(정적 생성 중 외부 fetch EACCES 경고만 발생)
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanDashboardView.test.mjs`: 84개 통과
+- `node --check` 아산지점 page/선적/종합/월간/연간 화면: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanShippingFlow.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과, `/employees/branches/asan` 26.7kB / First Load JS 115kB
+- 로컬 프로덕션 서버 `http://localhost:3010/employees/branches/asan`: HTTP 200 확인
 - `git diff --check`: 통과
 
 ## EASTER EGGS

@@ -45,6 +45,16 @@ const DATE_COL_KEYWORDS = ['일자', '일', '날짜', 'date', '작업', '픽업'
 const DATE_COLUMN_SAMPLE_SIZE = 200;
 const DEFAULT_DATE_FILTER_COL = '작업일';
 
+function scheduleShippingIdleTask(callback, timeout = 1200) {
+    if (typeof window === 'undefined') return () => { };
+    if ('requestIdleCallback' in window) {
+        const id = window.requestIdleCallback(callback, { timeout });
+        return () => window.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(callback, Math.min(timeout, 700));
+    return () => window.clearTimeout(timer);
+}
+
 // 20260508.0 → 2026-05-08 변환
 function formatCellValue(val, colName) {
     if (val == null || val === '') return '';
@@ -618,7 +628,7 @@ export default function AsanShipping() {
     useEffect(() => {
         if (!data?.headers || !data?.data?.length) return;
         const containers = extractUniqueContainerNos(data.headers, data.data);
-        loadSavedContainerLookupResults(containers);
+        return scheduleShippingIdleTask(() => loadSavedContainerLookupResults(containers));
     }, [data?.headers, data?.data, loadSavedContainerLookupResults]);
 
     useEffect(() => {

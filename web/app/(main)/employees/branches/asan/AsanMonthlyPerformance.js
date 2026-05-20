@@ -1092,7 +1092,8 @@ export default function AsanMonthlyPerformance() {
     }, [applySyncStatus, baseYear, extraMonths]);
 
     useEffect(() => {
-        fetchSyncStatus();
+        const timer = setTimeout(fetchSyncStatus, 900);
+        return () => clearTimeout(timer);
     }, [fetchSyncStatus]);
 
     useEffect(() => {

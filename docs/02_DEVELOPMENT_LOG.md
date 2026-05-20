@@ -1,3 +1,25 @@
+## [2026-05-20] 아산지점 페이지 초기 로딩 안정화 (v5.14.84)
+### 핵심
+- 아산지점 전체 페이지를 확인하면서 디자인과 표시 항목은 유지하고, 초기 진입 시 한 번에 너무 많은 화면 코드를 싣는 구조를 줄였습니다.
+- `page.js`에서 선적관리, 종합실적, 월간실적, 연간실적을 동적 로딩으로 분리했습니다. 배차판은 기존 기본 진입 화면이라 그대로 두고, 나머지 화면은 탭 진입 또는 hover/focus/touch/idle 시점에 준비합니다.
+- 실적관리 하위 탭은 저장된 마지막 탭을 확인한 뒤 해당 화면만 mount하도록 바꿔, 종합실적이 잠깐 먼저 떠서 API를 호출하는 흐름을 줄였습니다.
+- 선적관리의 저장 컨테이너 이력 조회와 실적관리 동기화 상태 첫 조회는 첫 렌더 이후 idle/짧은 지연으로 넘겨 모바일에서 첫 화면을 먼저 그리게 했습니다.
+- 배차판 설정 조회는 viewType이 바뀔 때마다 반복하지 않고 최초 mount 시 한 번만 읽도록 정리했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanDashboardView.test.mjs`: 84개 통과
+- `node --check` 아산지점 page/선적/종합/월간/연간 화면: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanShippingFlow.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과, `/employees/branches/asan` 26.7kB / First Load JS 115kB
+- 로컬 프로덕션 서버 `http://localhost:3010/employees/branches/asan`: HTTP 200 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanShippingFlow.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리 (v5.14.83)
 ### 핵심
 - 2026-05-20 08:30 KST 전후 선적관리 컨테이너 자동조회 482건이 진행되던 중 Core의 Bot 스트림 read timeout 900초가 먼저 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출해 워커 풀이 초기화되는 흐름을 확인했습니다.

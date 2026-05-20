@@ -1,11 +1,8 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
-import AsanShipping from './AsanShipping';
-import AsanAnnualPerformance from './AsanAnnualPerformance';
-import AsanMonthlyPerformance from './AsanMonthlyPerformance';
-import AsanSummaryPerformance from './AsanSummaryPerformance';
 import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
 
 // ===== 상수 =====
@@ -13,6 +10,50 @@ const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
 const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
+
+const loadAsanShipping = () => import('./AsanShipping');
+const loadAsanSummaryPerformance = () => import('./AsanSummaryPerformance');
+const loadAsanMonthlyPerformance = () => import('./AsanMonthlyPerformance');
+const loadAsanAnnualPerformance = () => import('./AsanAnnualPerformance');
+
+function AsanModuleLoading() {
+    return <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>;
+}
+
+const AsanShipping = dynamic(loadAsanShipping, { ssr: false, loading: AsanModuleLoading });
+const AsanSummaryPerformance = dynamic(loadAsanSummaryPerformance, { ssr: false, loading: AsanModuleLoading });
+const AsanMonthlyPerformance = dynamic(loadAsanMonthlyPerformance, { ssr: false, loading: AsanModuleLoading });
+const AsanAnnualPerformance = dynamic(loadAsanAnnualPerformance, { ssr: false, loading: AsanModuleLoading });
+
+const ASAN_MAIN_TAB_LOADERS = {
+    shipping: [loadAsanShipping],
+    performance: [loadAsanSummaryPerformance, loadAsanMonthlyPerformance, loadAsanAnnualPerformance],
+};
+
+const ASAN_PERFORMANCE_TAB_LOADERS = {
+    'summary-performance': [loadAsanSummaryPerformance],
+    'monthly-performance': [loadAsanMonthlyPerformance],
+    'annual-performance': [loadAsanAnnualPerformance],
+};
+
+function prefetchAsanLoaders(loaders = []) {
+    if (typeof window === 'undefined') return;
+    loaders.forEach(loader => {
+        try {
+            loader().catch(() => { });
+        } catch { /* ignore prefetch failures */ }
+    });
+}
+
+function scheduleIdlePrefetch(callback, timeout = 1800) {
+    if (typeof window === 'undefined') return () => { };
+    if ('requestIdleCallback' in window) {
+        const id = window.requestIdleCallback(callback, { timeout });
+        return () => window.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(callback, Math.min(timeout, 900));
+    return () => window.clearTimeout(timer);
+}
 
 // ===== 공휴일 계산기 (v4.4.40) =====
 // 동적으로 공휴일/대체공휴일을 계산합니다. (하드코딩 지양)
@@ -393,7 +434,13 @@ function AsanDispatchContent() {
     }, [mainView, activeTab]); // Recalculate if views change affecting headers
 
     // ===== 데이터 fetch =====
-    const fetchSettings = async () => { try { const r = await fetch('/api/branches/asan/settings'); const j = await r.json(); if (j.data) setSettings(j.data); } catch { } };
+    const fetchSettings = useCallback(async () => {
+        try {
+            const r = await fetch('/api/branches/asan/settings');
+            const j = await r.json();
+            if (j.data) setSettings(j.data);
+        } catch { /* ignore */ }
+    }, []);
     const fetchData = async (type) => {
         setLoading(true);
         try {
@@ -441,7 +488,8 @@ function AsanDispatchContent() {
     };
 
     // ===== Effects =====
-    useEffect(() => { fetchData(viewType); fetchSettings(); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [viewType]);
+    useEffect(() => { fetchSettings(); }, [fetchSettings]);
+    useEffect(() => { fetchData(viewType); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [viewType]);
     // 검색 디바운스 (300ms)
     useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
     useEffect(() => {
@@ -1091,7 +1139,7 @@ function AsanDispatchContent() {
 }
 
 function AsanPerformanceManagement() {
-    const [activePerformanceTab, setActivePerformanceTab] = useState('summary-performance');
+    const [activePerformanceTab, setActivePerformanceTab] = useState(null);
 
     useEffect(() => {
         try {
@@ -1102,11 +1150,25 @@ function AsanPerformanceManagement() {
         }
     }, []);
 
+    useEffect(() => {
+        if (!activePerformanceTab) return undefined;
+        return scheduleIdlePrefetch(() => {
+            const loaders = PERFORMANCE_TABS
+                .filter(tab => tab !== activePerformanceTab)
+                .flatMap(tab => ASAN_PERFORMANCE_TAB_LOADERS[tab] || []);
+            prefetchAsanLoaders(loaders);
+        }, 2200);
+    }, [activePerformanceTab]);
+
     const switchPerformanceTab = (tab) => {
         setActivePerformanceTab(tab);
         try {
             localStorage.setItem(ASAN_PERFORMANCE_TAB_KEY, tab);
         } catch { /* ignore */ }
+    };
+
+    const prefetchPerformanceTab = (tab) => {
+        prefetchAsanLoaders(ASAN_PERFORMANCE_TAB_LOADERS[tab] || []);
     };
 
     return (
@@ -1115,24 +1177,34 @@ function AsanPerformanceManagement() {
                 <button
                     className={`${styles.performanceTabBtn} ${activePerformanceTab === 'summary-performance' ? styles.performanceTabBtnActive : ''}`}
                     onClick={() => switchPerformanceTab('summary-performance')}
+                    onMouseEnter={() => prefetchPerformanceTab('summary-performance')}
+                    onFocus={() => prefetchPerformanceTab('summary-performance')}
+                    onTouchStart={() => prefetchPerformanceTab('summary-performance')}
                 >
                     종합실적
                 </button>
                 <button
                     className={`${styles.performanceTabBtn} ${activePerformanceTab === 'monthly-performance' ? styles.performanceTabBtnActive : ''}`}
                     onClick={() => switchPerformanceTab('monthly-performance')}
+                    onMouseEnter={() => prefetchPerformanceTab('monthly-performance')}
+                    onFocus={() => prefetchPerformanceTab('monthly-performance')}
+                    onTouchStart={() => prefetchPerformanceTab('monthly-performance')}
                 >
                     월간실적
                 </button>
                 <button
                     className={`${styles.performanceTabBtn} ${activePerformanceTab === 'annual-performance' ? styles.performanceTabBtnActive : ''}`}
                     onClick={() => switchPerformanceTab('annual-performance')}
+                    onMouseEnter={() => prefetchPerformanceTab('annual-performance')}
+                    onFocus={() => prefetchPerformanceTab('annual-performance')}
+                    onTouchStart={() => prefetchPerformanceTab('annual-performance')}
                 >
                     연간실적
                 </button>
             </div>
 
             <div className={styles.performanceContent}>
+                {!activePerformanceTab && <AsanModuleLoading />}
                 {activePerformanceTab === 'summary-performance' && (
                     <AsanSummaryPerformance
                         onOpenAnnual={() => switchPerformanceTab('annual-performance')}
@@ -1167,9 +1239,23 @@ export default function AsanBranchPage() {
         } catch { /* ignore */ }
     };
 
+    const prefetchMainTab = (tab) => {
+        prefetchAsanLoaders(ASAN_MAIN_TAB_LOADERS[tab] || []);
+    };
+
     useEffect(() => {
         if (!activeMainTab) return undefined;
         return scheduleScrollReset(() => pageWrapperRef.current);
+    }, [activeMainTab]);
+
+    useEffect(() => {
+        if (!activeMainTab) return undefined;
+        return scheduleIdlePrefetch(() => {
+            const loaders = MAIN_TABS
+                .filter(tab => tab !== activeMainTab)
+                .flatMap(tab => ASAN_MAIN_TAB_LOADERS[tab] || []);
+            prefetchAsanLoaders(loaders);
+        });
     }, [activeMainTab]);
 
     return (
@@ -1184,18 +1270,27 @@ export default function AsanBranchPage() {
                     <button 
                         className={`${styles.mainTabBtn} ${activeMainTab === 'dispatch' ? styles.mainTabBtnActive : ''}`}
                         onClick={() => switchMainTab('dispatch')}
+                        onMouseEnter={() => prefetchMainTab('dispatch')}
+                        onFocus={() => prefetchMainTab('dispatch')}
+                        onTouchStart={() => prefetchMainTab('dispatch')}
                     >
                         배차판
                     </button>
                     <button 
                         className={`${styles.mainTabBtn} ${activeMainTab === 'shipping' ? styles.mainTabBtnActive : ''}`}
                         onClick={() => switchMainTab('shipping')}
+                        onMouseEnter={() => prefetchMainTab('shipping')}
+                        onFocus={() => prefetchMainTab('shipping')}
+                        onTouchStart={() => prefetchMainTab('shipping')}
                     >
                         선적관리
                     </button>
                     <button
                         className={`${styles.mainTabBtn} ${activeMainTab === 'performance' ? styles.mainTabBtnActive : ''}`}
                         onClick={() => switchMainTab('performance')}
+                        onMouseEnter={() => prefetchMainTab('performance')}
+                        onFocus={() => prefetchMainTab('performance')}
+                        onTouchStart={() => prefetchMainTab('performance')}
                     >
                         실적관리
                     </button>

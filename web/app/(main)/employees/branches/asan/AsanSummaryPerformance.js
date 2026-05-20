@@ -571,9 +571,12 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
     }, [loadSummary]);
 
     useEffect(() => {
-        checkSyncAndReload();
+        const firstCheckTimer = window.setTimeout(checkSyncAndReload, 1400);
         const timer = window.setInterval(checkSyncAndReload, 15000);
-        return () => window.clearInterval(timer);
+        return () => {
+            window.clearTimeout(firstCheckTimer);
+            window.clearInterval(timer);
+        };
     }, [checkSyncAndReload]);
 
     const baseSummary = payload?.summary || null;

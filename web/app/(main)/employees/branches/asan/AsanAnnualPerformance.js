@@ -941,7 +941,8 @@ export default function AsanAnnualPerformance() {
     }, [applySyncStatus, headerRow, selectedPath, sheetName]);
 
     useEffect(() => {
-        fetchSyncStatus();
+        const timer = setTimeout(fetchSyncStatus, 900);
+        return () => clearTimeout(timer);
     }, [fetchSyncStatus]);
 
     useEffect(() => {
