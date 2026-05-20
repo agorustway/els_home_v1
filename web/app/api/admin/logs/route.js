@@ -10,6 +10,108 @@ function isMissingTableError(error) {
     return error?.code === '42P01' || error?.code === 'PGRST205';
 }
 
+function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function normalizeText(value) {
+    return String(value || '').trim();
+}
+
+function collectLogIdentities(logs) {
+    const emails = new Set();
+    const userIds = new Set();
+
+    for (const log of logs) {
+        const email = normalizeEmail(log.user_email);
+        if (email && email !== 'anonymous') {
+            emails.add(email);
+        }
+
+        const userId = normalizeText(log.user_id);
+        const metadataUserId = normalizeText(log.metadata?.user_id);
+        if (userId) userIds.add(userId);
+        if (metadataUserId) userIds.add(metadataUserId);
+    }
+
+    return {
+        emails: Array.from(emails),
+        userIds: Array.from(userIds),
+    };
+}
+
+function rememberName(map, key, value) {
+    const normalizedKey = normalizeText(key);
+    const name = normalizeText(value);
+    if (normalizedKey && name && !map.has(normalizedKey)) {
+        map.set(normalizedKey, name);
+    }
+}
+
+function rememberEmailName(map, email, value) {
+    const normalizedEmail = normalizeEmail(email);
+    const name = normalizeText(value);
+    if (normalizedEmail && name && !map.has(normalizedEmail)) {
+        map.set(normalizedEmail, name);
+    }
+}
+
+async function fetchLookupRows(adminSupabase, table, select, field, values) {
+    if (!values.length) return [];
+
+    const { data, error } = await adminSupabase
+        .from(table)
+        .select(select)
+        .in(field, values);
+
+    if (error) {
+        console.warn(`Activity log user lookup skipped: ${table}.${field}`, error);
+        return [];
+    }
+
+    return data || [];
+}
+
+async function attachUserNames(adminSupabase, logs) {
+    if (!logs.length) return logs;
+
+    const { emails, userIds } = collectLogIdentities(logs);
+    if (!emails.length && !userIds.length) {
+        return logs.map((log) => ({ ...log, user_name: null }));
+    }
+
+    const [profilesByEmail, rolesByEmail, profilesById, rolesById] = await Promise.all([
+        fetchLookupRows(adminSupabase, 'profiles', 'id,email,full_name', 'email', emails),
+        fetchLookupRows(adminSupabase, 'user_roles', 'email,name', 'email', emails),
+        fetchLookupRows(adminSupabase, 'profiles', 'id,email,full_name', 'id', userIds),
+        fetchLookupRows(adminSupabase, 'user_roles', 'id,email,name', 'id', userIds),
+    ]);
+
+    const nameByEmail = new Map();
+    const nameById = new Map();
+
+    for (const profile of [...profilesByEmail, ...profilesById]) {
+        rememberName(nameById, profile.id, profile.full_name);
+        rememberEmailName(nameByEmail, profile.email, profile.full_name);
+    }
+
+    for (const role of [...rolesByEmail, ...rolesById]) {
+        rememberName(nameById, role.id, role.name);
+        rememberEmailName(nameByEmail, role.email, role.name);
+    }
+
+    return logs.map((log) => {
+        const email = normalizeEmail(log.user_email);
+        const userId = normalizeText(log.user_id);
+        const metadataUserId = normalizeText(log.metadata?.user_id);
+
+        return {
+            ...log,
+            user_name: nameByEmail.get(email) || nameById.get(userId) || nameById.get(metadataUserId) || null,
+        };
+    });
+}
+
 async function requireAdmin() {
     const supabase = await createClient();
 
@@ -84,7 +186,7 @@ export async function GET(request) {
 
         const rows = data || [];
         const hasNextPage = rows.length > limit;
-        const logs = rows.slice(0, limit);
+        const logs = await attachUserNames(adminSupabase, rows.slice(0, limit));
         const fallbackTotal = from + logs.length + (hasNextPage ? 1 : 0);
         const total = Math.max(count || 0, fallbackTotal);
         const totalPages = Math.max(1, Math.ceil(total / limit), page + (hasNextPage ? 1 : 0));

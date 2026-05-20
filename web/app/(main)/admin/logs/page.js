@@ -36,6 +36,20 @@ function escapeCsv(value) {
     return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
+function getLogUserName(log) {
+    const name = String(log.user_name || '').trim();
+    const email = String(log.user_email || '').trim();
+    return name && name !== email ? name : '';
+}
+
+function getLogUserEmail(log) {
+    return String(log.user_email || '').trim();
+}
+
+function getLogIp(log) {
+    return String(log.ip_address || '').trim();
+}
+
 export default function AdminLogsPage() {
     const [logs, setLogs] = useState([]);
     const [pagination, setPagination] = useState({
@@ -199,13 +213,15 @@ export default function AdminLogsPage() {
             return;
         }
 
-        const headers = ['발생일시(KST)', '이메일', '활동유형', '경로(URL)', '상세정보'];
+        const headers = ['발생일시(KST)', '이름', '이메일', '접근IP', '활동유형', '경로(URL)', '상세정보'];
         const csvRows = [headers.map(escapeCsv).join(',')];
 
         for (const log of selectedData) {
             csvRows.push([
                 formatDateTime(log.created_at),
-                log.user_email || 'anonymous',
+                getLogUserName(log) || '-',
+                getLogUserEmail(log) || 'anonymous',
+                getLogIp(log),
                 log.action_type || '',
                 log.path || '',
                 JSON.stringify(log.metadata || {}),
@@ -317,7 +333,7 @@ export default function AdminLogsPage() {
                                         <input type="checkbox" onChange={handleSelectAll} checked={logs.length > 0 && selectedLogs.size === logs.length} className={styles.checkbox} />
                                     </th>
                                     <th style={{ width: '190px' }}>발생 일시(KST)</th>
-                                    <th style={{ width: '220px' }}>이메일 / 접근IP</th>
+                                    <th style={{ width: '240px' }}>이름 / 이메일 / 접근IP</th>
                                     <th style={{ width: '125px' }}>활동 유형</th>
                                     <th style={{ width: '25%' }}>경로 (URL)</th>
                                     <th>상세 정보 (meta)</th>
@@ -330,13 +346,22 @@ export default function AdminLogsPage() {
                                     <tr><td colSpan="6" className={styles.empty}>{isTableMissing ? '저장된 활동 로그가 없습니다.' : '조건에 맞는 검색 결과가 없습니다.'}</td></tr>
                                 ) : logs.map((log) => {
                                     const color = ACTION_COLORS[log.action_type] || '#64748b';
+                                    const userName = getLogUserName(log);
+                                    const userEmail = getLogUserEmail(log) || '-';
+                                    const userIp = getLogIp(log);
                                     return (
                                         <tr key={log.id} className={selectedLogs.has(log.id) ? styles.selectedRow : ''}>
                                             <td style={{ textAlign: 'center' }}>
                                                 <input type="checkbox" checked={selectedLogs.has(log.id)} onChange={() => toggleSelect(log.id)} className={styles.checkbox} />
                                             </td>
                                             <td className={styles.nowrapCell}>{formatDateTime(log.created_at)}</td>
-                                            <td className={styles.breakCell}>{log.user_email || '-'}</td>
+                                            <td className={styles.breakCell}>
+                                                <div className={styles.identityCell}>
+                                                    {userName && <span className={styles.identityName}>{userName}</span>}
+                                                    <span className={styles.identityEmail}>{userEmail}</span>
+                                                    {userIp && <span className={styles.identityIp}>{userIp}</span>}
+                                                </div>
+                                            </td>
                                             <td>
                                                 <span className={styles.badge} style={{ '--badge-color': color }}>
                                                     {log.action_type || '-'}
@@ -368,6 +393,9 @@ export default function AdminLogsPage() {
                         <div className={styles.empty}>{isTableMissing ? '저장된 활동 로그가 없습니다.' : '조건에 맞는 검색 결과가 없습니다.'}</div>
                     ) : logs.map((log) => {
                         const color = ACTION_COLORS[log.action_type] || '#64748b';
+                        const userName = getLogUserName(log);
+                        const userEmail = getLogUserEmail(log) || '-';
+                        const userIp = getLogIp(log);
                         return (
                             <div key={log.id} className={styles.logCard}>
                                 <div className={styles.logCardHeader}>
@@ -378,7 +406,9 @@ export default function AdminLogsPage() {
                                     <span className={styles.logCardDate}>{formatDateTime(log.created_at)}</span>
                                 </div>
                                 <div className={styles.logCardBody}>
-                                    <div className={styles.logCardTitle}>{log.user_email || '-'}</div>
+                                    <div className={styles.logCardTitle}>{userName || userEmail}</div>
+                                    {userName && <div className={styles.identityEmail}>{userEmail}</div>}
+                                    {userIp && <div className={styles.identityIp}>{userIp}</div>}
                                     <span className={styles.badge} style={{ '--badge-color': color }}>{log.action_type || '-'}</span>
                                     <div className={styles.logCardPath}>{log.path || '-'}</div>
                                     <button type="button" onClick={() => openMetaModal(log)} className={styles.metaPreview}>

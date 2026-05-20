@@ -330,6 +330,34 @@
     word-break: break-all;
 }
 
+.identityCell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.identityName {
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 900;
+    line-height: 1.25;
+    word-break: break-all;
+}
+
+.identityEmail,
+.identityIp {
+    color: #64748b;
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.25;
+    word-break: break-all;
+}
+
+.identityIp {
+    color: #94a3b8;
+}
+
 .nowrapCell {
     white-space: nowrap;
 }

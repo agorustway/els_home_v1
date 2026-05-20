@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.14.86 / APK v5.11.24)
+# ELS MISSION CONTROL (v5.14.87 / APK v5.11.24)
 
-> 최신 업데이트: 종합실적 계약/차량 집중도 카드의 건수 막대를 실제 건수 비중으로 보정했습니다.
+> 최신 업데이트: 관리자 활동 로그에 사용자 이름을 표시하고 CSV 식별 컬럼을 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.86
+- **웹 버전**: v5.14.87
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.24
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 관리자 활동 로그 API는 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 응답에 붙이고, 화면은 이름/이메일/접근IP를 한 칸에서 정리해 보여준다.
   - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
   - 실적관리 하위 탭은 저장된 탭을 확인한 뒤 해당 화면만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
   - 종합실적 계약/차량 집중도 카드는 매출 비중과 건수 비중을 구분하고, 건수 막대는 ELS/외부 합계 대비 비율로 표시한다.
@@ -22,7 +23,6 @@
   - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정해 상단 공백을 줄인다.
   - Android 운행종료는 TRIP_END/서버 완료 후 오버레이·GPS·activeTrip·UI만 정리하고 앱 화면은 유지한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
-  - NAS 배포 스크립트는 전체/CORE/BOT 모두 이미지 빌드와 고정 이름 컨테이너 제거를 분리해 docker-compose v1 재생성 충돌을 피한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -66,9 +66,10 @@
 - [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
-- [x] v5.14.85-86: ELS Bot 로그인 보호모드와 종합실적 건수 비중 보정
+- [x] v5.14.85-87: ELS Bot 보호모드, 종합실적 건수 비중, 관리자 활동 로그 이름 표시
 
 ## RECENT CHANGES
+- **v5.14.87**: 관리자 활동 로그 조회 API가 `profiles`/`user_roles`에서 사용자 이름을 보강해 `user_name`으로 반환한다. 활동 로그 관리 화면은 이름, 이메일, 접근IP를 같은 식별 칸에 정리하고, 선택 CSV 다운로드에도 이름/접근IP 컬럼을 포함한다.
 - **v5.14.86**: 종합실적 `계약/차량 집중도` 카드의 두 번째 막대를 `건수`에서 `건수 비중`으로 바꾸고, 막대 폭을 각 카드 자기 자신 기준 100%가 아니라 ELS직계약차량/외부·타운송사 합계 대비 건수 비율로 계산한다.
 - **v5.14.85**: ELS Bot 자동 로그인 시도 횟수를 계정 기준 전체 3회로 제한했다. 워커 복구, 세션 만료 복구, 일일 리셋, 저장 계정 warmup이 같은 예산을 공유하며, `로그인 성공 확인 불가 (ID/PW 확인 필요)`도 인증 실패로 분류해 첫 감지 시 보호모드로 전환한다. 10분 후 실패 횟수를 자동 초기화하던 흐름을 제거해 계정 잠금 해제 전 반복 재시도를 막고, 컨테이너 이력조회 화면에는 `로그인 n/3 보호모드` 상태를 표시한다.
 - **v5.14.84**: 아산지점 메인 번들에서 선적관리와 실적관리 하위 화면을 분리했다. 저장 탭 복원 후 필요한 화면만 mount하고, 나머지는 hover/focus/touch/idle 시점에 미리 받아 탭 이동을 부드럽게 만든다. 선적관리 저장 컨테이너 이력 조회와 실적 동기화 상태 첫 조회도 렌더 직후로 밀어 모바일 초기 화면 부담을 낮췄다.
@@ -83,17 +84,10 @@
 - **v5.14.75**: `els-bot` 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀을 백그라운드 워밍업한다. 단건 컨테이너 API는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot을 준비시키고, 컨테이너 이력조회 화면에는 `BOT 정지` 버튼을 추가해 조회·워커·로그인 상태를 수동 종료할 수 있게 했다.
 - **v5.14.74**: 종합/월간/연간 실적관리에서 테이블형 영역이 브라우저 폭을 넘을 때 화면 안쪽 하단 슬라이더로 이동하도록 공통 스크롤 스타일을 확장했다. 요약 추세, 세분화, 차량성과, 보고서 표, 월/일 흐름, 히트맵, 이월 청구처 표까지 같은 스크롤바 규칙을 적용했고, Galaxy S24급 폭에서는 카드·버튼·원장 테이블 높이를 더 촘촘하게 조정했다.
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
-- **v5.14.72**: 월간실적 보고서 표 전용파서가 원장 헤더 이후 행만 보던 한계를 보강해, 엑셀 상단 raw preview에서 `순매출/순매입/계산서/이월` 표를 복원한다. 파서 결과에는 `quality.primaryReady`를 붙여 완전 표만 월간 총액 기준으로 승격하고, 부분 표는 보조 표시로 남겨 원장 누적값을 덮어쓰지 않게 했다.
 ## VERIFICATION
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_web_runner_daemon.py docker\els-backend\app_bot.py docker\els-backend\app.py`: 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 18개 통과
-- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 에러 0개, 기존 경고 5개
-- `node --test web/tests/asanShippingFlow.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanDashboardView.test.mjs`: 84개 통과
-- `node --check` 아산지점 page/선적/종합/월간/연간 화면: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanShipping.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanShippingFlow.test.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
-- `npm.cmd run build`: 통과, `/employees/branches/asan` 26.7kB / First Load JS 115kB
-- 로컬 프로덕션 서버 `http://localhost:3010/employees/branches/asan`: HTTP 200 확인
-- `git diff --check`: 통과
+- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과, `/admin/logs` 5.07kB / First Load JS 93.5kB
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

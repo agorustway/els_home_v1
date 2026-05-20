@@ -1,3 +1,20 @@
+## [2026-05-20] 관리자 활동 로그 사용자 이름 표시 (v5.14.87)
+### 핵심
+- 활동 로그 관리 화면이 이메일만 보여줘 같은 계정/사용자를 빠르게 식별하기 어려웠습니다.
+- `/api/admin/logs` 응답에서 로그의 `user_email`, `user_id`, `metadata.user_id`를 기준으로 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 함께 반환하도록 보강했습니다.
+- 이름 조회 실패는 로그 목록 자체를 막지 않고 건너뛰며, 화면은 `이름 / 이메일 / 접근IP`를 한 칸에 정리해 표시합니다.
+- 선택 CSV 다운로드에도 `이름`, `접근IP` 컬럼을 추가했습니다.
+### 검증
+- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/admin/logs/route.js`
+- `web/app/(main)/admin/logs/page.js`
+- `web/app/(main)/admin/users/users.module.css`
+- `web/tests/adminManagementUi.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 종합실적 계약/차량 집중도 건수 비중 보정 (v5.14.86)
 ### 핵심
 - 종합실적 `계약/차량 집중도` 카드에서 첫 번째 막대는 매출 비중인데 두 번째 막대가 단순 `건수`로 표시되어, 같은 성격의 비교 그래프인지 구별이 약했습니다.
