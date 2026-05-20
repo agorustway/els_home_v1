@@ -1,3 +1,18 @@
+## [2026-05-20] 종합실적 계약/차량 집중도 건수 비중 보정 (v5.14.86)
+### 핵심
+- 종합실적 `계약/차량 집중도` 카드에서 첫 번째 막대는 매출 비중인데 두 번째 막대가 단순 `건수`로 표시되어, 같은 성격의 비교 그래프인지 구별이 약했습니다.
+- 기존 건수 막대 폭은 각 카드 자기 자신의 건수를 자기 자신으로 나누는 구조라 사실상 항상 100%에 가깝게 표시될 수 있었습니다.
+- 두 번째 막대 라벨을 `건수 비중`으로 바꾸고, ELS직계약차량과 외부/타운송사 합계 건수 대비 각 카드 비중으로 폭과 값을 계산하게 보정했습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 4개 통과
+- `node --check web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] ELS Bot 자동 로그인 3회 하드캡과 보호모드 (v5.14.85)
 ### 핵심
 - 2026-05-20 오전 `els-bot` 로그에서 저장 계정 재로그인이 반복되며 `로그인 성공 확인 불가 (ID/PW 확인 필요)`가 계속 발생한 흐름을 확인했습니다.

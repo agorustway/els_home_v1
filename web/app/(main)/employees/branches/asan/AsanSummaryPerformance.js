@@ -446,8 +446,10 @@ function SegmentMiniRows({ title, items = [], openMonthly }) {
     );
 }
 
-function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicles, openMonthly, tone }) {
+function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicles, openMonthly, tone, countTotal = 0 }) {
     const evidence = evidenceItems?.length ? evidenceItems : vehicles;
+    const rowCount = safeNumber(segment?.rowCount);
+    const countShare = countTotal > 0 ? (rowCount / countTotal) * 100 : 0;
     return (
         <div className={`${styles.summarySegmentCard} ${styles[`summarySegment_${tone}`] || ''}`}>
             <div className={styles.summarySegmentTitle}>
@@ -462,9 +464,9 @@ function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicl
                     <em>{formatPercent(segment?.revenueShare, 1)}</em>
                 </div>
                 <div>
-                    <span>건수</span>
-                    <b style={{ width: `${Math.max(3, Math.min(100, safeNumber(segment?.rowCount) / Math.max(1, safeNumber(segment?.rowCount)) * 100))}%` }} />
-                    <em>{safeNumber(segment?.rowCount).toLocaleString('ko-KR')}건</em>
+                    <span>건수 비중</span>
+                    <b style={{ width: `${Math.max(3, Math.min(100, countShare))}%` }} />
+                    <em>{formatPercent(countShare, 1)} · {rowCount.toLocaleString('ko-KR')}건</em>
                 </div>
             </div>
             <SegmentMiniRows title={evidenceTitle} items={evidence || []} openMonthly={openMonthly} />
@@ -476,6 +478,7 @@ function TopConcentration({ summary, openMonthly }) {
     const segments = summary?.strategicSegments || [];
     const own = segments.find(item => item.key === 'own_direct') || { label: 'ELS직계약차량' };
     const external = segments.find(item => item.key === 'external_carrier') || { label: '외부/타운송사' };
+    const segmentCountTotal = safeNumber(own.rowCount) + safeNumber(external.rowCount);
     const vehicles = (summary?.vehiclePerformance || []).slice(0, 5);
     return (
         <section className={styles.summaryPanel}>
@@ -494,6 +497,7 @@ function TopConcentration({ summary, openMonthly }) {
                     evidenceItems={(own.topClients || []).length ? own.topClients : own.topWorkSites}
                     openMonthly={openMonthly}
                     tone="own"
+                    countTotal={segmentCountTotal}
                 />
                 <SegmentFocusCard
                     title="외부/타운송사"
@@ -503,6 +507,7 @@ function TopConcentration({ summary, openMonthly }) {
                     vehicles={vehicles}
                     openMonthly={openMonthly}
                     tone="external"
+                    countTotal={segmentCountTotal}
                 />
             </div>
         </section>
