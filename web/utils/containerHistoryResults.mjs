@@ -53,6 +53,23 @@ export function extractUniqueContainerNos(headers = [], rows = []) {
   return containers;
 }
 
+export function orderContainerLookupTargets(containers = [], lookupResults = {}) {
+  const missing = [];
+  const alreadyLookedUp = [];
+  const seen = new Set();
+
+  containers.forEach((value) => {
+    const containerNo = normalizeContainerNo(value);
+    if (!isContainerNoShape(containerNo) || seen.has(containerNo)) return;
+    seen.add(containerNo);
+    const record = lookupResults?.[containerNo];
+    if (record?.mainRow) alreadyLookedUp.push(containerNo);
+    else missing.push(containerNo);
+  });
+
+  return [...missing, ...alreadyLookedUp];
+}
+
 export function isActualContainerHistoryRow(row = []) {
   const no = String(row?.[1] || '').trim();
   if (!/^\d+$/.test(no)) return false;

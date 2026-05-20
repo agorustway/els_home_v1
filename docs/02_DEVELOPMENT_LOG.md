@@ -1,3 +1,26 @@
+## [2026-05-21] 선적관리 컨테이너 대량조회 BOT 안정화 (v5.14.91)
+### 핵심
+- 2026-05-21 오전 선적관리에서 570건 조회 중 216건 완료/354건 실패가 발생했고, 화면 진입 전 BOT 재가동 조회와 저장 흐름이 엇박자로 보였습니다.
+- 원인은 100건 이상 대량 조회에서도 2워커 고속 제출과 45초 워커 대기 제한을 그대로 쓰고, `app_bot` 진행상태 복구가 5분이 지나면 장시간 작업을 종료로 오판할 수 있던 점이었습니다.
+- 100건 이상 또는 명시 `stableBatchMode`는 대량 안정 모드로 전환해 기본 병렬 1개, 워커 대기 300초, 단건 요청 420초, 제출간격 2초, 워커 준비 대기 600초를 사용하게 했습니다.
+- 대량 조회 대상 컨테이너는 현재 화면의 필터/정렬 순서를 유지하되, 저장 이력이 없는 컨테이너를 먼저 조회하도록 정렬해 중간 실패가 나도 새로 채워지는 결과를 최대화했습니다.
+- `워커 대기 시간 초과`/`워커 준비 대기 시간 초과`는 일시 장애로 보고 1회 재조회 대상으로 바꿨고, 진행상태 좀비/유휴 복구 기준은 조회 건수 기반으로 늘려 500건대 작업이 5분 만에 완료 처리되지 않게 했습니다.
+- 새벽 선적관리 자동조회는 항상 안정 모드로 BOT을 호출합니다. 이전 자동조회가 10회 실패 제한에 걸리면 DB 설정이 OFF로 남아 다음날 자동조회가 실행되지 않는 흐름도 확인했습니다.
+- ETrans 비밀번호성 인증 실패가 감지되면 즉시 `stop_requested`를 설정해 다른 워커의 자동 로그인 시도까지 중단하고, 후속 워커는 첫 워커 성공 전 로그인 진입을 못 하게 해 계정 잠금 위험을 더 줄였습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `docker/els-backend/app_bot.py`
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`
+- `elsbot/els_web_runner_daemon.py`
+- `web/app/api/branches/asan/shipping/container-lookup/route.js`
+- `web/utils/containerHistoryResults.mjs`, `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] Android 운행 완료 후 crash dialog 방지 (v5.14.90 / APK v5.11.25)
 ### 핵심
 - 어제 패치는 `endTrip()` 이후 앱 강제 종료 호출만 제거했지만, 네이티브 앱 종료/오버레이 플러그인에는 `android.os.Process.killProcess()`가 남아 Samsung One UI에서 “앱에 버그가 있어 종료” 팝업을 만들 수 있었습니다.

@@ -36,7 +36,7 @@ class DriverPool:
         self.is_logging_in = False
         self.init_stagger_sec = float(os.environ.get("ELS_DRIVER_STAGGER_SEC", 15))
         self.init_stagger_sequence = self._parse_init_stagger_sequence()
-        self.late_worker_min_ready = int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 1))
+        self.late_worker_min_ready = max(1, int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 1)))
         self.late_worker_spacing_sec = float(os.environ.get("ELS_LATE_WORKER_SPACING_SEC", 45))
         self.late_worker_ready_timeout_sec = float(os.environ.get("ELS_LATE_WORKER_READY_TIMEOUT_SEC", 420))
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
@@ -199,6 +199,7 @@ class DriverPool:
         with self.lock:
             self.consecutive_login_failures = max(self.consecutive_login_failures, MAX_AUTO_LOGIN_ATTEMPTS)
             self.last_failure_time = time.time()
+            self.stop_requested.set()
         self.add_log(f"🛑 [인증중단] {reason}: {message} → 수동 확인 전까지 자동 로그인 시도를 중지합니다.")
 
     def _is_queued_unlocked(self, driver):

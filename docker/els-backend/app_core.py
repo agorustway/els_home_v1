@@ -83,6 +83,8 @@ ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int("ASAN_SHIPPING_CONTAINER_A
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT", 10, 1)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MAX_TARGETS", 10000, 1)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS", 3600, 300)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS", 300, 30)
+ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_SUBMIT_DELAY_SECONDS = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_SUBMIT_DELAY_SECONDS", 2, 0)
 ELS_BOT_API_URL = os.environ.get("ELS_BOT_API_URL", "http://127.0.0.1:2931").rstrip("/")
 
 dispatch_sync_gate = StableFileSyncGate(
@@ -1108,7 +1110,14 @@ def run_asan_shipping_container_auto_lookup():
         try:
             response = requests.post(
                 f"{ELS_BOT_API_URL}/api/els/run",
-                json={"containers": containers, "reserveSingle": False},
+                json={
+                    "containers": containers,
+                    "reserveSingle": False,
+                    "stableBatchMode": True,
+                    "maxBatchWorkers": 1,
+                    "acquireTimeoutSec": ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS,
+                    "submitDelaySec": ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_SUBMIT_DELAY_SECONDS,
+                },
                 stream=True,
                 timeout=(10, ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS),
             )

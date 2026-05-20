@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.90 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.91 / APK v5.11.25)
 
-> 최신 업데이트: Android 운행 완료/앱 종료 전후 Samsung crash dialog를 만들 수 있는 process kill과 위험한 서비스 재시작 종료 패턴을 제거했습니다.
+> 최신 업데이트: 선적관리 100건 이상 컨테이너 조회는 안정 모드로 속도를 낮추고, BOT 진행상태/워커대기/로그인 보호를 대량 작업 기준으로 보강했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.90
+- **웹 버전**: v5.14.91
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -18,9 +18,9 @@
   - NAS `els-bot`은 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀 워밍업을 백그라운드 시작한다.
   - AI/API 단건 컨테이너 조회는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot 준비를 트리거한다.
   - 컨테이너 이력조회 페이지 시스템 로그 영역에 `BOT 정지` 버튼을 추가해 조회, 로그인 상태, 워커 표시를 즉시 정리한다.
-  - Bot 자동 로그인은 브라우저/복구 경로 전체를 합쳐 계정 기준 최대 3회만 허용하고, `로그인 성공 확인 불가 (ID/PW 확인 필요)`/계정 잠금/비밀번호 오류는 보호모드로 즉시 추가 시도를 차단한다.
+  - Bot 자동 로그인은 브라우저/복구 경로 전체를 합쳐 계정 기준 최대 3회만 허용하고, 비밀번호성 실패는 즉시 전체 자동 시도를 중지한다.
   - Bot 보호모드는 10분 후 자동 초기화하지 않으며, ETrans 계정 확인 후 `BOT 정지`로 수동 초기화해야 다시 로그인할 수 있다.
-  - 선적관리 대량 자동조회는 기본 스트림 대기 시간을 3600초로 늘리고, 소비자 연결 종료만으로 `els-bot` 전체를 stop하지 않는다.
+  - 선적관리 100건 이상 컨테이너 조회는 대량 안정 모드로 병렬 1개, 워커대기 300초, 제출간격 2초를 기본 적용하고, 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 체크된 파일 중 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
   - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정해 상단 공백을 줄인다.
@@ -34,7 +34,7 @@
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
 | Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 자동 워밍업 |
-| ELS Bot | 계정 확인 필요 | Selenium 워커 2개, 자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
+| ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
 | Android 드라이버 앱 | 정상 | APK v5.11.25 빌드 완료 |
 
 ## INTRANET UI 기준
@@ -67,9 +67,10 @@
 - [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
-- [x] v5.14.85-90: ELS Bot 보호모드, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지
+- [x] v5.14.85-91: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지
 
 ## RECENT CHANGES
+- **v5.14.91**: 선적관리 컨테이너 조회 100건 이상은 `stableBatchMode`로 전환해 병렬 1개, 워커대기 300초, 제출간격 2초를 기본값으로 쓴다. 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회하고, 워커 대기 시간 초과는 재시도 대상으로 바꿨다. 새벽 자동조회도 같은 안정 모드로 호출하며, 비밀번호성 인증 실패는 즉시 전체 로그인 시도를 중단한다.
 - **v5.14.90**: Android 앱 종료/오버레이 종료 경로에 남아 있던 `android.os.Process.killProcess()`를 제거했다. 운행 종료 후 서버상 이미 완료된 저장 운행을 앱이 발견하면 `activeTrip`뿐 아니라 native trip prefs, keepalive 알람, 오버레이 서비스까지 같이 정리해 완료 뒤 앱이 꺼지거나 crash dialog가 뜨는 흐름을 막았다. APK v5.11.25.
 - **v5.14.89**: 연간·월간실적 테이블 검색이 `search_text ILIKE` statement timeout에 걸리던 흐름을 피하도록 현재 범위 행을 가져온 뒤 서버에서 정규화 필터링한다. `575,000`, `575000`, `575000.0`처럼 금액 표기가 달라도 같은 검색어로 잡히며, 검색창 placeholder와 헤더 정렬 title도 보강했다.
 - **v5.14.88**: AI 어시스턴트 하단에 `행사일정` 월간 캘린더를 추가했다. `/api/intranet/events` 계열 API와 Supabase SQL `20260520_intranet_event_calendar.sql`을 준비했고, 일정 등록 시 공지범위를 선택하며 대상 사용자는 7일전/3일전/1일전/당일 접속 시 공지 팝업을 받는다. 팝업의 `다시 보지 않음`은 사용자·일정·알림시점 단위로 저장된다.
@@ -79,12 +80,9 @@
 - **v5.14.84**: 아산지점 메인 번들에서 선적관리와 실적관리 하위 화면을 분리했다. 저장 탭 복원 후 필요한 화면만 mount하고, 나머지는 hover/focus/touch/idle 시점에 미리 받아 탭 이동을 부드럽게 만든다. 선적관리 저장 컨테이너 이력 조회와 실적 동기화 상태 첫 조회도 렌더 직후로 밀어 모바일 초기 화면 부담을 낮췄다.
 - **v5.14.83**: 선적관리 컨테이너 자동조회가 482건 규모에서 900초 read timeout을 만나 스트림이 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출하던 문제를 보정했다. Core 자동조회 스트림 timeout 기본값은 3600초로 늘리고, 명시 `stopOnDisconnect=true`가 아닌 연결 종료는 데몬 전체 stop으로 전파하지 않는다.
 - **v5.14.82**: 운행종료 성공 뒤 `exitAppForce()`를 예약 호출하던 흐름을 제거했다. 이제 운행종료는 TRIP_END 기록, 서버 complete, 오버레이 서비스 중지, JS GPS watcher 중지, activeTrip 제거, 운행 UI 초기화까지만 수행하고 앱 화면은 계속 유지한다. 회귀 테스트도 앱 태스크 제거 금지 조건으로 바꿨다. APK v5.11.24.
-- **v5.14.81**: 월간실적 모바일 480px 이하에서 `분석 기준/전체` 제목 박스가 column flex 안의 기존 `flex-basis: 220px`을 높이로 먹어 상단이 비어 보이던 문제를 수정했다. 모바일에서는 제목 박스가 내용 높이만 쓰고 전체 폭을 차지하도록 보정했다.
 ## VERIFICATION
-- `node --test web/tests/driverMapCamera.test.mjs`: 10개 통과
-- `node --check web/driver-src/modules/trip.js`: 통과
-- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.25/versionCode 5166
+- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py docker/els-backend/app_bot.py elsbot/els_web_runner_daemon.py`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

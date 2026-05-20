@@ -6,6 +6,7 @@ import {
     extractUniqueContainerNos,
     getContainerLookupValue,
     isContainerLookupColumn,
+    orderContainerLookupTargets,
 } from '@/utils/containerHistoryResults.mjs';
 import {
     areArraysEqual,
@@ -1143,16 +1144,18 @@ export default function AsanShipping() {
             alert('이전 컨테이너 조회가 아직 진행 중입니다. 완료/실패 건수를 복원해서 표시했습니다.');
             return;
         }
-        const containers = extractUniqueContainerNos(data?.headers || [], processedData);
+        const tableOrderedContainers = extractUniqueContainerNos(data?.headers || [], processedData);
+        const containers = orderContainerLookupTargets(tableOrderedContainers, containerLookupResultsRef.current);
         if (!containers.length) {
             alert('현재 필터 결과에서 조회할 컨테이너 번호가 없습니다.');
             return;
         }
+        const missingLookupCount = containers.filter(containerNo => !containerLookupResultsRef.current?.[containerNo]?.mainRow).length;
 
         let lookupSession = writeContainerLookupSession(createLookupSession({
             path: selectedPath,
             containers,
-            status: `현재 필터 결과 ${processedData.length.toLocaleString()}행 중 컨테이너 ${containers.length.toLocaleString()}건 조회 준비 중`,
+            status: `현재 필터 결과 ${processedData.length.toLocaleString()}행 중 컨테이너 ${containers.length.toLocaleString()}건 조회 준비 중 (미조회 ${missingLookupCount.toLocaleString()}건 우선)`,
         }));
         const updateLookupSession = (patch) => {
             lookupSession = writeContainerLookupSession({

@@ -65,8 +65,54 @@ def _boolish(value, default=False):
         return value
     return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
 
+def _int_env(name, default, minimum=0):
+    try:
+        return max(minimum, int(os.environ.get(name, default)))
+    except (TypeError, ValueError):
+        return default
+
+def _float_env(name, default, minimum=0):
+    try:
+        return max(minimum, float(os.environ.get(name, default)))
+    except (TypeError, ValueError):
+        return default
+
+def _float_option(data, key, default, minimum=0):
+    raw = (data or {}).get(key)
+    if raw in (None, ""):
+        return default
+    try:
+        return max(minimum, float(raw))
+    except (TypeError, ValueError):
+        return default
+
 def _should_stop_daemon_on_disconnect(data):
     return _boolish((data or {}).get("stopOnDisconnect"), default=False)
+
+def _large_batch_threshold():
+    return _int_env("ELS_LARGE_BATCH_THRESHOLD", 100, 1)
+
+def _is_large_batch(total, data=None):
+    if data and data.get("stableBatchMode") is not None:
+        return _boolish(data.get("stableBatchMode"), default=False)
+    try:
+        return int(total or 0) >= _large_batch_threshold()
+    except (TypeError, ValueError):
+        return False
+
+def _progress_recovery_limits(progress):
+    try:
+        total = int((progress or {}).get("total") or 0)
+    except (TypeError, ValueError):
+        total = 0
+    large = _boolish((progress or {}).get("large_batch_mode"), default=False) or total >= _large_batch_threshold()
+    if large:
+        zombie_limit = max(900, min(21600, total * 20))
+        idle_limit = max(600, min(3600, total * 8))
+    else:
+        zombie_limit = max(300, min(1800, total * 10))
+        idle_limit = max(180, min(900, total * 4))
+    return zombie_limit, idle_limit
 
 def _status_row(cn, code, message):
     return [str(cn or "").strip().upper(), code, message] + [""] * 12
@@ -89,13 +135,14 @@ def _should_retry_rows(rows):
         "조회 중지됨",
         "INPUT_NOT_FOUND",
         "메뉴 진입 실패",
-        "워커 대기 시간 초과",
     ]
     if any(token in message for token in non_retryable):
         return False
     retryable = [
         "WORKER_RETIRED",
         "WORKER_NOT_READY",
+        "워커 대기 시간 초과",
+        "워커 준비 대기 시간 초과",
         "이전 조회 결과 잔상 감지",
         "SUCCESS_VERIFY",
         "데이터 추출 실패",
@@ -208,19 +255,21 @@ def capabilities():
         daemon_status["max_login_attempts"] = data.get("max_login_attempts", 3)
         daemon_status["login_protected"] = data.get("login_protected", False)
 
-    # [v4.9.8] 좀비 잠금 해제: 전체 작업 5분 초과 시 강제 종료
+    zombie_limit, idle_limit = _progress_recovery_limits(global_progress)
+
+    # [v5.14.86] 좀비 잠금 해제: 대량 배치는 건수 기준으로 충분히 길게 기다린다.
     if global_progress.get("is_running") and global_progress.get("start_time"):
         elapsed = time.time() - global_progress["start_time"]
-        if elapsed > 300:  # 5분 초과
-            app.logger.warning(f"[좀비복구] 작업이 {int(elapsed)}초 경과하여 강제 종료 처리")
+        if elapsed > zombie_limit:
+            app.logger.warning(f"[좀비복구] 작업이 {int(elapsed)}초 경과하여 강제 종료 처리(limit={int(zombie_limit)}s)")
             global_progress["is_running"] = False
             global_progress["completed"] = global_progress["total"]
 
-    # [v4.9.8] 유휴 잠금 해제: 마지막 개별 조회 완료 후 3분간 추가 조회 없으면 종료로 간주
+    # [v5.14.86] 유휴 잠금 해제: 대량 조회 중 워커 재기동 대기를 오판하지 않도록 여유를 둔다.
     if global_progress.get("is_running") and global_last_activity_time > 0:
         idle = time.time() - global_last_activity_time
-        if idle > 180:  # 3분 무활동
-            app.logger.warning(f"[유휴복구] 마지막 조회 후 {int(idle)}초 무활동. 잠금 해제")
+        if idle > idle_limit:
+            app.logger.warning(f"[유휴복구] 마지막 조회 후 {int(idle)}초 무활동. 잠금 해제(limit={int(idle_limit)}s)")
             global_progress["is_running"] = False
             global_progress["completed"] = global_progress["total"]
 
@@ -311,10 +360,19 @@ def run():
     pw = data.get("userPw", "")
     show_browser = data.get("showBrowser", False)
     stop_daemon_on_disconnect = _should_stop_daemon_on_disconnect(data)
+    total_containers = len(containers)
+    stable_batch_mode = _is_large_batch(total_containers, data)
 
     global global_progress, global_last_activity_time
     global_stop_requested.clear()
-    global_progress = {"total": len(containers), "completed": 0, "is_running": True, "start_time": time.time()}
+    global_progress = {
+        "total": total_containers,
+        "completed": 0,
+        "is_running": True,
+        "start_time": time.time(),
+        "large_batch_mode": stable_batch_mode,
+        "last_activity_time": time.time(),
+    }
     global_last_activity_time = time.time()
 
     def generate():
@@ -323,6 +381,14 @@ def run():
             final_rows = []
             headers = ["컨테이너번호", "No", "수출입", "구분", "터미널", "MOVE TIME", "모선", "항차", "선사", "적공", "SIZE", "POD", "POL", "차량번호", "RFID"]
             from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+            base_acquire_timeout = _float_env("ELS_LARGE_BATCH_ACQUIRE_TIMEOUT_SEC", 300, 30) if stable_batch_mode else _float_env("ELS_BATCH_ACQUIRE_TIMEOUT_SEC", 45, 5)
+            worker_acquire_timeout = _float_option(data, "acquireTimeoutSec", base_acquire_timeout, 5)
+            base_single_timeout = _float_env("ELS_LARGE_BATCH_SINGLE_TIMEOUT_SEC", 420, 60) if stable_batch_mode else _float_env("ELS_BATCH_SINGLE_TIMEOUT_SEC", 300, 60)
+            single_request_timeout = _float_option(data, "singleRequestTimeoutSec", base_single_timeout, 60)
+            base_submit_delay = _float_env("ELS_LARGE_BATCH_SUBMIT_DELAY_SEC", 2.0, 0) if stable_batch_mode else _float_env("ELS_BATCH_SUBMIT_DELAY_SEC", 0, 0)
+            submit_delay_sec = _float_option(data, "submitDelaySec", base_submit_delay, 0)
+            base_ready_wait = _float_env("ELS_LARGE_BATCH_READY_WAIT_SEC", 600, 60) if stable_batch_mode else _float_env("ELS_BATCH_READY_WAIT_SEC", 90, 30)
+            ready_wait_timeout = _float_option(data, "readyWaitTimeoutSec", base_ready_wait, 30)
             
             def fetch(index, cn):
                 last_error = None
@@ -337,10 +403,10 @@ def run():
                             "showBrowser": show_browser,
                             "requestPurpose": "batch",
                             "reserveSingle": reserve_single,
-                            "acquireTimeoutSec": 45,
+                            "acquireTimeoutSec": worker_acquire_timeout,
                         }, ensure_ascii=False).encode("utf-8")
                         req = Request(DAEMON_URL + "/run", data=body, method="POST", headers={"Content-Type": "application/json"})
-                        r = urlopen(req, timeout=300)
+                        r = urlopen(req, timeout=single_request_timeout)
                         data = json.loads(r.read().decode("utf-8"))
                         rows = data.get("result") or []
                         if _should_retry_rows(rows) and attempt < 2:
@@ -394,17 +460,23 @@ def run():
                         yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
                     yield "RESULT:" + json.dumps({"ok": True, "result": final_rows}, ensure_ascii=False) + "\n"
                     return
-            configured_workers = _configured_batch_workers()
+            configured_workers = _configured_batch_workers(data.get("maxBatchWorkers"))
+            if stable_batch_mode:
+                configured_workers = min(configured_workers, _int_env("ELS_LARGE_BATCH_MAX_WORKERS", 1, 1))
             batch_workers = _effective_batch_workers(daemon_health, configured_workers=configured_workers, reserve_single=reserve_single)
             max_executor_workers = max(configured_workers, batch_workers)
-            ready_wait_timeout = float(os.environ.get("ELS_BATCH_READY_WAIT_SEC", 90))
             yield f"LOG:⚙️ 배치 병렬도 {batch_workers}개 적용 (가용 {daemon_health.get('available_drivers', 0)}/활성 {daemon_health.get('total_drivers', 0)}/{daemon_health.get('max_drivers', 4)}, 단건/AI 예약 {'ON' if reserve_single else 'OFF'})\n"
+            if stable_batch_mode:
+                yield f"LOG:대량 안정 모드 적용: {total_containers:,}건, 병렬 {configured_workers}개, 워커대기 {int(worker_acquire_timeout)}초, 제출간격 {submit_delay_sec:.1f}초\n"
+            global_progress["batch_workers"] = configured_workers
+            global_progress["large_batch_mode"] = stable_batch_mode
             executor = ThreadPoolExecutor(max_workers=max_executor_workers)
             try:
                 futures = {}
                 completed_results = {}
                 emitted_indices = set()
                 next_submit_index = 0
+                last_submit_at = 0
                 last_worker_refresh = 0
                 ready_wait_started = time.time()
                 last_ready_wait_log = 0
@@ -443,16 +515,21 @@ def run():
                             }
 
                 def submit_more():
-                    nonlocal next_submit_index
+                    nonlocal next_submit_index, last_submit_at
                     while (
                         next_submit_index < len(containers)
                         and len(futures) < batch_workers
                         and not global_stop_requested.is_set()
                     ):
-                        if 0 < next_submit_index < batch_workers:
+                        if next_submit_index > 0 and submit_delay_sec > 0:
+                            wait_left = submit_delay_sec - (time.time() - last_submit_at)
+                            if wait_left > 0:
+                                time.sleep(wait_left)
+                        elif 0 < next_submit_index < batch_workers:
                             time.sleep(1)
                         idx = next_submit_index
                         futures[executor.submit(fetch, idx, containers[idx])] = idx
+                        last_submit_at = time.time()
                         next_submit_index += 1
 
                 submit_more()
@@ -534,6 +611,7 @@ def run():
                         emitted_indices.add(index)
                         global_progress["completed"] += 1
                         global_last_activity_time = time.time()  # [v4.9.8] 개별 조회 완료 시마다 갱신
+                        global_progress["last_activity_time"] = global_last_activity_time
                         if item["attempts"] > 1:
                             yield f"LOG:↻ [{item['cn']}] 1회 재조회 후 확정 ({item['retry_reason']})\n"
                         yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
@@ -562,6 +640,7 @@ def run():
                     emitted_indices.add(index)
                     global_progress["completed"] += 1
                     global_last_activity_time = time.time()
+                    global_progress["last_activity_time"] = global_last_activity_time
                     yield "RESULT_PARTIAL:" + json.dumps({"result": rows}, ensure_ascii=False) + "\n"
 
                 for index in range(len(containers)):

@@ -7,6 +7,7 @@ import {
   buildContainerLookupMapFromRows,
   extractUniqueContainerNos,
   isActualContainerHistoryRow,
+  orderContainerLookupTargets,
 } from '../utils/containerHistoryResults.mjs';
 import {
   buildRecentShippingMonthOptions,
@@ -286,20 +287,54 @@ test('선적관리 컨테이너 자동조회는 DB 설정과 새벽 스케줄을
   assert.match(migration, /ADD COLUMN IF NOT EXISTS shipping_container_auto_lookup_enabled BOOLEAN DEFAULT true/);
   assert.match(daemon, /now\.hour == 3 and now\.minute < 2/);
   assert.match(daemon, /DAILY RESET @ 03:00 KST ENABLED/);
+  assert.match(daemon, /MAX_AUTO_LOGIN_ATTEMPTS = 3/);
+  assert.match(daemon, /self\.late_worker_min_ready = max\(1, int\(os\.environ\.get\("ELS_LATE_WORKER_MIN_READY", 1\)\)\)/);
+  assert.match(daemon, /def mark_auth_failure\(self, message, reason\):[\s\S]*self\.stop_requested\.set\(\)/);
 
   for (const rel of backendFiles) {
     const source = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
     assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR", 3, 0\)/);
     assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0\)/);
     assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS", 3600, 300\)/);
+    assert.match(source, /ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS = _env_int\("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS", 300, 30\)/);
     assert.match(source, /def maybe_run_asan_shipping_container_auto_lookup\(now=None\):/);
     assert.match(source, /maybe_run_asan_shipping_container_auto_lookup\(now\)/);
     assert.match(source, /DB 설정 컬럼 미적용 상태라 자동조회 실행을 보류/);
     assert.match(source, /targets = \[cn for cn in containers if statuses\.get\(cn\) != "적하"\]/);
+    assert.match(source, /"stableBatchMode": True/);
+    assert.match(source, /"maxBatchWorkers": 1/);
+    assert.match(source, /"acquireTimeoutSec": ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_ACQUIRE_TIMEOUT_SECONDS/);
     assert.match(source, /timeout=\(10, ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_TIMEOUT_SECONDS\)/);
     assert.match(source, /failed_count >= ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_FAIL_LIMIT/);
     assert.match(source, /set_asan_shipping_container_auto_lookup_enabled\(False, reason=reason\)/);
   }
+});
+
+test('선적관리 대량 컨테이너 조회는 안정 모드로 속도를 낮추고 진행 상태를 오래 유지한다', () => {
+  const bot = fs.readFileSync(path.join(repoRoot, 'docker/els-backend/app_bot.py'), 'utf8');
+  const lookupRoute = fs.readFileSync(
+    path.join(repoRoot, 'web/app/api/branches/asan/shipping/container-lookup/route.js'),
+    'utf8',
+  );
+
+  assert.match(bot, /def _large_batch_threshold\(\):/);
+  assert.match(bot, /return _int_env\("ELS_LARGE_BATCH_THRESHOLD", 100, 1\)/);
+  assert.match(bot, /def _is_large_batch\(total, data=None\):/);
+  assert.match(bot, /ELS_LARGE_BATCH_ACQUIRE_TIMEOUT_SEC", 300, 30/);
+  assert.match(bot, /ELS_LARGE_BATCH_SUBMIT_DELAY_SEC", 2\.0, 0/);
+  assert.match(bot, /_int_env\("ELS_LARGE_BATCH_MAX_WORKERS", 1, 1\)/);
+  assert.match(bot, /"acquireTimeoutSec": worker_acquire_timeout/);
+  assert.match(bot, /urlopen\(req, timeout=single_request_timeout\)/);
+  assert.match(bot, /wait_left = submit_delay_sec - \(time\.time\(\) - last_submit_at\)/);
+  assert.match(bot, /"워커 대기 시간 초과"/);
+  assert.match(bot, /zombie_limit, idle_limit = _progress_recovery_limits\(global_progress\)/);
+  assert.doesNotMatch(bot, /elapsed > 300/);
+
+  assert.match(lookupRoute, /containers\.length >= 100/);
+  assert.match(lookupRoute, /stableBatchMode: true/);
+  assert.match(lookupRoute, /maxBatchWorkers: body\.maxBatchWorkers \?\? 1/);
+  assert.match(lookupRoute, /acquireTimeoutSec: body\.acquireTimeoutSec \?\? 300/);
+  assert.match(lookupRoute, /submitDelaySec: body\.submitDelaySec \?\? 2/);
 });
 
 test('선적관리 조회 이력은 최신값/보존기간 인덱스를 가진다', () => {
@@ -339,6 +374,8 @@ test('선적관리 화면은 필터된 컨테이너 조회 결과를 초록색 �
   );
 
   assert.match(source, /extractUniqueContainerNos\(data\?\.headers \|\| \[\], processedData\)/);
+  assert.match(source, /orderContainerLookupTargets\(tableOrderedContainers, containerLookupResultsRef\.current\)/);
+  assert.match(source, /미조회 \$\{missingLookupCount\.toLocaleString\(\)\}건 우선/);
   assert.match(source, /fetch\('\/api\/branches\/asan\/shipping\/container-lookup'/);
   assert.match(source, /savedPayload\?\.saved_data/);
   assert.match(source, /fetch\('\/api\/branches\/asan\/shipping\/container-results'/);
@@ -830,6 +867,12 @@ test('컨테이너 조회 유틸은 필터 결과의 컨테이너와 No 1 메인
   ];
 
   assert.deepEqual(extractUniqueContainerNos(headers, rows), ['TCLU8300912', 'TRHU5191927']);
+  assert.deepEqual(
+    orderContainerLookupTargets(['TCLU8300912', 'TRHU5191927', 'MSKU5071276'], {
+      TRHU5191927: { mainRow: ['TRHU5191927', '1', '수출', '반입'] },
+    }),
+    ['TCLU8300912', 'MSKU5071276', 'TRHU5191927'],
+  );
 
   const lookupMap = buildContainerLookupMapFromRows([
     ['TCLU8300912', '2', '수출', '반출', 'OLD', '2026-05-01 08:00'],

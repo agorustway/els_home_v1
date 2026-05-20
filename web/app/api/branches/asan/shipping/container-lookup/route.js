@@ -40,6 +40,20 @@ export async function POST(req) {
         containers,
         reserveSingle: body.reserveSingle === undefined ? false : body.reserveSingle,
     };
+    const stableBatchMode = body.stableBatchMode === undefined
+        ? containers.length >= 100
+        : body.stableBatchMode !== false;
+    if (stableBatchMode) {
+        runBody = {
+            ...runBody,
+            stableBatchMode: true,
+            maxBatchWorkers: body.maxBatchWorkers ?? 1,
+            acquireTimeoutSec: body.acquireTimeoutSec ?? 300,
+            submitDelaySec: body.submitDelaySec ?? 2,
+            readyWaitTimeoutSec: body.readyWaitTimeoutSec ?? 600,
+            singleRequestTimeoutSec: body.singleRequestTimeoutSec ?? 420,
+        };
+    }
 
     if (runBody.useSavedCreds) {
         const creds = await getUserElsCreds();
