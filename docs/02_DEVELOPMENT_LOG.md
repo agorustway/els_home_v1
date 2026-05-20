@@ -1,3 +1,19 @@
+## [2026-05-20] 연간·월간실적 테이블 금액 검색 보정 (v5.14.89)
+### 핵심
+- 연간·월간실적 테이블은 헤더 클릭 정렬과 검색 필터를 이미 갖고 있었지만, 금액 검색이 `search_text ILIKE '%검색어%'`에 걸리며 Supabase statement timeout으로 실패할 수 있었습니다.
+- 실적 테이블 조회는 DB에서 현재 범위 행을 가져온 뒤 서버에서 검색어를 정규화해 필터링하도록 바꿨습니다. `575,000`, `575000`, `575000.0`처럼 금액 표기가 달라도 같은 검색어로 잡습니다.
+- 검색창 placeholder를 `검색어 또는 금액`으로 바꾸고, 테이블 헤더에는 `클릭하여 정렬` title을 붙여 정렬 기능을 더 명확하게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
+- `node --check web/lib/asan-branch-db.js "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 인트라넷 행사일정 월간 캘린더와 접속 공지 팝업 (v5.14.88)
 ### 핵심
 - AI 어시스턴트 하단에 `행사일정` 섹션을 추가하고, 월 단위 7열 매트릭스 형태로 일정을 표시하도록 구성했습니다.

@@ -1686,7 +1686,7 @@ export default function AsanAnnualPerformance() {
                             className={styles.searchInput}
                             value={searchInput}
                             onChange={e => setSearchInput(e.target.value)}
-                            placeholder="검색어"
+                            placeholder="검색어 또는 금액"
                         />
                         <button
                             className={searchMode === 'and' ? styles.smallActiveBtn : styles.ghostBtn}
@@ -1716,7 +1716,7 @@ export default function AsanAnnualPerformance() {
                             <thead>
                                 <tr>
                                     {visibleColumns.map(col => (
-                                        <th key={col} onClick={() => requestSort(col)}>
+                                        <th key={col} onClick={() => requestSort(col)} title="클릭하여 정렬">
                                             {col}
                                             {sortConfig.key === col && <span>{sortConfig.direction === 'desc' ? ' ↓' : ' ↑'}</span>}
                                         </th>

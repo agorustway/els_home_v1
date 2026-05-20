@@ -62,6 +62,36 @@ function searchFilterValue(term) {
     return String(term || '').replace(/[,\\]/g, ' ');
 }
 
+const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원]/g;
+
+function normalizePerformanceSearchText(value) {
+    const raw = String(value ?? '').trim().toLocaleLowerCase('ko-KR');
+    if (!raw) return '';
+    const compact = raw.replace(PERFORMANCE_SEARCH_COMPACT_RE, '');
+    return compact && compact !== raw ? `${raw} ${compact}` : raw;
+}
+
+function rowPerformanceSearchText(values = []) {
+    return (Array.isArray(values) ? values : [])
+        .map(normalizePerformanceSearchText)
+        .filter(Boolean)
+        .join(' ');
+}
+
+function rowMatchesPerformanceSearch(values = [], search = '', mode = 'or') {
+    const terms = searchTerms(search);
+    if (!terms.length) return true;
+    const haystack = rowPerformanceSearchText(values);
+    const matches = term => {
+        const normalized = normalizePerformanceSearchText(term);
+        if (!normalized) return true;
+        return normalized.split(/\s+/).some(piece => piece && haystack.includes(piece));
+    };
+    return String(mode || '').toLowerCase() === 'and'
+        ? terms.every(matches)
+        : terms.some(matches);
+}
+
 function normalizeMonthKeys(months) {
     const rawMonths = Array.isArray(months)
         ? months
@@ -233,18 +263,22 @@ async function fetchRowsInChunks(buildQuery, start, end, chunkSize = SUPABASE_RA
     return { rows, total };
 }
 
-async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
+    const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0) {
+    if (sortIdx >= 0 || shouldFilter) {
         const { rows: data, total } = await fetchRowsInChunks(buildQuery, 0, maxSortRows);
+        const filtered = shouldFilter
+            ? (data || []).filter(item => rowMatchesPerformanceSearch(item.row_values || [], search, searchMode))
+            : (data || []);
 
         const sortable = [];
         const blanks = [];
-        for (const item of data || []) {
+        for (const item of filtered) {
             const row = item.row_values || [];
             const value = sortValue(row[sortIdx]);
             if (!value) blanks.push(item);
@@ -252,11 +286,13 @@ async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sort
         }
 
         sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
+        const ordered = sortIdx >= 0
+            ? (sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item)))
+            : filtered;
         return {
             rows: ordered.slice(start, end + 1),
-            total: total ?? ordered.length,
-            sortKey,
+            total: shouldFilter ? ordered.length : (total ?? ordered.length),
+            sortKey: sortIdx >= 0 ? sortKey : '',
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }
@@ -708,7 +744,7 @@ function annualRowToValues(row, headers) {
     });
 }
 
-async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false }) {
+async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
@@ -725,24 +761,34 @@ async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSi
         ...row,
         source_headers: metaBySnapshot.get(row.snapshot_id)?.headers || metaBySnapshot.get(`${row.file_path}::${row.sheet_name}`)?.headers || [],
     });
+    const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0) {
+    if (sortIdx >= 0 || shouldFilter) {
         const { data, error } = await baseOrdered.range(0, maxSortRows);
         if (error) throw new Error(error.message);
+        const mappedRows = (data || []).map(item => {
+            const row = attachHeaders(item);
+            const mapped = annualRowToValues(row, headers);
+            return { ...row, mapped_values: mapped };
+        });
+        const filtered = shouldFilter
+            ? mappedRows.filter(item => rowMatchesPerformanceSearch(item.mapped_values, search, searchMode))
+            : mappedRows;
         const sortable = [];
         const blanks = [];
-        for (const item of data || []) {
-            const mapped = annualRowToValues(attachHeaders(item), headers);
-            const value = sortValue(mapped[sortIdx]);
-            if (!value) blanks.push({ ...item, mapped_values: mapped });
-            else sortable.push([value, { ...item, mapped_values: mapped }]);
+        for (const item of filtered) {
+            const value = sortValue(item.mapped_values?.[sortIdx]);
+            if (!value) blanks.push(item);
+            else sortable.push([value, item]);
         }
         sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
+        const ordered = sortIdx >= 0
+            ? (sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item)))
+            : filtered;
         return {
             rows: ordered.slice(start, end + 1),
-            total: Math.max(numberValue(fallbackTotal), ordered.length),
-            sortKey,
+            total: shouldFilter ? ordered.length : Math.max(numberValue(fallbackTotal), ordered.length),
+            sortKey: sortIdx >= 0 ? sortKey : '',
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }
@@ -918,8 +964,6 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
     } else {
         query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
     }
-    query = applySearch(query, search, searchMode);
-
     const paged = await getAnnualPagedRows({
         query,
         headers,
@@ -931,6 +975,8 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         maxSortRows: 19999,
         fallbackTotal,
         orderBySnapshot: allMetasHaveSnapshot,
+        search,
+        searchMode,
     });
 
     return {
@@ -991,22 +1037,25 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
     const headers = Array.isArray(meta.headers) ? meta.headers : [];
     const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
     const currentSnapshotId = summary.currentSnapshotId || summary.snapshotId || '';
-    let query = supabase
-        .from('branch_performance_rows')
-        .select('row_values,row_index')
-        .eq('branch_id', 'asan')
-        .eq('dataset_type', 'annual')
-        .eq('file_path', normalizedPath)
-        .eq('sheet_name', meta.sheet_name || sheetName);
-    if (currentSnapshotId) {
-        query = query.eq('snapshot_id', currentSnapshotId);
-    } else {
-        query = query.eq('is_current', true);
-    }
-    query = applySearch(query, search, searchMode);
+    const buildQuery = (options = {}) => {
+        const selectOptions = options.count ? { count: options.count } : undefined;
+        let query = supabase
+            .from('branch_performance_rows')
+            .select('row_values,row_index', selectOptions)
+            .eq('branch_id', 'asan')
+            .eq('dataset_type', 'annual')
+            .eq('file_path', normalizedPath)
+            .eq('sheet_name', meta.sheet_name || sheetName);
+        if (currentSnapshotId) {
+            query = query.eq('snapshot_id', currentSnapshotId);
+        } else {
+            query = query.eq('is_current', true);
+        }
+        return { query };
+    };
 
     const paged = await getPagedRows({
-        query,
+        buildQuery,
         headers,
         page,
         pageSize,
@@ -1014,6 +1063,8 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
         sortDir,
         maxSortRows: 19999,
         fallbackTotal: search ? 0 : meta.current_row_count || meta.row_count || 0,
+        search,
+        searchMode,
     });
 
     return {
@@ -1247,7 +1298,7 @@ function monthlyRowToValues(row, headers) {
     });
 }
 
-async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0 }) {
+async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
@@ -1256,24 +1307,30 @@ async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, so
         .order('year_value', { ascending: true })
         .order('month_value', { ascending: true })
         .order('row_index', { ascending: true });
+    const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0) {
+    if (sortIdx >= 0 || shouldFilter) {
         const { data, error } = await baseOrdered.range(0, maxSortRows);
         if (error) throw new Error(error.message);
+        const mappedRows = (data || []).map(item => ({ ...item, mapped_values: monthlyRowToValues(item, headers) }));
+        const filtered = shouldFilter
+            ? mappedRows.filter(item => rowMatchesPerformanceSearch(item.mapped_values, search, searchMode))
+            : mappedRows;
         const sortable = [];
         const blanks = [];
-        for (const item of data || []) {
-            const values = monthlyRowToValues(item, headers);
-            const value = sortValue(values[sortIdx]);
-            if (!value) blanks.push({ ...item, mapped_values: values });
-            else sortable.push([value, { ...item, mapped_values: values }]);
+        for (const item of filtered) {
+            const value = sortValue(item.mapped_values?.[sortIdx]);
+            if (!value) blanks.push(item);
+            else sortable.push([value, item]);
         }
         sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item));
+        const ordered = sortIdx >= 0
+            ? (sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item)))
+            : filtered;
         return {
             rows: ordered.slice(start, end + 1),
-            total: Math.max(fallbackTotal, ordered.length),
-            sortKey,
+            total: shouldFilter ? ordered.length : Math.max(fallbackTotal, ordered.length),
+            sortKey: sortIdx >= 0 ? sortKey : '',
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }
@@ -1355,8 +1412,6 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     } else {
         query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
     }
-    query = applySearch(query, search, searchMode);
-
     const paged = await getMonthlyPagedRows({
         query,
         headers,
@@ -1366,6 +1421,8 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         sortDir,
         maxSortRows: 19999,
         fallbackTotal,
+        search,
+        searchMode,
     });
 
     return {
