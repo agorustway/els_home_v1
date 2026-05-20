@@ -9,6 +9,7 @@ import SubNav from '@/components/SubNav';
 import EmployeeHeader from '@/components/EmployeeHeader';
 import EmployeeSidebar from '@/components/EmployeeSidebar';
 import ApprovalModal from '@/components/ApprovalModal';
+import IntranetEventReminderPopup from '@/components/IntranetEventReminderPopup';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { MINIMAL_LAYOUT_PATHS, getHeroForPath } from '@/constants/siteLayout';
 import styles from './SiteLayout.module.css';
@@ -23,12 +24,19 @@ export default function SiteLayout({ children }) {
     const isMinimal = MINIMAL_LAYOUT_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
     const isEmployees = pathname?.startsWith('/employees') || pathname?.startsWith('/admin');
     const isVisitor = profile?.role === 'visitor';
+    const [hasDebugCookie, setHasDebugCookie] = useState(false);
 
     useEffect(() => {
         if (!loading && isEmployees && isVisitor) {
             setShowModal(true);
         }
     }, [loading, isEmployees, isVisitor]);
+
+    useEffect(() => {
+        const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
+            || document.cookie.includes('__debug_mode=true');
+        setHasDebugCookie(isDebugMode);
+    }, [pathname]);
 
     useEffect(() => {
         const handleOpenModal = () => setShowModal(true);
@@ -148,6 +156,10 @@ export default function SiteLayout({ children }) {
             {/* 푸터 영역: 인트라넷 모바일 환경에서는 낭비되는 면적을 줄이기 위해 푸터를 숨김 */}
             {!(isEmployees && isMobile) && <Footer />}
             <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
+            <IntranetEventReminderPopup
+                enabled={Boolean(isEmployees && !loading && ((profile && profile.role !== 'visitor') || hasDebugCookie))}
+                refreshKey={pathname}
+            />
             <PwaMigrationNotice />
         </>
     );

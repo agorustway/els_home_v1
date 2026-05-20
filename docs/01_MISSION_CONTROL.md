@@ -1,13 +1,16 @@
-# ELS MISSION CONTROL (v5.14.87 / APK v5.11.24)
+# ELS MISSION CONTROL (v5.14.88 / APK v5.11.24)
 
-> 최신 업데이트: 관리자 활동 로그에 사용자 이름을 표시하고 CSV 식별 컬럼을 보강했습니다.
+> 최신 업데이트: AI 어시스턴트 하단에 인트라넷 행사일정 월간 캘린더와 접속 팝업 공지를 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.87
+- **웹 버전**: v5.14.88
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.24
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - AI 어시스턴트 페이지 하단에 구글캘린더형 월간 행사일정 매트릭스를 추가하고, 관리자/본사 계정에서 일정 등록·수정·삭제와 공지범위 선택을 지원한다.
+  - 행사일정은 Supabase `intranet_events`/`intranet_event_dismissals` 기준으로 저장하며, 대상 사용자 접속 시 7일전/3일전/1일전/당일 팝업 공지를 띄우고 `다시 보지 않음`은 사용자별로 저장한다.
+  - Galaxy S24급 360x780 뷰포트에서 월간 7열 매트릭스가 가로 스크롤 없이 유지되도록 모바일 셀·버튼·모달 폭을 보정했다.
   - 관리자 활동 로그 API는 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 응답에 붙이고, 화면은 이름/이메일/접근IP를 한 칸에서 정리해 보여준다.
   - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
   - 실적관리 하위 탭은 저장된 탭을 확인한 뒤 해당 화면만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
@@ -69,6 +72,7 @@
 - [x] v5.14.85-87: ELS Bot 보호모드, 종합실적 건수 비중, 관리자 활동 로그 이름 표시
 
 ## RECENT CHANGES
+- **v5.14.88**: AI 어시스턴트 하단에 `행사일정` 월간 캘린더를 추가했다. `/api/intranet/events` 계열 API와 Supabase SQL `20260520_intranet_event_calendar.sql`을 준비했고, 일정 등록 시 공지범위를 선택하며 대상 사용자는 7일전/3일전/1일전/당일 접속 시 공지 팝업을 받는다. 팝업의 `다시 보지 않음`은 사용자·일정·알림시점 단위로 저장된다.
 - **v5.14.87**: 관리자 활동 로그 조회 API가 `profiles`/`user_roles`에서 사용자 이름을 보강해 `user_name`으로 반환한다. 활동 로그 관리 화면은 이름, 이메일, 접근IP를 같은 식별 칸에 정리하고, 선택 CSV 다운로드에도 이름/접근IP 컬럼을 포함한다.
 - **v5.14.86**: 종합실적 `계약/차량 집중도` 카드의 두 번째 막대를 `건수`에서 `건수 비중`으로 바꾸고, 막대 폭을 각 카드 자기 자신 기준 100%가 아니라 ELS직계약차량/외부·타운송사 합계 대비 건수 비율로 계산한다.
 - **v5.14.85**: ELS Bot 자동 로그인 시도 횟수를 계정 기준 전체 3회로 제한했다. 워커 복구, 세션 만료 복구, 일일 리셋, 저장 계정 warmup이 같은 예산을 공유하며, `로그인 성공 확인 불가 (ID/PW 확인 필요)`도 인증 실패로 분류해 첫 감지 시 보호모드로 전환한다. 10분 후 실패 횟수를 자동 초기화하던 흐름을 제거해 계정 잠금 해제 전 반복 재시도를 막고, 컨테이너 이력조회 화면에는 `로그인 n/3 보호모드` 상태를 표시한다.
@@ -85,6 +89,10 @@
 - **v5.14.74**: 종합/월간/연간 실적관리에서 테이블형 영역이 브라우저 폭을 넘을 때 화면 안쪽 하단 슬라이더로 이동하도록 공통 스크롤 스타일을 확장했다. 요약 추세, 세분화, 차량성과, 보고서 표, 월/일 흐름, 히트맵, 이월 청구처 표까지 같은 스크롤바 규칙을 적용했고, Galaxy S24급 폭에서는 카드·버튼·원장 테이블 높이를 더 촘촘하게 조정했다.
 - **v5.14.73**: 월간실적에서 `reportTableReady=false`일 때 뜨던 `보고서 표 없음 · 원장 기준 분석 중` 배너를 제거했다. 보고서 표 파서는 뒤에서 유지하되, 표가 없으면 원장 기준 분석 카드와 세분화만 조용히 보여준다.
 ## VERIFICATION
+- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과, `/employees/ask` 14.7kB / First Load JS 167kB
+- Browser `http://localhost:3002/employees/ask?debug=true`: 데스크탑 및 360x780 뷰포트에서 행사일정 렌더/가로 스크롤 없음 확인
 - `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
 - `npm.cmd run lint`: 통과
 - `npm.cmd run build`: 통과, `/admin/logs` 5.07kB / First Load JS 93.5kB
@@ -94,7 +102,7 @@
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
-- 없음. 월간실적 자동 감지는 NAS 재배포 후 `/api/branches/asan/performance/monthly?source=status`에서 `start_hour=0`, `active_poll_seconds=60`, `stale_poll_seconds=120`, `last_target=2026-05`, `last_result=db-current` 확인 완료.
+- 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용해야 운영 DB에서 저장/팝업 조회가 활성화된다. 적용 전 로컬 디버그 화면에는 `intranet_events` 테이블 없음 안내가 보일 수 있다.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

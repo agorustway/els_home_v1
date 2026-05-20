@@ -1,3 +1,26 @@
+## [2026-05-20] 인트라넷 행사일정 월간 캘린더와 접속 공지 팝업 (v5.14.88)
+### 핵심
+- AI 어시스턴트 하단에 `행사일정` 섹션을 추가하고, 월 단위 7열 매트릭스 형태로 일정을 표시하도록 구성했습니다.
+- 관리자/본사 계정은 일정 등록·수정·삭제가 가능하며, 등록 시 `전체` 또는 발송지/지점별 공지범위를 선택합니다.
+- `/api/intranet/events` API와 Supabase SQL `20260520_intranet_event_calendar.sql`을 추가해 `intranet_events`와 `intranet_event_dismissals`를 기준으로 저장/조회하도록 준비했습니다.
+- 임직원 공통 레이아웃에 행사일정 공지 팝업을 연결해 대상 사용자가 접속할 때 7일전/3일전/1일전/당일 알림을 받고, `다시 보지 않음`은 사용자·일정·알림시점 단위로 저장합니다.
+- Galaxy S24급 360x780 환경에서 월간 매트릭스가 가로 스크롤 없이 유지되도록 모바일 셀, 버튼, 모달 크기를 보정했습니다.
+### 검증
+- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- Browser `http://localhost:3002/employees/ask?debug=true`: 데스크탑 및 360x780 뷰포트에서 행사일정 렌더/가로 스크롤 없음 확인
+### 남은 적용
+- 운영 DB에서 저장과 접속 팝업 조회가 동작하려면 `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용해야 합니다.
+### 변경 파일
+- `web/components/IntranetEventCalendar.js`, `web/components/IntranetEventCalendar.module.css`
+- `web/components/IntranetEventReminderPopup.js`, `web/components/IntranetEventReminderPopup.module.css`
+- `web/app/(main)/employees/(intranet)/ask/page.js`, `web/components/SiteLayout.js`
+- `web/app/api/intranet/events/route.js`, `web/app/api/intranet/events/[id]/route.js`, `web/app/api/intranet/events/reminders/route.js`, `web/app/api/intranet/events/dismissals/route.js`
+- `web/lib/intranet-events-server.js`, `web/utils/intranetEvents.mjs`, `web/tests/intranetEvents.test.mjs`
+- `web/supabase_sql/20260520_intranet_event_calendar.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 관리자 활동 로그 사용자 이름 표시 (v5.14.87)
 ### 핵심
 - 활동 로그 관리 화면이 이메일만 보여줘 같은 계정/사용자를 빠르게 식별하기 어려웠습니다.

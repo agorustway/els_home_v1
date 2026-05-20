@@ -142,6 +142,12 @@ Remove-Item "docker\els-backend\.pytest_cache" -Recurse -Force
 - 표준 대응: 실제 원격 접근이 필요한 명령은 같은 명령을 `require_escalated`로 재실행합니다.
 - 예: `git push origin main`, `npm.cmd run build`, 실제 NAS 데이터를 붙이는 로컬 dev server 실행/브라우저 검증.
 
+#### Supabase DDL/마이그레이션 적용 권한
+- 증상: `SUPABASE_SERVICE_ROLE_KEY`로 일반 REST CRUD는 가능하지만 `CREATE TABLE`, `ALTER TABLE`, RLS 정책 생성 같은 DDL은 실행할 수 없고, `pg-meta` hosted endpoint는 404를 반환합니다.
+- 표준 대응: Supabase CLI 로그인 토큰(`SUPABASE_ACCESS_TOKEN`) 또는 Postgres 연결 문자열(`--db-url`)이 있어야 `npx.cmd supabase db query --file <sql>`로 적용할 수 있습니다.
+- 확인 명령: `npx.cmd supabase projects list --output json`이 `Access token not provided`를 반환하면 Management API 적용 권한이 없는 상태입니다.
+- 우선순위: Codex Supabase 커넥터가 정상 활성화되면 커넥터 SQL 실행 도구를 우선 사용하고, 커넥터가 막히면 형에게 `SUPABASE_ACCESS_TOKEN` 또는 percent-encoded Postgres connection string 제공을 요청합니다.
+
 #### PowerShell `PATH/Path` 중복 키
 - 증상: `Start-Process` 또는 `Get-ChildItem Env:`에서 `항목이 이미 추가되었습니다. 사전에 있는 키: 'Path' 추가되는 키: 'PATH'`.
 - 표준 대응: 백그라운드 프로세스를 띄우기 전 현재 세션의 중복 환경 키를 정리합니다.
@@ -185,6 +191,7 @@ Remove-Item -LiteralPath commit_msg.txt -Force
 반복 권한 이슈 표준 대응:
 - Git 인덱스 쓰기(`git add/commit/restore --staged`)와 `git push`는 샌드박스 권한/네트워크 실패 시 즉시 require_escalated로 재실행한다.
 - GitHub/NAS/Supabase/실제 dev server 검증 네트워크가 `EACCES` 또는 connect fail이면 같은 명령을 require_escalated로 재실행한다.
+- Supabase DDL은 service_role REST 키만으로 적용할 수 없다. `SUPABASE_ACCESS_TOKEN` 또는 `supabase db query --db-url`용 Postgres 연결 문자열이 필요하다.
 - PowerShell Start-Process 전에 PATH/Path 중복 키 정리: `$pathValue=$env:Path; Remove-Item Env:PATH -ErrorAction SilentlyContinue; $env:Path=$pathValue`.
 - commit_msg.txt는 `[System.Text.UTF8Encoding]::new($false)`로 UTF-8 BOM 없이 작성하고 `git commit -F commit_msg.txt` 후 삭제한다.
 - 한글 포함 부분 스테이징은 PowerShell 파이프 대신 apply_patch로 UTF-8 patch 파일을 만든 뒤 `git apply --cached`한다.
@@ -192,4 +199,4 @@ Remove-Item -LiteralPath commit_msg.txt -Force
 ```
 
 ---
-*최종 갱신일: 2026-05-17 (by Codex — PowerShell PATH/Path 중복 대응 보강)*
+*최종 갱신일: 2026-05-20 (by Codex — Supabase DDL 적용 권한 기준 보강)*
