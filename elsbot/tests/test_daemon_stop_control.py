@@ -302,7 +302,62 @@ class TestDaemonStopControl(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("계정 잠금", result["error"])
         self.assertEqual(login_mock.call_count, 1)
-        self.assertGreaterEqual(pool.consecutive_login_failures, 5)
+        self.assertGreaterEqual(pool.consecutive_login_failures, self.daemon.MAX_AUTO_LOGIN_ATTEMPTS)
+
+    def test_start_login_pool_treats_generic_id_pw_failure_as_auth_failure(self):
+        self.assertTrue(self.daemon._is_auth_failure_message("로그인 성공 확인 불가 (ID/PW 확인 필요)"))
+
+        with patch.dict(os.environ, {"ELS_MAX_DRIVERS": "1"}):
+            pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
+        pool.wait_unless_cancelled = lambda seconds, generation=None: True
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(
+                self.daemon,
+                "login_and_prepare",
+                return_value=(None, "로그인 성공 확인 불가 (ID/PW 확인 필요)"),
+            ) as login_mock:
+                result = self.daemon._start_login_pool(
+                    "ELSUSER",
+                    "ELSPW",
+                    wait_for_ready=True,
+                    wait_timeout=2,
+                    source="test",
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("ID/PW", result["error"])
+        self.assertEqual(login_mock.call_count, 1)
+        self.assertEqual(pool.consecutive_login_failures, self.daemon.MAX_AUTO_LOGIN_ATTEMPTS)
+
+    def test_start_login_pool_caps_total_auto_attempts_across_workers(self):
+        with patch.dict(os.environ, {
+            "ELS_MAX_DRIVERS": "2",
+            "ELS_DRIVER_STAGGER_SEQUENCE": "0,0",
+            "ELS_LATE_WORKER_MIN_READY": "0",
+        }):
+            pool = self.daemon.DriverPool()
+        pool.cleanup_lingering_chrome = lambda port: None
+        pool.wait_unless_cancelled = lambda seconds, generation=None: True
+
+        with patch.object(self.daemon, "pool", pool):
+            with patch.object(
+                self.daemon,
+                "login_and_prepare",
+                return_value=(None, "메뉴 진입 최종 실패"),
+            ) as login_mock:
+                result = self.daemon._start_login_pool(
+                    "ELSUSER",
+                    "ELSPW",
+                    wait_for_ready=True,
+                    wait_timeout=2,
+                    source="test",
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertLessEqual(login_mock.call_count, self.daemon.MAX_AUTO_LOGIN_ATTEMPTS)
+        self.assertEqual(pool.consecutive_login_failures, self.daemon.MAX_AUTO_LOGIN_ATTEMPTS)
 
     def test_daily_reset_uses_force_restart_warmup(self):
         pool = self.daemon.DriverPool()

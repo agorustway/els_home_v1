@@ -55,6 +55,7 @@ function ContainerHistoryInner() {
     const [runHistory, setRunHistory] = useState([]); // [추가] 조회 이력 차수 관리
     const [workers, setWorkers] = useState([]); // [추가] 데몬 워커(브라우저)별 상태 관리
     const [maxDrivers, setMaxDrivers] = useState(3);
+    const [loginGuard, setLoginGuard] = useState({ failures: 0, max: 3, protected: false });
     
     // [추가] 디버그 모달 열려있을 때 3초마다 스크린샷 갱신
     useEffect(() => {
@@ -117,6 +118,11 @@ function ContainerHistoryInner() {
                 const data = await res.json();
                 if (data.workers) setWorkers(data.workers);
                 if (data.max_drivers) setMaxDrivers(data.max_drivers);
+                setLoginGuard({
+                    failures: Number(data.login_failures || 0),
+                    max: Number(data.max_login_attempts || 3),
+                    protected: Boolean(data.login_protected),
+                });
 
                 // 추가: 로그인 스트림이 끊긴 유휴 상태에서도 백그라운드 구동 로그 계속 받아오기
                 const logRes = await fetch(`${BACKEND_BASE_URL}/api/els/logs`);
@@ -424,6 +430,11 @@ function ContainerHistoryInner() {
                 // 워커 상태 업데이트
                 if (capData.workers) setWorkers(capData.workers);
                 if (capData.max_drivers) setMaxDrivers(capData.max_drivers);
+                setLoginGuard({
+                    failures: Number(capData.login_failures || 0),
+                    max: Number(capData.max_login_attempts || 3),
+                    protected: Boolean(capData.login_protected),
+                });
 
                 // 데몬이 다른 사용자의 요청을 처리 중인지 확인 (backend app.py에서 내려주는 progress 정보 활용)
                 if (capData.progress && capData.progress.is_running) {
@@ -1035,6 +1046,11 @@ function ContainerHistoryInner() {
                                                 <div key={i} title={isActive ? `B#${i+1} 활성 (Last: ${new Date(w.last_activity * 1000).toLocaleTimeString()})` : `B#${i+1} 비활성`} style={{ width: '10px', height: '10px', borderRadius: '50%', background: isActive ? (isBusy ? '#f59e0b' : '#22c55e') : '#e2e8f0', border: '1px solid #cbd5e1' }}></div>
                                             );
                                         })}
+                                        {(loginGuard.failures > 0 || loginGuard.protected) && (
+                                            <span style={{ marginLeft: '8px', fontSize: '0.74rem', fontWeight: 800, color: loginGuard.protected ? '#b91c1c' : '#b45309' }}>
+                                                로그인 {loginGuard.failures}/{loginGuard.max}{loginGuard.protected ? ' 보호모드' : ''}
+                                            </span>
+                                        )}
                                     </div>
                                 </h2>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

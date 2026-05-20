@@ -189,6 +189,9 @@ def capabilities():
         "available_drivers": 0,
         "is_logging_in": False,
         "active_init_threads": 0,
+        "login_failures": 0,
+        "max_login_attempts": 3,
+        "login_protected": False,
     }
     data = _daemon_health(timeout=3)
     if data:
@@ -201,6 +204,9 @@ def capabilities():
         daemon_status["available_drivers"] = data.get("available_drivers", 0)
         daemon_status["is_logging_in"] = data.get("is_logging_in", False)
         daemon_status["active_init_threads"] = data.get("active_init_threads", 0)
+        daemon_status["login_failures"] = data.get("login_failures", 0)
+        daemon_status["max_login_attempts"] = data.get("max_login_attempts", 3)
+        daemon_status["login_protected"] = data.get("login_protected", False)
 
     # [v4.9.8] 좀비 잠금 해제: 전체 작업 5분 초과 시 강제 종료
     if global_progress.get("is_running") and global_progress.get("start_time"):
@@ -229,6 +235,9 @@ def capabilities():
         "available_drivers": daemon_status["available_drivers"],
         "is_logging_in": daemon_status["is_logging_in"],
         "active_init_threads": daemon_status["active_init_threads"],
+        "login_failures": daemon_status["login_failures"],
+        "max_login_attempts": daemon_status["max_login_attempts"],
+        "login_protected": daemon_status["login_protected"],
         "batch_workers": _effective_batch_workers(daemon_status),
         "parseAvailable": True
     })

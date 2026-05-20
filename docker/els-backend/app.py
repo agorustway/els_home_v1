@@ -1774,7 +1774,14 @@ def run_runner(cmd, extra_args=None, env=None):
 @app.route("/api/els/capabilities", methods=["GET"])
 def capabilities():
     # 백엔드 내부에서 데몬 상태 확인 시 3회 재시도 로직 도입 (안정성 극대화)
-    daemon_status = {"available": False, "driver_active": False, "user_id": None}
+    daemon_status = {
+        "available": False,
+        "driver_active": False,
+        "user_id": None,
+        "login_failures": 0,
+        "max_login_attempts": 3,
+        "login_protected": False,
+    }
     
     for attempt in range(1, 4):
         try:
@@ -1785,6 +1792,9 @@ def capabilities():
                 daemon_status["available"] = True
                 daemon_status["driver_active"] = data.get("driver_active", False)
                 daemon_status["user_id"] = data.get("user_id")
+                daemon_status["login_failures"] = data.get("login_failures", 0)
+                daemon_status["max_login_attempts"] = data.get("max_login_attempts", 3)
+                daemon_status["login_protected"] = data.get("login_protected", False)
                 
                 # 살아있음이 확인되면 즉시 루프 탈출
                 if daemon_status["driver_active"]:
@@ -1817,6 +1827,9 @@ def capabilities():
         "progress": global_progress,
         "workers": data.get("workers", []) if 'data' in locals() else [],
         "max_drivers": data.get("max_drivers", 3) if 'data' in locals() else 3,
+        "login_failures": daemon_status["login_failures"],
+        "max_login_attempts": daemon_status["max_login_attempts"],
+        "login_protected": daemon_status["login_protected"],
         "parseAvailable": True
     })
 

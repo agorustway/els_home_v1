@@ -1,3 +1,22 @@
+## [2026-05-20] ELS Bot 자동 로그인 3회 하드캡과 보호모드 (v5.14.85)
+### 핵심
+- 2026-05-20 오전 `els-bot` 로그에서 저장 계정 재로그인이 반복되며 `로그인 성공 확인 불가 (ID/PW 확인 필요)`가 계속 발생한 흐름을 확인했습니다.
+- 기존 로직은 워커별 재시도와 세션키퍼 복구가 분리되어 있어 계정 기준 3회를 넘길 수 있었고, 10분 쿨다운 뒤 실패 횟수를 자동 초기화해 잠금 해제 전 재시도할 위험이 있었습니다.
+- 자동 로그인 시도권을 `MAX_AUTO_LOGIN_ATTEMPTS=3`으로 통합하고, 워커 복구/세션 만료 복구/일일 리셋/저장 계정 warmup이 같은 예산을 공유하게 했습니다.
+- `로그인 성공 확인 불가 (ID/PW 확인 필요)`를 인증 실패로 분류해 첫 감지 시 보호모드로 전환하고, 보호모드는 `BOT 정지`로 수동 초기화하기 전까지 자동으로 풀리지 않게 했습니다.
+- `/health`와 `/api/els/capabilities`에 `login_failures`, `max_login_attempts`, `login_protected`를 노출하고 컨테이너 이력조회 화면에 로그인 보호 상태를 표시합니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m py_compile elsbot\els_web_runner_daemon.py docker\els-backend\app_bot.py docker\els-backend\app.py`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -X utf8 -m unittest elsbot.tests.test_daemon_stop_control`: 18개 통과
+- `npm.cmd run lint -- "app/(main)/employees/container-history/page.js"`: 에러 0개, 기존 경고 5개
+- `git diff --check`: 통과
+### 변경 파일
+- `elsbot/els_web_runner_daemon.py`
+- `docker/els-backend/app_bot.py`, `docker/els-backend/app.py`
+- `web/app/(main)/employees/container-history/page.js`
+- `elsbot/tests/test_daemon_stop_control.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 아산지점 페이지 초기 로딩 안정화 (v5.14.84)
 ### 핵심
 - 아산지점 전체 페이지를 확인하면서 디자인과 표시 항목은 유지하고, 초기 진입 시 한 번에 너무 많은 화면 코드를 싣는 구조를 줄였습니다.

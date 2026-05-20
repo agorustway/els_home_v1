@@ -24,6 +24,8 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
+MAX_AUTO_LOGIN_ATTEMPTS = 3
+
 class DriverPool:
     def __init__(self):
         self.drivers = []
@@ -34,7 +36,7 @@ class DriverPool:
         self.is_logging_in = False
         self.init_stagger_sec = float(os.environ.get("ELS_DRIVER_STAGGER_SEC", 15))
         self.init_stagger_sequence = self._parse_init_stagger_sequence()
-        self.late_worker_min_ready = int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 2))
+        self.late_worker_min_ready = int(os.environ.get("ELS_LATE_WORKER_MIN_READY", 1))
         self.late_worker_spacing_sec = float(os.environ.get("ELS_LATE_WORKER_SPACING_SEC", 45))
         self.late_worker_ready_timeout_sec = float(os.environ.get("ELS_LATE_WORKER_READY_TIMEOUT_SEC", 420))
         self.max_drivers = int(os.environ.get("ELS_MAX_DRIVERS", 3))
@@ -128,7 +130,9 @@ class DriverPool:
                 ports_to_cleanup.append(32000 + idx)
             ports_to_cleanup = sorted(set(ports_to_cleanup))
             self.drivers = []
-            self.consecutive_login_failures = 0
+            if mark_stopped:
+                self.consecutive_login_failures = 0
+                self.last_failure_time = 0
             self.restart_inflight.clear()
             self.last_restart_attempt.clear()
             self.log_buffer.clear()
@@ -171,6 +175,31 @@ class DriverPool:
             # 일단 여기서는 포트 기반으로만 정리
         except:
             pass
+
+    def reserve_login_attempt(self, reason):
+        with self.lock:
+            if self.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+                self.add_log(
+                    f"🛑 [로그인보호] 자동 로그인 시도 한도({MAX_AUTO_LOGIN_ATTEMPTS}회) 도달. "
+                    f"{reason} 시도를 차단합니다."
+                )
+                return False
+            self.consecutive_login_failures += 1
+            self.last_failure_time = time.time()
+            attempt_no = self.consecutive_login_failures
+        self.add_log(f"🔐 [로그인보호] 자동 로그인 시도 {attempt_no}/{MAX_AUTO_LOGIN_ATTEMPTS}: {reason}")
+        return True
+
+    def mark_login_success(self):
+        with self.lock:
+            self.consecutive_login_failures = 0
+            self.last_failure_time = 0
+
+    def mark_auth_failure(self, message, reason):
+        with self.lock:
+            self.consecutive_login_failures = max(self.consecutive_login_failures, MAX_AUTO_LOGIN_ATTEMPTS)
+            self.last_failure_time = time.time()
+        self.add_log(f"🛑 [인증중단] {reason}: {message} → 수동 확인 전까지 자동 로그인 시도를 중지합니다.")
 
     def _is_queued_unlocked(self, driver):
         try:
@@ -289,7 +318,7 @@ class DriverPool:
                 return False
             if self.stop_requested.is_set():
                 return False
-            if self.is_logging_in or self.consecutive_login_failures >= 3:
+            if self.is_logging_in or self.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
                 return False
 
             active_ports = {getattr(d, 'used_port', 0) for d in self.drivers}
@@ -325,6 +354,8 @@ class DriverPool:
             if self.is_cancelled(generation):
                 return
             self.add_log(f"🔧 [워커복구] 브라우저 #{idx+1} 재기동 시도 ({reason})")
+            if not self.reserve_login_attempt(f"워커복구 브라우저 #{idx+1}"):
+                return
             self.cleanup_lingering_chrome(port)
             if self.is_cancelled(generation):
                 return
@@ -346,15 +377,13 @@ class DriverPool:
                         try: res[0].quit()
                         except: pass
                         return
-                    self.consecutive_login_failures = 0
                     self.add_driver(res[0])
+                self.mark_login_success()
                 self.add_log(f"✅ [워커복구] 브라우저 #{idx+1} 재기동 완료")
             else:
                 msg = str(res[1])
-                with self.lock:
-                    if "비밀번호" in msg or "LOGIN" in msg.upper():
-                        self.consecutive_login_failures += 1
-                        self.last_failure_time = time.time()
+                if _is_auth_failure_message(msg):
+                    self.mark_auth_failure(msg, f"워커복구 브라우저 #{idx+1}")
                 self.add_log(f"⚠️ [워커복구] 브라우저 #{idx+1} 재기동 실패: {msg}")
         finally:
             with self.lock:
@@ -372,6 +401,8 @@ def _is_auth_failure_message(message):
         "LOGIN_ACCOUNT_LOCKED",
         "아이디 또는 비밀번호",
         "비밀번호 오류",
+        "ID/PW",
+        "로그인 성공 확인 불가",
         "계정 잠금",
         "정지된 계정",
         "로그인을 5회 이상",
@@ -414,6 +445,17 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
             "error": "ETRANS 저장 계정이 없어 bot을 자동 시작할 수 없습니다.",
             "log": list(pool.log_buffer),
         }
+
+    with pool.lock:
+        if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+            return {
+                "ok": False,
+                "error": (
+                    f"자동 로그인 {MAX_AUTO_LOGIN_ATTEMPTS}회 실패 보호 모드입니다. "
+                    "ETrans 계정/비밀번호 확인 후 BOT 정지로 상태를 초기화하고 다시 시작해 주세요."
+                ),
+                "log": list(pool.log_buffer),
+            }
 
     if not force_restart and pool.is_same_user(u_id, show_browser):
         with pool.lock:
@@ -458,8 +500,11 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                     with pool.lock:
                         if pool.is_cancelled(generation):
                             return
-                        if pool.consecutive_login_failures >= 5:
-                            pool.add_log(f"❌ [보안경고] 누적 로그인 실패 과다! 드라이버 #{idx+1} 초기화를 영구 취소합니다.")
+                        if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+                            pool.add_log(
+                                f"❌ [보안경고] 자동 로그인 {MAX_AUTO_LOGIN_ATTEMPTS}회 실패 보호 모드. "
+                                f"드라이버 #{idx+1} 초기화를 취소합니다."
+                            )
                             return
 
                     if idx > 0 and retry == 1:
@@ -479,6 +524,12 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                     pool.cleanup_lingering_chrome(target_port)
                     if pool.is_cancelled(generation):
                         return
+                    if not pool.reserve_login_attempt(f"브라우저 #{idx+1} 초기화 {retry}/3"):
+                        fatal_error["message"] = (
+                            f"자동 로그인 {MAX_AUTO_LOGIN_ATTEMPTS}회 실패 보호 모드입니다. "
+                            "ETrans 계정/비밀번호 확인 후 BOT 정지로 상태를 초기화하고 다시 시작해 주세요."
+                        )
+                        return
 
                     res = login_and_prepare(u_id, u_pw, log_callback=_inner_log, show_browser=show_browser, port=target_port)
                     if res[0]:
@@ -492,8 +543,8 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                                 try: res[0].quit()
                                 except: pass
                                 return
-                            pool.consecutive_login_failures = 0
                             pool.add_driver(res[0])
+                        pool.mark_login_success()
                         pool.add_log(f"✔ 브라우저 #{idx+1} 준비 완료 (포트: {target_port})")
                         success = True
                         break
@@ -501,11 +552,8 @@ def _start_login_pool(u_id, u_pw, show_browser=False, wait_for_ready=True, wait_
                         failure_message = str(res[1] or "로그인 실패")
                         pool.add_log(f"⚠️ 브라우저 #{idx+1} 실패 ({retry}/3): {failure_message}")
                         if _is_auth_failure_message(failure_message):
-                            with pool.lock:
-                                pool.consecutive_login_failures = max(pool.consecutive_login_failures, 5)
-                                pool.last_failure_time = time.time()
+                            pool.mark_auth_failure(failure_message, f"브라우저 #{idx+1} 초기화")
                             fatal_error["message"] = failure_message
-                            pool.add_log(f"🛑 [인증중단] {failure_message} → 추가 자동 로그인 시도를 중지합니다.")
                             break
                 except Exception as e:
                     pool.add_log(f"🔥 브라우저 #{idx+1} 예외 발생 ({retry}/3): {e}")
@@ -630,6 +678,9 @@ def health():
             "late_worker_spacing_sec": pool.late_worker_spacing_sec,
             "late_worker_ready_timeout_sec": pool.late_worker_ready_timeout_sec,
             "user_id": pool.current_user["id"] if pool.current_user else None,
+            "login_failures": pool.consecutive_login_failures,
+            "max_login_attempts": MAX_AUTO_LOGIN_ATTEMPTS,
+            "login_protected": pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS,
             "workers": workers,
             "daemon_id": pool.daemon_id
         })
@@ -755,17 +806,14 @@ def run():
             pool.add_log(f"--- [세션 만료 감지] {cn} 조회 전 재로그인 시도 ---")
 
             with pool.lock:
-                # 10분 지났으면 실패 횟수 초기화하고 다시 기회 주기
-                if pool.consecutive_login_failures >= 3:
-                    if time.time() - pool.last_failure_time > pool.fail_cooldown:
-                        pool.add_log("🔄 [자동복구] 10분이 경과하여 로그인 실패 횟수를 초기화하고 재시도합니다.")
-                        pool.consecutive_login_failures = 0
-                    else:
-                        wait_min = int((pool.fail_cooldown - (time.time() - pool.last_failure_time)) / 60)
-                        pool.add_log(f"🕒 [대기중] 연속 로그인 실패로 보호 모드 작동 중... ({wait_min}분 후 자동 재시도)")
-                        pool.return_driver(driver)
-                        driver = None
-                        return jsonify({"ok": False, "error": f"로그인 연속 실패 보호 모드. 약 {wait_min}분 후 자동 재시도됩니다."})
+                if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+                    pool.add_log("🛑 [보호모드] 자동 로그인 3회 실패 상태라 세션 복구 재로그인을 중지합니다.")
+                    pool.return_driver(driver)
+                    driver = None
+                    return jsonify({
+                        "ok": False,
+                        "error": "자동 로그인 3회 실패 보호 모드입니다. ETrans 계정/비밀번호 확인 후 BOT 정지로 초기화해 주세요."
+                    })
 
             # 세션이 죽었으면 다시 로그인 (pool에 저장된 계정 정보 사용)
             u_id = pool.current_user["id"]
@@ -797,6 +845,12 @@ def run():
                     "log": list(pool.log_buffer)
                 })
 
+            if not pool.reserve_login_attempt(f"{cn} 세션 복구"):
+                driver = None
+                return jsonify({
+                    "ok": False,
+                    "error": "자동 로그인 3회 실패 보호 모드입니다. ETrans 계정/비밀번호 확인 후 BOT 정지로 초기화해 주세요."
+                })
             res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
             if res[0]:
                 if pool.stop_requested.is_set():
@@ -826,23 +880,22 @@ def run():
                             "elapsed": round(time.time() - request_started, 1),
                             "log": list(pool.log_buffer)
                         })
-                    pool.consecutive_login_failures = 0 # 성공 시 즉시 0으로 초기화 (아침에 살아날 수 있는 핵심)
                     driver = res[0]
                     driver.used_port = target_port
                     pool.add_driver(driver, available=False)
+                pool.mark_login_success()
                 pool.add_log(f"--- [세션 복구 성공] {cn} 조회를 계속합니다. ---")
             else:
+                if _is_auth_failure_message(res[1]):
+                    pool.mark_auth_failure(res[1], f"{cn} 세션 복구")
                 with pool.lock:
-                    pool.consecutive_login_failures += 1
-                    pool.last_failure_time = time.time()
-
-                    if pool.consecutive_login_failures >= 3:
-                        pool.add_log("🛑 [보안 중단] 누적 로그인 3회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다. 비번을 확인하세요.")
+                    if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+                        pool.add_log("🛑 [보안 중단] 자동 로그인 3회 실패! 계정 잠금 방지를 위해 모든 자동 시도를 중지합니다.")
                         driver = None
-                        return jsonify({"ok": False, "error": "로그인 3회 연속 실패로 보안 모드 발동. 비번 확인 후 수동으로 다시 시작해 주세요."})
+                        return jsonify({"ok": False, "error": "자동 로그인 3회 실패 보호 모드입니다. 계정 확인 후 BOT 정지로 초기화해 주세요."})
 
                 driver = None
-                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/3): {res[1]}"})
+                return jsonify({"ok": False, "error": f"세션 만료 및 재로그인 실패({pool.consecutive_login_failures}/{MAX_AUTO_LOGIN_ATTEMPTS}): {res[1]}"})
 
         # 사이트 차단 방지를 위한 짧은 릴레이 지연
         time.sleep(random.uniform(0.2, 0.45))
@@ -1113,7 +1166,7 @@ def session_keeper():
                 continue
             if not pool.current_user or not pool.current_user.get("id"):
                 continue
-            if pool.consecutive_login_failures >= 3:
+            if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
                 continue
             keeper_generation = pool.generation
         pool.ensure_capacity_async(reason="session_keeper")
@@ -1170,8 +1223,8 @@ def session_keeper():
                         try: driver.quit()
                         except: pass
                         continue
-                    if pool.consecutive_login_failures >= 3:
-                        pool.add_log("❌ [백그라운드 세션관리] 연속 로그인 3회 실패 상태. 복구 시도 취소.")
+                    if pool.consecutive_login_failures >= MAX_AUTO_LOGIN_ATTEMPTS:
+                        pool.add_log("❌ [백그라운드 세션관리] 자동 로그인 3회 실패 보호 모드. 복구 시도 취소.")
                         try: driver.quit()
                         except: pass
                         if driver in pool.drivers:
@@ -1195,6 +1248,8 @@ def session_keeper():
                 if pool.is_cancelled(keeper_generation):
                     continue
 
+                if not pool.reserve_login_attempt("백그라운드 세션관리 복구"):
+                    continue
                 res = login_and_prepare(u_id, u_pw, log_callback=None, show_browser=show_browser, port=target_port)
                 if res[0]:
                     if pool.is_cancelled(keeper_generation):
@@ -1206,16 +1261,16 @@ def session_keeper():
                             try: res[0].quit()
                             except: pass
                             continue
-                        pool.consecutive_login_failures = 0
                         new_driver = res[0]
                         new_driver.used_port = target_port
                         new_driver.last_activity = time.time()
                         pool.add_driver(new_driver)
+                    pool.mark_login_success()
                     pool.add_log(f"--- [백그라운드 세션관리] 복구 성공! (포트: {target_port}) ---")
                 else:
-                    with pool.lock:
-                        pool.consecutive_login_failures += 1
-                    pool.add_log(f"❌ [백그라운드 세션관리] 복구 실패({pool.consecutive_login_failures}/3): {res[1]}")
+                    if _is_auth_failure_message(res[1]):
+                        pool.mark_auth_failure(res[1], "백그라운드 세션관리 복구")
+                    pool.add_log(f"❌ [백그라운드 세션관리] 복구 실패({pool.consecutive_login_failures}/{MAX_AUTO_LOGIN_ATTEMPTS}): {res[1]}")
             else:
                 # 정상적인 드라이버면 다시 큐에 넣음
                 pool.return_driver(driver)
