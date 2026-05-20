@@ -1,3 +1,21 @@
+## [2026-05-21] Android 운행 완료 후 crash dialog 방지 (v5.14.90 / APK v5.11.25)
+### 핵심
+- 어제 패치는 `endTrip()` 이후 앱 강제 종료 호출만 제거했지만, 네이티브 앱 종료/오버레이 플러그인에는 `android.os.Process.killProcess()`가 남아 Samsung One UI에서 “앱에 버그가 있어 종료” 팝업을 만들 수 있었습니다.
+- `MainActivity.cleanExitApp()`와 `OverlayPlugin.exitAppForce()`에서 프로세스 kill을 제거하고, 명시 종료는 native trip prefs/keepalive/오버레이 서비스만 정리한 뒤 Android 정상 종료 API로 처리하게 했습니다.
+- `OverlayPlugin.stopService()`가 서비스를 새로 `startForegroundService()`로 깨운 뒤 끄던 패턴을 제거했습니다. 운행 완료 정리는 새 포그라운드 서비스를 만들지 않고 prefs/keepalive를 먼저 지운 뒤 `stopService()`만 호출합니다.
+- 앱 시작 시 저장된 `activeTrip`이 서버상 이미 완료/없음이면 JS 상태뿐 아니라 native 오버레이/GPS 상태까지 같이 정리해 완료 후 좀비 서비스가 앱을 다시 흔들지 않게 했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 10개 통과
+- `node --check web/driver-src/modules/trip.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.25/versionCode 5166
+### 변경 파일
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`
+- `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/driver-src/modules/trip.js`, `web/tests/driverMapCamera.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/version.json`, `web/public/apk/els_driver.apk`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-20] 연간·월간실적 테이블 금액 검색 보정 (v5.14.89)
 ### 핵심
 - 연간·월간실적 테이블은 헤더 클릭 정렬과 검색 필터를 이미 갖고 있었지만, 금액 검색이 `search_text ILIKE '%검색어%'`에 걸리며 Supabase statement timeout으로 실패할 수 있었습니다.

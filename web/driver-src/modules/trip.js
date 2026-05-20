@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5165';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5165';
+import { Store, State, BASE_URL } from './store.js?v=5166';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5166';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5165';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5165';
+} from './gps.js?v=5166';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5166';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -292,7 +292,14 @@ export async function loadCurrentTrip() {
         startTripStatusTimer();
       }
     } else {
+      stopOverlayService();
+      stopGPS();
       Store.rm('activeTrip');
+      State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
+      setTripStatus('idle');
+      updateTripUI();
+      updateTripStatusLine();
+      remoteLog(`[TRIP] 저장 운행 ${saved.id} 서버 상태 ${data?.status || 'none'} — 로컬/네이티브 정리`, 'TRIP_RECOVER');
     }
   } catch (e) { console.warn('loadCurrentTrip error', e); }
 }
@@ -435,7 +442,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5165');
+  const gpsModule = await import('./gps.js?v=5166');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>

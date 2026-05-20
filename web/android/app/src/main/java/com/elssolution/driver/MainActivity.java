@@ -75,26 +75,27 @@ public class MainActivity extends BridgeActivity {
         return tripId != null && !tripId.trim().isEmpty();
     }
 
-    private void cleanExitApp() {
+    private void clearNativeTripState() {
         getSharedPreferences("CapacitorStorage", MODE_PRIVATE)
             .edit().putString("EXPLICIT_EXIT", "true").apply();
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
+            .edit()
+            .remove(KEY_TRIP_ID)
+            .remove(KEY_START_TIME)
+            .remove("SERVICE_HEARTBEAT")
+            .apply();
+        ServiceKeepaliveReceiver.cancelPing(this);
+    }
+
+    private void cleanExitApp() {
+        clearNativeTripState();
         try {
-            Intent stopIntent = new Intent(this, FloatingWidgetService.class);
-            stopIntent.setAction("STOP_SERVICE");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(stopIntent);
-            } else {
-                startService(stopIntent);
-            }
-            stopService(stopIntent);
+            stopService(new Intent(this, FloatingWidgetService.class));
         } catch (Exception ignored) {}
         finishAffinity();
-        finishAndRemoveTask();
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            android.os.Process.killProcess(android.os.Process.myPid());
-        }, 250);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try { finishAndRemoveTask(); } catch (Exception ignored) {}
+        }
     }
 
     // ─── 배터리 최적화 제외 요청 (JS에서 호출) ────────────────────

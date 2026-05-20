@@ -1,11 +1,11 @@
-# ELS MISSION CONTROL (v5.14.89 / APK v5.11.24)
+# ELS MISSION CONTROL (v5.14.90 / APK v5.11.25)
 
-> 최신 업데이트: 연간·월간실적 테이블 검색을 금액 표기 차이와 DB statement timeout에 덜 흔들리도록 보정했습니다.
+> 최신 업데이트: Android 운행 완료/앱 종료 전후 Samsung crash dialog를 만들 수 있는 process kill과 위험한 서비스 재시작 종료 패턴을 제거했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.89
+- **웹 버전**: v5.14.90
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
-- **APK 버전**: v5.11.24
+- **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - AI 어시스턴트 페이지 하단에 구글캘린더형 월간 행사일정 매트릭스를 추가하고, 관리자/본사 계정에서 일정 등록·수정·삭제와 공지범위 선택을 지원한다.
@@ -25,6 +25,7 @@
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
   - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정해 상단 공백을 줄인다.
   - Android 운행종료는 TRIP_END/서버 완료 후 오버레이·GPS·activeTrip·UI만 정리하고 앱 화면은 유지한다.
+  - Android 앱 종료/오버레이 종료는 `killProcess()`를 쓰지 않고, 서버상 완료된 저장 운행 발견 시 native trip/service 상태까지 정리한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
 
 ## ACTIVE SYSTEMS
@@ -34,7 +35,7 @@
 | Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 자동 워밍업 |
 | ELS Bot | 계정 확인 필요 | Selenium 워커 2개, 자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
-| Android 드라이버 앱 | 정상 | APK v5.11.24 빌드 완료 |
+| Android 드라이버 앱 | 정상 | APK v5.11.25 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -53,10 +54,7 @@
 - [x] v5.14.65: Android 기존 플로팅 위젯 최소화 표시 복구
 - [x] v5.14.66: Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리
 - [x] v5.14.67: 월간실적 그래프 단위와 세분화 탭 기준 보정
-- [x] v5.14.69: 선적관리 컨테이너 자동조회 DB 설정과 03:00/03:10 스케줄
-- [x] v5.14.70: 종합실적 선택 단위별 그래프 단위 보정과 상단 바로가기 제거
-- [x] v5.14.71: 연간실적 장기/직계약 그래프 콜아웃과 요일 분석 재구성
-- [x] v5.14.72: 월간실적 보고서 표 전용파서 raw preview 복원과 총액 덮어쓰기 안전장치
+- [x] v5.14.69-72: 선적관리 스케줄, 종합/연간/월간실적 분석 보정
 - [x] v5.14.73: 월간실적 보고서 표 없음 배너 제거
 - [x] v5.14.74: 실적관리 하위 페이지 테이블 하단 슬라이드와 모바일 폭 보정
 - [x] v5.14.75: 컨테이너 Bot 자동 워밍업과 수동 정지 버튼
@@ -69,9 +67,10 @@
 - [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
-- [x] v5.14.85-89: ELS Bot 보호모드, 종합실적 건수 비중, 관리자 로그/행사일정, 실적 금액 검색
+- [x] v5.14.85-90: ELS Bot 보호모드, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지
 
 ## RECENT CHANGES
+- **v5.14.90**: Android 앱 종료/오버레이 종료 경로에 남아 있던 `android.os.Process.killProcess()`를 제거했다. 운행 종료 후 서버상 이미 완료된 저장 운행을 앱이 발견하면 `activeTrip`뿐 아니라 native trip prefs, keepalive 알람, 오버레이 서비스까지 같이 정리해 완료 뒤 앱이 꺼지거나 crash dialog가 뜨는 흐름을 막았다. APK v5.11.25.
 - **v5.14.89**: 연간·월간실적 테이블 검색이 `search_text ILIKE` statement timeout에 걸리던 흐름을 피하도록 현재 범위 행을 가져온 뒤 서버에서 정규화 필터링한다. `575,000`, `575000`, `575000.0`처럼 금액 표기가 달라도 같은 검색어로 잡히며, 검색창 placeholder와 헤더 정렬 title도 보강했다.
 - **v5.14.88**: AI 어시스턴트 하단에 `행사일정` 월간 캘린더를 추가했다. `/api/intranet/events` 계열 API와 Supabase SQL `20260520_intranet_event_calendar.sql`을 준비했고, 일정 등록 시 공지범위를 선택하며 대상 사용자는 7일전/3일전/1일전/당일 접속 시 공지 팝업을 받는다. 팝업의 `다시 보지 않음`은 사용자·일정·알림시점 단위로 저장된다.
 - **v5.14.87**: 관리자 활동 로그 조회 API가 `profiles`/`user_roles`에서 사용자 이름을 보강해 `user_name`으로 반환한다. 활동 로그 관리 화면은 이름, 이메일, 접근IP를 같은 식별 칸에 정리하고, 선택 CSV 다운로드에도 이름/접근IP 컬럼을 포함한다.
@@ -81,19 +80,11 @@
 - **v5.14.83**: 선적관리 컨테이너 자동조회가 482건 규모에서 900초 read timeout을 만나 스트림이 닫히고, Bot 응답 생성기의 `GeneratorExit`가 데몬 `/stop`까지 호출하던 문제를 보정했다. Core 자동조회 스트림 timeout 기본값은 3600초로 늘리고, 명시 `stopOnDisconnect=true`가 아닌 연결 종료는 데몬 전체 stop으로 전파하지 않는다.
 - **v5.14.82**: 운행종료 성공 뒤 `exitAppForce()`를 예약 호출하던 흐름을 제거했다. 이제 운행종료는 TRIP_END 기록, 서버 complete, 오버레이 서비스 중지, JS GPS watcher 중지, activeTrip 제거, 운행 UI 초기화까지만 수행하고 앱 화면은 계속 유지한다. 회귀 테스트도 앱 태스크 제거 금지 조건으로 바꿨다. APK v5.11.24.
 - **v5.14.81**: 월간실적 모바일 480px 이하에서 `분석 기준/전체` 제목 박스가 column flex 안의 기존 `flex-basis: 220px`을 높이로 먹어 상단이 비어 보이던 문제를 수정했다. 모바일에서는 제목 박스가 내용 높이만 쓰고 전체 폭을 차지하도록 보정했다.
-- **v5.14.80**: ETrans 로그인 팝업의 `로그인을 5회 이상 실패하여 정지된 계정`/`임시비밀번호` 문구를 `LOGIN_ACCOUNT_LOCKED`로 분리했다. 저장 계정 워밍업은 이 인증 오류를 만나면 실패 횟수를 잠금 상태로 표시하고 추가 자동 로그인 시도를 중단한다.
-- **v5.14.79**: ELS Bot 03:00 일일 리셋이 별도 단발 로그인 스레드를 직접 만들던 흐름을 공통 `_start_login_pool(... force_restart=True)` 경로로 합쳤다. 기존 워커를 강제 정리한 뒤 저장 계정으로 백그라운드 워밍업을 시작하고, 메뉴 진입 타임아웃 같은 일시 실패는 워커별 최대 3회 재시도한다.
-- **v5.14.78**: 월간실적 파일 설정에서 기준연도를 바꾸거나 월 목록을 재생성할 때 본연도 12개월이 `이월`로 잘못 분류되지 않도록 슬롯 정규화 기준을 선택한 기준연도에 맞췄다. 저장 슬롯에 `carryover` 값이 있으면 그 값을 우선하고, 없을 때만 선택 기준연도로 보정한다.
 ## VERIFICATION
-- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
-- `node --check web/lib/asan-branch-db.js "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js"`: 통과
-- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
-- `npm.cmd run lint`: 통과
-- `npm.cmd run build`: 통과, `/employees/ask` 14.7kB / First Load JS 167kB
-- Browser `http://localhost:3002/employees/ask?debug=true`: 데스크탑 및 360x780 뷰포트에서 행사일정 렌더/가로 스크롤 없음 확인
-- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
-- `npm.cmd run lint`: 통과
-- `npm.cmd run build`: 통과, `/admin/logs` 5.07kB / First Load JS 93.5kB
+- `node --test web/tests/driverMapCamera.test.mjs`: 10개 통과
+- `node --check web/driver-src/modules/trip.js`: 통과
+- `npm.cmd run lint -- driver-src/modules/trip.js tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.25/versionCode 5166
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

@@ -119,7 +119,28 @@ test('운행 종료는 오버레이/GPS만 정리하고 앱 화면은 유지한�
   assert.equal(endTripBody.includes('scheduleAppExitAfterTripEnd'), false, 'endTrip must not schedule app exit');
   assert.equal(endTripBody.includes('exitAppForce'), false, 'endTrip must not hard-exit the app');
   assert.equal(endTripBody.includes('finishAndRemoveTask'), false, 'endTrip must not remove Android task');
-  assert.ok(stopServiceBody.includes('remove(KEY_TRIP_ID).remove(KEY_START_TIME)'), 'stopService should clear active trip prefs');
+  assert.ok(stopServiceBody.includes('clearNativeTripState(context)'), 'stopService should clear active trip prefs');
+  assert.equal(stopServiceBody.includes('startForegroundService'), false, 'stopService must not start a foreground service just to stop it');
+  assert.equal(stopServiceBody.includes('startService'), false, 'stopService must not start a service just to stop it');
+});
+
+test('앱 종료 경로는 Samsung crash dialog를 만들 수 있는 process kill을 쓰지 않는다', () => {
+  const cleanExitStart = mainActivitySource.indexOf('private void cleanExitApp');
+  const cleanExitEnd = mainActivitySource.indexOf('// ─── 배터리', cleanExitStart);
+  const cleanExitBody = mainActivitySource.slice(cleanExitStart, cleanExitEnd);
+  const exitForceStart = overlayPluginSource.indexOf('public void exitAppForce');
+  const exitForceEnd = overlayPluginSource.indexOf('// JS → 배터리', exitForceStart);
+  const exitForceBody = overlayPluginSource.slice(exitForceStart, exitForceEnd);
+  const loadCurrentTripStart = tripSource.indexOf('export async function loadCurrentTrip');
+  const loadCurrentTripEnd = tripSource.indexOf('// ─── 운행 시작', loadCurrentTripStart);
+  const loadCurrentTripBody = tripSource.slice(loadCurrentTripStart, loadCurrentTripEnd);
+
+  assert.equal(mainActivitySource.includes('killProcess'), false, 'MainActivity must not kill the app process');
+  assert.equal(overlayPluginSource.includes('killProcess'), false, 'OverlayPlugin must not kill the app process');
+  assert.ok(cleanExitBody.includes('clearNativeTripState()'), 'native exit should clear trip/service state');
+  assert.ok(exitForceBody.includes('clearNativeTripState(context)'), 'plugin exit should clear trip/service state');
+  assert.ok(loadCurrentTripBody.includes('stopOverlayService()'), 'server-completed saved trips should stop native service');
+  assert.ok(loadCurrentTripBody.includes("Store.rm('activeTrip')"), 'server-completed saved trips should clear local active trip');
 });
 
 test('핵심 진행 버튼은 불가 상태 빨강, 진행 가능 상태 파랑을 사용한다', () => {

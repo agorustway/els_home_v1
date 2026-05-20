@@ -36,6 +36,22 @@ public class OverlayPlugin extends Plugin {
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
 
+    private void clearNativeTripState(Context context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_TRIP_ID)
+            .remove(KEY_START_TIME)
+            .remove("SERVICE_HEARTBEAT")
+            .apply();
+        ServiceKeepaliveReceiver.cancelPing(context);
+    }
+
+    private boolean hasNativeTrip(Context context) {
+        String tripId = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_TRIP_ID, "");
+        return tripId != null && !tripId.trim().isEmpty();
+    }
+
     // JS → 오버레이 권한 확인
     @PluginMethod
     public void checkPermission(PluginCall call) {
@@ -80,6 +96,7 @@ public class OverlayPlugin extends Plugin {
     // JS → 서비스 시작 (운행 시작 시)
     @PluginMethod
     public void startService(PluginCall call) {
+        Context context = getContext();
         String tripId = call.getString("tripId", "");
         String container = call.getString("container", "");
         String status = call.getString("status", "driving");
@@ -87,28 +104,34 @@ public class OverlayPlugin extends Plugin {
         long startTime = call.getLong("startTimeMillis", System.currentTimeMillis());
         Boolean visible = call.getBoolean("visible");
 
-        if (tripId != null && !tripId.trim().isEmpty()) {
-            getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putString(KEY_TRIP_ID, tripId)
-                .putLong(KEY_START_TIME, startTime)
-                .apply();
-        }
+        try {
+            if (tripId != null && !tripId.trim().isEmpty()) {
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(KEY_TRIP_ID, tripId)
+                    .putLong(KEY_START_TIME, startTime)
+                    .apply();
+            }
 
-        Intent intent = new Intent(getContext(), FloatingWidgetService.class);
-        intent.putExtra("tripId", tripId);
-        intent.putExtra("container", container);
-        intent.putExtra("status", status);
-        intent.putExtra("driverId", driverId);
-        intent.putExtra("startTimeMillis", startTime);
-        intent.putExtra("visible", visible != null && visible);
+            Intent intent = new Intent(context, FloatingWidgetService.class);
+            intent.putExtra("tripId", tripId);
+            intent.putExtra("container", container);
+            intent.putExtra("status", status);
+            intent.putExtra("driverId", driverId);
+            intent.putExtra("startTimeMillis", startTime);
+            intent.putExtra("visible", visible != null && visible);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getContext().startForegroundService(intent);
-        } else {
-            getContext().startService(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+            call.resolve(new JSObject().put("started", true));
+        } catch (Exception e) {
+            clearNativeTripState(context);
+            sendRemoteLog("startService failed: " + e.getMessage(), "SERVICE_ERR");
+            call.reject("오버레이 서비스 시작 실패: " + e.getMessage());
         }
-        call.resolve(new JSObject().put("started", true));
     }
 
     // JS → 오버레이 위젯 표시/숨김 제어
@@ -133,13 +156,19 @@ public class OverlayPlugin extends Plugin {
     // JS → 서비스 상태 업데이트
     @PluginMethod
     public void updateStatus(PluginCall call) {
+        Context context = getContext();
+        if (!hasNativeTrip(context)) {
+            call.resolve(new JSObject().put("updated", false).put("reason", "no_active_trip"));
+            return;
+        }
+
         String status = call.getString("status", "driving");
         String container = call.getString("container", "");
         String gpsText = call.getString("gpsText", "");
         String gpsColor = call.getString("gpsColor", "");
         String address = call.getString("address", "");
 
-        Intent intent = new Intent(getContext(), FloatingWidgetService.class);
+        Intent intent = new Intent(context, FloatingWidgetService.class);
         intent.setAction("UPDATE_STATUS");
         intent.putExtra("status", status);
         intent.putExtra("container", container);
@@ -152,54 +181,45 @@ public class OverlayPlugin extends Plugin {
             intent.putExtra("isRealtime", isRealtime);
         }
         
-        getContext().startService(intent);
-        call.resolve(new JSObject().put("updated", true));
+        try {
+            context.startService(intent);
+            call.resolve(new JSObject().put("updated", true));
+        } catch (Exception e) {
+            sendRemoteLog("updateStatus failed: " + e.getMessage(), "SERVICE_ERR");
+            call.resolve(new JSObject().put("updated", false).put("error", e.getMessage()));
+        }
     }
 
     // JS → 서비스 종료
     @PluginMethod
     public void stopService(PluginCall call) {
-        getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
-        Intent stopCommand = new Intent(getContext(), FloatingWidgetService.class);
-        stopCommand.setAction("STOP_SERVICE");
+        Context context = getContext();
+        clearNativeTripState(context);
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                getContext().startForegroundService(stopCommand);
-            } else {
-                getContext().startService(stopCommand);
-            }
-        } catch (Exception ignored) {}
-        getContext().stopService(new Intent(getContext(), FloatingWidgetService.class));
-        call.resolve(new JSObject().put("stopped", true));
+            context.stopService(new Intent(context, FloatingWidgetService.class));
+            call.resolve(new JSObject().put("stopped", true));
+        } catch (Exception e) {
+            sendRemoteLog("stopService failed: " + e.getMessage(), "SERVICE_ERR");
+            call.resolve(new JSObject().put("stopped", false).put("error", e.getMessage()));
+        }
     }
 
-    // JS → 앱 강제 종료 (알림 잔상 방지용 강력한 종료)
-    // JS → 앱 완전 강제 종료 (좀비 알림 사살용)
+    // JS → 앱 종료 (Samsung crash dialog 방지를 위해 process kill 금지)
     @PluginMethod
     public void exitAppForce(PluginCall call) {
         Context context = getContext();
         context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
             .edit().putString("EXPLICIT_EXIT", "true").apply();
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().remove(KEY_TRIP_ID).remove(KEY_START_TIME).apply();
+        clearNativeTripState(context);
         try {
-            Intent stopCommand = new Intent(context, FloatingWidgetService.class);
-            stopCommand.setAction("STOP_SERVICE");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(stopCommand);
-            } else {
-                context.startService(stopCommand);
-            }
             context.stopService(new Intent(context, FloatingWidgetService.class));
         } catch (Exception ignored) {}
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 getActivity().finishAffinity();
-                getActivity().finishAndRemoveTask();
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    android.os.Process.killProcess(android.os.Process.myPid());
-                }, 250);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    try { getActivity().finishAndRemoveTask(); } catch (Exception ignored) {}
+                }
             });
         }
         call.resolve(new JSObject().put("exited", true));
