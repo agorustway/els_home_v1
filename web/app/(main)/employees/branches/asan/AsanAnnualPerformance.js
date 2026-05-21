@@ -1317,7 +1317,7 @@ export default function AsanAnnualPerformance() {
                         <button className={activeTab === 'analytics' ? styles.segmentActive : ''} onClick={() => setActiveTab('analytics')}>분석</button>
                         <button className={activeTab === 'table' ? styles.segmentActive : ''} onClick={() => setActiveTab('table')}>테이블</button>
                     </div>
-                    <button className={styles.ghostBtn} onClick={() => setShowSettings(true)}>파일 설정</button>
+                    <button className={styles.ghostBtn} onClick={() => setShowSettings(true)}>설정</button>
                     <button className={styles.primaryBtn} onClick={syncNow} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
                 </div>
             </div>

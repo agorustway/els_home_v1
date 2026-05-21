@@ -1,3 +1,15 @@
+## [2026-05-21] 실적관리 설정 버튼명 통일 (v5.14.101)
+### 핵심
+- 연간실적 상단의 `파일 설정` 버튼을 월간실적과 같은 `설정`으로 바꿔 실적관리 하위 화면 버튼명을 맞췄습니다.
+- 설정 모달 제목은 사용자가 어떤 파일 설정인지 바로 알 수 있도록 `연간실적 파일 설정`/`월간실적 파일 설정` 문구를 유지했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 행사일정 클릭 상세 UX와 모바일 하단 시트 보강 (v5.14.99)
 ### 핵심
 - 월간 매트릭스의 일정 칩 클릭 시 일자/시간/장소/공지범위/상세내용/접속 팝업 시점을 카드형 상세 모달로 보여주도록 재구성했습니다.

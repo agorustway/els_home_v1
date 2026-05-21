@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.100 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.101 / APK v5.11.25)
 
-> 최신 업데이트: 선적관리 컨테이너 수동 조회를 NAS 백그라운드 job으로 분리해 페이지 이동 후에도 조회/저장이 계속되게 했습니다.
+> 최신 업데이트: 실적관리 월간실적/연간실적 상단 버튼명을 `설정`으로 통일했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.100
+- **웹 버전**: v5.14.101
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -45,7 +45,7 @@
 - **상세 화면**: `Hero -> 주요 필드 Grid -> 메모/첨부 Section` 순서.
 - **버튼**: 기본 32px, 모바일 29~30px. 등록/수정/삭제/목록 위치 통일.
 - **로딩 안내**: 아산지점 모든 페이지 초기 로딩 문구는 `데이터를 불러오는 중입니다...`, 폰트 `0.86rem / 800 / #64748b`.
-- **실적관리**: 상단 `실적관리` 아래 `종합실적 / 월간실적 / 연간실적`; 연간실적은 조사범위 컨트롤 바로 아래 분석섹션 탭 고정.
+- **실적관리**: 상단 `실적관리` 아래 `종합실적 / 월간실적 / 연간실적`; 월간실적/연간실적 상단 설정 버튼명은 `설정`으로 통일.
 
 ## MILESTONES
 - [x] Phase 1-6: AI 어시스턴트 및 RAG 기반 구축
@@ -70,9 +70,10 @@
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 - [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-100: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job
+- [x] v5.14.93-101: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job, 실적 설정 버튼명 통일
 
 ## RECENT CHANGES
+- **v5.14.101**: 연간실적 상단의 `파일 설정` 버튼을 월간실적과 같은 `설정`으로 바꿔 실적관리 하위 화면 버튼명을 통일했다. 파일 설정 모달 제목은 업무 맥락을 위해 `연간실적 파일 설정`/`월간실적 파일 설정`을 유지한다.
 - **v5.14.100**: 선적관리 컨테이너 수동 조회를 브라우저 스트림 의존 방식에서 NAS core의 `/container-lookup/jobs` 백그라운드 작업으로 분리했다. 작업은 BOT 스트림을 core가 직접 소비하며 부분 결과를 Supabase에 저장하므로 페이지 이동/복귀와 무관하게 계속 진행된다. 화면은 job id를 localStorage 세션에 남기고 복귀 시 job 상태와 저장 이력을 다시 읽어 완료/실패 건수를 복원한다.
 - **v5.14.99**: 행사일정 월간 매트릭스에서 일정 칩을 누르면 상세 모달로 일자, 시간, 장소, 공지범위, 상세 내용, 접속 팝업 시점을 카드와 칩으로 정리해 보여준다. 날짜 숫자는 해당일 전체 일정 목록을 열고, `+N 더보기`도 전체 목록으로 연결한다. 모바일은 360x780 기준 하단 시트형 모달과 1열 상세 메타로 전환한다.
 - **v5.14.98**: 행사일정을 AI 어시스턴트 화면 하단에서 분리해 `/employees/events` 단독 페이지로 만들고, 인트라넷 홈 사이드 메뉴의 `AI 어시스턴트` 바로 아래와 상단 `직원 서비스` 메뉴에 노출했다. AI 어시스턴트 페이지는 채팅 전용 화면으로 되돌렸다.
@@ -80,11 +81,9 @@
 - **v5.14.95**: 연간실적 `요일` 분석을 반복 카드형에서 관리자용 포지션 맵으로 다시 정리했다. 상단 4개 요약은 매출 중심/업무량/수익성/점검 요일만 잡고, 매출 분포 리본과 7요일 세로 포지션 맵에서 요일별 비중 차이를 색상·높이·순위로 구분한다.
 - **v5.14.94**: 관리자 활동 로그 검색어를 `q`로 받아 `profiles.full_name`, `user_roles.name`, 사용자 이메일, 기존 로그 이메일을 먼저 조회한 뒤 대상 이메일의 로그를 가져오게 했다. 화면 검색창도 `이름 또는 이메일 검색`으로 바꿨고 기존 `email` 파라미터는 호환용으로 유지한다.
 - **v5.14.92**: 월간실적 자동감지 순회 대상을 실제 존재하는 파일 슬롯으로 먼저 좁혀 6월 이후 미생성 파일이 1~5월 변경 감지를 막지 않게 했다. 현재처럼 1월 파일이 수정된 경우 이전 파일 120초 주기로 다시 잡혀 외부 Node importer가 Supabase monthly 원장을 갱신한다.
-- **v5.14.91**: 선적관리 컨테이너 조회 100건 이상은 `stableBatchMode`로 전환해 병렬 1개, 워커대기 300초, 제출간격 2초를 기본값으로 쓴다. 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회하고, 워커 대기 시간 초과는 재시도 대상으로 바꿨다. 새벽 자동조회도 같은 안정 모드로 호출하며, 비밀번호성 인증 실패는 즉시 전체 로그인 시도를 중단한다.
 ## VERIFICATION
-- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
-- `python -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/jobs/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

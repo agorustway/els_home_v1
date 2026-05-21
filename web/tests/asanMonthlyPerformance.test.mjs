@@ -225,7 +225,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /const searchEffectReadyRef = useRef\(false\)/);
   assert.match(component, /\[baseYear, extraMonths, activeTab\]\); \/\/ eslint-disable-line react-hooks\/exhaustive-deps/);
   assert.doesNotMatch(component, /\[fetchData\]\);/);
-  assert.match(component, /파일 설정/);
+  assert.match(component, /setShowSettings\(true\)}>설정<\/button>/);
+  assert.match(component, /월간실적 파일 설정/);
   assert.match(component, /NAS 동기화/);
   assert.match(component, /fetchSyncStatus/);
   assert.match(component, /source: 'status'/);
