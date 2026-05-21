@@ -29,6 +29,21 @@
 - `web/tests/asanAnnualPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
+## [2026-05-21] 월간실적 차량 TOP10 매입액 기준 전환 (v5.14.102)
+### 핵심
+- 월간실적 `구성·차량 성과` 표의 차량 TOP10 정렬 기준을 청구액에서 매입액으로 바꿨습니다.
+- 비중 막대와 금액 컬럼도 차량 기준에 맞춰 매입액을 표시하고, 헤더 문구를 `매입액 기준`으로 수정했습니다.
+- 운송사/차량번호 헤더와 차량명 값을 우측 정렬해 숫자 컬럼과 시선 흐름을 맞췄습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 실적관리 설정 버튼명 통일 (v5.14.101)
 ### 핵심
 - 연간실적 상단의 `파일 설정` 버튼을 월간실적과 같은 `설정`으로 바꿔 실적관리 하위 화면 버튼명을 맞췄습니다.
@@ -387,21 +402,6 @@
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
 - `git diff --check`: 통과
 ### 변경 파일
-- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
-- `web/tests/asanMonthlyPerformance.test.mjs`
-- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
-
-## [2026-05-21] 월간실적 차량 TOP10 매입액 기준 전환 (v5.14.102)
-### 핵심
-- 월간실적 `구성·차량 성과` 표의 차량 TOP10 정렬 기준을 청구액에서 매입액으로 바꿨습니다.
-- 비중 막대와 금액 컬럼도 차량 기준에 맞춰 매입액을 표시하고, 헤더 문구를 `매입액 기준`으로 수정했습니다.
-- 운송사/차량번호 헤더와 차량명 값을 우측 정렬해 숫자 컬럼과 시선 흐름을 맞췄습니다.
-### 검증
-- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
-- `git diff --check`: 통과
-### 변경 파일
-- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
 - `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
 - `web/tests/asanMonthlyPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
