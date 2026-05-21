@@ -277,6 +277,7 @@
 }
 
 .detailModal,
+.agendaModal,
 .formModal {
     width: min(720px, 100%);
     max-height: min(760px, calc(100dvh - 36px));
@@ -289,7 +290,13 @@
 }
 
 .detailModal {
-    width: min(520px, 100%);
+    width: min(640px, 100%);
+    padding: 0;
+    overflow-y: auto;
+}
+
+.agendaModal {
+    width: min(560px, 100%);
 }
 
 .modalHeader {
@@ -316,6 +323,7 @@
 }
 
 .closeBtn {
+    flex: 0 0 auto;
     width: 32px;
     height: 32px;
     border: 1px solid #cbd5e1;
@@ -327,30 +335,215 @@
     line-height: 1;
 }
 
-.detailBody {
+.detailHero {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    padding: 18px;
+    background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #ecfeff 100%);
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detailDateCard {
+    width: 82px;
+    min-height: 94px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    color: #334155;
-    font-size: 0.88rem;
+    align-items: center;
+    justify-content: center;
+    color: #1e3a8a;
 }
 
-.detailBody p {
-    margin: 0;
+.detailDateCard span,
+.detailDateCard small {
+    font-size: 0.72rem;
+    font-weight: 900;
 }
 
-.detailBody strong {
+.detailDateCard strong {
+    font-size: 2rem;
+    font-weight: 950;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+
+.detailHeroCopy {
+    min-width: 0;
+}
+
+.detailBadge {
     display: inline-flex;
-    width: 72px;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    margin-bottom: 8px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.detailHeroCopy p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.detailMetaGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 16px 18px 0;
+}
+
+.detailMetaCard {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.detailMetaCard span,
+.detailSectionTitle {
+    display: block;
+    margin-bottom: 5px;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.detailMetaCard strong {
+    display: block;
+    overflow-wrap: anywhere;
     color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 900;
+    line-height: 1.45;
+}
+
+.detailSection {
+    padding: 14px 18px 0;
+}
+
+.detailSection + .modalActions {
+    margin-top: 0;
+    padding: 16px 18px 18px;
+}
+
+.detailModal .detailSection:last-of-type {
+    padding-bottom: 18px;
 }
 
 .description {
     padding: 12px;
     border-radius: 8px;
     background: #f8fafc;
+    border: 1px solid #e2e8f0;
     white-space: pre-wrap;
     line-height: 1.6;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 650;
+    margin: 0;
+}
+
+.reminderPills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.reminderPills span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.agendaList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agendaItem {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 66px;
+    padding: 10px;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.agendaItem:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1);
+    transform: translateY(-1px);
+}
+
+.agendaTime {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.76rem;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+}
+
+.agendaContent {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agendaContent strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #0f172a;
+    font-size: 0.92rem;
+    font-weight: 900;
+}
+
+.agendaContent small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 750;
 }
 
 .modalActions,
@@ -512,6 +705,49 @@
     .fieldGrid {
         grid-template-columns: 1fr 1fr;
     }
+
+    .modalBackdrop {
+        align-items: flex-end;
+        padding: 10px;
+    }
+
+    .detailModal,
+    .agendaModal,
+    .formModal {
+        width: 100%;
+        max-height: calc(100dvh - 20px);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .detailHero {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .detailDateCard {
+        display: none;
+    }
+
+    .detailMetaGrid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px 14px 0;
+    }
+
+    .detailSection {
+        padding: 12px 14px 0;
+    }
+
+    .detailSection + .modalActions {
+        padding: 14px;
+    }
+
+    .detailModal .detailSection:last-of-type {
+        padding-bottom: 14px;
+    }
+
+    .agendaItem {
+        grid-template-columns: 64px minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 380px) {
@@ -554,8 +790,39 @@
     }
 
     .detailModal,
+    .agendaModal,
     .formModal {
         padding: 14px;
         max-height: calc(100dvh - 20px);
+    }
+
+    .detailModal {
+        padding: 0;
+    }
+
+    .detailHero {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .detailHeroCopy p {
+        -webkit-line-clamp: 3;
+    }
+
+    .agendaModal {
+        padding: 14px;
+    }
+
+    .agendaItem {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        min-height: auto;
+    }
+
+    .agendaTime {
+        justify-content: flex-start;
+        min-height: 28px;
+        padding: 0 9px;
+        width: fit-content;
     }
 }

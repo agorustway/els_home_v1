@@ -60,6 +60,7 @@ export default function IntranetEventCalendar() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [detailEvent, setDetailEvent] = useState(null);
+    const [agendaDate, setAgendaDate] = useState('');
     const [formOpen, setFormOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
     const [form, setForm] = useState(() => createEmptyForm());
@@ -75,6 +76,8 @@ export default function IntranetEventCalendar() {
         });
         return grouped;
     }, [events]);
+
+    const agendaEvents = useMemo(() => agendaDate ? (eventsByDate.get(agendaDate) || []) : [], [agendaDate, eventsByDate]);
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);
@@ -100,6 +103,7 @@ export default function IntranetEventCalendar() {
     const openCreateForm = (date = today) => {
         setEditingEvent(null);
         setDetailEvent(null);
+        setAgendaDate('');
         setForm(createEmptyForm(date));
         setFormOpen(true);
     };
@@ -107,6 +111,7 @@ export default function IntranetEventCalendar() {
     const openEditForm = (event) => {
         setEditingEvent(event);
         setDetailEvent(null);
+        setAgendaDate('');
         setForm({
             title: event.title || '',
             description: event.description || '',
@@ -118,6 +123,11 @@ export default function IntranetEventCalendar() {
             reminder_offsets: Array.isArray(event.reminder_offsets) && event.reminder_offsets.length > 0 ? event.reminder_offsets : EVENT_REMINDER_OFFSETS,
         });
         setFormOpen(true);
+    };
+
+    const openDetail = (event) => {
+        setAgendaDate('');
+        setDetailEvent(event);
     };
 
     const toggleAudience = (value) => {
@@ -189,6 +199,17 @@ export default function IntranetEventCalendar() {
         }
     };
 
+    const getDetailDateParts = (dateString) => {
+        const [year, monthNumber, dayNumber] = dateString.split('-').map(Number);
+        const weekday = WEEKDAYS[new Date(Date.UTC(year, monthNumber - 1, dayNumber)).getUTCDay()];
+        return {
+            day: String(dayNumber).padStart(2, '0'),
+            month: `${monthNumber}월`,
+            weekday,
+            full: `${dateString} (${weekday})`,
+        };
+    };
+
     return (
         <section className={styles.calendarShell} aria-labelledby="intranet-event-calendar-title">
             <div className={styles.header}>
@@ -232,8 +253,14 @@ export default function IntranetEventCalendar() {
                             <button
                                 type="button"
                                 className={styles.dayButton}
-                                onClick={() => canManage && openCreateForm(day.date)}
-                                title={canManage ? `${day.date} 일정 등록` : day.date}
+                                onClick={() => {
+                                    if (dayEvents.length > 0) {
+                                        setAgendaDate(day.date);
+                                        return;
+                                    }
+                                    if (canManage) openCreateForm(day.date);
+                                }}
+                                title={dayEvents.length > 0 ? `${day.date} 일정 보기` : canManage ? `${day.date} 일정 등록` : day.date}
                             >
                                 <span>{day.day}</span>
                                 {day.date === today && <span className={styles.todayMark}>오늘</span>}
@@ -244,7 +271,7 @@ export default function IntranetEventCalendar() {
                                         key={item.id}
                                         type="button"
                                         className={styles.eventChip}
-                                        onClick={() => setDetailEvent(item)}
+                                        onClick={() => openDetail(item)}
                                         title={`${item.title} · ${formatTimeRange(item)}`}
                                     >
                                         <span className={styles.eventTime}>{formatTimeRange(item)}</span>
@@ -252,8 +279,8 @@ export default function IntranetEventCalendar() {
                                     </button>
                                 ))}
                                 {dayEvents.length > visibleEvents.length && (
-                                    <button type="button" className={styles.moreChip} onClick={() => setDetailEvent(dayEvents[3])}>
-                                        +{dayEvents.length - visibleEvents.length}
+                                    <button type="button" className={styles.moreChip} onClick={() => setAgendaDate(day.date)}>
+                                        +{dayEvents.length - visibleEvents.length} 더보기
                                     </button>
                                 )}
                             </div>
@@ -264,26 +291,86 @@ export default function IntranetEventCalendar() {
 
             {loading && <div className={styles.loadingOverlay}>데이터를 불러오는 중입니다...</div>}
 
-            {detailEvent && (
-                <div className={styles.modalBackdrop} onClick={() => setDetailEvent(null)}>
-                    <div className={styles.detailModal} onClick={(event) => event.stopPropagation()}>
+            {agendaDate && (
+                <div className={styles.modalBackdrop} onClick={() => setAgendaDate('')}>
+                    <div className={styles.agendaModal} onClick={(event) => event.stopPropagation()}>
                         <div className={styles.modalHeader}>
                             <div>
-                                <span className={styles.modalDate}>{detailEvent.event_date} · {formatTimeRange(detailEvent)}</span>
-                                <h3 className={styles.modalTitle}>{detailEvent.title}</h3>
+                                <span className={styles.modalDate}>{getDetailDateParts(agendaDate).full}</span>
+                                <h3 className={styles.modalTitle}>이날의 행사일정 {agendaEvents.length}건</h3>
                             </div>
-                            <button type="button" className={styles.closeBtn} onClick={() => setDetailEvent(null)} aria-label="닫기">×</button>
+                            <button type="button" className={styles.closeBtn} onClick={() => setAgendaDate('')} aria-label="닫기">×</button>
                         </div>
-                        <div className={styles.detailBody}>
-                            {detailEvent.location && <p><strong>장소</strong>{detailEvent.location}</p>}
-                            <p><strong>공지범위</strong>{getAudienceLabel(detailEvent.audience_roles, audienceOptions)}</p>
-                            <p><strong>팝업공지</strong>{(detailEvent.reminder_offsets || EVENT_REMINDER_OFFSETS).map(getReminderLabel).join(', ')}</p>
-                            {detailEvent.description && <p className={styles.description}>{detailEvent.description}</p>}
+                        <div className={styles.agendaList}>
+                            {agendaEvents.map((item) => (
+                                <button key={item.id} type="button" className={styles.agendaItem} onClick={() => openDetail(item)}>
+                                    <span className={styles.agendaTime}>{formatTimeRange(item)}</span>
+                                    <span className={styles.agendaContent}>
+                                        <strong>{item.title}</strong>
+                                        <small>{item.location || '장소 미지정'} · {getAudienceLabel(item.audience_roles, audienceOptions)}</small>
+                                    </span>
+                                </button>
+                            ))}
                         </div>
                         {canManage && (
                             <div className={styles.modalActions}>
-                                <button type="button" className={styles.secondaryBtn} onClick={() => openEditForm(detailEvent)}>수정</button>
-                                <button type="button" className={styles.primaryBtn} onClick={() => openEditForm(detailEvent)}>관리</button>
+                                <button type="button" className={styles.primaryBtn} onClick={() => openCreateForm(agendaDate)}>이 날짜에 등록</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {detailEvent && (
+                <div className={styles.modalBackdrop} onClick={() => setDetailEvent(null)}>
+                    <div className={styles.detailModal} onClick={(event) => event.stopPropagation()}>
+                        <div className={styles.detailHero}>
+                            <div className={styles.detailDateCard} aria-hidden="true">
+                                <span>{getDetailDateParts(detailEvent.event_date).month}</span>
+                                <strong>{getDetailDateParts(detailEvent.event_date).day}</strong>
+                                <small>{getDetailDateParts(detailEvent.event_date).weekday}</small>
+                            </div>
+                            <div className={styles.detailHeroCopy}>
+                                <span className={styles.detailBadge}>행사일정</span>
+                                <h3 className={styles.modalTitle}>{detailEvent.title}</h3>
+                                <p>{detailEvent.description?.trim() || '등록된 상세 내용은 없습니다.'}</p>
+                            </div>
+                            <button type="button" className={styles.closeBtn} onClick={() => setDetailEvent(null)} aria-label="닫기">×</button>
+                        </div>
+                        <div className={styles.detailMetaGrid}>
+                            <div className={styles.detailMetaCard}>
+                                <span>일자</span>
+                                <strong>{getDetailDateParts(detailEvent.event_date).full}</strong>
+                            </div>
+                            <div className={styles.detailMetaCard}>
+                                <span>시간</span>
+                                <strong>{formatTimeRange(detailEvent)}</strong>
+                            </div>
+                            <div className={styles.detailMetaCard}>
+                                <span>장소</span>
+                                <strong>{detailEvent.location || '장소 미지정'}</strong>
+                            </div>
+                            <div className={styles.detailMetaCard}>
+                                <span>공지범위</span>
+                                <strong>{getAudienceLabel(detailEvent.audience_roles, audienceOptions)}</strong>
+                            </div>
+                        </div>
+                        <div className={styles.detailSection}>
+                            <span className={styles.detailSectionTitle}>상세 내용</span>
+                            <p className={styles.description}>{detailEvent.description?.trim() || '등록된 상세 내용은 없습니다.'}</p>
+                        </div>
+                        <div className={styles.detailSection}>
+                            <span className={styles.detailSectionTitle}>접속 팝업 공지</span>
+                            <div className={styles.reminderPills}>
+                                {(detailEvent.reminder_offsets || EVENT_REMINDER_OFFSETS).map((offset) => (
+                                    <span key={offset}>{getReminderLabel(offset)}</span>
+                                ))}
+                            </div>
+                        </div>
+                        {canManage && (
+                            <div className={styles.modalActions}>
+                                <button type="button" className={styles.secondaryBtn} onClick={() => setDetailEvent(null)}>닫기</button>
+                                <button type="button" className={styles.primaryBtn} onClick={() => openEditForm(detailEvent)}>수정</button>
                             </div>
                         )}
                     </div>

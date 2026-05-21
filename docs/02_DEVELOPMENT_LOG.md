@@ -1,3 +1,18 @@
+## [2026-05-21] 행사일정 클릭 상세 UX와 모바일 하단 시트 보강 (v5.14.99)
+### 핵심
+- 월간 매트릭스의 일정 칩 클릭 시 일자/시간/장소/공지범위/상세내용/접속 팝업 시점을 카드형 상세 모달로 보여주도록 재구성했습니다.
+- 날짜 숫자를 누르면 해당일 전체 일정 목록을 열고, `+N 더보기`도 네 번째 일정 단건이 아니라 전체 목록으로 연결했습니다.
+- 모바일은 Galaxy S24급 360x780에서 상세/목록/등록 모달이 하단 시트처럼 열리고, 상세 메타는 1열로 접히도록 보정했습니다.
+### 검증
+- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- Browser: `/employees/events?debug=true` 페이지 렌더링과 360x780 모바일 가로 넘침 없음 확인. 현재 DB 기준 일정 데이터 0건이라 실제 데이터 클릭 모달은 운영 데이터 생성 후 확인 필요.
+### 변경 파일
+- `web/components/IntranetEventCalendar.js`
+- `web/components/IntranetEventCalendar.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 행사일정 단독 페이지와 인트라넷 메뉴 이동 (v5.14.98)
 ### 핵심
 - 행사일정을 AI 어시스턴트 화면 하단 렌더링에서 분리해 `/employees/events` 단독 페이지로 이동했습니다.
