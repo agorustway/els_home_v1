@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import IntranetEventCalendar from '@/components/IntranetEventCalendar';
 import { useUserRole } from '@/hooks/useUserRole';
 import { hasUserConversation, optimizeSessionsForStorage, shouldUsePersistedSessions } from '@/utils/chatMemory.mjs';
 import styles from './ask.module.css';
@@ -853,7 +852,6 @@ export default function AskPage() {
     );
 
     return (
-        <>
         <div className={styles.containerLayout}>
             {/* 모바일 히스토리 드로어 */}
             {isHistoryOpen && (
@@ -1057,7 +1055,5 @@ export default function AskPage() {
                 <GuideContent />
             </div>
         </div>
-        <IntranetEventCalendar />
-        </>
     );
 }

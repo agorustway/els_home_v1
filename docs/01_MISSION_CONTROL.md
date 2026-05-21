@@ -1,14 +1,14 @@
-# ELS MISSION CONTROL (v5.14.97 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.98 / APK v5.11.25)
 
-> 최신 업데이트: 실적관리 현황판 스냅샷을 화면용으로 더 압축하고, 연간/월간 첫 조회 중복 호출을 차단했습니다.
+> 최신 업데이트: 행사일정을 AI 어시스턴트 하단이 아닌 인트라넷 홈 메뉴의 AI 어시스턴트 바로 아래 단독 페이지로 이동했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.97
+- **웹 버전**: v5.14.98
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
-  - AI 어시스턴트 페이지 하단에 구글캘린더형 월간 행사일정 매트릭스를 추가하고, 관리자/본사 계정에서 일정 등록·수정·삭제와 공지범위 선택을 지원한다.
+  - 인트라넷 홈 메뉴에서 AI 어시스턴트 바로 아래 `행사일정` 단독 페이지를 제공하고, 구글캘린더형 월간 매트릭스와 관리자/본사 계정 일정 등록·수정·삭제 및 공지범위 선택을 지원한다.
   - 행사일정은 Supabase `intranet_events`/`intranet_event_dismissals` 기준으로 저장하며, 대상 사용자 접속 시 7일전/3일전/1일전/당일 팝업 공지를 띄우고 `다시 보지 않음`은 사용자별로 저장한다.
   - Galaxy S24급 360x780 뷰포트에서 월간 7열 매트릭스가 가로 스크롤 없이 유지되도록 모바일 셀·버튼·모달 폭을 보정했다.
   - 관리자 활동 로그 API는 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 응답에 붙이고, 검색은 이름/이메일 모두 지원한다.
@@ -71,9 +71,10 @@
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 - [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-97: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화
+- [x] v5.14.93-98: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴 이동
 
 ## RECENT CHANGES
+- **v5.14.98**: 행사일정을 AI 어시스턴트 화면 하단에서 분리해 `/employees/events` 단독 페이지로 만들고, 인트라넷 홈 사이드 메뉴의 `AI 어시스턴트` 바로 아래와 상단 `직원 서비스` 메뉴에 노출했다. AI 어시스턴트 페이지는 채팅 전용 화면으로 되돌렸다.
 - **v5.14.97**: 종합실적은 `summary-view` 스냅샷을 별도 캐시해 브라우저로 큰 원자료를 보내지 않고, 연/월/일 선택은 서버에서 다시 얇은 결과만 받는다. 연간/월간 dashboard summary는 화면에서 쓰지 않는 내부 시계열을 제거했고, 검색 effect와 초기 effect의 중복 조회를 막았다.
 - **v5.14.95**: 연간실적 `요일` 분석을 반복 카드형에서 관리자용 포지션 맵으로 다시 정리했다. 상단 4개 요약은 매출 중심/업무량/수익성/점검 요일만 잡고, 매출 분포 리본과 7요일 세로 포지션 맵에서 요일별 비중 차이를 색상·높이·순위로 구분한다.
 - **v5.14.94**: 관리자 활동 로그 검색어를 `q`로 받아 `profiles.full_name`, `user_roles.name`, 사용자 이메일, 기존 로그 이메일을 먼저 조회한 뒤 대상 이메일의 로그를 가져오게 했다. 화면 검색창도 `이름 또는 이메일 검색`으로 바꿨고 기존 `email` 파라미터는 호환용으로 유지한다.
@@ -82,9 +83,9 @@
 - **v5.14.90**: Android 앱 종료/오버레이 종료 경로에 남아 있던 `android.os.Process.killProcess()`를 제거했다. 운행 종료 후 서버상 이미 완료된 저장 운행을 앱이 발견하면 `activeTrip`뿐 아니라 native trip prefs, keepalive 알람, 오버레이 서비스까지 같이 정리해 완료 뒤 앱이 꺼지거나 crash dialog가 뜨는 흐름을 막았다. APK v5.11.25.
 - **v5.14.89**: 연간·월간실적 테이블 검색이 `search_text ILIKE` statement timeout에 걸리던 흐름을 피하도록 현재 범위 행을 가져온 뒤 서버에서 정규화 필터링한다. `575,000`, `575000`, `575000.0`처럼 금액 표기가 달라도 같은 검색어로 잡히며, 검색창 placeholder와 헤더 정렬 title도 보강했다.
 ## VERIFICATION
-- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
-- 로컬 API hit: summary-view 139KB, annual dashboard 2.06MB, monthly dashboard 2.61MB
-- `npx.cmd eslint ...실적관리 변경 파일`, `npm.cmd run build`: 통과
+- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
+- `npm.cmd run lint`, `npm.cmd run build`: 통과
+- Browser: `/employees/events?debug=true` 단독 페이지와 `/employees/ask?debug=true` 캘린더 제거 확인, 360x780 모바일 가로 넘침 없음
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

@@ -78,6 +78,7 @@ const navLinks = [
             {
                 label: '직원 서비스',
                 children: [
+                    { href: '/employees/events', label: '행사일정' },
                     { href: '/employees/weather', label: '날씨' },
                     { href: '/employees/news', label: '뉴스' },
                     { href: '/employees/board/free', label: '자유게시판' },

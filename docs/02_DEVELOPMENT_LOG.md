@@ -1,3 +1,20 @@
+## [2026-05-21] 행사일정 단독 페이지와 인트라넷 메뉴 이동 (v5.14.98)
+### 핵심
+- 행사일정을 AI 어시스턴트 화면 하단 렌더링에서 분리해 `/employees/events` 단독 페이지로 이동했습니다.
+- 인트라넷 홈 사이드 메뉴에서 `AI 어시스턴트` 바로 아래 `행사일정`을 추가하고, 상단 인트라넷 드롭다운의 `직원 서비스`에도 노출했습니다.
+- AI 어시스턴트 페이지는 채팅 전용 화면으로 되돌려 메뉴 진입과 콘텐츠 배치를 분리했습니다.
+### 검증
+- `node --test web/tests/intranetEvents.test.mjs`: 4개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- Browser: `/employees/events?debug=true`에서 메뉴/단독 페이지 렌더링 확인, `/employees/ask?debug=true`에서 캘린더 제거 확인, 360x780 모바일 가로 넘침 없음.
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/events/page.js`
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/constants/intranetMenu.js`
+- `web/components/Header.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 실적관리 현황판 스냅샷 경량화 (v5.14.97)
 ### 핵심
 - 종합실적 첫 화면이 3MB대 원자료를 브라우저에서 받아 다시 범위별 계산하던 구조를 `summary-view` 스냅샷으로 분리했습니다. 기본 화면과 연/월/일 선택은 서버가 범위별로 계산한 얇은 결과만 내려줍니다.
