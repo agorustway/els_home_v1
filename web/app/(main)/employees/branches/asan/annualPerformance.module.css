@@ -1801,6 +1801,79 @@
     gap: 6px;
 }
 
+.evidenceTable {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 9px 8px;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.evidenceTableHead,
+.evidenceTableRow {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) 84px 84px 84px 60px;
+    align-items: center;
+    gap: 8px;
+    min-width: 560px;
+}
+
+.evidenceTableHead {
+    min-height: 25px;
+    border-bottom: 1px solid #dbe5ef;
+}
+
+.evidenceTableHead span {
+    min-width: 0;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 950;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.evidenceTableHead span:not(:first-child) {
+    text-align: right;
+}
+
+.evidenceTableRow {
+    min-height: 29px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.evidenceTableRow:hover {
+    background: #f8fafc;
+}
+
+.evidenceTableRow span,
+.evidenceTableRow b,
+.evidenceTableRow em,
+.evidenceTableRow i {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.evidenceTableRow b,
+.evidenceTableRow em,
+.evidenceTableRow i {
+    text-align: right;
+}
+
 .compactButtonRow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 88px 58px;
@@ -4025,6 +4098,11 @@
 }
 
 .vehicleInsightHead span:nth-child(n + 4) {
+    text-align: right;
+}
+
+.vehicleInsightHead span:nth-child(2),
+.vehicleInsightRow strong {
     text-align: right;
 }
 

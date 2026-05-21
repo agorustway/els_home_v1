@@ -368,12 +368,18 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /ELS직계약차량/);
   assert.match(component, /외부\/타운송사/);
   assert.match(component, /차량 TOP10/);
-  assert.match(component, /visibleVehicles = scopedVehicleItems\.slice\(0, 10\)/);
+  assert.match(component, /vehiclePurchaseItems = \[\.\.\.scopedVehicleItems\]\.sort/);
+  assert.match(component, /safeNumber\(b\.purchase\) - safeNumber\(a\.purchase\)/);
+  assert.match(component, /visibleVehicles = vehiclePurchaseItems\.slice\(0, 10\)/);
+  assert.match(component, /vehicleMax = Math\.max\(1, \.\.\.vehiclePurchaseItems\.map\(item => Math\.abs\(safeNumber\(item\.purchase\)\)\)\)/);
   assert.match(component, /vehicleCarrierLabel/);
   assert.match(component, /vehicleDisplayName\(vehicle\)/);
   assert.match(component, /운송사\/차량번호/);
   assert.match(component, /vehicleInsightHead/);
-  assert.match(component, /청구액/);
+  assert.match(component, /매입액 기준/);
+  assert.match(component, /<span>매입액<\/span>/);
+  assert.match(component, /metricWidth\(vehicle\.purchase, vehicleMax\)/);
+  assert.match(component, /formatPerformanceAmount\(vehicle\.purchase\)/);
   assert.match(component, /손익·건수/);
   assert.match(component, /scopedVehicleItems/);
   assert.match(component, /visibleVehicles/);
@@ -448,6 +454,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.segmentInsightGrid/);
   assert.match(css, /\.vehicleInsightHead/);
   assert.match(css, /\.vehicleInsightRow/);
+  assert.match(css, /\.vehicleInsightHead span:nth-child\(2\),\s*\.vehicleInsightRow strong\s*{[\s\S]*text-align: right/);
   assert.match(css, /grid-template-columns: 26px minmax\(180px, 1\.05fr\)/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.tableArea\s*{[\s\S]*height: clamp\(300px, calc\(100dvh - 170px\), 580px\)/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.vehicleInsightHead,\s*\.vehicleInsightRow\s*{[\s\S]*min-width: 620px/);

@@ -816,6 +816,44 @@ function EvidenceHelp() {
     );
 }
 
+function SegmentEvidenceTable({ label, items = [], filterTerms = [], onOpen }) {
+    const visibleItems = (Array.isArray(items) ? items : []).slice(0, 12);
+    return (
+        <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+                <h3>{label} 근거</h3>
+                <span>상위 12</span>
+            </div>
+            <div className={styles.evidenceTable}>
+                <div className={styles.evidenceTableHead}>
+                    <span>항목</span>
+                    <span>매출</span>
+                    <span>매입</span>
+                    <span>손익</span>
+                    <span>손익률</span>
+                </div>
+                {visibleItems.length === 0 ? (
+                    <div className={styles.emptyMini}>근거 데이터 없음</div>
+                ) : visibleItems.map((item, idx) => (
+                    <button
+                        className={styles.evidenceTableRow}
+                        key={`${label}-${item.name}-${idx}`}
+                        onClick={() => onOpen([...(filterTerms || []), item.name], 'and')}
+                    >
+                        <span title={item.name}>{item.name || '-'}</span>
+                        <b>{formatPerformanceAmount(item.revenue)}</b>
+                        <b>{formatPerformanceAmount(item.purchase)}</b>
+                        <em className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>
+                            {formatPerformanceAmount(item.profit)}
+                        </em>
+                        <i className={profitRateOf(item) < 5 ? styles.warningText : ''}>{formatPercent(profitRateOf(item), 1)}</i>
+                    </button>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 export default function AsanAnnualPerformance() {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
@@ -1608,25 +1646,13 @@ export default function AsanAnnualPerformance() {
                                             ['노선', selectedSegment.topRoutes || []],
                                             ['구분', selectedSegment.topCategories || []],
                                         ].map(([label, items]) => (
-                                            <section className={styles.panel} key={label}>
-                                                <div className={styles.panelHeader}>
-                                                    <h3>{label} 근거</h3>
-                                                    <span>상위 12</span>
-                                                </div>
-                                                <div className={styles.compactList}>
-                                                    {items.slice(0, 12).map((item, idx) => (
-                                                        <button
-                                                            className={styles.compactButtonRow}
-                                                            key={`${label}-${item.name}-${idx}`}
-                                                            onClick={() => openDetailSearch([...(selectedSegment.filterTerms || []), item.name], 'and')}
-                                                        >
-                                                            <span>{item.name}</span>
-                                                            <b>{formatPerformanceAmount(item.revenue)}</b>
-                                                            <em>{formatPercent(profitRateOf(item), 1)}</em>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </section>
+                                            <SegmentEvidenceTable
+                                                key={label}
+                                                label={label}
+                                                items={items}
+                                                filterTerms={selectedSegment.filterTerms || []}
+                                                onOpen={openDetailSearch}
+                                            />
                                         ))}
                                     </div>
                                 </>

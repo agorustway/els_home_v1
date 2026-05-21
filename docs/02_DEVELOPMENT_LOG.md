@@ -1,3 +1,34 @@
+## [2026-05-21] 종합실적 경영 판단 기준 설명 보정 (v5.14.104)
+### 핵심
+- 종합실적 `경영 판단` 설명에 청구처는 매출 기준, 지급처는 매입 기준이라는 해석 기준을 추가했습니다.
+- 고마진/저마진 청구처 신호는 매출액을, 고마진/저마진 지급처 신호는 매입액을 상세 금액으로 표시하도록 분리했습니다.
+- 지급처 후보를 고를 때도 매입액이 있는 항목을 기준으로 보도록 해 화면 설명과 실제 데이터 기준을 맞췄습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 24개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanSummaryPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-21] 연간실적 계약/차량 근거표 제목열과 매입 표시 (v5.14.103)
+### 핵심
+- 연간실적 `계약/차량` 탭의 작업지/청구처/노선/구분 근거표에 `항목 · 매출 · 매입 · 손익 · 손익률` 제목열을 추가했습니다.
+- 기존에 매출과 손익률만 보이던 행에 매입과 손익을 함께 표시해 원장 산식 확인이 바로 가능하게 했습니다.
+- 각 행 클릭 시 기존과 동일하게 선택된 세그먼트 조건과 항목명을 AND 검색으로 묶어 테이블 원장 상세로 이동합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 실적관리 설정 버튼명 통일 (v5.14.101)
 ### 핵심
 - 연간실적 상단의 `파일 설정` 버튼을 월간실적과 같은 `설정`으로 바꿔 실적관리 하위 화면 버튼명을 맞췄습니다.
@@ -356,6 +387,21 @@
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
 - `git diff --check`: 통과
 ### 변경 파일
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-21] 월간실적 차량 TOP10 매입액 기준 전환 (v5.14.102)
+### 핵심
+- 월간실적 `구성·차량 성과` 표의 차량 TOP10 정렬 기준을 청구액에서 매입액으로 바꿨습니다.
+- 비중 막대와 금액 컬럼도 차량 기준에 맞춰 매입액을 표시하고, 헤더 문구를 `매입액 기준`으로 수정했습니다.
+- 운송사/차량번호 헤더와 차량명 값을 우측 정렬해 숫자 컬럼과 시선 흐름을 맞췄습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
 - `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
 - `web/tests/asanMonthlyPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`

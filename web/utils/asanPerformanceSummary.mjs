@@ -327,9 +327,10 @@ function findBreakdownSection(sections = [], primaryWords = [], fallbackWords = 
   return pick(primaryWords) || pick(fallbackWords) || null;
 }
 
-function marginCandidate(section = null, direction = 'high') {
+function marginCandidate(section = null, direction = 'high', amountMetric = 'revenue') {
+  const metricKey = amountMetric === 'purchase' ? 'purchase' : 'revenue';
   const items = safeList(section?.items)
-    .filter(item => safeNumber(item.revenue) > 0 && (safeNumber(item.profit) || safeNumber(item.purchase) || safeNumber(item.rowCount)));
+    .filter(item => safeNumber(item[metricKey]) > 0 && (safeNumber(item.profit) || safeNumber(item.revenue) || safeNumber(item.purchase) || safeNumber(item.rowCount)));
   const sorted = items.slice().sort((a, b) => {
     const rateGap = safeNumber(direction === 'high' ? b.profitRate - a.profitRate : a.profitRate - b.profitRate);
     if (rateGap) return rateGap;
@@ -340,8 +341,10 @@ function marginCandidate(section = null, direction = 'high') {
   return sorted[0] || null;
 }
 
-function buildMarginSignal(title, section, direction = 'high') {
-  const item = marginCandidate(section, direction);
+function buildMarginSignal(title, section, direction = 'high', amountMetric = 'revenue') {
+  const metricKey = amountMetric === 'purchase' ? 'purchase' : 'revenue';
+  const metricLabel = metricKey === 'purchase' ? '매입' : '매출';
+  const item = marginCandidate(section, direction, metricKey);
   const isHigh = direction === 'high';
   const lowTone = !item
     ? 'watch'
@@ -354,7 +357,7 @@ function buildMarginSignal(title, section, direction = 'high') {
     title,
     value: item?.label || item?.name || '-',
     detail: item
-      ? `${formatSignalAmount(item.revenue)} · 손익률 ${safeNumber(item.profitRate).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`
+      ? `${metricLabel} ${formatSignalAmount(item[metricKey])} · 손익률 ${safeNumber(item.profitRate).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`
       : `${section?.column || '세분화'} 자료 없음`,
     tone: isHigh && item ? 'good' : lowTone,
   };
@@ -394,10 +397,10 @@ function buildExecutiveSignals({
       detail: `ELS직계약차량/외부 동시 표시 · 상위 5대 ${vehicleShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
       tone: signalTone(vehicleShare, 45, 65, true),
     },
-    buildMarginSignal('고마진 청구처', billingSection, 'high'),
-    buildMarginSignal('고마진 지급처', payeeSection, 'high'),
-    buildMarginSignal('저마진 청구처', billingSection, 'low'),
-    buildMarginSignal('저마진 지급처', payeeSection, 'low'),
+    buildMarginSignal('고마진 청구처', billingSection, 'high', 'revenue'),
+    buildMarginSignal('고마진 지급처', payeeSection, 'high', 'purchase'),
+    buildMarginSignal('저마진 청구처', billingSection, 'low', 'revenue'),
+    buildMarginSignal('저마진 지급처', payeeSection, 'low', 'purchase'),
   ];
 }
 

@@ -1283,9 +1283,10 @@ export default function AsanMonthlyPerformance() {
     const visibleDimensionItems = activeDimensionExpanded ? activeDimensionItems : activeDimensionItems.slice(0, 12);
     const topDimensionItem = activeDimensionItems[0] || null;
     const scopedVehicleItems = scopeMetricList(safeObjectList(summary.vehiclePerformance), analysisScope, activeAnalysisMonthValue, activeAnalysisDay, activeAnalysisWeek, scopeRevenue, 999);
-    const visibleVehicles = scopedVehicleItems.slice(0, 10);
+    const vehiclePurchaseItems = [...scopedVehicleItems].sort((a, b) => safeNumber(b.purchase) - safeNumber(a.purchase));
+    const visibleVehicles = vehiclePurchaseItems.slice(0, 10);
     const segmentMax = Math.max(1, ...scopedSegmentItems.map(item => Math.abs(safeNumber(item.revenue))));
-    const vehicleMax = Math.max(1, ...scopedVehicleItems.map(item => Math.abs(safeNumber(item.revenue))));
+    const vehicleMax = Math.max(1, ...vehiclePurchaseItems.map(item => Math.abs(safeNumber(item.purchase))));
     const chartMax = getPerformanceChartMax(scopeFlowItems, ['revenue', 'purchase', 'profit']);
     const weekdayCards = useMemo(() => buildWeekdayCards(scopedDaily), [scopedDaily]);
     const weekdayMax = Math.max(1, ...weekdayCards.map(item => Math.abs(safeNumber(item.revenue))));
@@ -1713,7 +1714,7 @@ export default function AsanMonthlyPerformance() {
                         <section className={`${styles.panel} ${styles.segmentInsightPanel}`}>
                             <div className={styles.panelHeader}>
                                 <h3>구성·차량 성과</h3>
-                                <span>{scopeLabel} · 차량 TOP10 · 청구액 기준</span>
+                                <span>{scopeLabel} · 차량 TOP10 · 매입액 기준</span>
                             </div>
                             <div className={styles.compositionCardBody}>
                                 {scopedSegmentItems.length > 0 && (
@@ -1739,7 +1740,7 @@ export default function AsanMonthlyPerformance() {
                                             <span>순위</span>
                                             <span>운송사/차량번호</span>
                                             <span>비중</span>
-                                            <span>청구액</span>
+                                            <span>매입액</span>
                                             <span>손익·건수</span>
                                         </div>
                                         {visibleVehicles.map((vehicle, idx) => (
@@ -1751,8 +1752,8 @@ export default function AsanMonthlyPerformance() {
                                             >
                                                 <span>{idx + 1}</span>
                                                 <strong>{vehicleDisplayName(vehicle)}</strong>
-                                                <i><b style={{ width: metricWidth(vehicle.revenue, vehicleMax) }} /></i>
-                                                <em>{formatPerformanceAmount(vehicle.revenue)}</em>
+                                                <i><b style={{ width: metricWidth(vehicle.purchase, vehicleMax) }} /></i>
+                                                <em>{formatPerformanceAmount(vehicle.purchase)}</em>
                                                 <small>{formatPerformanceAmount(vehicle.profit)} · {safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
                                             </button>
                                         ))}

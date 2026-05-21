@@ -419,7 +419,7 @@ function ExecutiveSignals({ signals = [] }) {
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>경영 판단</h3>
-                    <span>선택 범위의 수익성·차량 구성·청구처/지급처 마진</span>
+                    <span>청구처는 매출 기준, 지급처는 매입 기준 · 수익성/차량 구성 함께 확인</span>
                 </div>
             </div>
             <div className={styles.summarySignalGrid}>
