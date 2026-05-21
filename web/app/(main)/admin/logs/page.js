@@ -90,7 +90,7 @@ export default function AdminLogsPage() {
             const params = new URLSearchParams({
                 page: String(pagination.page),
                 limit: String(PAGE_LIMIT),
-                email: activeEmail,
+                q: activeEmail,
                 type: activeType,
                 startDate: activeStartDate,
                 endDate: activeEndDate,
@@ -267,7 +267,7 @@ export default function AdminLogsPage() {
                     <form onSubmit={handleSearch} className={styles.toolbarForm}>
                         <input
                             type="text"
-                            placeholder="이메일 검색"
+                            placeholder="이름 또는 이메일 검색"
                             value={searchEmail}
                             onChange={(e) => setSearchEmail(e.target.value)}
                             className={styles.textInput}

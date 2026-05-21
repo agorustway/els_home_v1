@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
+const SEARCH_LOOKUP_LIMIT = 500;
 
 function isMissingTableError(error) {
     return error?.code === '42P01' || error?.code === 'PGRST205';
@@ -70,6 +71,64 @@ async function fetchLookupRows(adminSupabase, table, select, field, values) {
     }
 
     return data || [];
+}
+
+async function fetchIlikeRows(adminSupabase, table, select, field, keyword, limit = SEARCH_LOOKUP_LIMIT) {
+    const term = normalizeText(keyword);
+    if (!term) return [];
+
+    const { data, error } = await adminSupabase
+        .from(table)
+        .select(select)
+        .ilike(field, `%${term}%`)
+        .limit(limit);
+
+    if (error) {
+        console.warn(`Activity log search lookup skipped: ${table}.${field}`, error);
+        return [];
+    }
+
+    return data || [];
+}
+
+function rememberSearchEmail(emails, value) {
+    const email = normalizeText(value);
+    const normalizedEmail = normalizeEmail(email);
+    if (!email || normalizedEmail === 'anonymous') return;
+
+    emails.add(email);
+    if (normalizedEmail !== email) {
+        emails.add(normalizedEmail);
+    }
+}
+
+async function resolveLogSearchIdentities(adminSupabase, keyword) {
+    const term = normalizeText(keyword);
+    if (!term) return { emails: [] };
+
+    const [profilesByName, profilesByEmail, rolesByName, rolesByEmail, logsByEmail] = await Promise.all([
+        fetchIlikeRows(adminSupabase, 'profiles', 'email,full_name', 'full_name', term),
+        fetchIlikeRows(adminSupabase, 'profiles', 'email,full_name', 'email', term),
+        fetchIlikeRows(adminSupabase, 'user_roles', 'email,name', 'name', term),
+        fetchIlikeRows(adminSupabase, 'user_roles', 'email,name', 'email', term),
+        fetchIlikeRows(adminSupabase, 'user_activity_logs', 'user_email', 'user_email', term),
+    ]);
+
+    const emails = new Set();
+
+    for (const row of [
+        ...profilesByName,
+        ...profilesByEmail,
+        ...rolesByName,
+        ...rolesByEmail,
+        ...logsByEmail,
+    ]) {
+        rememberSearchEmail(emails, row.email || row.user_email);
+    }
+
+    return {
+        emails: Array.from(emails),
+    };
 }
 
 async function attachUserNames(adminSupabase, logs) {
@@ -142,12 +201,16 @@ export async function GET(request) {
     const requestedLimit = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10);
     const limit = Math.min(MAX_LIMIT, Math.max(1, requestedLimit || DEFAULT_LIMIT));
     const type = searchParams.get('type') || '';
-    const email = searchParams.get('email') || '';
+    const keyword = normalizeText(searchParams.get('q') || searchParams.get('email') || '');
     const startDate = searchParams.get('startDate') || '';
     const endDate = searchParams.get('endDate') || '';
 
     try {
         const adminSupabase = await createAdminClient();
+        const searchIdentities = keyword
+            ? await resolveLogSearchIdentities(adminSupabase, keyword)
+            : { emails: [] };
+
         let query = adminSupabase
             .from('user_activity_logs')
             .select('id,user_id,user_email,action_type,path,metadata,ip_address,created_at', { count: 'estimated' });
@@ -155,8 +218,12 @@ export async function GET(request) {
         if (type) {
             query = query.eq('action_type', type);
         }
-        if (email) {
-            query = query.ilike('user_email', `%${email}%`);
+        if (keyword) {
+            if (searchIdentities.emails.length > 0) {
+                query = query.in('user_email', searchIdentities.emails);
+            } else {
+                query = query.eq('user_email', '__NO_MATCHING_ACTIVITY_LOG_USER__');
+            }
         }
         if (startDate) {
             query = query.gte('created_at', `${startDate} 00:00:00`);
