@@ -2032,16 +2032,83 @@
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 8px;
-    padding: 10px;
+    padding: 8px 10px 10px;
+}
+
+.weekdayShareBoard {
+    display: grid;
+    gap: 8px;
+    padding: 10px 10px 2px;
+}
+
+.weekdayShareRow {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.weekdayShareRow strong {
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 950;
+}
+
+.weekdayShareRail {
+    display: flex;
+    min-width: 0;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid #dbeafe;
+    border-radius: 999px;
+    background: #f8fafc;
+    overflow: hidden;
+}
+
+.weekdayShareSegment {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 100%;
+    padding: 0 5px;
+    border-right: 2px solid rgba(255, 255, 255, 0.78);
+    color: #fff;
+    font-size: 0.64rem;
+    font-weight: 950;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.weekdayShareSegment:last-child {
+    border-right: 0;
+}
+
+.weekdayShareRevenue {
+    background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.weekdayShareProfit {
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+.weekdayShareRows {
+    background: linear-gradient(90deg, #475569, #94a3b8);
+}
+
+.weekdayShareNegative {
+    background: linear-gradient(90deg, #dc2626, #fb7185);
 }
 
 .weekdayDiagramRow {
     display: grid;
-    grid-template-rows: auto minmax(132px, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     gap: 8px;
     min-width: 0;
-    min-height: 218px;
-    padding: 10px;
+    min-height: 232px;
+    padding: 9px;
     border: 1px solid #dbeafe;
     border-radius: 8px;
     background:
@@ -2056,12 +2123,21 @@
     box-shadow: 0 10px 22px rgba(15, 118, 110, 0.1);
 }
 
-.weekdayDiagramRow strong {
+.weekdayCardHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+
+.weekdayCardHead strong {
     color: #0f172a;
     font-size: 0.84rem;
     font-weight: 950;
 }
 
+.weekdayCardHead em,
 .weekdayDiagramRow em {
     color: #0f766e;
     font-size: 0.76rem;
@@ -2070,51 +2146,89 @@
     text-align: right;
 }
 
-.weekdayBars {
-    display: grid;
-    align-content: end;
-    gap: 8px;
-    min-width: 0;
+.weekdayDiagramRow b {
+    display: block;
+    color: #0f766e;
+    font-size: clamp(1.15rem, 1.8vw, 1.56rem);
+    font-weight: 1000;
+    line-height: 1;
 }
 
-.weekdayBars span {
-    display: grid;
-    grid-template-rows: 44px auto;
-    gap: 5px;
-    min-width: 0;
-    color: #475569;
-    font-size: 0.67rem;
+.weekdayDiagramRow > span {
+    color: #64748b;
+    font-size: 0.66rem;
     font-weight: 850;
 }
 
-.weekdayBars i {
-    align-self: end;
+.weekdayShareBars {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.weekdayShareBars i {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 64px;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    color: #475569;
+    font-size: 0.67rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.weekdayShareBars small {
     display: block;
-    height: 100%;
-    max-height: 44px;
-    min-width: 6px;
-    border-radius: 8px 8px 4px 4px;
+    height: 9px;
+    min-width: 5px;
+    max-width: 100%;
+    border-radius: 999px;
 }
 
 .weekdayRevenueBar {
-    background: linear-gradient(180deg, #0f766e, #14b8a6);
+    background: linear-gradient(90deg, #0f766e, #14b8a6);
 }
 
 .weekdayProfitBar {
-    background: linear-gradient(180deg, #2563eb, #60a5fa);
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
 }
 
 .weekdayLossBar {
-    background: linear-gradient(180deg, #dc2626, #f87171);
+    background: linear-gradient(90deg, #dc2626, #f87171);
 }
 
 .weekdayCountBar {
-    background: linear-gradient(180deg, #64748b, #cbd5e1);
+    background: linear-gradient(90deg, #475569, #cbd5e1);
+}
+
+.weekdayAmountGrid {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    padding-top: 2px;
+    border-top: 1px solid #edf2f7;
+}
+
+.weekdayAmountGrid span {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-weight: 850;
+}
+
+.weekdayAmountGrid strong {
+    color: #0f172a;
+    font-weight: 950;
+    text-align: right;
 }
 
 .weekdayInsightStrip {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 7px;
     padding: 0 10px 10px;
 }

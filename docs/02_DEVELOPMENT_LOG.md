@@ -1,3 +1,34 @@
+## [2026-05-21] 관리자 활동 로그 이름 검색 확장 (v5.14.94)
+### 핵심
+- 활동 로그 화면에 이름은 표시됐지만 검색은 기존 이메일 기준이라 이름으로 사용자를 좁힐 수 없었습니다.
+- `/api/admin/logs`가 `q` 검색어를 받아 `profiles.full_name`, `user_roles.name`, 사용자 이메일, 기존 로그 이메일을 먼저 조회한 뒤 일치하는 이메일의 로그를 가져오도록 확장했습니다.
+- 기존 `email` 파라미터는 호환용으로 유지했고, 검색창 문구는 `이름 또는 이메일 검색`으로 바꿨습니다.
+### 검증
+- `node --test web/tests/adminManagementUi.test.mjs`: 3개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/admin/logs/route.js`
+- `web/app/(main)/admin/logs/page.js`
+- `web/tests/adminManagementUi.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+## [2026-05-21] 연간실적 요일 분석 비중 다이어그램 전환 (v5.14.93)
+### 핵심
+- 연간실적 `요일` 분석이 절대 금액 막대 위주라 어느 요일이 전체에서 얼마나 차지하는지 바로 보이지 않던 문제를 보정했습니다.
+- 상단에 `매출 비중`, `손익 기여`, `건수 비중` 누적 레일을 추가해 요일별 점유율을 한 줄에서 비교하게 했습니다.
+- 요일별 카드는 전체 매출 중 비중을 크게 보여주고, 매출/손익/건수 비중 막대와 실제 금액·건수를 함께 표시합니다.
+- 하단 요약은 매출 집중 요일, 건수 집중 요일, 고마진 요일, 주의 요일 4개로 바꿨습니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 월간실적 자동감지 미존재 미래월 순회 보정 (v5.14.92)
 ### 핵심
 - 운영 NAS 확인 결과 연간실적은 2026-05-18 08:02 수정분이 DB와 일치했지만, 월간 1월 파일은 2026-05-20 14:07에 수정됐는데 DB 메타는 2026-02-11 수정분으로 남아 있었습니다.

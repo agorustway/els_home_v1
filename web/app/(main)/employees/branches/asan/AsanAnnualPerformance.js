@@ -661,48 +661,96 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
 
 function WeekdayPerformanceDiagram({ items = [], scopeLabel = '-' }) {
     const series = (Array.isArray(items) ? items : []).filter(item => safeNumber(item.revenue) || safeNumber(item.profit) || safeNumber(item.rowCount));
-    const maxRevenue = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.revenue))));
-    const maxProfit = Math.max(1, ...series.map(item => Math.abs(safeNumber(item.profit))));
-    const maxRows = Math.max(1, ...series.map(item => safeNumber(item.rowCount)));
-    const bestRevenue = series.reduce((best, item) => (!best || safeNumber(item.revenue) > safeNumber(best.revenue) ? item : best), null);
-    const bestProfitRate = series.reduce((best, item) => (!best || profitRateOf(item) > profitRateOf(best) ? item : best), null);
-    const weakProfitRate = series.reduce((best, item) => (!best || profitRateOf(item) < profitRateOf(best) ? item : best), null);
+    const totals = series.reduce((acc, item) => {
+        acc.revenue += Math.max(0, safeNumber(item.revenue));
+        acc.profitMagnitude += Math.abs(safeNumber(item.profit));
+        acc.rows += Math.max(0, safeNumber(item.rowCount));
+        return acc;
+    }, { revenue: 0, profitMagnitude: 0, rows: 0 });
+    const shareOf = (value, total) => (total > 0 ? safeNumber(value) / total * 100 : 0);
+    const enriched = series.map(item => ({
+        ...item,
+        revenueShare: shareOf(Math.max(0, safeNumber(item.revenue)), totals.revenue),
+        profitShare: shareOf(safeNumber(item.profit), totals.profitMagnitude),
+        rowShare: shareOf(Math.max(0, safeNumber(item.rowCount)), totals.rows),
+    }));
+    const bestRevenue = enriched.reduce((best, item) => (!best || item.revenueShare > best.revenueShare ? item : best), null);
+    const bestProfitRate = enriched.reduce((best, item) => (!best || profitRateOf(item) > profitRateOf(best) ? item : best), null);
+    const weakProfitRate = enriched.reduce((best, item) => (!best || profitRateOf(item) < profitRateOf(best) ? item : best), null);
+    const bestRows = enriched.reduce((best, item) => (!best || item.rowShare > best.rowShare ? item : best), null);
+    const shareRows = [
+        { key: 'revenue', label: '매출 비중', className: styles.weekdayShareRevenue, value: item => item.revenueShare, amount: item => formatPerformanceAmount(item.revenue) },
+        { key: 'profit', label: '손익 기여', className: styles.weekdayShareProfit, value: item => item.profitShare, amount: item => formatPerformanceAmount(item.profit) },
+        { key: 'rows', label: '건수 비중', className: styles.weekdayShareRows, value: item => item.rowShare, amount: item => `${safeNumber(item.rowCount).toLocaleString('ko-KR')}건` },
+    ];
 
     return (
         <section className={styles.panel}>
             <div className={styles.panelHeader}>
-                <h3>요일별 매출·손익 집중도</h3>
+                <h3>요일별 매출·손익 비중</h3>
                 <span>{scopeLabel} · 작업일자 기준</span>
             </div>
             {series.length === 0 ? (
                 <div className={styles.emptyPanel}>요일별 원장 분석 데이터가 아직 없습니다.</div>
             ) : (
                 <>
+                    <div className={styles.weekdayShareBoard}>
+                        {shareRows.map(row => (
+                            <div className={styles.weekdayShareRow} key={row.key}>
+                                <strong>{row.label}</strong>
+                                <div className={styles.weekdayShareRail}>
+                                    {enriched.map(item => {
+                                        const share = row.value(item);
+                                        const width = Math.max(2.4, Math.min(100, Math.abs(share)));
+                                        return (
+                                            <span
+                                                key={`${row.key}-${item.label || item.day}`}
+                                                className={`${styles.weekdayShareSegment} ${row.className} ${share < 0 ? styles.weekdayShareNegative : ''}`}
+                                                style={{ width: `${width}%` }}
+                                                title={`${item.label}요일 ${row.label} ${formatPercent(share, 1)} · ${row.amount(item)}`}
+                                            >
+                                                {Math.abs(share) >= 8 ? `${item.label} ${formatPercent(share, 1)}` : item.label}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                     <div className={styles.weekdayDiagram}>
-                        {series.map(item => {
-                            const revenueWidth = Math.max(4, Math.min(100, Math.abs(safeNumber(item.revenue)) / maxRevenue * 100));
-                            const profitWidth = Math.max(3, Math.min(100, Math.abs(safeNumber(item.profit)) / maxProfit * 100));
-                            const rowWidth = Math.max(3, Math.min(100, safeNumber(item.rowCount) / maxRows * 100));
+                        {enriched.map(item => {
+                            const profitShareClass = item.profitShare < 0 ? styles.warningText : styles.positive;
                             return (
                                 <button
                                     type="button"
                                     key={item.label || item.day}
                                     className={styles.weekdayDiagramRow}
-                                    title={`${item.label}요일 매출 ${formatPerformanceAmount(item.revenue)} / 손익 ${formatPerformanceAmount(item.profit)} / ${safeNumber(item.rowCount).toLocaleString('ko-KR')}건`}
+                                    title={`${item.label}요일 매출 비중 ${formatPercent(item.revenueShare, 1)} / 손익 기여 ${formatPercent(item.profitShare, 1)} / 건수 비중 ${formatPercent(item.rowShare, 1)}`}
                                 >
-                                    <strong>{item.label}요일</strong>
-                                    <div className={styles.weekdayBars}>
-                                        <span><i className={styles.weekdayRevenueBar} style={{ width: `${revenueWidth}%` }} />매출 {formatPerformanceAmount(item.revenue)}</span>
-                                        <span><i className={safeNumber(item.profit) < 0 ? styles.weekdayLossBar : styles.weekdayProfitBar} style={{ width: `${profitWidth}%` }} />손익 {formatPerformanceAmount(item.profit)}</span>
-                                        <span><i className={styles.weekdayCountBar} style={{ width: `${rowWidth}%` }} />{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</span>
+                                    <div className={styles.weekdayCardHead}>
+                                        <strong>{item.label}요일</strong>
+                                        <em className={profitRateOf(item) < 5 ? styles.warningText : styles.positive}>{formatPercent(profitRateOf(item), 1)}</em>
                                     </div>
-                                    <em className={profitRateOf(item) < 5 ? styles.warningText : styles.positive}>{formatPercent(profitRateOf(item), 1)}</em>
+                                    <b>{formatPercent(item.revenueShare, 1)}</b>
+                                    <span>전체 매출 중 비중</span>
+                                    <div className={styles.weekdayShareBars}>
+                                        <i><small className={styles.weekdayRevenueBar} style={{ width: `${Math.max(3, Math.abs(item.revenueShare))}%` }} />매출 {formatPercent(item.revenueShare, 1)}</i>
+                                        <i><small className={item.profitShare < 0 ? styles.weekdayLossBar : styles.weekdayProfitBar} style={{ width: `${Math.max(3, Math.abs(item.profitShare))}%` }} />손익 {formatPercent(item.profitShare, 1)}</i>
+                                        <i><small className={styles.weekdayCountBar} style={{ width: `${Math.max(3, Math.abs(item.rowShare))}%` }} />건수 {formatPercent(item.rowShare, 1)}</i>
+                                    </div>
+                                    <div className={styles.weekdayAmountGrid}>
+                                        <span>매출 <strong>{formatPerformanceAmount(item.revenue)}</strong></span>
+                                        <span>손익 <strong>{formatPerformanceAmount(item.profit)}</strong></span>
+                                        <span>건수 <strong>{safeNumber(item.rowCount).toLocaleString('ko-KR')}건</strong></span>
+                                    </div>
+                                    <em className={profitShareClass}>손익 기여 {formatPercent(item.profitShare, 1)}</em>
                                 </button>
                             );
                         })}
                     </div>
                     <div className={styles.weekdayInsightStrip}>
-                        <div><span>매출 집중 요일</span><strong>{bestRevenue?.label || '-'}</strong><em>{bestRevenue ? formatPerformanceAmount(bestRevenue.revenue) : '-'}</em></div>
+                        <div><span>매출 집중 요일</span><strong>{bestRevenue?.label || '-'}</strong><em>{bestRevenue ? formatPercent(bestRevenue.revenueShare, 1) : '-'}</em></div>
+                        <div><span>건수 집중 요일</span><strong>{bestRows?.label || '-'}</strong><em>{bestRows ? formatPercent(bestRows.rowShare, 1) : '-'}</em></div>
                         <div><span>고마진 요일</span><strong>{bestProfitRate?.label || '-'}</strong><em>{bestProfitRate ? formatPercent(profitRateOf(bestProfitRate), 1) : '-'}</em></div>
                         <div><span>주의 요일</span><strong>{weakProfitRate?.label || '-'}</strong><em>{weakProfitRate ? formatPercent(profitRateOf(weakProfitRate), 1) : '-'}</em></div>
                     </div>
