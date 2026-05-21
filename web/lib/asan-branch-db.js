@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { findWorkDateColumnIndex } from '@/utils/asanShippingView.mjs';
 import {
@@ -13,6 +14,8 @@ const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
 const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 const SUPABASE_RANGE_CHUNK_SIZE = 1000;
+const DASHBOARD_SNAPSHOT_VERSION = 1;
+const DASHBOARD_SNAPSHOT_TABLE = 'branch_performance_dashboard_snapshots';
 
 let adminClient;
 
@@ -30,6 +33,141 @@ function getSupabaseAdmin() {
         },
     });
     return adminClient;
+}
+
+function hashSnapshotSource(value) {
+    return crypto
+        .createHash('sha1')
+        .update(JSON.stringify(value))
+        .digest('hex');
+}
+
+function maxTimestamp(values = []) {
+    return values.reduce((latest, value) => {
+        if (!value) return latest;
+        if (!latest) return value;
+        return new Date(value || 0) > new Date(latest || 0) ? value : latest;
+    }, '');
+}
+
+function isDashboardSnapshotUnavailable(error) {
+    const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
+    return text.includes('42p01')
+        || text.includes(DASHBOARD_SNAPSHOT_TABLE)
+        || text.includes('relation')
+        || text.includes('does not exist');
+}
+
+function normalizeSnapshotPayload(payload = {}, source = 'supabase-dashboard-snapshot') {
+    return {
+        ...payload,
+        data: Array.isArray(payload.data) ? [] : payload.data,
+        page: 1,
+        page_size: 0,
+        source,
+        read_path: 'dashboard-snapshot',
+    };
+}
+
+async function readDashboardSnapshot({ dashboardType, scopeKey, sourceSignature }) {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+        .from(DASHBOARD_SNAPSHOT_TABLE)
+        .select('payload,source_signature,source_synced_at,computed_at')
+        .eq('branch_id', 'asan')
+        .eq('dashboard_type', dashboardType)
+        .eq('scope_key', scopeKey)
+        .limit(1);
+    if (error) {
+        if (isDashboardSnapshotUnavailable(error)) return null;
+        throw new Error(error.message);
+    }
+    const row = data?.[0];
+    if (!row || row.source_signature !== sourceSignature || !row.payload) return null;
+    return {
+        ...row.payload,
+        source: 'supabase-dashboard-snapshot',
+        read_path: 'dashboard-snapshot',
+        dashboard_snapshot: {
+            hit: true,
+            dashboard_type: dashboardType,
+            scope_key: scopeKey,
+            computed_at: row.computed_at,
+            source_synced_at: row.source_synced_at,
+        },
+    };
+}
+
+async function writeDashboardSnapshot({ dashboardType, scopeKey, sourceSignature, sourceSyncedAt, payload }) {
+    const supabase = getSupabaseAdmin();
+    const row = {
+        branch_id: 'asan',
+        dashboard_type: dashboardType,
+        scope_key: scopeKey,
+        source_signature: sourceSignature,
+        source_synced_at: sourceSyncedAt || null,
+        payload,
+        computed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+        .from(DASHBOARD_SNAPSHOT_TABLE)
+        .upsert(row, { onConflict: 'branch_id,dashboard_type,scope_key' });
+    if (error && !isDashboardSnapshotUnavailable(error)) throw new Error(error.message);
+}
+
+async function withDashboardSnapshot({
+    dashboardType,
+    scopeKey,
+    sourceSignature,
+    sourceSyncedAt,
+    refresh = false,
+    buildPayload,
+}) {
+    if (!refresh) {
+        const cached = await readDashboardSnapshot({ dashboardType, scopeKey, sourceSignature });
+        if (cached) return cached;
+    }
+
+    const built = await buildPayload();
+    const payload = normalizeSnapshotPayload(built, 'supabase-dashboard-snapshot');
+    await writeDashboardSnapshot({
+        dashboardType,
+        scopeKey,
+        sourceSignature,
+        sourceSyncedAt,
+        payload,
+    });
+    return {
+        ...payload,
+        dashboard_snapshot: {
+            hit: false,
+            dashboard_type: dashboardType,
+            scope_key: scopeKey,
+            computed_at: new Date().toISOString(),
+            source_synced_at: sourceSyncedAt || '',
+        },
+    };
+}
+
+function dashboardRefreshRequested(searchParams) {
+    const value = String(searchParams.get('refresh_snapshot') || searchParams.get('refresh') || '').toLowerCase();
+    return value === '1' || value === 'true' || value === 'yes' || value === 'y';
+}
+
+function cleanDashboardParams(searchParams) {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', '1');
+    params.set('page_size', '1');
+    params.delete('search');
+    params.delete('search_mode');
+    params.delete('sort_key');
+    params.delete('sort_dir');
+    params.delete('source');
+    params.delete('dashboard');
+    params.delete('refresh_snapshot');
+    params.delete('refresh');
+    return params;
 }
 
 function normalizeShippingPath(path) {
@@ -897,6 +1035,96 @@ function mergeAnnualSummaries(metas) {
     return summary;
 }
 
+async function annualDashboardSourceState() {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+        .from('branch_performance_files')
+        .select('file_path,sheet_name,row_count,current_row_count,file_modified_at,synced_at,summary')
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'annual');
+    if (error) throw new Error(error.message);
+    const metas = (data || [])
+        .filter(meta => {
+            const summary = summaryOf(meta);
+            return numberValue(meta.current_row_count || meta.row_count || summary.totalRows) > 0
+                && (summary.currentSnapshotId || summary.snapshotId || meta.current_row_count || meta.row_count);
+        })
+        .sort((a, b) => (
+            String(a.file_path).localeCompare(String(b.file_path), 'ko-KR')
+            || String(a.sheet_name).localeCompare(String(b.sheet_name), 'ko-KR')
+        ));
+    const signature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'annual',
+        metas: metas.map(meta => {
+            const summary = summaryOf(meta);
+            return {
+                file_path: meta.file_path,
+                sheet_name: meta.sheet_name,
+                row_count: meta.row_count || 0,
+                current_row_count: meta.current_row_count || 0,
+                file_modified_at: meta.file_modified_at || '',
+                synced_at: meta.synced_at || '',
+                snapshot_id: summary.currentSnapshotId || summary.snapshotId || '',
+            };
+        }),
+    });
+    return {
+        metas,
+        signature,
+        sourceSyncedAt: maxTimestamp(metas.map(meta => meta.synced_at || meta.file_modified_at)),
+    };
+}
+
+function buildAnnualDashboardPayloadFromMetas(metas) {
+    const headers = buildAnnualHeaders(metas);
+    const summary = mergeAnnualSummaries(metas);
+    const total = metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
+    if (!metas.length) {
+        return {
+            ...emptyPerformanceData({
+                path: ANNUAL_AGGREGATE_PATH,
+                sheetName: ANNUAL_AGGREGATE_SHEET,
+                page: 1,
+                pageSize: 0,
+            }),
+            headers,
+            summary,
+            source: 'supabase-dashboard-empty',
+        };
+    }
+    return {
+        headers,
+        data: [],
+        summary,
+        file_path: ANNUAL_AGGREGATE_PATH,
+        sheet_name: ANNUAL_AGGREGATE_SHEET,
+        header_row: null,
+        file_modified_at: maxTimestamp(metas.map(meta => meta.file_modified_at)),
+        synced_at: maxTimestamp(metas.map(meta => meta.synced_at)),
+        total,
+        total_is_estimated: false,
+        page: 1,
+        page_size: 0,
+        sort_key: '',
+        sort_dir: 'asc',
+        source: 'supabase-dashboard-build',
+        read_path: 'meta-summary',
+    };
+}
+
+export async function queryAsanAnnualPerformanceDashboardFromSupabase(searchParams) {
+    const state = await annualDashboardSourceState();
+    return withDashboardSnapshot({
+        dashboardType: 'annual',
+        scopeKey: 'aggregate:all',
+        sourceSignature: state.signature,
+        sourceSyncedAt: state.sourceSyncedAt,
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: async () => buildAnnualDashboardPayloadFromMetas(state.metas),
+    });
+}
+
 async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
     const supabase = getSupabaseAdmin();
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
@@ -1348,6 +1576,143 @@ async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, so
         sortKey: '',
         sortDir: sortDesc ? 'desc' : 'asc',
     };
+}
+
+async function monthlyDashboardSourceState(searchParams) {
+    const supabase = getSupabaseAdmin();
+    const defaultYear = new Date().getFullYear();
+    const baseYear = parsePositiveInt(searchParams.get('year'), defaultYear, 2100);
+    const extraMonths = parsePositiveInt(searchParams.get('extra_months'), 3, 12);
+    const periodSet = new Set(buildMonthlyPerformancePeriods(baseYear, extraMonths).map(item => item.period));
+    const { data, error } = await supabase
+        .from('branch_performance_files')
+        .select(MONTHLY_META_SELECT)
+        .eq('branch_id', 'asan')
+        .eq('dataset_type', 'monthly');
+    if (error) throw new Error(error.message);
+    const metas = (data || [])
+        .filter(meta => periodSet.has(metaSourcePeriod(meta)))
+        .sort((a, b) => metaSourcePeriod(a).localeCompare(metaSourcePeriod(b)) || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR'));
+    const signature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'monthly',
+        baseYear,
+        extraMonths,
+        metas: metas.map(meta => {
+            const summary = summaryOf(meta);
+            return {
+                period: metaSourcePeriod(meta),
+                file_path: meta.file_path,
+                sheet_name: meta.sheet_name,
+                row_count: meta.row_count || 0,
+                current_row_count: meta.current_row_count || 0,
+                file_modified_at: meta.file_modified_at || '',
+                synced_at: meta.synced_at || '',
+                snapshot_id: summary.currentSnapshotId || summary.snapshotId || '',
+            };
+        }),
+    });
+    return {
+        baseYear,
+        extraMonths,
+        metas,
+        monthlyFileSlots: buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }),
+        signature,
+        sourceSyncedAt: maxTimestamp(metas.map(meta => meta.synced_at || meta.file_modified_at)),
+    };
+}
+
+function buildMonthlyDashboardPayloadFromMetas({ metas, baseYear, extraMonths, monthlyFileSlots }) {
+    const headers = buildMonthlyHeaders(metas);
+    const summary = mergeMonthlySummaries(metas, monthlyFileSlots);
+    const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
+    if (!metas.length) {
+        return {
+            ...emptyPerformanceData({
+                path: '/아산지점/B_총무/C_마감',
+                sheetName: '월간실적',
+                page: 1,
+                pageSize: 0,
+            }),
+            headers,
+            summary,
+            base_year: baseYear,
+            extra_months: extraMonths,
+            monthlyFileSlots,
+            source: 'supabase-dashboard-empty',
+        };
+    }
+    return {
+        headers,
+        data: [],
+        summary,
+        file_path: '/아산지점/B_총무/C_마감',
+        sheet_name: '월간실적',
+        header_row: null,
+        file_modified_at: maxTimestamp(metas.map(meta => meta.file_modified_at)),
+        synced_at: maxTimestamp(metas.map(meta => meta.synced_at)),
+        total: fallbackTotal,
+        total_is_estimated: false,
+        page: 1,
+        page_size: 0,
+        sort_key: '',
+        sort_dir: 'asc',
+        source: 'supabase-dashboard-build',
+        read_path: 'meta-summary',
+        base_year: baseYear,
+        extra_months: extraMonths,
+        monthlyFileSlots,
+    };
+}
+
+export async function queryAsanMonthlyPerformanceDashboardFromSupabase(searchParams) {
+    const params = cleanDashboardParams(searchParams);
+    const state = await monthlyDashboardSourceState(params);
+    return withDashboardSnapshot({
+        dashboardType: 'monthly',
+        scopeKey: `year:${state.baseYear}:extra:${state.extraMonths}`,
+        sourceSignature: state.signature,
+        sourceSyncedAt: state.sourceSyncedAt,
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: async () => buildMonthlyDashboardPayloadFromMetas(state),
+    });
+}
+
+export async function queryAsanSummaryPerformanceDashboardFromSupabase(searchParams, buildExecutiveSummary, compactSource) {
+    const annualParams = cleanDashboardParams(searchParams);
+    annualParams.set('aggregate', 'all');
+    const monthlyParams = cleanDashboardParams(searchParams);
+    monthlyParams.delete('aggregate');
+    const [annualState, monthlyState] = await Promise.all([
+        annualDashboardSourceState(),
+        monthlyDashboardSourceState(monthlyParams),
+    ]);
+    const scopeKey = `year:${monthlyState.baseYear}:extra:${monthlyState.extraMonths}`;
+    const sourceSignature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'summary',
+        annual: annualState.signature,
+        monthly: monthlyState.signature,
+    });
+
+    return withDashboardSnapshot({
+        dashboardType: 'summary',
+        scopeKey,
+        sourceSignature,
+        sourceSyncedAt: maxTimestamp([annualState.sourceSyncedAt, monthlyState.sourceSyncedAt]),
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: async () => {
+            const [annual, monthly] = await Promise.all([
+                queryAsanAnnualPerformanceDashboardFromSupabase(annualParams),
+                queryAsanMonthlyPerformanceDashboardFromSupabase(monthlyParams),
+            ]);
+            return {
+                summary: buildExecutiveSummary({ annual, monthly }),
+                annual: compactSource(annual),
+                monthly: compactSource(monthly),
+            };
+        },
+    });
 }
 
 export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {

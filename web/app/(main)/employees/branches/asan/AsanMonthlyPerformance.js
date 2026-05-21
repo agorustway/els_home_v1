@@ -1039,16 +1039,22 @@ export default function AsanMonthlyPerformance() {
                 page_size: String(PAGE_SIZE),
                 source: 'supabase',
             });
-            const effectiveSearch = options.search ?? searchTerm;
+            const tableMode = activeTab === 'table' || append;
+            const effectiveSearch = tableMode ? (options.search ?? searchTerm) : '';
             if (effectiveSearch) {
                 params.set('search', effectiveSearch);
                 params.set('search_mode', options.searchMode || searchMode || 'or');
             }
-            const sortKey = options.sortKey ?? sortConfig.key;
-            const sortDir = options.sortDir ?? sortConfig.direction;
+            const sortKey = tableMode ? (options.sortKey ?? sortConfig.key) : '';
+            const sortDir = tableMode ? (options.sortDir ?? sortConfig.direction) : 'asc';
             if (sortKey) {
                 params.set('sort_key', sortKey);
                 params.set('sort_dir', sortDir || 'asc');
+            }
+            const dashboard = options.dashboard ?? (!tableMode && page === 1);
+            if (dashboard) {
+                params.set('dashboard', '1');
+                params.set('page_size', '1');
             }
             const res = await fetch(`/api/branches/asan/performance/monthly?${params.toString()}`);
             const json = await readPerformanceJson(res, '월간실적 조회 실패');
@@ -1060,7 +1066,7 @@ export default function AsanMonthlyPerformance() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [applyPayload, baseYear, extraMonths, searchMode, searchTerm, sortConfig]);
+    }, [activeTab, applyPayload, baseYear, extraMonths, searchMode, searchTerm, sortConfig]);
 
     useEffect(() => {
         fetchData();

@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
 from flask import jsonify, request
 
 from file_sync_gate import StableFileSyncGate
@@ -661,6 +662,11 @@ def register_asan_performance_routes(app, supabase, kst):
     external_nice = str(_env_int("ASAN_PERFORMANCE_NICE", 10, 0))
     external_ionice_class = str(_env_int("ASAN_PERFORMANCE_IONICE_CLASS", 2, 1))
     external_ionice_level = str(_env_int("ASAN_PERFORMANCE_IONICE_LEVEL", 7, 0))
+    snapshot_refresh_url = os.environ.get(
+        "ASAN_PERFORMANCE_SNAPSHOT_REFRESH_URL",
+        "https://elssolution.com/api/branches/asan/performance/summary?refresh_snapshot=1",
+    ).strip()
+    snapshot_refresh_timeout = _env_int("ASAN_PERFORMANCE_SNAPSHOT_REFRESH_TIMEOUT", 90, 5)
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
     monthly_auto_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)
     sync_state_lock = threading.Lock()
@@ -1022,6 +1028,24 @@ def register_asan_performance_routes(app, supabase, kst):
             return ["nice", "-n", external_nice, *command]
         return command
 
+    def _refresh_dashboard_snapshots_async(reason):
+        if not snapshot_refresh_url:
+            return
+
+        def runner():
+            try:
+                separator = "&" if "?" in snapshot_refresh_url else "?"
+                target_url = f"{snapshot_refresh_url}{separator}reason={reason}&ts={int(time.time())}"
+                res = requests.get(target_url, timeout=snapshot_refresh_timeout)
+                if res.status_code >= 400:
+                    app.logger.warning(
+                        f"[실적스냅샷] 프리워밍 실패 status={res.status_code} reason={reason}"
+                    )
+            except Exception as exc:
+                app.logger.warning(f"[실적스냅샷] 프리워밍 오류 reason={reason}: {exc}")
+
+        threading.Thread(target=runner, daemon=True).start()
+
     def _sync_external(force=False, rel_path=None, sheet_name=DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET, header_row=None):
         if not external_sync_enabled:
             state["last_sync_error"] = "연간실적 외부 동기화가 비활성화되어 있습니다."
@@ -1098,6 +1122,7 @@ def register_asan_performance_routes(app, supabase, kst):
         state["last_sync_error"] = None
         cache.pop(normalized_path, None)
         gc.collect()
+        _refresh_dashboard_snapshots_async("annual")
         return {
             "mode": mode,
             "external": True,
@@ -1201,6 +1226,8 @@ def register_asan_performance_routes(app, supabase, kst):
             app.logger.error(state["last_sync_error"])
         else:
             state["last_sync_error"] = None
+            if synced_count:
+                _refresh_dashboard_snapshots_async("monthly")
 
         return {
             "mode": "external-monthly",

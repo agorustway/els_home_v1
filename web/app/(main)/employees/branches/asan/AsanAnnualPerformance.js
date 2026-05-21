@@ -943,15 +943,21 @@ export default function AsanAnnualPerformance() {
             });
             const effectiveHeaderRow = options.headerRow ?? headerRow;
             if (effectiveHeaderRow) params.set('header_row', String(effectiveHeaderRow));
-            const effectiveSearch = options.search ?? searchTerm;
+            const tableMode = activeTab === 'table' || append;
+            const effectiveSearch = tableMode ? (options.search ?? searchTerm) : '';
             if (effectiveSearch) params.set('search', effectiveSearch);
             const effectiveSearchMode = options.searchMode ?? searchMode;
             if (effectiveSearch) params.set('search_mode', effectiveSearchMode || 'or');
-            const sortKey = options.sortKey ?? sortConfig.key;
-            const sortDir = options.sortDir ?? sortConfig.direction;
+            const sortKey = tableMode ? (options.sortKey ?? sortConfig.key) : '';
+            const sortDir = tableMode ? (options.sortDir ?? sortConfig.direction) : 'asc';
             if (sortKey) {
                 params.set('sort_key', sortKey);
                 params.set('sort_dir', sortDir || 'asc');
+            }
+            const dashboard = options.dashboard ?? (!tableMode && page === 1);
+            if (dashboard) {
+                params.set('dashboard', '1');
+                params.set('page_size', '1');
             }
 
             const res = await fetch(`/api/branches/asan/performance/annual?${params.toString()}`);
@@ -964,7 +970,7 @@ export default function AsanAnnualPerformance() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [selectedPath, sheetName, headerRow, searchTerm, searchMode, sortConfig, applyPayload]);
+    }, [activeTab, selectedPath, sheetName, headerRow, searchTerm, searchMode, sortConfig, applyPayload]);
 
     useEffect(() => {
         if (!selectedPath) return;

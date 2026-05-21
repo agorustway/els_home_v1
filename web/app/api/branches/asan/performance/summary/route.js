@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-    queryAsanAnnualPerformanceFromSupabase,
-    queryAsanMonthlyPerformanceFromSupabase,
+    queryAsanSummaryPerformanceDashboardFromSupabase,
 } from '@/lib/asan-branch-db';
 import { buildAsanPerformanceExecutiveSummary } from '@/utils/asanPerformanceSummary.mjs';
 
@@ -17,6 +16,8 @@ function summaryParams(searchParams, type) {
     params.delete('sort_key');
     params.delete('sort_dir');
     params.delete('source');
+    params.delete('dashboard');
+    if (searchParams.get('refresh_snapshot')) params.set('refresh_snapshot', searchParams.get('refresh_snapshot'));
     if (type === 'annual') params.set('aggregate', 'all');
     else params.delete('aggregate');
     return params;
@@ -53,19 +54,13 @@ export async function GET(req) {
     const url = new URL(req.url);
 
     try {
-        const [annual, monthly] = await Promise.all([
-            queryAsanAnnualPerformanceFromSupabase(summaryParams(url.searchParams, 'annual')),
-            queryAsanMonthlyPerformanceFromSupabase(summaryParams(url.searchParams, 'monthly')),
-        ]);
-        const summary = buildAsanPerformanceExecutiveSummary({ annual, monthly });
-
-        return NextResponse.json({
-            data: {
-                summary,
-                annual: compactSource(annual),
-                monthly: compactSource(monthly),
-            },
-        });
+        const params = summaryParams(url.searchParams, 'summary');
+        const data = await queryAsanSummaryPerformanceDashboardFromSupabase(
+            params,
+            buildAsanPerformanceExecutiveSummary,
+            compactSource,
+        );
+        return NextResponse.json({ data });
     } catch (error) {
         return NextResponse.json(
             { error: error.message || '종합실적 DB 조회 실패' },

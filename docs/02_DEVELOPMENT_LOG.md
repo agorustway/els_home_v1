@@ -1,3 +1,25 @@
+## [2026-05-21] 실적관리 현황판 스냅샷 DB 분리 (v5.14.96)
+### 핵심
+- 실적관리 종합/월간/연간 분석 화면의 초기 로딩이 원장 DB 조회와 집계에 묶여 일반 사용자가 오류로 오해할 수 있는 수준이라, 화면용 스냅샷 DB를 추가했습니다.
+- `branch_performance_dashboard_snapshots` 테이블을 만들고, 분석 API는 먼저 스냅샷 JSON을 읽습니다. 테이블 검색/정렬/더보기는 기존처럼 `branch_performance_rows` 원장 DB를 직접 조회합니다.
+- 스냅샷 생성은 `branch_performance_rows`를 읽지 않고 `branch_performance_files.summary` 메타만 사용합니다. 첫 구현 검증에서 원장 행 1페이지 조회도 statement timeout을 만들 수 있음을 확인해, 현황판 생성 경로에서 원장 행 접근을 완전히 제거했습니다.
+- NAS 연간/월간 동기화 성공 시 summary API를 비동기로 호출해 스냅샷을 프리워밍합니다. 실패해도 원장 동기화는 유지되고 다음 화면 요청에서 다시 생성됩니다.
+- 아산지점 첫 진입은 저장 탭과 무관하게 배차판으로 시작하고, 실적관리 버튼 진입은 항상 종합실적 탭으로 시작하도록 고정했습니다.
+### 검증
+- Supabase 운영 프로젝트에 `branch_performance_dashboard_snapshots` migration 적용 및 테이블 확인
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `npm.cmd run lint -- ...실적관리 관련 파일`: 통과
+- `npm.cmd run build`: 통과
+- 로컬 Next API: summary 스냅샷 첫 생성 21687ms, 이후 hit 3502ms 및 반복 hit 2001ms → 1377ms → 1059ms. annual/monthly dashboard hit는 각각 1331ms/1588ms.
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/api/branches/asan/performance/summary/route.js`, `annual/route.js`, `monthly/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`, `AsanAnnualPerformance.js`, `AsanMonthlyPerformance.js`
+- `docker/els-backend/asan_performance.py`
+- `web/supabase_sql/20260521_asan_performance_dashboard_snapshots.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 연간실적 요일 분석 관리자용 포지션 맵 재구성 (v5.14.95)
 ### 핵심
 - 비중형 다이어그램 1차안이 같은 정보가 레일과 카드에 반복돼 관리자가 한눈에 판단하기 어렵던 점을 보정했습니다.

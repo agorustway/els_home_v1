@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.95 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.96 / APK v5.11.25)
 
-> 최신 업데이트: 연간실적 요일 분석을 관리자용 포지션 맵으로 재구성해 요일별 차이를 더 선명하게 보이도록 했습니다.
+> 최신 업데이트: 실적관리 현황판은 스냅샷 DB를 먼저 읽고, 테이블류만 원장 DB를 직접 탐색하도록 분리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.95
+- **웹 버전**: v5.14.96
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -13,8 +13,10 @@
   - Galaxy S24급 360x780 뷰포트에서 월간 7열 매트릭스가 가로 스크롤 없이 유지되도록 모바일 셀·버튼·모달 폭을 보정했다.
   - 관리자 활동 로그 API는 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 응답에 붙이고, 검색은 이름/이메일 모두 지원한다.
   - 연간실적 요일 분석은 매출 중심/업무량/수익성/점검 요약, 매출 분포 리본, 7요일 포지션 맵으로 구분해 반복 카드 느낌을 줄인다.
+  - 실적관리 종합/월간/연간 분석 화면은 `branch_performance_dashboard_snapshots`를 먼저 읽고, 원장 DB는 테이블 검색·정렬에서만 직접 탐색한다.
+  - 아산지점 첫 진입은 항상 배차판으로 시작하고, 실적관리 버튼 진입은 항상 종합실적 탭으로 시작한다.
   - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
-  - 실적관리 하위 탭은 저장된 탭을 확인한 뒤 해당 화면만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
+  - 실적관리 하위 화면은 필요한 탭만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
   - 종합실적 계약/차량 집중도는 매출/건수 비중을 구분하고, 연간·월간실적 테이블 검색은 금액 쉼표·공백을 정규화해 서버 메모리 필터로 처리한다.
   - NAS `els-bot`은 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀 워밍업을 백그라운드 시작한다.
   - AI/API 단건 컨테이너 조회는 워커가 0개면 `/warmup`을 호출해 페이지 진입 없이 bot 준비를 트리거한다.
@@ -33,7 +35,7 @@
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
-| Supabase 인증/DB | 정상 | 연간실적 annual current snapshots 통합 조회, 월간실적 monthly 누적 원장 준비 |
+| Supabase 인증/DB | 정상 | 실적관리 원장 DB + 현황판 스냅샷 DB 분리 운영 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, Bot은 2워커 자동 워밍업 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
 | Android 드라이버 앱 | 정상 | APK v5.11.25 빌드 완료 |
@@ -69,21 +71,19 @@
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 - [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-95: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색
+- [x] v5.14.93-96: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB
 
 ## RECENT CHANGES
+- **v5.14.96**: 실적관리 종합/월간/연간 분석 화면은 `branch_performance_dashboard_snapshots`의 화면용 JSON을 먼저 읽는다. 스냅샷 생성은 `branch_performance_files.summary` 메타만 사용해 원장 행 timeout을 피하고, NAS 동기화 성공 시 summary API를 비동기로 호출해 스냅샷을 프리워밍한다. 아산지점 첫 화면은 배차판, 실적관리 진입은 종합실적으로 고정했다.
 - **v5.14.95**: 연간실적 `요일` 분석을 반복 카드형에서 관리자용 포지션 맵으로 다시 정리했다. 상단 4개 요약은 매출 중심/업무량/수익성/점검 요일만 잡고, 매출 분포 리본과 7요일 세로 포지션 맵에서 요일별 비중 차이를 색상·높이·순위로 구분한다.
 - **v5.14.94**: 관리자 활동 로그 검색어를 `q`로 받아 `profiles.full_name`, `user_roles.name`, 사용자 이메일, 기존 로그 이메일을 먼저 조회한 뒤 대상 이메일의 로그를 가져오게 했다. 화면 검색창도 `이름 또는 이메일 검색`으로 바꿨고 기존 `email` 파라미터는 호환용으로 유지한다.
 - **v5.14.92**: 월간실적 자동감지 순회 대상을 실제 존재하는 파일 슬롯으로 먼저 좁혀 6월 이후 미생성 파일이 1~5월 변경 감지를 막지 않게 했다. 현재처럼 1월 파일이 수정된 경우 이전 파일 120초 주기로 다시 잡혀 외부 Node importer가 Supabase monthly 원장을 갱신한다.
 - **v5.14.91**: 선적관리 컨테이너 조회 100건 이상은 `stableBatchMode`로 전환해 병렬 1개, 워커대기 300초, 제출간격 2초를 기본값으로 쓴다. 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회하고, 워커 대기 시간 초과는 재시도 대상으로 바꿨다. 새벽 자동조회도 같은 안정 모드로 호출하며, 비밀번호성 인증 실패는 즉시 전체 로그인 시도를 중단한다.
 - **v5.14.90**: Android 앱 종료/오버레이 종료 경로에 남아 있던 `android.os.Process.killProcess()`를 제거했다. 운행 종료 후 서버상 이미 완료된 저장 운행을 앱이 발견하면 `activeTrip`뿐 아니라 native trip prefs, keepalive 알람, 오버레이 서비스까지 같이 정리해 완료 뒤 앱이 꺼지거나 crash dialog가 뜨는 흐름을 막았다. APK v5.11.25.
 - **v5.14.89**: 연간·월간실적 테이블 검색이 `search_text ILIKE` statement timeout에 걸리던 흐름을 피하도록 현재 범위 행을 가져온 뒤 서버에서 정규화 필터링한다. `575,000`, `575000`, `575000.0`처럼 금액 표기가 달라도 같은 검색어로 잡히며, 검색창 placeholder와 헤더 정렬 title도 보강했다.
-- **v5.14.88**: AI 어시스턴트 하단에 `행사일정` 월간 캘린더를 추가했다. `/api/intranet/events` 계열 API와 Supabase SQL `20260520_intranet_event_calendar.sql`을 준비했고, 일정 등록 시 공지범위를 선택하며 대상 사용자는 7일전/3일전/1일전/당일 접속 시 공지 팝업을 받는다. 팝업의 `다시 보지 않음`은 사용자·일정·알림시점 단위로 저장된다.
-- **v5.14.87**: 관리자 활동 로그 조회 API가 `profiles`/`user_roles`에서 사용자 이름을 보강해 `user_name`으로 반환한다. 활동 로그 관리 화면은 이름, 이메일, 접근IP를 같은 식별 칸에 정리하고, 선택 CSV 다운로드에도 이름/접근IP 컬럼을 포함한다.
-- **v5.14.86**: 종합실적 `계약/차량 집중도` 카드의 두 번째 막대를 `건수`에서 `건수 비중`으로 바꾸고, 막대 폭을 각 카드 자기 자신 기준 100%가 아니라 ELS직계약차량/외부·타운송사 합계 대비 건수 비율로 계산한다.
 ## VERIFICATION
-- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- 로컬 summary API 스냅샷 hit: 3회 반복 2001ms → 1377ms → 1059ms
 - `npm.cmd run build`: 통과
 
 ## EASTER EGGS

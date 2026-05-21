@@ -1143,11 +1143,11 @@ function AsanPerformanceManagement() {
 
     useEffect(() => {
         try {
-            const saved = localStorage.getItem(ASAN_PERFORMANCE_TAB_KEY);
-            setActivePerformanceTab(PERFORMANCE_TABS.includes(saved) ? saved : 'summary-performance');
+            localStorage.setItem(ASAN_PERFORMANCE_TAB_KEY, 'summary-performance');
         } catch {
-            setActivePerformanceTab('summary-performance');
+            /* ignore */
         }
+        setActivePerformanceTab('summary-performance');
     }, []);
 
     useEffect(() => {
@@ -1224,18 +1224,20 @@ export default function AsanBranchPage() {
 
     useEffect(() => {
         try {
-            const saved = localStorage.getItem(ASAN_MAIN_TAB_KEY);
-            const nextTab = saved === 'annual-performance' ? 'performance' : saved;
-            setActiveMainTab(MAIN_TABS.includes(nextTab) ? nextTab : 'dispatch');
+            localStorage.setItem(ASAN_MAIN_TAB_KEY, 'dispatch');
         } catch {
-            setActiveMainTab('dispatch');
+            /* ignore */
         }
+        setActiveMainTab('dispatch');
     }, []);
 
     const switchMainTab = (tab) => {
         setActiveMainTab(tab);
         try {
             localStorage.setItem(ASAN_MAIN_TAB_KEY, tab);
+            if (tab === 'performance') {
+                localStorage.setItem(ASAN_PERFORMANCE_TAB_KEY, 'summary-performance');
+            }
         } catch { /* ignore */ }
     };
 
