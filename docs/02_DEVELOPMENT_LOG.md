@@ -1,3 +1,22 @@
+## [2026-05-21] 선적관리 컨테이너 조회 중단/DB rows 공백 방어 (v5.14.108)
+### 핵심
+- 로그/DB 집계상 13:45에 `asan_shipping` 소스 137건만 저장되어, 구형 스트림 조회가 페이지 이동과 함께 끊긴 것으로 확인했습니다.
+- 기존 대량 조회 API도 100건 이상은 NAS Core background job으로 넘기게 해 구형 화면/캐시 경로에서도 페이지 이탈로 조회가 중단되지 않게 했습니다.
+- job id가 없는 복원 요청은 최신 실행 job을 반환하고, 선적관리 DB 동기화는 rows 저장 count 검증 후 파일 메타를 갱신하도록 보강했습니다.
+- `branch_shipping_files` 메타는 남았는데 `branch_shipping_rows`가 비어 있는 상태를 발견해 공식 POST 동기화로 원본 1,360행을 복구했고, 같은 상황에서는 DB 빈 결과 대신 엑셀 fallback을 쓰게 했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "app/api/branches/asan/shipping/container-lookup/jobs/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/app/api/branches/asan/shipping/container-lookup/route.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 아산 배차판 자동 동기화 메모 변경 감지 및 화면 갱신 (v5.14.107)
 ### 핵심
 - NAS Core 배차판 자동 동기화의 시트 변경 해시에 `comments_dict`를 포함해 행 값은 그대로이고 셀 메모만 바뀐 경우도 `branch_dispatch` upsert가 실행되게 했습니다.

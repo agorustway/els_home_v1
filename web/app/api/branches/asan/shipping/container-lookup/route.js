@@ -11,6 +11,12 @@ function getRunUrl(req) {
     return new URL('/api/els/run', req.url).toString();
 }
 
+function getJobsUrl() {
+    const backendUrl = String(process.env.ELS_BACKEND_URL || '').trim().replace(/\/+$/, '');
+    if (!backendUrl) return null;
+    return `${backendUrl}/api/branches/asan/shipping/container-lookup/jobs`;
+}
+
 async function saveRowsSafely({ filePath, rows, containers, lookupSource, replaceExisting = true }) {
     if ((!Array.isArray(rows) || rows.length === 0) && !replaceExisting) return { count: 0, data: {} };
     try {
@@ -33,6 +39,32 @@ export async function POST(req) {
 
     if (!containers.length) {
         return NextResponse.json({ error: 'containers 배열이 필요합니다.' }, { status: 400 });
+    }
+
+    if (containers.length >= 100 && body.forceStream !== true) {
+        const jobsUrl = getJobsUrl();
+        if (jobsUrl) {
+            const jobRes = await fetch(jobsUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: filePath, containers }),
+            });
+            const jobPayload = await jobRes.json().catch(() => null);
+            if (jobRes.ok && jobPayload?.ok) {
+                const job = jobPayload.job || {};
+                const resultPayload = {
+                    ok: true,
+                    result: [],
+                    background_job: job,
+                    saved_count: 0,
+                    saved_data: {},
+                };
+                return new NextResponse(
+                    `LOG:대량 컨테이너 조회는 NAS 백그라운드 작업으로 전환되었습니다. job=${job.id || ''}\nRESULT:${JSON.stringify(resultPayload)}\n`,
+                    { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+                );
+            }
+        }
     }
 
     let runBody = {

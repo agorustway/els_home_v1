@@ -450,8 +450,8 @@ export default function AsanShipping() {
     }, [selectedPath, fetchSavedContainerLookupResults]);
 
     const fetchContainerLookupJob = useCallback(async (jobId) => {
-        if (!jobId) return null;
-        const res = await fetch(`/api/branches/asan/shipping/container-lookup/jobs?id=${encodeURIComponent(jobId)}`);
+        const suffix = jobId ? `?id=${encodeURIComponent(jobId)}` : '';
+        const res = await fetch(`/api/branches/asan/shipping/container-lookup/jobs${suffix}`);
         if (!res.ok) return null;
         const json = await res.json();
         return json.job || null;
@@ -465,7 +465,7 @@ export default function AsanShipping() {
         if (!containers.length) return null;
 
         try {
-            const job = session.jobId ? await fetchContainerLookupJob(session.jobId) : null;
+            const job = await fetchContainerLookupJob(session.jobId || '');
             const savedMap = await fetchSavedContainerLookupResults(containers);
             if (Object.keys(savedMap).length > 0) {
                 setContainerLookupResults(prev => {

@@ -1406,7 +1406,13 @@ def asan_shipping_container_lookup_jobs():
     if request.method == "GET":
         job_id = request.args.get("id")
         with shipping_container_lookup_jobs_lock:
-            job = shipping_container_lookup_jobs.get(job_id) if job_id else None
+            if job_id:
+                job = shipping_container_lookup_jobs.get(job_id)
+            else:
+                jobs = list(shipping_container_lookup_jobs.values())
+                job = next((item for item in jobs if item.get("state") in ("running", "stopping")), None)
+                if not job and jobs:
+                    job = max(jobs, key=lambda item: item.get("updated_at") or item.get("started_at") or "")
             if not job:
                 return jsonify({"ok": False, "error": "작업을 찾을 수 없습니다."}), 404
             return jsonify({"ok": True, "job": _shipping_lookup_job_snapshot(job)})
@@ -1629,11 +1635,42 @@ def _archive_removed_asan_shipping_rows(normalized_path, new_payload, removed_fi
             })
 
         for i in range(0, len(archive_payload), 500):
-            supabase.from_("branch_shipping_row_archive").insert(archive_payload[i:i + 500]).execute()
+            _shipping_check_supabase_result(
+                supabase.from_("branch_shipping_row_archive").insert(archive_payload[i:i + 500]).execute(),
+                "선적관리 삭제 행 아카이브 저장 실패"
+            )
         return len(archive_payload)
     except Exception as e:
         app.logger.warning(f"[선적관리DB] 삭제 이력 archive 건너뜀: {e}")
         return 0
+
+def _shipping_check_supabase_result(result, action):
+    error = getattr(result, "error", None)
+    if error:
+        raise RuntimeError(f"{action}: {error}")
+    return result
+
+def _shipping_count_synced_rows(normalized_path):
+    res = supabase.from_("branch_shipping_rows") \
+        .select("id", count="exact") \
+        .eq("branch_id", "asan") \
+        .eq("file_path", normalized_path) \
+        .limit(1) \
+        .execute()
+    _shipping_check_supabase_result(res, "선적관리 행 count 확인 실패")
+    if getattr(res, "count", None) is not None:
+        return int(res.count or 0)
+    return len(res.data or [])
+
+def _shipping_db_data_is_stale_empty(db_data):
+    if not db_data:
+        return False
+    try:
+        meta_count = int(db_data.get("meta_row_count") or 0)
+        total = int(db_data.get("total") or 0)
+    except (TypeError, ValueError):
+        return False
+    return meta_count > 0 and total <= 0 and not (db_data.get("data") or [])
 
 def cleanup_asan_shipping_history_retention(
     now=None,
@@ -1747,23 +1784,33 @@ def sync_asan_shipping_python(force=False, rel_path=None):
             })
 
         archived_count = _archive_removed_asan_shipping_rows(normalized_path, payload, file_modified_at)
-        supabase.from_("branch_shipping_rows").delete().eq("branch_id", "asan").eq("file_path", normalized_path).execute()
+        _shipping_check_supabase_result(
+            supabase.from_("branch_shipping_rows").delete().eq("branch_id", "asan").eq("file_path", normalized_path).execute(),
+            "선적관리 기존 행 삭제 실패"
+        )
         for i in range(0, len(payload), 500):
-            supabase.from_("branch_shipping_rows").insert(payload[i:i + 500]).execute()
+            _shipping_check_supabase_result(
+                supabase.from_("branch_shipping_rows").insert(payload[i:i + 500]).execute(),
+                "선적관리 행 저장 실패"
+            )
 
-        supabase.from_("branch_shipping_files").upsert({
+        synced_count = _shipping_count_synced_rows(normalized_path)
+        if synced_count != len(payload):
+            raise RuntimeError(f"선적관리 행 저장 검증 실패: 예상 {len(payload)}행, 실제 {synced_count}행")
+
+        _shipping_check_supabase_result(supabase.from_("branch_shipping_files").upsert({
             "branch_id": "asan",
             "file_path": normalized_path,
             "headers": headers,
             "row_count": len(rows),
             "file_modified_at": file_modified_at,
             "synced_at": datetime.now(KST).isoformat()
-        }, on_conflict="branch_id,file_path").execute()
+        }, on_conflict="branch_id,file_path").execute(), "선적관리 파일 메타 저장 실패")
 
         shipping_cache.pop(normalized_path, None)
         shipping_sync_gate.mark_synced(normalized_path, file_signature)
         app.logger.info(f"[선적관리DB] 동기화 완료: {normalized_path} ({len(rows)}행, 삭제 archive {archived_count}행)")
-        return {"file_modified_at": file_modified_at, "archived_count": archived_count}
+        return {"file_modified_at": file_modified_at, "archived_count": archived_count, "row_count": len(rows), "synced_count": synced_count}
     except Exception as e:
         if "branch_shipping_" in str(e) or "relation" in str(e).lower():
             shipping_db_available = False
@@ -1831,6 +1878,7 @@ def query_asan_shipping_db(rel_path, page=1, page_size=5000, search="", sort_key
         "file_modified_at": meta.get("file_modified_at"),
         "synced_at": meta.get("synced_at"),
         "total": total_count if total_count is not None else meta.get("row_count", 0),
+        "meta_row_count": meta.get("row_count", 0),
         "page": page,
         "page_size": page_size,
         "sort_key": sort_key if sort_idx >= 0 else "",
@@ -1921,8 +1969,12 @@ def get_asan_shipping():
                 date_col=date_col,
                 months=months
             )
-            if db_data:
+            if db_data and not _shipping_db_data_is_stale_empty(db_data):
                 return jsonify({"data": db_data})
+            if db_data:
+                app.logger.warning(
+                    f"[선적관리DB] 메타 row_count={db_data.get('meta_row_count')}이나 실제 rows=0이라 엑셀 fallback 사용: {rel_path}"
+                )
 
         file_path, normalized_path = resolve_asan_shipping_file(rel_path)
         if not file_path.exists():

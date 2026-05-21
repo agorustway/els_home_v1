@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.107 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.108 / APK v5.11.25)
 
-> 최신 업데이트: 아산 배차판 자동 동기화가 셀 메모 변경까지 감지하고 화면도 60초마다 저장 시각을 조용히 갱신합니다.
+> 최신 업데이트: 선적관리 대량 컨테이너 조회가 페이지 이탈/구형 스트림 경로에도 NAS 백그라운드 job으로 이어지고, 선적관리 DB 동기화는 rows 저장 검증과 엑셀 fallback을 갖습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.107
+- **웹 버전**: v5.14.108
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -23,7 +23,8 @@
   - NAS `els-bot`은 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀 워밍업을 백그라운드 시작한다.
   - Bot 자동 로그인은 브라우저/복구 경로 전체를 합쳐 계정 기준 최대 3회만 허용하고, 비밀번호성 실패는 즉시 전체 자동 시도를 중지한다.
   - Bot 보호모드는 10분 후 자동 초기화하지 않으며, ETrans 계정 확인 후 `BOT 정지`로 수동 초기화해야 다시 로그인할 수 있다.
-  - 선적관리 컨테이너 수동 조회는 NAS core 백그라운드 job으로 실행해 페이지 이동 후에도 BOT 조회와 Supabase 저장을 계속한다.
+  - 선적관리 컨테이너 수동 조회는 NAS core 백그라운드 job으로 실행하고, 구형 대량 스트림 경로도 job으로 넘겨 페이지 이동 후에도 BOT 조회와 Supabase 저장을 계속한다.
+  - 선적관리 DB 동기화는 rows 저장 건수 검증 후 파일 메타를 갱신하며, 메타만 있고 실제 rows가 비면 엑셀 fallback으로 빈 화면을 막는다.
   - 선적관리 100건 이상 컨테이너 조회는 대량 안정 모드로 병렬 1개, 워커대기 300초, 제출간격 2초를 기본 적용하고, 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 미존재 미래월을 순환 후보에서 제외한 뒤 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
@@ -71,22 +72,19 @@
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 - [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-107: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job, 실적 설정 버튼명/근거표 정리, 월간 차량 매입액 기준, 종합 경영 판단 기준 분리, 월간 차량 건수 표시 정리, 배차판 자동 동기화 보정
+- [x] v5.14.93-108: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job, 실적 설정 버튼명/근거표 정리, 월간 차량 매입액 기준, 종합 경영 판단 기준 분리, 월간 차량 건수 표시 정리, 배차판 자동 동기화/선적 DB 방어 보정
 
 ## RECENT CHANGES
+- **v5.14.108**: 선적관리 구형 대량 컨테이너 조회 API도 NAS background job으로 전환해 페이지 이동으로 스트림이 끊겨도 조회가 계속되게 했다. job id가 없는 복원 요청은 최신 실행 job을 반환하고, 선적관리 DB 동기화는 rows 저장 count 검증 후 메타를 갱신하며 rows가 비어 있으면 DB 대신 엑셀 fallback을 사용한다.
 - **v5.14.107**: 아산 배차판 자동 동기화 해시에 셀 메모를 포함해 메모만 수정한 저장도 DB upsert 대상이 되도록 보정. 배차판 화면은 수동 NAS 동기화/새로고침 없이도 60초마다 조용히 재조회하며 현재 선택 날짜/전체 탭을 유지한 채 `저장:` 시각을 갱신한다.
 - **v5.14.105**: 월간실적 `구성·차량 성과`의 차량 TOP10은 매입액 기준 표이므로 마지막 컬럼에서 손익 금액을 제거하고 건수만 표시한다. 모바일 폭도 건수 전용 컬럼 기준으로 줄여 가로 스크롤 부담을 낮췄다.
 - **v5.14.104**: 종합실적 `경영 판단` 설명에 청구처는 매출 기준, 지급처는 매입 기준이라고 명시하고, 고마진/저마진 지급처 카드의 상세 금액도 매출액이 아니라 매입액으로 표시한다.
 - **v5.14.103**: 연간실적 `계약/차량` 분석의 작업지/청구처/노선/구분 근거표를 `항목 · 매출 · 매입 · 손익 · 손익률` 제목열이 있는 표 형태로 바꿨다. 각 항목은 기존처럼 클릭 시 선택 세그먼트 조건과 항목명을 AND 검색으로 묶어 원장 상세로 이동한다.
-- **v5.14.102**: 월간실적 `구성·차량 성과` 카드의 차량 TOP10을 청구액이 아니라 매입액 기준으로 정렬하고, 막대 비중과 금액 컬럼도 매입액으로 표시한다. 운송사/차량번호 헤더와 값은 우측 정렬해 숫자 컬럼과 시선 흐름을 맞췄다.
-- **v5.14.101**: 연간실적 상단의 `파일 설정` 버튼을 월간실적과 같은 `설정`으로 바꿔 실적관리 하위 화면 버튼명을 통일했다. 파일 설정 모달 제목은 업무 맥락을 위해 `연간실적 파일 설정`/`월간실적 파일 설정`을 유지한다.
-- **v5.14.100**: 선적관리 컨테이너 수동 조회를 브라우저 스트림 의존 방식에서 NAS core의 `/container-lookup/jobs` 백그라운드 작업으로 분리했다. 작업은 BOT 스트림을 core가 직접 소비하며 부분 결과를 Supabase에 저장하므로 페이지 이동/복귀와 무관하게 계속 진행된다. 화면은 job id를 localStorage 세션에 남기고 복귀 시 job 상태와 저장 이력을 다시 읽어 완료/실패 건수를 복원한다.
-- **v5.14.99**: 행사일정 월간 매트릭스에서 일정 칩을 누르면 상세 모달로 일자, 시간, 장소, 공지범위, 상세 내용, 접속 팝업 시점을 카드와 칩으로 정리해 보여준다. 날짜 숫자는 해당일 전체 일정 목록을 열고, `+N 더보기`도 전체 목록으로 연결한다. 모바일은 360x780 기준 하단 시트형 모달과 1열 상세 메타로 전환한다.
 ## VERIFICATION
-- `node --test web/tests/asanDashboardView.test.mjs`: 26개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py`: 통과
-- `git diff --check`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "app/api/branches/asan/shipping/container-lookup/jobs/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `npm.cmd run build`, `git diff --check`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
