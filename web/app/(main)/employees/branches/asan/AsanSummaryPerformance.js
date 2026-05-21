@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatPerformanceAmount } from '@/utils/asanPerformanceView.mjs';
-import { buildScopedAsanPerformanceSummary } from '@/utils/asanPerformanceSummary.mjs';
 import styles from './annualPerformance.module.css';
 
 const DEFAULT_SUMMARY_YEAR = 2026;
@@ -83,6 +82,14 @@ function metricTone(value) {
 
 function trendTone(delta) {
     return safeNumber(delta?.amount) >= 0 ? 'good' : 'watch';
+}
+
+function summaryScopeKey(scope = {}) {
+    const mode = scope.mode || 'all';
+    if (mode === 'year') return `year:${scope.year || ''}`;
+    if (mode === 'month') return `month:${scope.month || ''}`;
+    if (mode === 'day') return `day:${scope.dayKey || ''}`;
+    return 'all';
 }
 
 function KpiCard({ label, value, sub, tone = 'neutral' }) {
@@ -524,8 +531,23 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
     const [selectedMonth, setSelectedMonth] = useState('');
     const [selectedDayKey, setSelectedDayKey] = useState('');
     const syncStateRef = useRef({ annual: false, monthly: false });
+    const requestIdRef = useRef(0);
+    const lastSummaryQueryRef = useRef('');
+    const currentScopeRef = useRef({ mode: 'all' });
 
-    const loadSummary = useCallback(async () => {
+    const loadSummary = useCallback(async (scope = currentScopeRef.current, options = {}) => {
+        const nextScope = {
+            mode: ['year', 'month', 'day'].includes(scope?.mode) ? scope.mode : 'all',
+            year: scope?.year || '',
+            month: scope?.month || '',
+            dayKey: scope?.dayKey || '',
+        };
+        const queryKey = summaryScopeKey(nextScope);
+        if (!options.force && lastSummaryQueryRef.current === queryKey) return;
+        lastSummaryQueryRef.current = queryKey;
+        currentScopeRef.current = nextScope;
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
         const started = performance.now();
         setLoading(true);
         setError('');
@@ -533,20 +555,29 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
             const params = new URLSearchParams({
                 year: String(DEFAULT_SUMMARY_YEAR),
                 extra_months: String(DEFAULT_EXTRA_MONTHS),
+                view: 'dashboard',
+                scope_mode: nextScope.mode,
             });
+            if (nextScope.mode === 'year' && nextScope.year) params.set('scope_year', nextScope.year);
+            if (nextScope.mode === 'month' && nextScope.month) params.set('scope_month', nextScope.month);
+            if (nextScope.mode === 'day' && nextScope.dayKey) params.set('scope_day_key', nextScope.dayKey);
             const res = await fetch(`/api/branches/asan/performance/summary?${params.toString()}`, { cache: 'no-store' });
             const json = await readPerformanceJson(res, '종합실적 조회 실패');
+            if (requestId !== requestIdRef.current) return;
             setPayload(json.data || null);
         } catch (err) {
+            if (requestId !== requestIdRef.current) return;
             setError(err.message || '종합실적 조회 실패');
         } finally {
-            setElapsedMs(Math.round(performance.now() - started));
-            setLoading(false);
+            if (requestId === requestIdRef.current) {
+                setElapsedMs(Math.round(performance.now() - started));
+                setLoading(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        loadSummary();
+        loadSummary({ mode: 'all' }, { force: true });
     }, [loadSummary]);
 
     const checkSyncAndReload = useCallback(async () => {
@@ -569,7 +600,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                 if (wasRunning && !running && !status.last_error) shouldReload = true;
                 syncStateRef.current[key] = running;
             }
-            if (shouldReload) loadSummary();
+            if (shouldReload) loadSummary(currentScopeRef.current, { force: true });
         } catch {
             // NAS 상태 조회 실패는 종합실적 DB 조회를 막지 않는다.
         }
@@ -586,6 +617,12 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
 
     const baseSummary = payload?.summary || null;
     const scopeOptions = baseSummary?.scopeOptions || {};
+    const currentScope = useMemo(() => ({
+        mode: scopeMode,
+        year: selectedYear,
+        month: selectedMonth,
+        dayKey: selectedDayKey,
+    }), [scopeMode, selectedDayKey, selectedMonth, selectedYear]);
 
     useEffect(() => {
         if (!baseSummary) return;
@@ -598,12 +635,15 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
         if (!selectedDayKey) setSelectedDayKey(days.at(-1)?.value || '');
     }, [baseSummary, scopeOptions.daily, scopeOptions.monthly, scopeOptions.yearly, selectedDayKey, selectedMonth, selectedYear]);
 
-    const summary = useMemo(() => buildScopedAsanPerformanceSummary(baseSummary, {
-        mode: scopeMode,
-        year: selectedYear,
-        month: selectedMonth,
-        dayKey: selectedDayKey,
-    }), [baseSummary, scopeMode, selectedDayKey, selectedMonth, selectedYear]);
+    useEffect(() => {
+        if (!baseSummary) return;
+        if (currentScope.mode === 'year' && !currentScope.year) return;
+        if (currentScope.mode === 'month' && !currentScope.month) return;
+        if (currentScope.mode === 'day' && !currentScope.dayKey) return;
+        loadSummary(currentScope);
+    }, [baseSummary, currentScope, loadSummary]);
+
+    const summary = baseSummary;
 
     const kpis = useMemo(() => {
         if (!summary) return [];
@@ -661,7 +701,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                     </div>
                 </div>
                 <div className={styles.actions}>
-                    <button type="button" className={styles.ghostBtn} onClick={loadSummary} disabled={loading}>새로고침</button>
+                    <button type="button" className={styles.ghostBtn} onClick={() => loadSummary(currentScope, { force: true })} disabled={loading}>새로고침</button>
                 </div>
             </div>
 

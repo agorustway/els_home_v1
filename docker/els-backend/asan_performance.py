@@ -664,7 +664,7 @@ def register_asan_performance_routes(app, supabase, kst):
     external_ionice_level = str(_env_int("ASAN_PERFORMANCE_IONICE_LEVEL", 7, 0))
     snapshot_refresh_url = os.environ.get(
         "ASAN_PERFORMANCE_SNAPSHOT_REFRESH_URL",
-        "https://elssolution.com/api/branches/asan/performance/summary?refresh_snapshot=1",
+        "https://elssolution.com/api/branches/asan/performance/summary?refresh_snapshot=1&view=dashboard",
     ).strip()
     snapshot_refresh_timeout = _env_int("ASAN_PERFORMANCE_SNAPSHOT_REFRESH_TIMEOUT", 90, 5)
     sync_gate = StableFileSyncGate(quiet_seconds=quiet_seconds, retry_seconds=retry_seconds)

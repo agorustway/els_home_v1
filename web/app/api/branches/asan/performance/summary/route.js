@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import {
     queryAsanSummaryPerformanceDashboardFromSupabase,
+    queryAsanSummaryPerformanceDashboardViewFromSupabase,
 } from '@/lib/asan-branch-db';
-import { buildAsanPerformanceExecutiveSummary } from '@/utils/asanPerformanceSummary.mjs';
+import {
+    buildAsanPerformanceDashboardView,
+    buildAsanPerformanceExecutiveSummary,
+} from '@/utils/asanPerformanceSummary.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,16 +54,28 @@ function compactSource(data = {}) {
     };
 }
 
+function dashboardViewRequested(searchParams) {
+    const value = String(searchParams.get('view') || searchParams.get('dashboard_view') || '').toLowerCase();
+    return ['dashboard', 'compact', 'view', '1', 'true', 'yes'].includes(value);
+}
+
 export async function GET(req) {
     const url = new URL(req.url);
 
     try {
         const params = summaryParams(url.searchParams, 'summary');
-        const data = await queryAsanSummaryPerformanceDashboardFromSupabase(
-            params,
-            buildAsanPerformanceExecutiveSummary,
-            compactSource,
-        );
+        const data = dashboardViewRequested(url.searchParams)
+            ? await queryAsanSummaryPerformanceDashboardViewFromSupabase(
+                params,
+                buildAsanPerformanceExecutiveSummary,
+                compactSource,
+                buildAsanPerformanceDashboardView,
+            )
+            : await queryAsanSummaryPerformanceDashboardFromSupabase(
+                params,
+                buildAsanPerformanceExecutiveSummary,
+                compactSource,
+            );
         return NextResponse.json({ data });
     } catch (error) {
         return NextResponse.json(

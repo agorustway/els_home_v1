@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  buildAsanPerformanceDashboardView,
   buildAsanPerformanceExecutiveSummary,
   buildScopedAsanPerformanceSummary,
   mergePerformanceSeries,
@@ -20,12 +21,18 @@ test('아산 종합실적 API는 연간/월간 Supabase 요약을 합산한다',
   const route = read('app/api/branches/asan/performance/summary/route.js');
   const dbReader = read('lib/asan-branch-db.js');
   assert.match(route, /queryAsanSummaryPerformanceDashboardFromSupabase/);
+  assert.match(route, /queryAsanSummaryPerformanceDashboardViewFromSupabase/);
   assert.match(route, /buildAsanPerformanceExecutiveSummary/);
+  assert.match(route, /buildAsanPerformanceDashboardView/);
+  assert.match(route, /dashboardViewRequested/);
   assert.match(route, /aggregate', 'all'/);
   assert.match(route, /page_size', '1'/);
   assert.match(route, /refresh_snapshot/);
   assert.match(dbReader, /queryAsanSummaryPerformanceDashboardFromSupabase/);
+  assert.match(dbReader, /queryAsanSummaryPerformanceDashboardViewFromSupabase/);
   assert.match(dbReader, /dashboardType: 'summary'/);
+  assert.match(dbReader, /dashboardType: 'summary-view'/);
+  assert.match(dbReader, /summaryDashboardViewScope/);
   assert.match(dbReader, /queryAsanAnnualPerformanceDashboardFromSupabase/);
   assert.match(dbReader, /queryAsanMonthlyPerformanceDashboardFromSupabase/);
 });
@@ -47,7 +54,7 @@ test('아산 종합실적 화면은 사장 관점 핵심 KPI와 상세 탭 이�
   assert.match(component, /syncStateRef/);
   assert.match(component, /Promise\.allSettled/);
   assert.match(component, /source: 'status'/);
-  assert.match(component, /if \(shouldReload\) loadSummary\(\)/);
+  assert.match(component, /if \(shouldReload\) loadSummary\(currentScopeRef\.current, \{ force: true \}\)/);
   assert.match(component, /아산 종합 실적 지휘판/);
   assert.match(component, /연간\+월간 합산/);
   assert.match(component, /전체/);
@@ -60,7 +67,10 @@ test('아산 종합실적 화면은 사장 관점 핵심 KPI와 상세 탭 이�
   assert.match(component, /disabled=\{!yearSelectEnabled\}/);
   assert.match(component, /disabled=\{!monthSelectEnabled\}/);
   assert.match(component, /disabled=\{!daySelectEnabled\}/);
-  assert.match(component, /buildScopedAsanPerformanceSummary/);
+  assert.match(component, /view: 'dashboard'/);
+  assert.match(component, /scope_mode: nextScope\.mode/);
+  assert.match(component, /summaryScopeKey/);
+  assert.match(component, /lastSummaryQueryRef/);
   assert.match(component, /통합 매출/);
   assert.match(component, /통합 손익/);
   assert.match(component, /선택 범위 합산 구조/);
@@ -276,6 +286,20 @@ test('종합실적 합산 유틸은 연간과 월간의 같은 기간을 더하�
   assert.equal(scopedDay.trendBasis, '일별');
   assert.equal(scopedDay.trendItems.find(item => item.date === '2026-04-10').isSelected, true);
   assert.equal(scopedDay.scope.label, '2026-04-10');
+
+  const dashboardView = buildAsanPerformanceDashboardView(summary, { mode: 'month', month: '2026-04' });
+  const dashboardAllView = buildAsanPerformanceDashboardView(summary, { mode: 'all' });
+  assert.equal(dashboardView.totalRevenue, 900);
+  assert.equal(dashboardView.sourceMix.annual.revenue, 600);
+  assert.equal(dashboardView.sourceMix.monthly.revenue, 300);
+  assert.equal(dashboardView.trendBasis, '월별');
+  assert.equal(dashboardView.trendItems.find(item => item.period === '2026-04').isSelected, true);
+  assert.equal(dashboardAllView.strategicSegments[0].topClients[0].label, '글로비스');
+  assert.equal(dashboardView.monthly, undefined);
+  assert.equal(dashboardView.daily, undefined);
+  assert.equal(dashboardView.breakdowns, undefined);
+  assert.equal(dashboardView.strategicSegments[0].monthly, undefined);
+  assert.ok(JSON.stringify(dashboardView).length < JSON.stringify(scopedMonth).length);
 });
 
 test('종합실적 시리즈 병합은 기간 정렬과 비중 계산을 안정적으로 수행한다', () => {

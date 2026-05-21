@@ -612,6 +612,119 @@ function trendForScope(summary = {}, scope = {}) {
   return { items: months, basis: '월별', unit: '월' };
 }
 
+function compactMetricForDashboard(item = {}) {
+  if (!item || typeof item !== 'object') return null;
+  return {
+    key: item.key || '',
+    name: item.name || item.label || item.vehicleNo || '',
+    label: item.label || item.name || item.vehicleNo || '',
+    vehicleNo: item.vehicleNo || '',
+    drivers: item.drivers || item.driver || '',
+    carriers: item.carriers || item.carrier || '',
+    description: item.description || '',
+    filterTerms: Array.isArray(item.filterTerms) ? item.filterTerms.slice(0, 8) : [],
+    period: item.period || '',
+    sourcePeriod: item.sourcePeriod || '',
+    workPeriod: item.workPeriod || '',
+    year: item.year || '',
+    month: item.month || '',
+    date: item.date || '',
+    dateKey: item.dateKey || '',
+    scopeKey: item.scopeKey || dailyScopeKey(item) || '',
+    day: item.day,
+    weekStart: item.weekStart || '',
+    weekEnd: item.weekEnd || '',
+    revenue: roundMetric(item.revenue),
+    purchase: roundMetric(item.purchase),
+    profit: roundMetric(item.profit),
+    rowCount: safeNumber(item.rowCount),
+    profitRate: safeNumber(item.profitRate),
+    purchaseRate: safeNumber(item.purchaseRate),
+    revenueShare: safeNumber(item.revenueShare),
+    isSelected: Boolean(item.isSelected),
+  };
+}
+
+function compactMetricListForDashboard(items = [], limit = 80) {
+  return safeList(items)
+    .slice(0, limit)
+    .map(compactMetricForDashboard)
+    .filter(Boolean);
+}
+
+function compactSourceForDashboard(source = {}) {
+  const compact = compactMetricForDashboard(source) || {};
+  return {
+    ...compact,
+    syncedAt: source.syncedAt || '',
+    periodStart: source.periodStart || '',
+    periodEnd: source.periodEnd || '',
+    fileCount: safeNumber(source.fileCount),
+  };
+}
+
+function compactSegmentForDashboard(item = {}) {
+  const compact = compactMetricForDashboard(item) || {};
+  return {
+    ...compact,
+    topClients: compactMetricListForDashboard(item.topClients, 6),
+    topWorkSites: compactMetricListForDashboard(item.topWorkSites, 6),
+    topRoutes: compactMetricListForDashboard(item.topRoutes, 6),
+  };
+}
+
+function compactExecutiveSignals(signals = []) {
+  return safeList(signals).map(signal => ({
+    title: signal.title || '',
+    value: signal.value || '',
+    detail: signal.detail || '',
+    tone: signal.tone || 'watch',
+  }));
+}
+
+export function buildAsanPerformanceDashboardView(summary = null, scope = {}) {
+  const scoped = buildScopedAsanPerformanceSummary(summary, scope);
+  if (!scoped) return null;
+  const scopeInfo = { ...(scoped.scope || {}) };
+  delete scopeInfo.options;
+  return {
+    totalRevenue: roundMetric(scoped.totalRevenue),
+    totalPurchase: roundMetric(scoped.totalPurchase),
+    totalProfit: roundMetric(scoped.totalProfit),
+    profitRate: safeNumber(scoped.profitRate),
+    purchaseRate: safeNumber(scoped.purchaseRate),
+    contributionMargin: safeNumber(scoped.contributionMargin),
+    rowCount: safeNumber(scoped.rowCount),
+    fileCount: safeNumber(scoped.fileCount),
+    syncedAt: scoped.syncedAt || '',
+    periodStart: scoped.periodStart || '',
+    periodEnd: scoped.periodEnd || '',
+    latestMonth: compactMetricForDashboard(scoped.latestMonth),
+    previousMonth: compactMetricForDashboard(scoped.previousMonth),
+    latestDay: compactMetricForDashboard(scoped.latestDay),
+    latestRevenueDelta: scoped.latestRevenueDelta || { amount: 0, rate: 0 },
+    latestProfitDelta: scoped.latestProfitDelta || { amount: 0, rate: 0 },
+    yearly: compactMetricListForDashboard(summary?.yearly || scoped.yearly, 80),
+    trendItems: compactMetricListForDashboard(scoped.trendItems, 80),
+    trendBasis: scoped.trendBasis || '월별',
+    trendUnit: scoped.trendUnit || '월',
+    strategicSegments: safeList(scoped.strategicSegments).slice(0, 8).map(compactSegmentForDashboard),
+    vehiclePerformance: compactMetricListForDashboard(scoped.vehiclePerformance, 30),
+    sourceMix: {
+      annual: compactSourceForDashboard(scoped.sourceMix?.annual),
+      monthly: compactSourceForDashboard(scoped.sourceMix?.monthly),
+      totalRevenue: roundMetric(scoped.sourceMix?.totalRevenue),
+      totalPurchase: roundMetric(scoped.sourceMix?.totalPurchase),
+      totalProfit: roundMetric(scoped.sourceMix?.totalProfit),
+      rowCount: safeNumber(scoped.sourceMix?.rowCount),
+      fileCount: safeNumber(scoped.sourceMix?.fileCount),
+    },
+    scope: scopeInfo,
+    scopeOptions: scoped.scopeOptions || buildAsanSummaryScopeOptions(summary || {}),
+    executiveSignals: compactExecutiveSignals(scoped.executiveSignals),
+  };
+}
+
 export function buildScopedAsanPerformanceSummary(summary = null, scope = {}) {
   if (!summary) return null;
   const normalized = normalizeScope(summary, scope);

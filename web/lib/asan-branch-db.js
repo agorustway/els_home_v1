@@ -14,7 +14,7 @@ const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
 const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 const SUPABASE_RANGE_CHUNK_SIZE = 1000;
-const DASHBOARD_SNAPSHOT_VERSION = 1;
+const DASHBOARD_SNAPSHOT_VERSION = 2;
 const DASHBOARD_SNAPSHOT_TABLE = 'branch_performance_dashboard_snapshots';
 
 let adminClient;
@@ -168,6 +168,23 @@ function cleanDashboardParams(searchParams) {
     params.delete('refresh_snapshot');
     params.delete('refresh');
     return params;
+}
+
+function summaryDashboardViewScope(searchParams) {
+    const mode = String(searchParams.get('scope_mode') || searchParams.get('scope') || 'all').toLowerCase();
+    return {
+        mode: ['year', 'month', 'day'].includes(mode) ? mode : 'all',
+        year: String(searchParams.get('scope_year') || searchParams.get('year_scope') || '').trim(),
+        month: String(searchParams.get('scope_month') || searchParams.get('month_scope') || '').trim(),
+        dayKey: String(searchParams.get('scope_day_key') || searchParams.get('day_key') || '').trim(),
+    };
+}
+
+function summaryDashboardViewScopeKey(scope = {}) {
+    if (scope.mode === 'year') return `scope:year:${scope.year || 'default'}`;
+    if (scope.mode === 'month') return `scope:month:${scope.month || 'default'}`;
+    if (scope.mode === 'day') return `scope:day:${scope.dayKey || 'default'}`;
+    return 'scope:all';
 }
 
 function normalizeShippingPath(path) {
@@ -710,6 +727,106 @@ function mergeInlineSeries(left = [], right = [], keyField = 'period') {
         .sort((a, b) => String(a[keyField] ?? a.period ?? a.year ?? a.label).localeCompare(String(b[keyField] ?? b.period ?? b.year ?? b.label), 'ko-KR'));
 }
 
+function compactDashboardSeriesItem(item = {}, type = 'monthly') {
+    const compact = {
+        revenue: roundMetric(item.revenue),
+        purchase: roundMetric(item.purchase),
+        profit: roundMetric(item.profit),
+        rowCount: numberValue(item.rowCount),
+        profitRate: numberValue(item.profitRate),
+    };
+    if (type === 'daily') {
+        compact.date = item.date || '';
+        compact.period = item.period || '';
+        compact.label = item.label || '';
+        compact.day = item.day;
+        return compact;
+    }
+    if (type === 'yearly') {
+        compact.year = item.year || '';
+        return compact;
+    }
+    if (type === 'weekday') {
+        compact.day = item.day;
+        compact.label = item.label || '';
+        return compact;
+    }
+    compact.period = item.period || '';
+    compact.year = item.year || '';
+    compact.month = item.month || '';
+    return compact;
+}
+
+function compactDashboardSeries(items = [], type = 'monthly') {
+    return (Array.isArray(items) ? items : []).map(item => compactDashboardSeriesItem(item, type));
+}
+
+function compactDashboardNamedItem(item = {}, options = {}) {
+    const {
+        keepMonthly = true,
+        keepDaily = false,
+        keepYearly = false,
+        keepWeekday = false,
+        keepTopLists = false,
+    } = options;
+    const compact = {
+        key: item.key || '',
+        name: item.name || item.label || item.vehicleNo || '',
+        label: item.label || item.name || item.vehicleNo || '',
+        vehicleNo: item.vehicleNo || '',
+        drivers: item.drivers || item.driver || '',
+        carriers: item.carriers || item.carrier || '',
+        description: item.description || '',
+        filterTerms: Array.isArray(item.filterTerms) ? item.filterTerms.slice(0, 8) : [],
+        revenue: roundMetric(item.revenue),
+        purchase: roundMetric(item.purchase),
+        profit: roundMetric(item.profit),
+        rowCount: numberValue(item.rowCount),
+        profitRate: numberValue(item.profitRate),
+        revenueShare: numberValue(item.revenueShare),
+    };
+    if (keepMonthly) compact.monthly = compactDashboardSeries(item.monthly, 'monthly');
+    if (keepDaily) compact.daily = compactDashboardSeries(item.daily, 'daily');
+    if (keepYearly) compact.yearly = compactDashboardSeries(item.yearly, 'yearly');
+    if (keepWeekday) compact.weekday = compactDashboardSeries(item.weekday, 'weekday');
+    if (keepTopLists) {
+        compact.topWorkSites = (Array.isArray(item.topWorkSites) ? item.topWorkSites : []).slice(0, 12).map(child => compactDashboardNamedItem(child, { keepMonthly: false }));
+        compact.topClients = (Array.isArray(item.topClients) ? item.topClients : []).slice(0, 12).map(child => compactDashboardNamedItem(child, { keepMonthly: false }));
+        compact.topRoutes = (Array.isArray(item.topRoutes) ? item.topRoutes : []).slice(0, 12).map(child => compactDashboardNamedItem(child, { keepMonthly: false }));
+        compact.topCategories = (Array.isArray(item.topCategories) ? item.topCategories : []).slice(0, 12).map(child => compactDashboardNamedItem(child, { keepMonthly: false }));
+        compact.topPickups = (Array.isArray(item.topPickups) ? item.topPickups : []).slice(0, 12).map(child => compactDashboardNamedItem(child, { keepMonthly: false }));
+    }
+    return compact;
+}
+
+function compactPerformanceDashboardSummary(summary = {}, type = 'annual') {
+    const keepDaily = type === 'monthly';
+    const compact = {
+        ...summary,
+        yearly: compactDashboardSeries(summary.yearly, 'yearly'),
+        monthly: compactDashboardSeries(summary.monthly, 'monthly'),
+        daily: compactDashboardSeries(summary.daily, 'daily'),
+        weekday: compactDashboardSeries(summary.weekday, 'weekday'),
+        topGroups: (summary.topGroups || []).map(item => compactDashboardNamedItem(item, { keepMonthly: false })),
+        breakdowns: (summary.breakdowns || []).map(section => ({
+            column: section.column || '',
+            items: (section.items || []).map(item => compactDashboardNamedItem(item, { keepMonthly: true, keepDaily })),
+        })),
+        strategicSegments: (summary.strategicSegments || []).map(item => compactDashboardNamedItem(item, {
+            keepMonthly: true,
+            keepDaily,
+            keepTopLists: true,
+        })),
+        vehiclePerformance: (summary.vehiclePerformance || []).map(item => compactDashboardNamedItem(item, {
+            keepMonthly: true,
+            keepDaily,
+        })),
+    };
+    delete compact.weekly;
+    delete compact.sourceFiles;
+    return compact;
+}
+
 function mergeBreakdowns(metas, totalRevenue) {
     const sections = new Map();
     for (const meta of metas) {
@@ -1078,7 +1195,7 @@ async function annualDashboardSourceState() {
 
 function buildAnnualDashboardPayloadFromMetas(metas) {
     const headers = buildAnnualHeaders(metas);
-    const summary = mergeAnnualSummaries(metas);
+    const summary = compactPerformanceDashboardSummary(mergeAnnualSummaries(metas), 'annual');
     const total = metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
     if (!metas.length) {
         return {
@@ -1624,7 +1741,7 @@ async function monthlyDashboardSourceState(searchParams) {
 
 function buildMonthlyDashboardPayloadFromMetas({ metas, baseYear, extraMonths, monthlyFileSlots }) {
     const headers = buildMonthlyHeaders(metas);
-    const summary = mergeMonthlySummaries(metas, monthlyFileSlots);
+    const summary = compactPerformanceDashboardSummary(mergeMonthlySummaries(metas, monthlyFileSlots), 'monthly');
     const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
     if (!metas.length) {
         return {
@@ -1710,6 +1827,50 @@ export async function queryAsanSummaryPerformanceDashboardFromSupabase(searchPar
                 summary: buildExecutiveSummary({ annual, monthly }),
                 annual: compactSource(annual),
                 monthly: compactSource(monthly),
+            };
+        },
+    });
+}
+
+export async function queryAsanSummaryPerformanceDashboardViewFromSupabase(searchParams, buildExecutiveSummary, compactSource, buildDashboardView) {
+    const monthlyParams = cleanDashboardParams(searchParams);
+    monthlyParams.delete('aggregate');
+    const [annualState, monthlyState] = await Promise.all([
+        annualDashboardSourceState(),
+        monthlyDashboardSourceState(monthlyParams),
+    ]);
+    const baseScopeKey = `year:${monthlyState.baseYear}:extra:${monthlyState.extraMonths}`;
+    const baseSignature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'summary',
+        annual: annualState.signature,
+        monthly: monthlyState.signature,
+    });
+    const scope = summaryDashboardViewScope(searchParams);
+    const scopeKey = `${baseScopeKey}:${summaryDashboardViewScopeKey(scope)}`;
+    const sourceSignature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'summary-view',
+        baseSignature,
+        scope,
+    });
+
+    return withDashboardSnapshot({
+        dashboardType: 'summary-view',
+        scopeKey,
+        sourceSignature,
+        sourceSyncedAt: maxTimestamp([annualState.sourceSyncedAt, monthlyState.sourceSyncedAt]),
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: async () => {
+            const full = await queryAsanSummaryPerformanceDashboardFromSupabase(
+                searchParams,
+                buildExecutiveSummary,
+                compactSource,
+            );
+            return {
+                summary: buildDashboardView(full.summary, scope),
+                annual: full.annual,
+                monthly: full.monthly,
             };
         },
     });

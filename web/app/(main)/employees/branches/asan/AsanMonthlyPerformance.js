@@ -957,6 +957,7 @@ export default function AsanMonthlyPerformance() {
     const [browseTargetIndex, setBrowseTargetIndex] = useState(null);
     const requestIdRef = useRef(0);
     const syncWasRunningRef = useRef(false);
+    const searchEffectReadyRef = useRef(false);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -1070,7 +1071,7 @@ export default function AsanMonthlyPerformance() {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [baseYear, extraMonths, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const timer = setTimeout(() => setSearchTerm(searchInput.trim()), SEARCH_DEBOUNCE_MS);
@@ -1078,6 +1079,10 @@ export default function AsanMonthlyPerformance() {
     }, [searchInput]);
 
     useEffect(() => {
+        if (!searchEffectReadyRef.current) {
+            searchEffectReadyRef.current = true;
+            return;
+        }
         fetchData({ page: 1, search: searchTerm, searchMode, quiet: Boolean(payload) });
     }, [searchTerm, searchMode]); // eslint-disable-line react-hooks/exhaustive-deps
 

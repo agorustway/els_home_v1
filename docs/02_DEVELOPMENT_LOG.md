@@ -1,3 +1,23 @@
+## [2026-05-21] 실적관리 현황판 스냅샷 경량화 (v5.14.97)
+### 핵심
+- 종합실적 첫 화면이 3MB대 원자료를 브라우저에서 받아 다시 범위별 계산하던 구조를 `summary-view` 스냅샷으로 분리했습니다. 기본 화면과 연/월/일 선택은 서버가 범위별로 계산한 얇은 결과만 내려줍니다.
+- 연간/월간 dashboard summary는 화면에서 쓰지 않는 내부 `weekly/sourceFiles` 및 nested 시계열을 제거하고, 월간의 주간/일간 범위 계산에 필요한 `daily` 축은 유지했습니다.
+- 연간/월간 화면의 초기 dashboard 조회가 검색 effect와 겹쳐 중복 호출될 수 있던 구조를 정리했습니다. 검색어/검색모드 변경은 검색 effect에서만 재조회하고, 최초/탭 전환은 별도 effect에서 처리합니다.
+- NAS 동기화 후 프리워밍 URL은 `view=dashboard`를 포함해 종합실적 화면용 스냅샷까지 같이 준비합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `npx.cmd eslint "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/api/branches/asan/performance/summary/route.js" "lib/asan-branch-db.js" "utils/asanPerformanceSummary.mjs"`: 통과
+- `py -3 -m py_compile docker/els-backend/asan_performance.py`: 통과
+- `npm.cmd run build`: 통과
+- 로컬 Next API 최종 측정: `summary-view` 138,874 bytes, `annual-dashboard` 2,063,142 bytes, `monthly-dashboard` 2,611,645 bytes.
+### 변경 파일
+- `web/utils/asanPerformanceSummary.mjs`, `web/lib/asan-branch-db.js`
+- `web/app/api/branches/asan/performance/summary/route.js`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`, `AsanAnnualPerformance.js`, `AsanMonthlyPerformance.js`
+- `docker/els-backend/asan_performance.py`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 실적관리 현황판 스냅샷 DB 분리 (v5.14.96)
 ### 핵심
 - 실적관리 종합/월간/연간 분석 화면의 초기 로딩이 원장 DB 조회와 집계에 묶여 일반 사용자가 오류로 오해할 수 있는 수준이라, 화면용 스냅샷 DB를 추가했습니다.

@@ -849,6 +849,7 @@ export default function AsanAnnualPerformance() {
     const [elapsed, setElapsed] = useState('');
     const requestIdRef = useRef(0);
     const syncWasRunningRef = useRef(false);
+    const searchEffectReadyRef = useRef(false);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -975,7 +976,7 @@ export default function AsanAnnualPerformance() {
     useEffect(() => {
         if (!selectedPath) return;
         fetchData();
-    }, [selectedPath, sheetName, headerRow, fetchData]);
+    }, [selectedPath, sheetName, headerRow, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchSyncStatus = useCallback(async () => {
         if (!selectedPath) return null;
@@ -1011,6 +1012,10 @@ export default function AsanAnnualPerformance() {
 
     useEffect(() => {
         if (!selectedPath) return;
+        if (!searchEffectReadyRef.current) {
+            searchEffectReadyRef.current = true;
+            return;
+        }
         fetchData({ page: 1, search: searchTerm, searchMode, quiet: Boolean(payload) });
     }, [searchTerm, searchMode, selectedPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
