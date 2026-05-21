@@ -395,7 +395,7 @@ function ExecutiveSourceTable({ summary, onOpenAnnual, onOpenMonthly }) {
                 <div className={styles.summarySourceHead}>
                     <span>구분</span>
                     <span>매출</span>
-                    <span>손익률</span>
+                    <span>이익률</span>
                     <span>행/파일</span>
                     <span>동기화</span>
                 </div>
@@ -419,7 +419,7 @@ function ExecutiveSignals({ signals = [] }) {
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>경영 판단</h3>
-                    <span>청구처는 매출 기준, 지급처는 매입 기준 · 수익성/차량 구성 함께 확인</span>
+                    <span>청구처는 매출 기준, 지급처는 매입 기준 · 이익률/차량 구성 함께 확인</span>
                 </div>
             </div>
             <div className={styles.summarySignalGrid}>
@@ -662,7 +662,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                 tone: safeNumber(summary.totalProfit) >= 0 ? 'good' : 'danger',
             },
             {
-                label: '손익률',
+                label: '이익률',
                 value: formatPercent(summary.profitRate, 2),
                 sub: summary.latestMonth ? `최근월 ${formatPercent(summary.latestMonth.profitRate, 1)} · ${formatSignedRate(summary.latestProfitDelta?.rate)}` : '비교월 없음',
                 tone: metricTone(summary.profitRate),
@@ -691,7 +691,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
         <div className={`${styles.container} ${styles.summaryExecutive}`}>
             <div className={styles.topBar}>
                 <div className={styles.titleBlock}>
-                    <h2 className={styles.title}>아산 종합 실적 지휘판</h2>
+                    <h2 className={styles.title}>컨테이너 운송 통합실적</h2>
                     <div className={styles.metaLine}>
                         <span>연간+월간 합산</span>
                         <span>{baseSummary?.periodStart && baseSummary?.periodEnd ? `${baseSummary.periodStart} ~ ${baseSummary.periodEnd}` : '기간 산정 중'}</span>

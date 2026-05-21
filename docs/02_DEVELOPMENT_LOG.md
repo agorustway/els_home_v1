@@ -1,3 +1,17 @@
+## [2026-05-22] 종합실적 용어 정리 (v5.14.109)
+### 핵심
+- 종합실적 화면 제목을 `아산 종합 실적 지휘판`에서 `컨테이너 운송 통합실적`로 바꿨습니다.
+- 비율 표기는 `손익률` 대신 `이익률`로 통일했습니다.
+- 경영 판단 카드의 `수익성 압력`은 `이익률`, `ELS/외부 집중도`는 `자사 비율`로 바꾸고 값도 `자사/외부` 표현으로 맞췄습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 선적관리 컨테이너 조회 중단/DB rows 공백 방어 (v5.14.108)
 ### 핵심
 - 로그/DB 집계상 13:45에 `asan_shipping` 소스 137건만 저장되어, 구형 스트림 조회가 페이지 이동과 함께 끊긴 것으로 확인했습니다.

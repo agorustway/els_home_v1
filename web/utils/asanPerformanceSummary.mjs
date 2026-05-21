@@ -357,7 +357,7 @@ function buildMarginSignal(title, section, direction = 'high', amountMetric = 'r
     title,
     value: item?.label || item?.name || '-',
     detail: item
-      ? `${metricLabel} ${formatSignalAmount(item[metricKey])} · 손익률 ${safeNumber(item.profitRate).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`
+      ? `${metricLabel} ${formatSignalAmount(item[metricKey])} · 이익률 ${safeNumber(item.profitRate).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`
       : `${section?.column || '세분화'} 자료 없음`,
     tone: isHigh && item ? 'good' : lowTone,
   };
@@ -386,15 +386,15 @@ function buildExecutiveSignals({
 
   return [
     {
-      title: '수익성 압력',
+      title: '이익률',
       value: `${profitRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%`,
       detail: `매입률 ${purchaseRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%`,
       tone: signalTone(profitRate, 10, 5),
     },
     {
-      title: 'ELS/외부 집중도',
-      value: `ELS ${ownShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}% · 외부 ${externalShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
-      detail: `ELS직계약차량/외부 동시 표시 · 상위 5대 ${vehicleShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
+      title: '자사 비율',
+      value: `자사 ${ownShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}% · 외부 ${externalShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
+      detail: `자사 직계약/외부 동시 표시 · 상위 5대 ${vehicleShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
       tone: signalTone(vehicleShare, 45, 65, true),
     },
     buildMarginSignal('고마진 청구처', billingSection, 'high', 'revenue'),
