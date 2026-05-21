@@ -1,18 +1,3 @@
-## [2026-05-21] 종합실적 매출·매입 손익표 추가 (v5.14.106)
-### 핵심
-- 종합실적 기간 선택 바로 아래, KPI 카드보다 앞에 공식형 `매출·매입 손익표`를 추가했습니다.
-- 표는 선택기간, 원장범위, 원장 행/파일/동기화 메타와 함께 매출액·매입액·매출총손익을 연간실적/월간실적/합계/매출대비로 분리합니다.
-- 모바일에서는 표 영역만 가로 슬라이드되도록 해 전체 레이아웃이 밀리지 않게 했습니다.
-### 검증
-- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 24개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
-- `npm.cmd run build`: 통과
-### 변경 파일
-- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
-- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
-- `web/tests/asanSummaryPerformance.test.mjs`
-- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
-
 ## [2026-05-21] 월간실적 차량 TOP10 손익 표시 제거 (v5.14.105)
 ### 핵심
 - 차량 TOP10이 매입액 기준 표가 되었으므로 마지막 컬럼에서 손익 금액을 제거했습니다.
