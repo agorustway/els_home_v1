@@ -179,6 +179,87 @@ function ScopeControls({
     );
 }
 
+function FinancialStatementTable({ summary }) {
+    const annual = summary?.sourceMix?.annual || {};
+    const monthly = summary?.sourceMix?.monthly || {};
+    const revenue = safeNumber(summary?.totalRevenue);
+    const salesRate = value => revenue > 0 ? formatPercent((safeNumber(value) / revenue) * 100, 1) : formatPercent(0, 1);
+    const rows = [
+        {
+            key: 'revenue',
+            account: '매출액',
+            annual: annual.revenue,
+            monthly: monthly.revenue,
+            total: summary?.totalRevenue,
+            rate: revenue > 0 ? formatPercent(100, 1) : formatPercent(0, 1),
+            note: '청구 기준 매출 합계',
+        },
+        {
+            key: 'purchase',
+            account: '매입액',
+            annual: annual.purchase,
+            monthly: monthly.purchase,
+            total: summary?.totalPurchase,
+            rate: salesRate(summary?.totalPurchase),
+            note: '지급·하불 기준 매입 합계',
+        },
+        {
+            key: 'profit',
+            account: '매출총손익',
+            annual: annual.profit,
+            monthly: monthly.profit,
+            total: summary?.totalProfit,
+            rate: formatPercent(summary?.profitRate, 1),
+            note: '손익 = 매출 - 매입',
+            totalRow: true,
+        },
+    ];
+
+    return (
+        <section className={`${styles.summaryPanel} ${styles.summaryStatementPanel}`}>
+            <div className={styles.summaryPanelHead}>
+                <div>
+                    <h3>매출·매입 손익표</h3>
+                    <span>{summary?.scope?.label || '전체'} · 내부 관리 기준 손익 요약</span>
+                </div>
+            </div>
+            <div className={styles.summaryStatementMeta}>
+                <span>선택기간 <b>{summary?.scope?.label || '전체'}</b></span>
+                <span>원장범위 <b>{summary?.periodStart || '-'} ~ {summary?.periodEnd || '-'}</b></span>
+                <span>원장 <b>{safeNumber(summary?.rowCount).toLocaleString('ko-KR')}행</b></span>
+                <span>파일 <b>{safeNumber(summary?.fileCount).toLocaleString('ko-KR')}개</b></span>
+                <span>동기화 <b>{fmtTs(summary?.syncedAt)}</b></span>
+            </div>
+            <div className={styles.summaryStatementTableWrap}>
+                <table className={styles.summaryStatementTable} aria-label="매출 매입 손익표">
+                    <thead>
+                        <tr>
+                            <th>계정</th>
+                            <th>연간실적</th>
+                            <th>월간실적</th>
+                            <th>합계</th>
+                            <th>매출 대비</th>
+                            <th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map(row => (
+                            <tr key={row.key} className={row.totalRow ? styles.summaryStatementTotal : ''}>
+                                <th scope="row">{row.account}</th>
+                                <td>{formatPerformanceAmount(row.annual)}</td>
+                                <td>{formatPerformanceAmount(row.monthly)}</td>
+                                <td><strong>{formatPerformanceAmount(row.total)}</strong></td>
+                                <td className={safeNumber(row.total) < 0 ? styles.negative : styles.positive}>{row.rate}</td>
+                                <td>{row.note}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
+}
+
 function ExecutiveFlowDiagram({ summary }) {
     const sourceMix = summary?.sourceMix || {};
     const annual = sourceMix.annual || {};
@@ -721,6 +802,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                         setSelectedDayKey={setSelectedDayKey}
                         options={scopeOptions}
                     />
+                    <FinancialStatementTable summary={summary} />
                     <div className={styles.summaryKpiGrid}>
                         {kpis.map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
                     </div>

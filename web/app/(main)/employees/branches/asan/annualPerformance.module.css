@@ -342,6 +342,116 @@
     background: linear-gradient(180deg, #fef2f2 0%, #fff 72%);
 }
 
+.summaryStatementPanel {
+    border-top: 3px solid #0f172a;
+    background: #fff;
+}
+
+.summaryStatementMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.summaryStatementMeta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.summaryStatementMeta b {
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.summaryStatementTableWrap {
+    overflow-x: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    scrollbar-gutter: stable both-edges;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.summaryStatementTableWrap::-webkit-scrollbar {
+    height: 8px;
+}
+
+.summaryStatementTableWrap::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 999px;
+}
+
+.summaryStatementTableWrap::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 999px;
+}
+
+.summaryStatementTable {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+    table-layout: fixed;
+    color: #0f172a;
+}
+
+.summaryStatementTable th,
+.summaryStatementTable td {
+    padding: 8px 9px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.summaryStatementTable thead th {
+    border-top: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.67rem;
+    font-weight: 950;
+}
+
+.summaryStatementTable th:first-child,
+.summaryStatementTable td:first-child,
+.summaryStatementTable th:last-child,
+.summaryStatementTable td:last-child {
+    text-align: left;
+}
+
+.summaryStatementTable tbody th {
+    color: #0f172a;
+    font-weight: 950;
+}
+
+.summaryStatementTable td strong {
+    font-weight: 950;
+}
+
+.summaryStatementTable td:last-child {
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.summaryStatementTotal th,
+.summaryStatementTotal td {
+    border-bottom: 1px solid #94a3b8;
+    background: #f8fafc;
+    font-weight: 950;
+}
+
 .summaryMainGrid {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
