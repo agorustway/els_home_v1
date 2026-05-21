@@ -1,3 +1,19 @@
+## [2026-05-21] 연간실적 요일 분석 관리자용 포지션 맵 재구성 (v5.14.95)
+### 핵심
+- 비중형 다이어그램 1차안이 같은 정보가 레일과 카드에 반복돼 관리자가 한눈에 판단하기 어렵던 점을 보정했습니다.
+- 상단은 `매출 중심`, `업무량 중심`, `수익성 최고`, `점검 요일` 4개 요약으로 줄이고, 세부 반복표는 제거했습니다.
+- 가운데는 매출 분포 리본 1줄로 전체 매출이 어느 요일에 몰리는지 빠르게 보여줍니다.
+- 하단은 7요일 포지션 맵으로 바꿔 요일별 색상, 매출 비중 높이, 매출 순위, 손익 기여, 건수 비중, 손익률을 한 칸 안에서 구분합니다.
+### 검증
+- `node --check "web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 통과
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 관리자 활동 로그 이름 검색 확장 (v5.14.94)
 ### 핵심
 - 활동 로그 화면에 이름은 표시됐지만 검색은 기존 이메일 기준이라 이름으로 사용자를 좁힐 수 없었습니다.
