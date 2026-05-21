@@ -1,3 +1,18 @@
+## [2026-05-21] 월간실적 차량 TOP10 손익 표시 제거 (v5.14.105)
+### 핵심
+- 차량 TOP10이 매입액 기준 표가 되었으므로 마지막 컬럼에서 손익 금액을 제거했습니다.
+- 차량 행은 매입액과 건수만 보여 매출-매입 손익값과 기준이 섞이지 않게 했습니다.
+- 건수 전용 컬럼에 맞춰 차량 성과 표의 데스크톱/모바일 폭을 줄였습니다.
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] 종합실적 경영 판단 기준 설명 보정 (v5.14.104)
 ### 핵심
 - 종합실적 `경영 판단` 설명에 청구처는 매출 기준, 지급처는 매입 기준이라는 해석 기준을 추가했습니다.

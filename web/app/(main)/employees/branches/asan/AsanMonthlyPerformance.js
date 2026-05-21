@@ -1741,7 +1741,7 @@ export default function AsanMonthlyPerformance() {
                                             <span>운송사/차량번호</span>
                                             <span>비중</span>
                                             <span>매입액</span>
-                                            <span>손익·건수</span>
+                                            <span>건수</span>
                                         </div>
                                         {visibleVehicles.map((vehicle, idx) => (
                                             <button
@@ -1754,7 +1754,7 @@ export default function AsanMonthlyPerformance() {
                                                 <strong>{vehicleDisplayName(vehicle)}</strong>
                                                 <i><b style={{ width: metricWidth(vehicle.purchase, vehicleMax) }} /></i>
                                                 <em>{formatPerformanceAmount(vehicle.purchase)}</em>
-                                                <small>{formatPerformanceAmount(vehicle.profit)} · {safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
+                                                <small>{safeNumber(vehicle.rowCount).toLocaleString('ko-KR')}건</small>
                                             </button>
                                         ))}
                                     </div>

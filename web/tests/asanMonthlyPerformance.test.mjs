@@ -380,7 +380,10 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /<span>매입액<\/span>/);
   assert.match(component, /metricWidth\(vehicle\.purchase, vehicleMax\)/);
   assert.match(component, /formatPerformanceAmount\(vehicle\.purchase\)/);
-  assert.match(component, /손익·건수/);
+  assert.match(component, /<span>건수<\/span>/);
+  assert.match(component, /<small>\{safeNumber\(vehicle\.rowCount\)\.toLocaleString\('ko-KR'\)\}건<\/small>/);
+  assert.doesNotMatch(component, /formatPerformanceAmount\(vehicle\.profit\)/);
+  assert.doesNotMatch(component, /손익·건수/);
   assert.match(component, /scopedVehicleItems/);
   assert.match(component, /visibleVehicles/);
   assert.doesNotMatch(component, /showAllVehicles/);
@@ -455,9 +458,9 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.vehicleInsightHead/);
   assert.match(css, /\.vehicleInsightRow/);
   assert.match(css, /\.vehicleInsightHead span:nth-child\(2\),\s*\.vehicleInsightRow strong\s*{[\s\S]*text-align: right/);
-  assert.match(css, /grid-template-columns: 26px minmax\(180px, 1\.05fr\)/);
+  assert.match(css, /grid-template-columns: 26px minmax\(180px, 1\.05fr\) minmax\(140px, 1fr\) 110px 88px/);
   assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.tableArea\s*{[\s\S]*height: clamp\(300px, calc\(100dvh - 170px\), 580px\)/);
-  assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.vehicleInsightHead,\s*\.vehicleInsightRow\s*{[\s\S]*min-width: 620px/);
+  assert.match(css, /@media \(max-width: 430px\)[\s\S]*\.vehicleInsightHead,\s*\.vehicleInsightRow\s*{[\s\S]*min-width: 580px/);
   assert.doesNotMatch(css, /\.dailyMonthRow/);
   assert.match(css, /\.dimensionRows/);
 });

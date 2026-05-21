@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.104 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.105 / APK v5.11.25)
 
-> 최신 업데이트: 종합실적 경영 판단에서 청구처는 매출, 지급처는 매입 기준으로 마진 설명을 분리했습니다.
+> 최신 업데이트: 월간실적 차량 TOP10에서 매입액 기준과 혼선이 생기던 손익 표시를 제거하고 건수만 남겼습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.104
+- **웹 버전**: v5.14.105
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -26,7 +26,7 @@
   - 선적관리 100건 이상 컨테이너 조회는 대량 안정 모드로 병렬 1개, 워커대기 300초, 제출간격 2초를 기본 적용하고, 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 미존재 미래월을 순환 후보에서 제외한 뒤 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
   - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
-  - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정하고, 구성·차량 성과의 차량 TOP10은 매입액 기준으로 정렬·표시한다.
+  - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정하고, 구성·차량 성과의 차량 TOP10은 매입액 기준으로 정렬·표시하며 건수만 함께 보여준다.
   - Android 운행종료는 TRIP_END/서버 완료 후 오버레이·GPS·activeTrip·UI만 정리하고 앱 화면은 유지한다.
   - Android 앱 종료/오버레이 종료는 `killProcess()`를 쓰지 않고, 서버상 완료된 저장 운행 발견 시 native trip/service 상태까지 정리한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
@@ -70,9 +70,10 @@
 - [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
 - [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
 - [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-104: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job, 실적 설정 버튼명/근거표 정리, 월간 차량 매입액 기준, 종합 경영 판단 기준 분리
+- [x] v5.14.93-105: 연간실적 요일별 비중/포지션 맵, 관리자 활동 로그 이름 검색, 실적관리 스냅샷 DB/경량화, 행사일정 단독 메뉴/상세 UX, 선적 조회 백그라운드 job, 실적 설정 버튼명/근거표 정리, 월간 차량 매입액 기준, 종합 경영 판단 기준 분리, 월간 차량 건수 표시 정리
 
 ## RECENT CHANGES
+- **v5.14.105**: 월간실적 `구성·차량 성과`의 차량 TOP10은 매입액 기준 표이므로 마지막 컬럼에서 손익 금액을 제거하고 건수만 표시한다. 모바일 폭도 건수 전용 컬럼 기준으로 줄여 가로 스크롤 부담을 낮췄다.
 - **v5.14.104**: 종합실적 `경영 판단` 설명에 청구처는 매출 기준, 지급처는 매입 기준이라고 명시하고, 고마진/저마진 지급처 카드의 상세 금액도 매출액이 아니라 매입액으로 표시한다.
 - **v5.14.103**: 연간실적 `계약/차량` 분석의 작업지/청구처/노선/구분 근거표를 `항목 · 매출 · 매입 · 손익 · 손익률` 제목열이 있는 표 형태로 바꿨다. 각 항목은 기존처럼 클릭 시 선택 세그먼트 조건과 항목명을 AND 검색으로 묶어 원장 상세로 이동한다.
 - **v5.14.102**: 월간실적 `구성·차량 성과` 카드의 차량 TOP10을 청구액이 아니라 매입액 기준으로 정렬하고, 막대 비중과 금액 컬럼도 매입액으로 표시한다. 운송사/차량번호 헤더와 값은 우측 정렬해 숫자 컬럼과 시선 흐름을 맞췄다.
@@ -81,10 +82,10 @@
 - **v5.14.99**: 행사일정 월간 매트릭스에서 일정 칩을 누르면 상세 모달로 일자, 시간, 장소, 공지범위, 상세 내용, 접속 팝업 시점을 카드와 칩으로 정리해 보여준다. 날짜 숫자는 해당일 전체 일정 목록을 열고, `+N 더보기`도 전체 목록으로 연결한다. 모바일은 360x780 기준 하단 시트형 모달과 1열 상세 메타로 전환한다.
 - **v5.14.98**: 행사일정을 AI 어시스턴트 화면 하단에서 분리해 `/employees/events` 단독 페이지로 만들고, 인트라넷 홈 사이드 메뉴의 `AI 어시스턴트` 바로 아래와 상단 `직원 서비스` 메뉴에 노출했다. AI 어시스턴트 페이지는 채팅 전용 화면으로 되돌렸다.
 - **v5.14.97**: 종합실적은 `summary-view` 스냅샷을 별도 캐시해 브라우저로 큰 원자료를 보내지 않고, 연/월/일 선택은 서버에서 다시 얇은 결과만 받는다. 연간/월간 dashboard summary는 화면에서 쓰지 않는 내부 시계열을 제거했고, 검색 effect와 초기 effect의 중복 조회를 막았다.
-- **v5.14.95**: 연간실적 `요일` 분석을 반복 카드형에서 관리자용 포지션 맵으로 다시 정리했다. 상단 4개 요약은 매출 중심/업무량/수익성/점검 요일만 잡고, 매출 분포 리본과 7요일 세로 포지션 맵에서 요일별 비중 차이를 색상·높이·순위로 구분한다.
 ## VERIFICATION
-- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanSummaryPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

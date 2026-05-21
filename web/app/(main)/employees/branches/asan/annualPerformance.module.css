@@ -4076,10 +4076,10 @@
 .vehicleInsightHead,
 .vehicleInsightRow {
     display: grid;
-    grid-template-columns: 26px minmax(180px, 1.05fr) minmax(140px, 1fr) 110px 160px;
+    grid-template-columns: 26px minmax(180px, 1.05fr) minmax(140px, 1fr) 110px 88px;
     align-items: center;
     gap: 8px;
-    min-width: 760px;
+    min-width: 690px;
 }
 
 .vehicleInsightHead {
@@ -5302,8 +5302,8 @@
 
     .vehicleInsightHead,
     .vehicleInsightRow {
-        grid-template-columns: 24px minmax(150px, 1fr) minmax(96px, 0.85fr) 92px 118px;
-        min-width: 620px;
+        grid-template-columns: 24px minmax(150px, 1fr) minmax(96px, 0.85fr) 92px 74px;
+        min-width: 580px;
     }
 
     .vehicleInsightHead span:nth-child(3),
@@ -5490,6 +5490,6 @@
 
     .vehicleInsightHead,
     .vehicleInsightRow {
-        min-width: 620px;
+        min-width: 580px;
     }
 }
