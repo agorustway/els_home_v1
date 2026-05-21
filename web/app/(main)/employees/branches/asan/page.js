@@ -408,7 +408,12 @@ function AsanDispatchContent() {
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
+    const dataRef = useRef([]);
+    const activeTabRef = useRef(-1);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
+
+    useEffect(() => { dataRef.current = data; }, [data]);
+    useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
 
     useEffect(() => {
         const updateHeight = () => {
@@ -441,17 +446,35 @@ function AsanDispatchContent() {
             if (j.data) setSettings(j.data);
         } catch { /* ignore */ }
     }, []);
-    const fetchData = async (type) => {
-        setLoading(true);
+    const fetchData = useCallback(async (type, options = {}) => {
+        const { silent = false, preserveActiveDate = false } = options;
+        const previousItems = dataRef.current || [];
+        const previousIndex = activeTabRef.current;
+        const previousTargetDate = previousIndex === previousItems.length
+            ? '__all__'
+            : previousItems[previousIndex]?.target_date;
+
+        if (!silent) setLoading(true);
         try {
             const r = await fetch(`/api/branches/asan/dispatch?type=${type}&t=${Date.now()}`, { cache: 'no-store' }); 
             const j = await r.json();
             const items = j.data || []; setData(items);
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            setActiveTab(findDefaultValidTabIndex(items, type, today));
-        } catch { setData([]); } finally { setLoading(false); }
-    };
+            if (preserveActiveDate && previousTargetDate === '__all__') {
+                setActiveTab(items.length);
+            } else if (preserveActiveDate && previousTargetDate) {
+                const nextIndex = items.findIndex(item => item.target_date === previousTargetDate);
+                setActiveTab(nextIndex >= 0 ? nextIndex : findDefaultValidTabIndex(items, type, today));
+            } else {
+                setActiveTab(findDefaultValidTabIndex(items, type, today));
+            }
+        } catch {
+            if (!silent) setData([]);
+        } finally {
+            if (!silent) setLoading(false);
+        }
+    }, []);
     const handleSync = async () => {
         setSyncing(true);
         setSyncStatus(null);
@@ -460,7 +483,7 @@ function AsanDispatchContent() {
             const j = await r.json();
             const msg = j.message || (j.results || []).map(r => `${r.type === 'glovis' ? '글로비스' : '모비스'}: ${r.success ? `성공 (${r.sheets}시트)` : '실패'}`).join(' / ') || '응답 없음';
             setSyncStatus({ message: msg, isError: j.ok === false || (j.results && !j.results.every(r => r.success)) });
-            await fetchData(viewType);
+            await fetchData(viewType, { preserveActiveDate: true });
         } catch (e) {
             setSyncStatus({ message: '동기화 실패: ' + e.message, isError: true });
         } finally {
@@ -489,7 +512,14 @@ function AsanDispatchContent() {
 
     // ===== Effects =====
     useEffect(() => { fetchSettings(); }, [fetchSettings]);
-    useEffect(() => { fetchData(viewType); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [viewType]);
+    useEffect(() => { fetchData(viewType); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [fetchData, viewType]);
+    useEffect(() => {
+        if (syncing || showSettings || showBrowser) return undefined;
+        const timer = setInterval(() => {
+            fetchData(viewType, { silent: true, preserveActiveDate: true });
+        }, 60000);
+        return () => clearInterval(timer);
+    }, [fetchData, viewType, syncing, showSettings, showBrowser]);
     // 검색 디바운스 (300ms)
     useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
     useEffect(() => {

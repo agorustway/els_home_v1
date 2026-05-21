@@ -327,8 +327,15 @@ def sync_asan_dispatch_python(force=False):
                         row_idx_in_db += 1
                     
                     if rows:
-                        # [v5.10.14] 시트 데이터 해시 비교 — 변경 없으면 Supabase 호출 스킵
-                        sheet_hash = hashlib.md5(str(rows).encode('utf-8')).hexdigest()
+                        # [v5.14.22] 행 데이터뿐 아니라 셀 메모도 변경 감지에 포함한다.
+                        # 배차 완료 시간은 comments에 기록되는 경우가 많아 rows만 보면 자동 동기화가 누락될 수 있다.
+                        sheet_hash_payload = json.dumps(
+                            {"rows": rows, "comments": comments_dict},
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            default=str,
+                        )
+                        sheet_hash = hashlib.md5(sheet_hash_payload.encode('utf-8')).hexdigest()
                         cache_key = f"{dtype}:{sheet_name}"
                         if not force and last_sheet_hash_cache.get(cache_key) == sheet_hash:
                             continue  # 데이터 동일 → Supabase 호출 생략

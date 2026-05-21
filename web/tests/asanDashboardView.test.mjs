@@ -540,7 +540,9 @@ test('아산 배차 날짜 탭은 유효 오더 없는 날짜를 비활성화한
   assert.match(source, /buildAsanDashboardScope\(\{/);
   assert.match(source, /viewMode: 'customer'/);
   assert.match(source, /function findDefaultValidTabIndex\(items = \[\], viewType, today = getTodayKey\(\)\)/);
-  assert.match(source, /setActiveTab\(findDefaultValidTabIndex\(items, type, today\)\);/);
+  assert.match(source, /const \{ silent = false, preserveActiveDate = false \} = options;/);
+  assert.match(source, /previousTargetDate === '__all__'/);
+  assert.match(source, /setActiveTab\(nextIndex >= 0 \? nextIndex : findDefaultValidTabIndex\(items, type, today\)\);/);
   assert.match(source, /disabled=\{!hasRows\}/);
   assert.match(source, /styles\.dateTabDisabled/);
   assert.match(source, /title=\{!hasRows \? '유효 오더 없음' : undefined\}/);
@@ -617,4 +619,26 @@ test('아산 배차 동기화는 파일에서 빠진 날짜 시트를 DB 누적 
     /\.delete\(\)\.eq\('branch_id', 'asan'\)\.eq\('type', type\)/,
   );
   assert.match(spec, /삭제된 시트는 변경이 끝난 마감 스냅샷/);
+});
+
+test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경도 DB 갱신 대상으로 본다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const core = fs.readFileSync(
+    path.join(webRoot, '../docker/els-backend/app_core.py'),
+    'utf8',
+  );
+
+  assert.match(source, /dataRef = useRef\(\[\]\)/);
+  assert.match(source, /activeTabRef = useRef\(-1\)/);
+  assert.match(source, /fetchData\(viewType, \{ silent: true, preserveActiveDate: true \}\);/);
+  assert.match(source, /setInterval\(\(\) => \{/);
+  assert.match(source, /}, 60000\);/);
+  assert.match(source, /if \(!silent\) setLoading\(true\);/);
+  assert.match(source, /if \(!silent\) setData\(\[\]\);/);
+  assert.match(core, /"comments": comments_dict/);
+  assert.match(core, /sort_keys=True/);
+  assert.doesNotMatch(core, /sheet_hash = hashlib\.md5\(str\(rows\)\.encode/);
 });

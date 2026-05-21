@@ -1,3 +1,19 @@
+## [2026-05-21] 아산 배차판 자동 동기화 메모 변경 감지 및 화면 갱신 (v5.14.107)
+### 핵심
+- NAS Core 배차판 자동 동기화의 시트 변경 해시에 `comments_dict`를 포함해 행 값은 그대로이고 셀 메모만 바뀐 경우도 `branch_dispatch` upsert가 실행되게 했습니다.
+- 배차판 화면은 60초마다 조용히 `/api/branches/asan/dispatch`를 다시 읽고, 현재 선택 날짜 또는 전체 탭을 유지해 수동 `NAS 동기화`를 누르지 않아도 `저장:` 시각이 따라오도록 했습니다.
+- 수동 동기화 후 재조회도 선택 날짜를 보존하게 바꿔 작업 중 보던 화면이 기본 날짜로 튀지 않도록 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 26개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DISPATCH_BOARD_SPEC.md`
+
 ## [2026-05-21] 월간실적 차량 TOP10 손익 표시 제거 (v5.14.105)
 ### 핵심
 - 차량 TOP10이 매입액 기준 표가 되었으므로 마지막 컬럼에서 손익 금액을 제거했습니다.
