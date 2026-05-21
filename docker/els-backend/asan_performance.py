@@ -767,11 +767,19 @@ def register_asan_performance_routes(app, supabase, kst):
         return f"{slot.get('period')}::{slot.get('path')}::{slot.get('sheet_name') or FIRST_SHEET_TOKEN}"
 
     def _monthly_focus_slot(enabled_slots):
-        for slot in reversed(enabled_slots):
+        for slot in reversed(_monthly_existing_slots(enabled_slots) or enabled_slots):
             file_path, _ = _resolve_performance_file(slot.get("path"))
             if file_path.exists():
                 return slot
         return enabled_slots[-1] if enabled_slots else None
+
+    def _monthly_existing_slots(enabled_slots):
+        existing = []
+        for slot in enabled_slots:
+            file_path, _ = _resolve_performance_file(slot.get("path"))
+            if file_path.exists():
+                existing.append(slot)
+        return existing
 
     def _update_monthly_auto_state(**patch):
         with monthly_auto_state_lock:
@@ -1504,10 +1512,12 @@ def register_asan_performance_routes(app, supabase, kst):
                     time.sleep(monthly_auto_tick_seconds)
                     continue
 
-                focus_slot = _monthly_focus_slot(enabled_slots)
+                existing_slots = _monthly_existing_slots(enabled_slots)
+                scan_slots = existing_slots or enabled_slots
+                focus_slot = _monthly_focus_slot(scan_slots)
                 latest_enabled_key = _monthly_slot_key(focus_slot)
                 due_slot = None
-                for slot in reversed(enabled_slots):
+                for slot in reversed(scan_slots):
                     key = _monthly_slot_key(slot)
                     interval = monthly_auto_active_seconds if key == latest_enabled_key else monthly_auto_stale_seconds
                     last_checked = monthly_auto_last_checked.get(key)
