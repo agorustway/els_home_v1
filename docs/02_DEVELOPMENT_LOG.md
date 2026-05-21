@@ -156,6 +156,23 @@
 - `web/tests/asanShippingFlow.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
+## [2026-05-21] 선적관리 컨테이너 조회 백그라운드 job 전환 (v5.14.100)
+### 핵심
+- 미선적 컨테이너 조회를 걸어둔 뒤 다른 페이지로 이동하면 브라우저 요청 스트림이 끊기면서 조회/저장 릴레이도 같이 멈추는 문제가 있었습니다.
+- NAS core에 `/api/branches/asan/shipping/container-lookup/jobs` 백그라운드 작업 API를 추가했습니다. core가 BOT 스트림을 직접 소비하고 부분 결과를 Supabase `branch_shipping_container_lookups`에 저장하므로 화면을 떠도 작업이 계속됩니다.
+- 선적관리 화면은 조회 시작 시 job id를 localStorage 세션에 저장하고, 복귀/폴링 시 job 상태와 저장 이력을 같이 읽어 완료/실패/미조회 건수를 복원합니다.
+- 조회 멈춤 버튼은 job id가 있으면 백그라운드 job 중지 API를 호출하고, 구형 스트림 조회에는 기존 BOT 정지 호출을 유지합니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/jobs/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`
+- `web/app/api/branches/asan/shipping/container-lookup/jobs/route.js`
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-21] Android 운행 완료 후 crash dialog 방지 (v5.14.90 / APK v5.11.25)
 ### 핵심
 - 어제 패치는 `endTrip()` 이후 앱 강제 종료 호출만 제거했지만, 네이티브 앱 종료/오버레이 플러그인에는 `android.os.Process.killProcess()`가 남아 Samsung One UI에서 “앱에 버그가 있어 종료” 팝업을 만들 수 있었습니다.

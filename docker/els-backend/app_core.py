@@ -701,6 +701,8 @@ SHIPPING_LOOKUP_RETENTION_DAYS = 180
 shipping_cache = {}
 shipping_sync_lock = threading.Lock()
 shipping_container_auto_lookup_lock = threading.Lock()
+shipping_container_lookup_jobs = {}
+shipping_container_lookup_jobs_lock = threading.Lock()
 shipping_db_available = True
 shipping_history_cleanup_last_date = None
 shipping_container_auto_lookup_last_date = None
@@ -1075,6 +1077,238 @@ def _shipping_lookup_rows_failed(rows):
         return True
     first = rows[0] if isinstance(rows[0], (list, tuple)) else []
     return str(first[1] if len(first) > 1 else "").strip().upper() == "ERROR"
+
+def _shipping_normalize_path(rel_path=None):
+    normalized_path = (rel_path or DEFAULT_ASAN_SHIPPING_PATH).replace("\\", "/").strip()
+    if not normalized_path.startswith("/"):
+        normalized_path = f"/{normalized_path}"
+    return normalized_path
+
+def _shipping_lookup_failure_reason(rows):
+    if not rows:
+        return "결과 없음"
+    first = rows[0] if isinstance(rows[0], (list, tuple)) else []
+    return str(first[2] if len(first) > 2 else "조회 실패").strip() or "조회 실패"
+
+def _shipping_lookup_job_snapshot(job):
+    error_reasons = job.get("error_reasons") or {}
+    reasons = [
+        {"reason": reason, "count": count}
+        for reason, count in sorted(error_reasons.items(), key=lambda item: item[1], reverse=True)
+    ]
+    total = int(job.get("total") or 0)
+    completed = len(job.get("completed_set") or set())
+    failed = len((job.get("failed_set") or set()) - (job.get("completed_set") or set()))
+    return {
+        "id": job.get("id"),
+        "path": job.get("path"),
+        "state": job.get("state"),
+        "status": job.get("status"),
+        "total": total,
+        "completed": completed,
+        "failed": failed,
+        "remaining": max(0, total - completed - failed),
+        "saved": int(job.get("saved") or 0),
+        "startedAt": job.get("started_at"),
+        "updatedAt": job.get("updated_at"),
+        "errorSummary": {
+            "total": sum(error_reasons.values()),
+            "reasons": reasons,
+            "message": ", ".join(f"{item['reason']} {item['count']}건" for item in reasons[:2]),
+        } if reasons else None,
+    }
+
+def _update_shipping_lookup_job(job_id, **patch):
+    with shipping_container_lookup_jobs_lock:
+        job = shipping_container_lookup_jobs.get(job_id)
+        if not job:
+            return None
+        job.update(patch)
+        job["updated_at"] = datetime.now(KST).isoformat()
+        return _shipping_lookup_job_snapshot(job)
+
+def _apply_shipping_lookup_job_rows(job_id, normalized_path, rows):
+    cn = _shipping_normalize_container_no(rows[0][0] if rows and rows[0] else "")
+    failed = _shipping_lookup_rows_failed(rows)
+    saved = 0
+    reason = ""
+    if failed:
+        reason = _shipping_lookup_failure_reason(rows)
+    else:
+        try:
+            saved = _save_asan_shipping_container_lookup_rows(
+                normalized_path,
+                rows,
+                lookup_source="asan_shipping_manual_background",
+            )
+        except Exception as exc:
+            failed = True
+            reason = f"저장 실패: {exc}"
+
+    with shipping_container_lookup_jobs_lock:
+        job = shipping_container_lookup_jobs.get(job_id)
+        if not job:
+            return None
+        if cn:
+            if failed:
+                if cn not in job["completed_set"]:
+                    job["failed_set"].add(cn)
+                job["error_reasons"][reason] = job["error_reasons"].get(reason, 0) + 1
+            else:
+                job["completed_set"].add(cn)
+                job["failed_set"].discard(cn)
+                job["saved"] = int(job.get("saved") or 0) + saved
+        snapshot = _shipping_lookup_job_snapshot(job)
+        job["status"] = (
+            f"백그라운드 조회 중: 완료 {snapshot['completed']}건 / 실패 {snapshot['failed']}건 / "
+            f"대상 {snapshot['total']}건"
+        )
+        job["updated_at"] = datetime.now(KST).isoformat()
+        return snapshot
+
+def _run_shipping_container_lookup_job(job_id):
+    response = None
+    with shipping_container_lookup_jobs_lock:
+        job = shipping_container_lookup_jobs.get(job_id)
+        if not job:
+            return
+        normalized_path = job["path"]
+        containers = list(job["containers"])
+
+    try:
+        _update_shipping_lookup_job(job_id, state="running", status=f"백그라운드 컨테이너 조회 시작: {len(containers)}건")
+        try:
+            cap = requests.get(f"{ELS_BOT_API_URL}/api/els/capabilities", timeout=5).json()
+            if int(cap.get("total_drivers") or 0) <= 0:
+                requests.post(f"{ELS_BOT_API_URL}/api/els/warmup", json={"wait": False}, timeout=10)
+        except Exception as exc:
+            app.logger.warning(f"[컨테이너백그라운드조회] 봇 준비 확인 실패: {exc}")
+
+        response = requests.post(
+            f"{ELS_BOT_API_URL}/api/els/run",
+            json={
+                "containers": containers,
+                "reserveSingle": False,
+                "stableBatchMode": len(containers) >= 100,
+                "maxBatchWorkers": 1 if len(containers) >= 100 else None,
+                "acquireTimeoutSec": 300 if len(containers) >= 100 else 45,
+                "submitDelaySec": 2 if len(containers) >= 100 else 0,
+            },
+            stream=True,
+            timeout=(10, max(3600, len(containers) * 30)),
+        )
+        response.raise_for_status()
+        response.encoding = "utf-8"
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            with shipping_container_lookup_jobs_lock:
+                stop_requested = bool((shipping_container_lookup_jobs.get(job_id) or {}).get("stop_requested"))
+            if stop_requested:
+                _update_shipping_lookup_job(job_id, state="cancelled", status="사용자 요청으로 백그라운드 조회 중단")
+                try:
+                    requests.post(f"{ELS_BOT_API_URL}/api/els/stop-daemon", timeout=5)
+                except Exception:
+                    pass
+                return
+            if line.startswith("LOG:"):
+                _update_shipping_lookup_job(job_id, status=line[4:].strip())
+                continue
+            if line.startswith("RESULT_PARTIAL:"):
+                payload = json.loads(line[15:])
+                rows = payload.get("result") or []
+                _apply_shipping_lookup_job_rows(job_id, normalized_path, rows)
+                continue
+            if line.startswith("RESULT:"):
+                payload = json.loads(line[7:])
+                if payload.get("ok") is False:
+                    raise RuntimeError(payload.get("error") or "컨테이너 조회 실패")
+
+        snapshot = _update_shipping_lookup_job(job_id)
+        final_state = "failed" if snapshot and snapshot["failed"] > 0 else "completed"
+        final_status = (
+            f"백그라운드 조회 종료: 완료 {snapshot['completed']}건, 실패 {snapshot['failed']}건"
+            if snapshot else "백그라운드 조회 종료"
+        )
+        _update_shipping_lookup_job(job_id, state=final_state, status=final_status)
+    except Exception as exc:
+        app.logger.error(f"[컨테이너백그라운드조회] 실행 오류: {exc}", exc_info=True)
+        _update_shipping_lookup_job(job_id, state="failed", status=f"백그라운드 조회 오류: {exc}")
+    finally:
+        if response is not None:
+            try:
+                response.close()
+            except Exception:
+                pass
+
+@app.route("/api/branches/asan/shipping/container-lookup/jobs", methods=["GET", "POST", "DELETE"])
+def asan_shipping_container_lookup_jobs():
+    if not supabase or not shipping_db_available:
+        return jsonify({"ok": False, "error": "Supabase/선적관리 DB 미사용 상태입니다."}), 503
+
+    if request.method == "GET":
+        job_id = request.args.get("id")
+        with shipping_container_lookup_jobs_lock:
+            job = shipping_container_lookup_jobs.get(job_id) if job_id else None
+            if not job:
+                return jsonify({"ok": False, "error": "작업을 찾을 수 없습니다."}), 404
+            return jsonify({"ok": True, "job": _shipping_lookup_job_snapshot(job)})
+
+    data = request.get_json(silent=True) or {}
+    if request.method == "DELETE":
+        job_id = data.get("id") or request.args.get("id")
+        with shipping_container_lookup_jobs_lock:
+            job = shipping_container_lookup_jobs.get(job_id)
+            if not job:
+                return jsonify({"ok": False, "error": "작업을 찾을 수 없습니다."}), 404
+            job["stop_requested"] = True
+            job["state"] = "stopping"
+            job["status"] = "사용자 중지 요청 처리 중"
+            job["updated_at"] = datetime.now(KST).isoformat()
+            snapshot = _shipping_lookup_job_snapshot(job)
+        try:
+            requests.post(f"{ELS_BOT_API_URL}/api/els/stop-daemon", timeout=5)
+        except Exception:
+            pass
+        return jsonify({"ok": True, "job": snapshot})
+
+    normalized_path = _shipping_normalize_path(data.get("path") or data.get("file_path"))
+    seen = set()
+    containers = []
+    for value in data.get("containers") or []:
+        cn = _shipping_normalize_container_no(value)
+        if not _shipping_is_container_no_shape(cn) or cn in seen:
+            continue
+        seen.add(cn)
+        containers.append(cn)
+    if not containers:
+        return jsonify({"ok": False, "error": "조회할 컨테이너가 없습니다."}), 400
+
+    with shipping_container_lookup_jobs_lock:
+        for job in shipping_container_lookup_jobs.values():
+            if job.get("state") in ("running", "stopping"):
+                return jsonify({"ok": True, "already_running": True, "job": _shipping_lookup_job_snapshot(job)}), 202
+        job_id = str(uuid.uuid4())
+        now_iso = datetime.now(KST).isoformat()
+        shipping_container_lookup_jobs[job_id] = {
+            "id": job_id,
+            "path": normalized_path,
+            "containers": containers,
+            "total": len(containers),
+            "state": "running",
+            "status": f"백그라운드 컨테이너 조회 준비: {len(containers)}건",
+            "saved": 0,
+            "completed_set": set(),
+            "failed_set": set(),
+            "error_reasons": {},
+            "stop_requested": False,
+            "started_at": now_iso,
+            "updated_at": now_iso,
+        }
+        snapshot = _shipping_lookup_job_snapshot(shipping_container_lookup_jobs[job_id])
+
+    threading.Thread(target=_run_shipping_container_lookup_job, args=(job_id,), daemon=True).start()
+    return jsonify({"ok": True, "job": snapshot}), 202
 
 def run_asan_shipping_container_auto_lookup():
     if not shipping_container_auto_lookup_lock.acquire(blocking=False):
