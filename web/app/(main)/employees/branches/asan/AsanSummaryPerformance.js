@@ -532,7 +532,7 @@ function TopConcentration({ summary, openMonthly }) {
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>계약/차량 집중도</h3>
+                    <h3>당사 / 협력사 비교</h3>
                     <span>ELS직계약차량을 먼저 보고 외부/타운송사를 같은 폭으로 비교</span>
                 </div>
                 <button type="button" className={styles.smallBtn} onClick={openMonthly}>상세는 월간실적</button>

@@ -1,3 +1,15 @@
+## [2026-05-22] 종합실적 비교 카드 제목 정리 (v5.14.132)
+### 핵심
+- 종합실적 구성·차량 성과 카드 제목을 `계약/차량 집중도`에서 `당사 / 협력사 비교`로 바꿨습니다.
+- 좌측 당사 직계약차량과 우측 외부/타운송사 비교 의도가 먼저 읽히도록 테스트 기대값과 문서도 함께 갱신했습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "tests/asanSummaryPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB 비고 출처 분리 (v5.14.131)
 ### 핵심
 - 형이 확인한 대로 엑셀 `비고`는 화면으로 가져오면 안 되고, 엑셀에서 가져올 값은 `비고` 오른쪽 `특이사항`만 맞습니다.
