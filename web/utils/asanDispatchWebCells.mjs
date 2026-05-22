@@ -69,13 +69,28 @@ export function normalizeDispatchHeadersForType(headers = [], dispatchType = '')
     if (idx >= 0) nextHeaders[idx] = target;
   });
 
+  const bkgIndices = nextHeaders
+    .map((header, idx) => ({ idx, key: normalizeDispatchHeader(header) }))
+    .filter((item) => /^BKG[123]$/.test(item.key))
+    .map((item) => item.idx);
+
+  if (bkgIndices.length >= 2) {
+    bkgIndices.slice(0, 3).forEach((idx, offset) => {
+      nextHeaders[idx] = `BKG${offset + 1}`;
+    });
+  }
+
   return nextHeaders;
 }
 
 export function normalizeDispatchRecordHeaders(record = {}) {
+  const originalHeaders = record?.headers || [];
+  const normalizedHeaders = normalizeDispatchHeadersForType(originalHeaders, record?.type || record?.dispatch_type || '');
+  const hasLegacyHeaders = JSON.stringify(originalHeaders) !== JSON.stringify(normalizedHeaders);
   return {
     ...record,
-    headers: normalizeDispatchHeadersForType(record?.headers || [], record?.type || record?.dispatch_type || ''),
+    headers: normalizedHeaders,
+    webCellLegacyHeaders: hasLegacyHeaders ? originalHeaders : [],
   };
 }
 
@@ -130,8 +145,13 @@ export function createDispatchRowMetaBuilder({
   dispatchType,
   targetDate,
   headers = [],
+  legacyHeaders = [],
 } = {}) {
   const occurrenceMap = new Map();
+  const legacyHeaderSets = Array.isArray(legacyHeaders?.[0])
+    ? legacyHeaders
+    : (Array.isArray(legacyHeaders) && legacyHeaders.length > 0 ? [legacyHeaders] : []);
+  const legacyOccurrenceMaps = legacyHeaderSets.map(() => new Map());
 
   return function buildDispatchRowMeta(row = [], rowIndex = 0) {
     const fields = Object.fromEntries(stableFieldEntries(headers, row));
@@ -144,12 +164,31 @@ export function createDispatchRowMetaBuilder({
     const occurrence = (occurrenceMap.get(baseHash) || 0) + 1;
     occurrenceMap.set(baseHash, occurrence);
     const rowSignature = `${baseHash}:${String(occurrence).padStart(3, '0')}`;
+    const legacyRowSignatures = [];
+
+    legacyHeaderSets.forEach((headerSet, idx) => {
+      const legacyFields = Object.fromEntries(stableFieldEntries(headerSet, row));
+      const legacyHash = hashStablePayload({
+        branchId,
+        dispatchType,
+        targetDate,
+        fields: legacyFields,
+      });
+      const legacyMap = legacyOccurrenceMaps[idx];
+      const legacyOccurrence = (legacyMap.get(legacyHash) || 0) + 1;
+      legacyMap.set(legacyHash, legacyOccurrence);
+      const legacySignature = `${legacyHash}:${String(legacyOccurrence).padStart(3, '0')}`;
+      if (legacySignature !== rowSignature && !legacyRowSignatures.includes(legacySignature)) {
+        legacyRowSignatures.push(legacySignature);
+      }
+    });
 
     return {
       branchId,
       sourceType: dispatchType,
       targetDate,
       rowSignature,
+      legacyRowSignatures,
       sourceRowIndex: rowIndex,
       rowContext: fields,
     };
@@ -202,7 +241,13 @@ export function applyDispatchWebCellOverlay({
   headers.forEach((header, idx) => {
     const fieldKey = normalizeDispatchWebCellFieldKey(header);
     if (!fieldKey) return;
-    const cell = cellMap.get(buildWebCellLookupKey({ ...meta, fieldKey }));
+    const signatureCandidates = [
+      meta.rowSignature,
+      ...(Array.isArray(meta.legacyRowSignatures) ? meta.legacyRowSignatures : []),
+    ].filter(Boolean);
+    const cell = signatureCandidates
+      .map((rowSignature) => cellMap.get(buildWebCellLookupKey({ ...meta, rowSignature, fieldKey })))
+      .find(Boolean);
     nextRow[idx] = cell?.value ?? '';
   });
 

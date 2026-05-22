@@ -734,6 +734,9 @@ function AsanDispatchContent() {
     const allData = useMemo(() => currentView?.data || [], [currentView]);
     const comments = useMemo(() => currentView?.comments || {}, [currentView]);
     const webCellRows = useMemo(() => currentView?.webCellRows || [], [currentView]);
+    const columnWidthStyle = useCallback((width) => (
+        width ? { width, minWidth: width, maxWidth: width } : undefined
+    ), []);
 
     // 날짜 정보
     const dateInfo = useMemo(() => {
@@ -929,6 +932,27 @@ function AsanDispatchContent() {
             const current = Number(prev[header] || 0);
             if (current >= nextWidth) return prev;
             return { ...prev, [header]: nextWidth };
+        });
+    }, [allData, headers]);
+
+    useEffect(() => {
+        if (!headers.length || !allData.length) return;
+        const nextWidths = {};
+        headers.forEach((header, colIdx) => {
+            const fieldKey = normalizeDispatchWebCellFieldKey(header);
+            if (!fieldKey) return;
+            nextWidths[header] = estimateDispatchColumnWidth(header, allData.map(row => row?.[colIdx] ?? ''));
+        });
+        if (Object.keys(nextWidths).length === 0) return;
+        setColWidths(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.entries(nextWidths).forEach(([header, width]) => {
+                if (Number(next[header] || 0) >= width) return;
+                next[header] = width;
+                changed = true;
+            });
+            return changed ? next : prev;
         });
     }, [allData, headers]);
 
@@ -1377,7 +1401,7 @@ function AsanDispatchContent() {
                                             const h = headers[ci];
                                             const w = colWidths[h];
                                             return (
-                                                <th key={ci} style={w ? { width: w, minWidth: 40, maxWidth: w } : undefined}
+                                                <th key={ci} style={columnWidthStyle(w)}
                                                     className={`${centerCols.has(ci) ? styles.centerCell : ''} ${columnFilters[ci] ? styles.filteredHeader : ''}`}
                                                     onClick={(e) => { e.stopPropagation(); toggleFilter(ci); }}>
                                                     <span className={styles.thText}>
@@ -1414,6 +1438,7 @@ function AsanDispatchContent() {
                                                 const hc = !!comments[ck];
                                                 const header = headers[ci];
                                                 const w = colWidths[header];
+                                                const widthStyle = columnWidthStyle(w);
                                                 const fieldKey = normalizeDispatchWebCellFieldKey(header);
                                                 const webCellMeta = row.webCellMeta;
                                                 const webCellKey = makeWebCellClientKey(webCellMeta, fieldKey);
@@ -1422,7 +1447,7 @@ function AsanDispatchContent() {
                                                 return (
                                                     <td key={ci}
                                                         className={`${centerCols.has(ci) ? styles.centerCell : ''} ${hc ? styles.hasComment : ''} ${isWebEditable ? styles.webCellEditableTd : ''} ${cellStatus?.state === 'error' ? styles.webCellErrorTd : ''}`}
-                                                        style={w ? { maxWidth: w, overflow: 'hidden', textOverflow: 'ellipsis' } : undefined}
+                                                        style={widthStyle ? { ...widthStyle, overflow: 'hidden', textOverflow: 'ellipsis' } : undefined}
                                                         onMouseEnter={hc ? (e) => showTooltip(e, comments[ck]) : undefined}
                                                         onMouseLeave={hc ? () => setTooltip(null) : undefined}>
                                                         {isWebEditable ? (

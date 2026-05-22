@@ -1,3 +1,21 @@
+## [2026-05-22] 아산 배차판 WEB BKG 레거시 표시/폭 보정 (v5.14.120)
+### 핵심
+- 오늘 모비스 WEB BKG 입력값이 통합현황에 보이지 않는 문제를 기존 저장 row_signature fallback으로 보정했습니다.
+- 이미 `col_15` 익명 TYPE 헤더 기준으로 저장된 값도 새 canonical 서명 행에서 조회해 표시하고, 새 저장은 canonical 서명으로 이어갑니다.
+- 모비스 헤더에 실제로 `BKG1/BKG1/BKG3`가 들어온 것을 확인해 WEB 전용 BKG 3칸은 표시 전 `BKG1/BKG2/BKG3`로 정리합니다.
+- BKG/TARGET/비고 컬럼 폭은 저장 직후뿐 아니라 화면 로드·통합/개별 전환 시 현재 값의 최장 길이 기준으로 자동 확장합니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDispatchWebCells.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB 입력 통합/개별 행 서명 통일 (v5.14.119)
 ### 핵심
 - 모비스 개별 화면에서 WEB 입력한 BKG/비고 값이 통합현황에 보이지 않던 원인을 보정했습니다.

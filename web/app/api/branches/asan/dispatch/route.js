@@ -132,6 +132,7 @@ export async function GET(request) {
                 dispatchType: itemType,
                 targetDate: item.target_date,
                 headers: item.headers || [],
+                legacyHeaders: item.webCellLegacyHeaders || [],
             });
             (item.data || []).forEach((row, rIdx) => {
                 if (!shouldIncludeDispatchRow(item.headers || [], row, itemType)) return;
@@ -217,6 +218,7 @@ export async function GET(request) {
                 dispatchType: item.type,
                 targetDate: item.target_date,
                 headers: item.headers || [],
+                legacyHeaders: item.webCellLegacyHeaders || [],
             });
             
             (item.data || []).forEach((row, ri) => {
@@ -248,9 +250,10 @@ export async function GET(request) {
                 });
             }
 
+            const publicItem = { ...item };
+            delete publicItem.webCellLegacyHeaders;
             return {
-
-                ...item,
+                ...publicItem,
                 headers: newHeaders,
                 data: newData,
                 comments: newComments,

@@ -159,6 +159,7 @@ export async function GET(request) {
                 dispatchType: itemType,
                 targetDate: item.target_date,
                 headers: item.headers || [],
+                legacyHeaders: item.webCellLegacyHeaders || [],
             });
 
             const dayRows = (item.data || []).filter(row => {
@@ -219,6 +220,7 @@ export async function GET(request) {
                     dispatchType: item.type,
                     targetDate: item.target_date,
                     headers: item.headers || [],
+                    legacyHeaders: item.webCellLegacyHeaders || [],
                 });
 
                 (item.data || []).forEach((r, rowIndex) => {
@@ -242,6 +244,7 @@ export async function GET(request) {
                 dispatchType: item.type,
                 targetDate: item.target_date,
                 headers: item.headers || [],
+                legacyHeaders: item.webCellLegacyHeaders || [],
             });
 
             const finalData = (item.data || []).filter(r => {
