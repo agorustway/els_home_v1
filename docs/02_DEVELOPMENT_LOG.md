@@ -1,3 +1,19 @@
+## [2026-05-22] 아산 배차판 WEB 입력 통합/개별 행 서명 통일 (v5.14.119)
+### 핵심
+- 모비스 개별 화면에서 WEB 입력한 BKG/비고 값이 통합현황에 보이지 않던 원인을 보정했습니다.
+- 통합현황은 익명 `col_12/col_15` TYPE 헤더를 복구한 뒤 행 서명을 만들고, 글로비스/모비스 개별 화면은 복구 전 헤더로 행 서명을 만들어 같은 행의 저장키가 달랐습니다.
+- 글로비스 `col_12 -> T`, 모비스 `col_15 -> TYPE` 복구를 공통 유틸로 분리하고 통합/개별/API/export 모두 같은 기준을 쓰게 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDispatchWebCells.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 미래 정상 날짜 탭 허용 (v5.14.118)
 ### 핵심
 - 날짜 탭 비활성화 기준을 `오늘 이후 여부`가 아니라 `유효 오더 존재 여부`로 바꿨습니다.

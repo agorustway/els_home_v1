@@ -54,6 +54,31 @@ export function findDispatchHeaderIndex(headers = [], candidates = []) {
   return -1;
 }
 
+export function normalizeDispatchHeadersForType(headers = [], dispatchType = '') {
+  const nextHeaders = [...(headers || [])];
+  const normalizedType = String(dispatchType || '').trim().toLowerCase();
+  const replacements = normalizedType === 'glovis'
+    ? [['col_12', 'T']]
+    : normalizedType === 'mobis'
+      ? [['col_15', 'TYPE']]
+      : [];
+
+  replacements.forEach(([source, target]) => {
+    const sourceKey = normalizeDispatchHeader(source);
+    const idx = nextHeaders.findIndex((header) => normalizeDispatchHeader(header) === sourceKey);
+    if (idx >= 0) nextHeaders[idx] = target;
+  });
+
+  return nextHeaders;
+}
+
+export function normalizeDispatchRecordHeaders(record = {}) {
+  return {
+    ...record,
+    headers: normalizeDispatchHeadersForType(record?.headers || [], record?.type || record?.dispatch_type || ''),
+  };
+}
+
 export function findDispatchOrderIndex(headers = [], dispatchType = '') {
   if (dispatchType === 'mobis') {
     return findDispatchHeaderIndex(headers, ['계', '수량', '오더']);

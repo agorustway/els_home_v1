@@ -4,6 +4,7 @@ import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
     loadDispatchWebCellState,
+    normalizeDispatchRecordHeaders,
     shouldIncludeDispatchRow,
 } from '@/utils/asanDispatchWebCells.mjs';
 
@@ -32,7 +33,8 @@ export async function GET(request) {
     const { data, error } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const webCellState = await loadDispatchWebCellState(supabase, data || []);
+    const records = (data || []).map(normalizeDispatchRecordHeaders);
+    const webCellState = await loadDispatchWebCellState(supabase, records);
 
     if (type === 'integrated') {
         const unifiedHeaders = [
@@ -43,18 +45,7 @@ export async function GET(request) {
 
         const byDate = {};
         
-        // [v5.10.20] 엑셀에서 헤더가 비어있어 col_12, col_15로 파싱된 TYPE 컬럼을 복구 (통합현황 및 개별현황 모두 적용)
-        (data || []).forEach(item => {
-            if (item.type === 'glovis') {
-                const idx = item.headers.indexOf('col_12');
-                if (idx >= 0) item.headers[idx] = 'T';
-            } else if (item.type === 'mobis') {
-                const idx = item.headers.indexOf('col_15');
-                if (idx >= 0) item.headers[idx] = 'TYPE';
-            }
-        });
-
-        for (const item of (data || [])) {
+        for (const item of records) {
             if (!byDate[item.target_date]) {
                 byDate[item.target_date] = {
                     id: `integ_${item.target_date}`,
@@ -185,7 +176,7 @@ export async function GET(request) {
 
     if (type !== 'integrated') {
         // Filter out junk columns for specific views (e.g. col_31, A, B...)
-        const filteredData = (data || []).map(item => {
+        const filteredData = records.map(item => {
             const validIndices = [];
             const newHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();

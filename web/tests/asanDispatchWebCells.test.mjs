@@ -8,6 +8,7 @@ import {
   applyDispatchWebCellOverlay,
   buildWebCellMap,
   createDispatchRowMetaBuilder,
+  normalizeDispatchRecordHeaders,
   shouldIncludeDispatchRow,
 } from '../utils/asanDispatchWebCells.mjs';
 
@@ -113,6 +114,51 @@ test('동일한 핵심값의 중복 행은 occurrence 번호로 분리한다', (
   assert.notEqual(first, second);
   assert.match(first, /:001$/);
   assert.match(second, /:002$/);
+});
+
+test('익명 TYPE 헤더 복구 후 통합/개별 WEB 셀 행 서명이 동일하다', () => {
+  const mobisAnon = normalizeDispatchRecordHeaders({
+    type: 'mobis',
+    headers: ['구분', '화주', '담당자', '작업지', '국가명', '도착항', 'Nomi,구간', '선사명', 'col_15', '계'],
+  });
+  const mobisNamed = {
+    headers: ['구분', '화주', '담당자', '작업지', '국가명', '도착항', 'Nomi,구간', '선사명', 'TYPE', '계'],
+  };
+  const mobisRow = ['수출', '모비스AS', '강주희', '모비스천안', '호주', '시드니', '05/12/27~', 'CMA', '40HC', '1'];
+  const mobisMetaA = createDispatchRowMetaBuilder({
+    dispatchType: 'mobis',
+    targetDate: '2026-05-22',
+    headers: mobisAnon.headers,
+  })(mobisRow, 0);
+  const mobisMetaB = createDispatchRowMetaBuilder({
+    dispatchType: 'mobis',
+    targetDate: '2026-05-22',
+    headers: mobisNamed.headers,
+  })(mobisRow, 0);
+
+  const glovisAnon = normalizeDispatchRecordHeaders({
+    type: 'glovis',
+    headers: ['구분', '화주', '담당자', '작업지', '고객사', '포트', '특이사항(Nomi,구간)', '라인', 'col_12', '오더'],
+  });
+  const glovisNamed = {
+    headers: ['구분', '화주', '담당자', '작업지', '고객사', '포트', '특이사항(Nomi,구간)', '라인', 'T', '오더'],
+  };
+  const glovisRow = ['수출', '글로비스', '강수지', '글로비스KD센터1포장장', 'KASK', 'SIKOP', '', 'CMA', '40HC', '3'];
+  const glovisMetaA = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-22',
+    headers: glovisAnon.headers,
+  })(glovisRow, 0);
+  const glovisMetaB = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-22',
+    headers: glovisNamed.headers,
+  })(glovisRow, 0);
+
+  assert.equal(mobisAnon.headers[8], 'TYPE');
+  assert.equal(glovisAnon.headers[8], 'T');
+  assert.equal(mobisMetaA.rowSignature, mobisMetaB.rowSignature);
+  assert.equal(glovisMetaA.rowSignature, glovisMetaB.rowSignature);
 });
 
 test('오더칸 문자·오류값은 WEB 오버레이 대상 행에서 제외한다', () => {

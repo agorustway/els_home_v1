@@ -4,6 +4,7 @@ import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
     loadDispatchWebCellState,
+    normalizeDispatchRecordHeaders,
     shouldIncludeDispatchRow,
 } from '@/utils/asanDispatchWebCells.mjs';
 
@@ -71,7 +72,8 @@ export async function GET(request) {
     const { data: rawData, error } = await query;
     if (error) return new Response('DB 오류: ' + error.message, { status: 500 });
     if (!rawData || rawData.length === 0) return new Response('데이터 없음', { status: 404 });
-    const webCellState = await loadDispatchWebCellState(supabase, rawData || []);
+    const records = (rawData || []).map(normalizeDispatchRecordHeaders);
+    const webCellState = await loadDispatchWebCellState(supabase, records);
 
     // 통합현황(integrated) 처리 로직 (dispatch/route.js와 동일하게 구현)
     let processedData = [];
@@ -85,7 +87,7 @@ export async function GET(request) {
         ];
 
         const byDate = {};
-        for (const item of rawData) {
+        for (const item of records) {
             if (!byDate[item.target_date]) {
                 byDate[item.target_date] = [];
             }
@@ -198,15 +200,15 @@ export async function GET(request) {
 
     } else {
         // 단일 타입 (glovis or mobis) - Junk 컬럼 필터링 (A, B, col_N 등)
-        const item0 = rawData[0];
+        const item0 = records[0];
         headers = date === 'all'
-            ? mergeDispatchExportHeaders(rawData)
+            ? mergeDispatchExportHeaders(records)
             : mergeDispatchExportHeaders(item0 ? [item0] : []);
 
         if (date === 'all') {
             const finalHeaders = ['날짜', ...headers];
             const finalRows = [];
-            const sorted = [...rawData].sort((a, b) => b.target_date.localeCompare(a.target_date));
+            const sorted = [...records].sort((a, b) => b.target_date.localeCompare(a.target_date));
             sorted.forEach(item => {
                 if (month && item.target_date.slice(5, 7) !== month) return;
                 if (weekStart && weekEnd && (item.target_date < weekStart || item.target_date > weekEnd)) return;
@@ -235,7 +237,7 @@ export async function GET(request) {
             });
             processedData = [{ sheetName: type === 'glovis' ? '글로비스_전체' : '모비스_전체', headers: finalHeaders, rows: finalRows }];
         } else {
-            const item = rawData[0];
+            const item = records[0];
             const buildRowMeta = createDispatchRowMetaBuilder({
                 dispatchType: item.type,
                 targetDate: item.target_date,
