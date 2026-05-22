@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
-import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
+import { buildAsanDashboardScope, getDispatchAssignedQty } from '@/utils/asanDashboardView.mjs';
 import {
     getDispatchWebCellFieldLabel,
     isDispatchWebCellField,
@@ -206,6 +206,10 @@ function roundQty(value) {
 function roundMapQty(map) {
     return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, roundQty(v)]));
 }
+function getEffectiveDispatchQty(headers, row) {
+    const dispatchQty = parseQty(row[findCol(headers, '배차')]);
+    return dispatchQty > 0 ? dispatchQty : getDispatchAssignedQty(row, headers);
+}
 function fmtTs(dt) {
     if (!dt) return '';
     const t = new Date(dt);
@@ -215,39 +219,39 @@ function fmtTs(dt) {
 function calcSummary(headers, data, viewType) {
     if (!headers || !data || data.length === 0) return null;
     if (viewType === 'glovis') {
-        const oC = findCol(headers, '오더'), dC = findCol(headers, '배차'), tC = findCol(headers, 'T'), gC = findCol(headers, '구분');
+        const oC = findCol(headers, '오더'), tC = findCol(headers, 'T'), gC = findCol(headers, '구분');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
             const o = parseOrderQty(row[oC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseQty(row[dC]);
+            disp += getEffectiveDispatchQty(headers, row);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
         return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     } else if (viewType === 'mobis') {
         const qC = findCol(headers, '계') >= 0 ? findCol(headers, '계') : findCol(headers, '수량');
-        const dC = findCol(headers, '배차'), gC = findCol(headers, '구분'), tC = findCol(headers, 'TYPE');
+        const gC = findCol(headers, '구분'), tC = findCol(headers, 'TYPE');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
             const o = parseOrderQty(row[qC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseQty(row[dC]);
+            disp += getEffectiveDispatchQty(headers, row);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
         return { order: roundQty(order), cats: roundMapQty(cats), disp: roundQty(disp), unmatch: roundQty(order - disp), ft40: roundQty(ft40), ft20: roundQty(ft20) };
     } else {
         // integrated
-        const oC = findCol(headers, '오더(계)'), dC = findCol(headers, '배차'), tC = findCol(headers, 'TYPE'), gC = findCol(headers, '구분');
+        const oC = findCol(headers, '오더(계)'), tC = findCol(headers, 'TYPE'), gC = findCol(headers, '구분');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {
             const o = parseOrderQty(row[oC]); if (o <= 0) return; order += o;
             const g = String(row[gC] || '').trim(); if (g) cats[g] = (cats[g] || 0) + o;
-            disp += parseQty(row[dC]);
+            disp += getEffectiveDispatchQty(headers, row);
             const t = parseInt(row[tC]) || 0;
             if (t === 40) ft40 += o; else if (t === 20) ft20 += o;
         });
@@ -816,11 +820,10 @@ function AsanDispatchContent() {
                     status = 'warn';
                 } else {
                     const getVal = (name) => parseOrderQty(row[findCol(headers, name)]);
-                    const getDispatchVal = (name) => parseQty(row[findCol(headers, name)]);
                     let o = 0, d = 0;
-                    if (viewType === 'glovis') { o = getVal('오더'); d = getDispatchVal('배차'); }
-                    else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getDispatchVal('배차'); }
-                    else { o = getVal('오더(계)') || getVal('수량'); d = getDispatchVal('배차'); }
+                    if (viewType === 'glovis') { o = getVal('오더'); d = getEffectiveDispatchQty(headers, row); }
+                    else if (viewType === 'mobis') { o = getVal('수량') || getVal('계'); d = getEffectiveDispatchQty(headers, row); }
+                    else { o = getVal('오더(계)') || getVal('수량'); d = getEffectiveDispatchQty(headers, row); }
                     if (o !== d) status = 'warn';
                 }
             }

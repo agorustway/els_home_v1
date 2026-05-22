@@ -1,3 +1,18 @@
+## [2026-05-22] 아산 배차판 배차량 계산식 오류 fallback 보강 (v5.14.114)
+### 핵심
+- 글로비스 KD 엑셀의 `배차` 계산식이 비거나 `#VALUE!` 같은 오류 문자열이 되어도 웹 요약의 `배차량`/`언매치`가 무너지지 않도록 지역 배차칸 합계를 fallback으로 사용합니다.
+- `아산/부산/신항/광양/평택/중부/부곡/인천` 등 지역칸의 `대신2`, `자차3,이지2`, `CSS1` 같은 업체+수량 표기를 공용 파서로 합산합니다.
+- 상단 요약, 행별 언매치 색상, 현황판 기간 카드의 `sheetDispatchTotal`이 같은 기준을 쓰도록 맞췄습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB 입력 폭/공통 특이사항 컬럼 보강 (v5.14.113)
 ### 핵심
 - WEB 전용 `BKG1/BKG2/BKG3/TARGET VESSEL/비고` 입력 저장 후 현재 화면 데이터와 저장값 중 가장 긴 값 기준으로 컬럼 폭을 자동 확장하게 했습니다.

@@ -133,10 +133,11 @@ function addFeu(scope, container, amount) {
   scope.feuTotal += amount * getFeuMultiplier(container);
 }
 
-function addBaseRowMetrics(scope, row, cols, viewType) {
+function addBaseRowMetrics(scope, row, headers, cols, viewType) {
   const order = getCustomerWeight(row, cols, viewType);
   if (order <= 0) return;
-  const dispatch = parseDashboardQty(row[cols.dispatch]);
+  const sheetDispatch = parseDashboardQty(row[cols.dispatch]);
+  const dispatch = sheetDispatch > 0 ? sheetDispatch : getDispatchAssignedQty(row, headers);
   scope.rowCount += 1;
   scope.orderTotal += order;
   scope.sheetDispatchTotal += dispatch;
@@ -180,7 +181,7 @@ function parseDispatchCell(text = '') {
   return records;
 }
 
-function parseDispatchRecords(row = [], headers = []) {
+export function parseDispatchRecords(row = [], headers = []) {
   const regions = DISPATCH_REGIONS
     .map((name) => ({ name, idx: findDashboardCol(headers, name) }))
     .filter((region) => region.idx >= 0);
@@ -195,6 +196,10 @@ function parseDispatchRecords(row = [], headers = []) {
     });
   });
   return records;
+}
+
+export function getDispatchAssignedQty(row = [], headers = []) {
+  return sumDispatchRecords(parseDispatchRecords(row, headers));
 }
 
 function addDispatcherRow(scope, row, headers, cols, viewType) {
@@ -220,7 +225,7 @@ function addDispatcherRow(scope, row, headers, cols, viewType) {
 function accumulateRows(scope, rows = [], headers = [], viewType = 'integrated', viewMode = 'customer') {
   const cols = getCols(headers);
   (rows || []).forEach((row) => {
-    addBaseRowMetrics(scope, row, cols, viewType);
+    addBaseRowMetrics(scope, row, headers, cols, viewType);
     if (viewMode === 'dispatcher') {
       addDispatcherRow(scope, row, headers, cols, viewType);
     } else {
