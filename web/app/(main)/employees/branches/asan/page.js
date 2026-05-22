@@ -637,7 +637,7 @@ function AsanDispatchContent() {
     }, [activeTab, data, isAllTab, todayKey, viewType]);
 
     const periodOptions = useMemo(() => {
-        const validItems = (data || []).filter(item => item.target_date <= todayKey && hasValidOrderRows(item, viewType));
+        const validItems = (data || []).filter(item => hasValidOrderRows(item, viewType));
         const months = [...new Set(validItems.map(item => item.target_date.slice(5, 7)))].sort();
         const weekMap = new Map();
         validItems.forEach((item) => {
@@ -649,7 +649,7 @@ function AsanDispatchContent() {
             months,
             weeks: [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start)),
         };
-    }, [data, todayKey, viewType]);
+    }, [data, viewType]);
 
     const validDateSet = useMemo(() => new Set(periodOptions.dates), [periodOptions.dates]);
     const selectedDailyIndex = useMemo(() => {
@@ -680,7 +680,7 @@ function AsanDispatchContent() {
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
-        const eligibleItems = data.filter(item => item.target_date <= todayKey);
+        const eligibleItems = data.filter(item => hasValidOrderRows(item, viewType));
         const baseHeaders = mergeDispatchHeaders(eligibleItems);
         const mHeaders = ['날짜', ...baseHeaders];
         const mRows = [];
@@ -716,7 +716,7 @@ function AsanDispatchContent() {
         });
         const weeks = [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start));
         return { headers: mHeaders, data: mRows, comments: mComments, webCellRows: mWebCellRows, months, weeks };
-    }, [data, allTabMonth, allTabWeek, todayKey]);
+    }, [data, allTabMonth, allTabWeek, viewType]);
 
     useEffect(() => {
         if (!isAllTab || !mergedView) return;

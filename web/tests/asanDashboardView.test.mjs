@@ -475,7 +475,7 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   assert.doesNotMatch(css, /mobileDateActionPrimary/);
 });
 
-test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를 제외한다', () => {
+test('아산 전체 탭 기간 선택지는 유효 오더 없는 날짜만 제외하고 미래 정상 날짜는 허용한다', () => {
   const source = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
     'utf8',
@@ -486,10 +486,12 @@ test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를
   );
 
   assert.match(source, /const todayKey = useMemo\(\(\) => getTodayKey\(\), \[\]\);/);
-  assert.match(source, /const validItems = \(data \|\| \[\]\)\.filter\(item => item\.target_date <= todayKey && hasValidOrderRows\(item, viewType\)\);/);
+  assert.match(source, /const validItems = \(data \|\| \[\]\)\.filter\(item => hasValidOrderRows\(item, viewType\)\);/);
+  assert.doesNotMatch(source, /validItems = \(data \|\| \[\]\)\.filter\(item => item\.target_date <= todayKey/);
   assert.match(source, /dates: validItems\.map\(item => item\.target_date\)/);
   assert.match(source, /const months = \[\.\.\.new Set\(validItems\.map/);
   assert.match(source, /validItems\.forEach\(\(item\) =>/);
+  assert.match(source, /const eligibleItems = data\.filter\(item => hasValidOrderRows\(item, viewType\)\);/);
   assert.match(source, /const shortWeekLabel = weekLabel\.replace/);
   assert.match(source, /shortLabel: shortWeekLabel/);
   assert.match(source, /const periodMode = !isAllTab \? 'daily' : \(allTabWeek \? 'weekly' : \(allTabMonth \? 'monthly' : 'total'\)\);/);
