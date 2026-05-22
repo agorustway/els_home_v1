@@ -1,3 +1,18 @@
+## [2026-05-22] 아산 배차판 WEB BKG/비고 조회 복구 보강 (v5.14.123)
+### 핵심
+- 오늘 입력한 글로비스 BKG가 DB에는 저장됐지만 운영 화면 일부 경로에서 빈칸으로 내려오는 상황을 확인했습니다.
+- WEB 셀 조회를 `현재 row_signature -> 레거시 row_signature -> 같은 원본/날짜/행번호/컬럼 최신값` 순서로 복구하도록 보강했습니다.
+- 저장 API도 같은 행번호에 기존 WEB 셀이 있으면 새 row_signature로 갱신해 중복 저장과 통합/개별 표시 누락을 줄였습니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/app/api/branches/asan/dispatch/web-cell/route.js`
+- `web/tests/asanDispatchWebCells.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 행사일정 한국 공휴일 라벨과 붉은 휴일 배경 추가 (v5.14.122)
 ### 핵심
 - 행사일정 월간 매트릭스 날짜 데이터에 한국 공휴일 정보를 붙이고, 공휴일/대체공휴일/특별 휴일 셀을 붉은 계열 배경과 라벨로 표시했습니다.

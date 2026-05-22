@@ -213,9 +213,80 @@ export function buildWebCellLookupKey({
   ].join('|');
 }
 
+export function buildWebCellRowIndexLookupKey({
+  branchId = DEFAULT_BRANCH_ID,
+  dispatchType,
+  sourceType,
+  targetDate,
+  rowIndex,
+  sourceRowIndex,
+  fieldKey,
+}) {
+  const normalizedField = normalizeDispatchWebCellFieldKey(fieldKey);
+  const normalizedRowIndex = Number(rowIndex ?? sourceRowIndex);
+  if (!Number.isFinite(normalizedRowIndex)) return '';
+  return [
+    '__row_index__',
+    branchId,
+    dispatchType || sourceType,
+    targetDate,
+    normalizedRowIndex,
+    normalizedField,
+  ].join('|');
+}
+
+function webCellUpdatedTime(cell = {}) {
+  const time = new Date(cell.updated_at || cell.created_at || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function setLatestWebCell(cellMap, key, cell) {
+  if (!key) return;
+  const existing = cellMap.get(key);
+  if (!existing || webCellUpdatedTime(existing) <= webCellUpdatedTime(cell)) {
+    cellMap.set(key, cell);
+  }
+}
+
+function appendRowIndexWebCell(cellMap, key, cell) {
+  if (!key) return;
+  const existing = cellMap.get(key);
+  if (!existing) {
+    cellMap.set(key, [cell]);
+    return;
+  }
+  const cells = Array.isArray(existing) ? existing : [existing];
+  cells.push(cell);
+  cells.sort((a, b) => webCellUpdatedTime(a) - webCellUpdatedTime(b));
+  cellMap.set(key, cells);
+}
+
+function isCompatibleRowContext(cell = {}, meta = {}) {
+  const savedContext = cell.row_context;
+  const currentContext = meta.rowContext;
+  if (!savedContext || typeof savedContext !== 'object' || !currentContext || typeof currentContext !== 'object') {
+    return true;
+  }
+
+  const keys = ['direction', 'shipper', 'workplace', 'customer', 'port', 'line', 'container_type', 'order_qty'];
+  let comparable = 0;
+  let matches = 0;
+  keys.forEach((key) => {
+    const saved = normalizeDispatchCell(savedContext[key]);
+    const current = normalizeDispatchCell(currentContext[key]);
+    if (!saved || !current) return;
+    comparable += 1;
+    if (saved === current) matches += 1;
+  });
+
+  if (comparable === 0) return true;
+  return matches >= Math.min(3, comparable);
+}
+
 export function buildWebCellMap(cells = []) {
   const cellMap = new Map();
-  for (const cell of cells || []) {
+  const sortedCells = [...(cells || [])].sort((a, b) => webCellUpdatedTime(a) - webCellUpdatedTime(b));
+  for (const cell of sortedCells) {
     const key = buildWebCellLookupKey({
       branchId: cell.branch_id || DEFAULT_BRANCH_ID,
       dispatchType: cell.dispatch_type,
@@ -223,7 +294,14 @@ export function buildWebCellMap(cells = []) {
       rowSignature: cell.row_signature,
       fieldKey: cell.field_key,
     });
-    cellMap.set(key, cell);
+    setLatestWebCell(cellMap, key, cell);
+    appendRowIndexWebCell(cellMap, buildWebCellRowIndexLookupKey({
+      branchId: cell.branch_id || DEFAULT_BRANCH_ID,
+      dispatchType: cell.dispatch_type,
+      targetDate: cell.target_date,
+      rowIndex: cell.row_index,
+      fieldKey: cell.field_key,
+    }), cell);
   }
   return cellMap;
 }
@@ -248,7 +326,11 @@ export function applyDispatchWebCellOverlay({
     const cell = signatureCandidates
       .map((rowSignature) => cellMap.get(buildWebCellLookupKey({ ...meta, rowSignature, fieldKey })))
       .find(Boolean);
-    nextRow[idx] = cell?.value ?? '';
+    const rowIndexCells = cellMap.get(buildWebCellRowIndexLookupKey({ ...meta, fieldKey }));
+    const rowIndexCell = Array.isArray(rowIndexCells)
+      ? [...rowIndexCells].reverse().find((candidate) => isCompatibleRowContext(candidate, meta))
+      : (isCompatibleRowContext(rowIndexCells, meta) ? rowIndexCells : null);
+    nextRow[idx] = (cell || rowIndexCell)?.value ?? '';
   });
 
   return nextRow;
@@ -304,7 +386,7 @@ export async function loadDispatchWebCellState(supabase, records = [], { branchI
 
     const { data: cells, error: cellsError } = await supabase
       .from(WEB_CELL_TABLE)
-      .select('branch_id, dispatch_type, target_date, row_signature, field_key, value, updated_at')
+      .select('branch_id, dispatch_type, target_date, row_signature, field_key, value, row_index, row_context, updated_at')
       .eq('branch_id', branchId)
       .in('dispatch_type', dispatchTypes)
       .in('target_date', targetDates);

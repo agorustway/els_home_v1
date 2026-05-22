@@ -101,7 +101,7 @@ export async function POST(request) {
             field_key: payload.fieldKey,
         };
 
-        const { data: existing, error: existingError } = await adminSupabase
+        const { data: signatureExisting, error: existingError } = await adminSupabase
             .from('branch_dispatch_web_cells')
             .select('*')
             .match(baseMatch)
@@ -109,8 +109,32 @@ export async function POST(request) {
 
         if (existingError) throw existingError;
 
+        let rowIndexExisting = null;
+        if (!signatureExisting && payload.rowIndex !== null) {
+            const { data: rowIndexMatch, error: rowIndexError } = await adminSupabase
+                .from('branch_dispatch_web_cells')
+                .select('*')
+                .eq('branch_id', BRANCH_ID)
+                .eq('dispatch_type', payload.dispatchType)
+                .eq('target_date', payload.targetDate)
+                .eq('field_key', payload.fieldKey)
+                .eq('row_index', payload.rowIndex)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (rowIndexError) throw rowIndexError;
+            rowIndexExisting = rowIndexMatch;
+        }
+
+        const existing = signatureExisting || rowIndexExisting;
         const oldValue = existing?.value ?? '';
-        if (oldValue === validation.value) {
+        const metadataChanged = Boolean(existing && (
+            existing.row_signature !== payload.rowSignature
+            || Number(existing.row_index ?? -1) !== Number(payload.rowIndex ?? -1)
+            || JSON.stringify(existing.row_context || {}) !== JSON.stringify(payload.rowContext || {})
+        ));
+        if (oldValue === validation.value && !metadataChanged) {
             return NextResponse.json({
                 success: true,
                 unchanged: true,
