@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.114 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.115 / APK v5.11.25)
 
-> 최신 업데이트: 아산 배차판 `배차` 계산식이 비거나 오류여도 지역 배차칸 합계로 배차량/언매치를 보정합니다.
+> 최신 업데이트: 선적관리 컨테이너 이력 `MOVE TIME`/`조회시각` 표시를 `YYYY/MM/DD HH:mm` 24시간제로 통일했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.114
+- **웹 버전**: v5.14.115
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -27,6 +27,7 @@
   - Bot 자동 로그인은 브라우저/복구 경로 전체를 합쳐 계정 기준 최대 3회만 허용하고, 비밀번호성 실패는 즉시 전체 자동 시도를 중지한다.
   - Bot 보호모드는 10분 후 자동 초기화하지 않으며, ETrans 계정 확인 후 `BOT 정지`로 수동 초기화해야 다시 로그인할 수 있다.
   - 선적관리 컨테이너 수동 조회는 NAS core 백그라운드 job으로 실행하고, 구형 대량 스트림 경로도 job으로 넘겨 페이지 이동 후에도 BOT 조회와 Supabase 저장을 계속한다.
+  - 선적관리 컨테이너 이력 날짜시간은 `YYYY/MM/DD HH:mm` 24시간제로 표시해 `MOVE TIME`과 `조회시각` 서식을 통일한다.
   - 선적관리 DB 동기화는 rows 저장 건수 검증 후 파일 메타를 갱신하며, 메타만 있고 실제 rows가 비면 엑셀 fallback으로 빈 화면을 막는다.
   - 선적관리 100건 이상 컨테이너 조회는 대량 안정 모드로 병렬 1개, 워커대기 300초, 제출간격 2초를 기본 적용하고, 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회한다.
   - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 미존재 미래월을 순환 후보에서 제외한 뒤 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
@@ -61,6 +62,7 @@
 - [x] v5.14.64-113: 월간/연간/종합실적 분석, 행사일정, 선적 job, 배차판 DB 누적·자동갱신·WEB 전용 셀 저장 구조 보정
 
 ## RECENT CHANGES
+- **v5.14.115**: 선적관리 컨테이너 이력 `MOVE TIME`과 `조회시각` 표시를 슬래시 날짜와 24시간제 분 단위로 통일하고, 기존 저소음 스케줄러 로그 테스트가 통과하도록 `변경 없음` 문구를 정리했다.
 - **v5.14.114**: 아산 배차판 `배차` 컬럼이 엑셀 UDF 오류로 비거나 오류 문자열이 되어도 지역 배차칸 합계로 `배차량`과 `언매치`를 계산하도록 보정했다.
 - **v5.14.113**: 배차판 WEB 입력 저장 후 컬럼 폭을 최장값 기준으로 자동 확장한다. 글로비스/모비스 공통 `비고` 오른쪽 `특이사항`을 통합현황과 엑셀 내보내기에 추가하고, 전체 탭은 날짜별 가변 헤더를 합산한다.
 - **v5.14.112**: 아산 배차판 자동 동기화가 파일 저장시각을 놓치지 않도록 파일 서명 캐시와 메타 갱신을 보강했다. 최근/미래 시트 우선 처리, 수동 동기화 완료 대기/완료 메시지, 통합현황 WEB 전용 칸 표시를 추가했다.
@@ -70,10 +72,9 @@
 - **v5.14.108**: 선적관리 구형 대량 컨테이너 조회 API도 NAS background job으로 전환해 페이지 이동으로 스트림이 끊겨도 조회가 계속되게 했다. job id가 없는 복원 요청은 최신 실행 job을 반환하고, 선적관리 DB 동기화는 rows 저장 count 검증 후 메타를 갱신하며 rows가 비어 있으면 DB 대신 엑셀 fallback을 사용한다.
 - **v5.14.107**: 아산 배차판 자동 동기화 해시에 셀 메모를 포함해 메모만 수정한 저장도 DB upsert 대상이 되도록 보정. 배차판 화면은 수동 NAS 동기화/새로고침 없이도 60초마다 조용히 재조회하며 현재 선택 날짜/전체 탭을 유지한 채 `저장:` 시각을 갱신한다.
 ## VERIFICATION
-- `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
-- `npm.cmd run lint`: 통과
-- `npm.cmd run build`: 통과
-- `git diff --check`: 통과
+- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
+- `npm.cmd run lint -- "utils/containerHistoryResults.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app_core.py`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

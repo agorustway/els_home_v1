@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import {
   buildContainerLookupMapFromRows,
   extractUniqueContainerNos,
+  formatContainerLookupDateTime,
+  getContainerLookupValue,
   isActualContainerHistoryRow,
   orderContainerLookupTargets,
 } from '../utils/containerHistoryResults.mjs';
@@ -907,6 +909,20 @@ test('컨테이너 조회 유틸은 필터 결과의 컨테이너와 No 1 메인
   assert.equal(lookupMap.TCLU8300912.mainRow[1], '1');
   assert.equal(lookupMap.TCLU8300912.mainRow[4], 'HJNC');
   assert.equal(lookupMap.TCLU8300912.lookedUpAt, '2026-05-16T00:00:00.000Z');
+});
+
+test('컨테이너 이력 날짜시간은 슬래시 24시간제로 통일한다', () => {
+  assert.equal(formatContainerLookupDateTime('2026-05-21 12:31'), '2026/05/21 12:31');
+  assert.equal(formatContainerLookupDateTime('2026. 5. 22. 오전 4:56:08'), '2026/05/22 04:56');
+  assert.equal(formatContainerLookupDateTime('2026. 5. 22. 오후 4:56:08'), '2026/05/22 16:56');
+
+  const record = {
+    mainRow: ['TCLU8300912', '1', '수출', '반입', 'HJNC', '2026-05-21 12:31'],
+    lookedUpAt: '2026-05-22 04:56:08',
+  };
+
+  assert.equal(getContainerLookupValue(record, '이력 MOVE TIME'), '2026/05/21 12:31');
+  assert.equal(getContainerLookupValue(record, '이력 조회시각'), '2026/05/22 04:56');
 });
 
 test('컨테이너 조회 저장 유틸은 실제 이력 행만 결과로 인정한다', () => {

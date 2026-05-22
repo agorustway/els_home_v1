@@ -288,7 +288,7 @@ def sync_asan_dispatch_python(force=False):
             file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
 
             if not force and cached_signature == file_signature:
-                dtype_result["message"] = "파일 서명 변경 없음"
+                dtype_result["message"] = "파일 서명 동일"
                 sync_results.append(dtype_result)
                 continue
 

@@ -1,3 +1,18 @@
+## [2026-05-22] 선적관리 컨테이너 이력 날짜시간 표시 통일 (v5.14.115)
+### 핵심
+- 선적관리 테이블의 `이력 MOVE TIME`과 `이력 조회시각`을 `YYYY/MM/DD HH:mm` 24시간제 표시로 통일했습니다.
+- `toLocaleString()` 기반 오전/오후 표시와 원본 `YYYY-MM-DD` 표시가 섞이지 않도록 컨테이너 이력 전용 formatter를 추가했습니다.
+- 기존 선적관리 테스트가 잡던 저소음 스케줄러 로그 문구도 기준에 맞춰 `파일 서명 동일`로 정리했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
+- `npm.cmd run lint -- "utils/containerHistoryResults.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app_core.py`: 통과
+### 변경 파일
+- `web/utils/containerHistoryResults.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docker/els-backend/app_core.py`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 배차량 계산식 오류 fallback 보강 (v5.14.114)
 ### 핵심
 - 글로비스 KD 엑셀의 `배차` 계산식이 비거나 `#VALUE!` 같은 오류 문자열이 되어도 웹 요약의 `배차량`/`언매치`가 무너지지 않도록 지역 배차칸 합계를 fallback으로 사용합니다.

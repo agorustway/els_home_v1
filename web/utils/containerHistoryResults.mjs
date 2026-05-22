@@ -142,13 +142,57 @@ export function buildContainerLookupMapFromRows(rows = [], targets = [], lookedU
   return map;
 }
 
+function padDatePart(value) {
+  return String(value || '').padStart(2, '0');
+}
+
+function formatLocalDateTime(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate()),
+  ].join('/') + ` ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+export function formatContainerLookupDateTime(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  const plain = text.match(/^(\d{4})[-/.]\s*(\d{1,2})[-/.]\s*(\d{1,2})\.?[\sT]+(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?$/);
+  if (plain) {
+    const [, y, mo, d, h, mi] = plain;
+    return `${y}/${padDatePart(mo)}/${padDatePart(d)} ${padDatePart(h)}:${mi}`;
+  }
+
+  const korean = text.match(/^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(오전|오후)\s*(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (korean) {
+    const [, y, mo, d, meridiem, rawHour, mi] = korean;
+    const hour = Number(rawHour);
+    const normalizedHour = meridiem === '오후'
+      ? (hour === 12 ? 12 : hour + 12)
+      : (hour === 12 ? 0 : hour);
+    return `${y}/${padDatePart(mo)}/${padDatePart(d)} ${padDatePart(normalizedHour)}:${mi}`;
+  }
+
+  const zoned = text.match(/^(\d{4})-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/i);
+  if (zoned) {
+    const parsed = new Date(text);
+    const formatted = formatLocalDateTime(parsed);
+    if (formatted) return formatted;
+  }
+
+  return text;
+}
+
 export function getContainerLookupValue(record, displayHeader) {
   if (!record || !displayHeader) return '';
   const column = CONTAINER_LOOKUP_DISPLAY_COLUMNS.find((item) => item.header === displayHeader);
   if (!column) return '';
   if (column.source === 'looked_up_at') {
-    return record.lookedUpAt ? new Date(record.lookedUpAt).toLocaleString() : '';
+    return formatContainerLookupDateTime(record.lookedUpAt);
   }
   const sourceIdx = CONTAINER_HISTORY_HEADERS.indexOf(column.source);
-  return sourceIdx >= 0 ? (record.mainRow?.[sourceIdx] ?? '') : '';
+  const value = sourceIdx >= 0 ? (record.mainRow?.[sourceIdx] ?? '') : '';
+  return column.source === 'MOVE TIME' ? formatContainerLookupDateTime(value) : value;
 }
