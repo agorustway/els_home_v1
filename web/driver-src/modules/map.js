@@ -6,13 +6,13 @@
  * ✅ naver.maps.Marker가 지도 내부에서 좌표를 직접 추적 → 마커 드리프트 원천 차단
  * ✅ 하단 패널 오버레이 방식 → 패널 토글 시 지도 리사이즈 불필요 (고무줄 현상 제거)
  */
-import { State, BASE_URL } from './store.js?v=5169';
-import { smartFetch, remoteLog } from './bridge.js?v=5169';
-import { showToast } from './utils.js?v=5169';
-import { showScreen } from './nav.js?v=5169';
-import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5169';
-import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5169';
-import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5169';
+import { State, BASE_URL } from './store.js?v=5170';
+import { smartFetch, remoteLog } from './bridge.js?v=5170';
+import { showToast } from './utils.js?v=5170';
+import { showScreen } from './nav.js?v=5170';
+import { filterRouteLocations, haversineKm, prepareLiveTrips } from './locationFilter.js?v=5170';
+import { contractTypeLabel, filterTripsForMapVisibility, isOwnVehicleTrip } from './cargoOptions.js?v=5170';
+import { startMapForegroundTracking, stopMapForegroundTracking } from './gps.js?v=5170';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 const NCP_KEY_ID   = 'hxoj79osnj';
@@ -624,8 +624,63 @@ function isMyTrip(trip) {
 
 function normalizeSpeed(value) {
   const speed = Number(value);
-  if (!Number.isFinite(speed) || speed < 0 || speed > 160) return null;
+  if (!Number.isFinite(speed) || speed < 0 || speed > 145) return null;
   return Math.round(speed);
+}
+
+function normalizeDistanceKm(value) {
+  const distance = Number(value);
+  return Number.isFinite(distance) && distance > 0 ? distance : null;
+}
+
+function computePathDistanceKm(points = []) {
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const current = points[i];
+    if ([prev?.lat, prev?.lng, current?.lat, current?.lng].every(v => Number.isFinite(Number(v)))) {
+      total += haversineKm(Number(prev.lat), Number(prev.lng), Number(current.lat), Number(current.lng));
+    }
+  }
+  return total;
+}
+
+function computeReliableMaxSpeed(points = []) {
+  const speeds = [];
+  const ordered = (points || [])
+    .filter(Boolean)
+    .map(p => ({ ...p, lat: Number(p.lat), lng: Number(p.lng), speed: Number(p.speed || 0) }))
+    .filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+    .sort((a, b) => (readPointTime(a) || 0) - (readPointTime(b) || 0));
+
+  for (let i = 1; i < ordered.length; i += 1) {
+    const prev = ordered[i - 1];
+    const current = ordered[i];
+    const prevTime = readPointTime(prev);
+    const currTime = readPointTime(current);
+    if (!prevTime || !currTime) continue;
+
+    const elapsedSec = Math.max(0, (currTime - prevTime) / 1000);
+    const distKm = haversineKm(prev.lat, prev.lng, current.lat, current.lng);
+    if (elapsedSec < 2 || distKm < 0.005) continue;
+
+    const implied = distKm / (elapsedSec / 3600);
+    if (!Number.isFinite(implied) || implied <= 0 || implied > 145) continue;
+
+    const sensor = Math.max(normalizeSpeed(prev.speed) || 0, normalizeSpeed(current.speed) || 0);
+    const trusted = sensor > 0 && sensor <= Math.max(35, implied + 35)
+      ? Math.max(implied, sensor)
+      : implied;
+    if (trusted > 0 && trusted <= 145) speeds.push(trusted);
+  }
+
+  return speeds.length ? Math.round(Math.max(...speeds)) : 0;
+}
+
+function formatDistanceKm(distanceKm) {
+  const distance = normalizeDistanceKm(distanceKm);
+  if (!distance) return '0 km';
+  return `${distance >= 10 ? distance.toFixed(1) : distance.toFixed(2)} km`;
 }
 
 function formatDuration(ms) {
@@ -641,23 +696,23 @@ function readPointTime(point) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function buildRouteStats(trip, points) {
+function buildRouteStats(trip, points, options = {}) {
   const endedAt = trip.ended_at || trip.completed_at || trip.updated_at || trip.lastLocation?.created_at;
   const firstTimedPoint = points.find(p => readPointTime(p));
   const startedAt = trip.started_at || firstTimedPoint?.recorded_at || firstTimedPoint?.created_at;
   const startMs = startedAt ? new Date(startedAt).getTime() : readPointTime(points[0]);
   const endMs = endedAt ? new Date(endedAt).getTime() : readPointTime(points[points.length - 1]);
   const durationMs = (Number.isFinite(startMs) && Number.isFinite(endMs)) ? endMs - startMs : 0;
-  const speeds = points
-    .map(p => normalizeSpeed(p.speed ?? p.speed_kmh ?? p.velocity))
-    .filter(v => v != null);
-  const maxSpeed = normalizeSpeed(trip.max_speed) ?? (speeds.length ? Math.max(...speeds) : 0);
-  const avgSpeed = normalizeSpeed(trip.avg_speed) ?? (speeds.length ? Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length) : 0);
+  const summaryDistanceKm = normalizeDistanceKm(Number(options.summary?.distance) / 1000);
+  const tripDistanceKm = normalizeDistanceKm(trip.distance_km ?? trip.route_distance_km);
+  const displayDistanceKm = normalizeDistanceKm(computePathDistanceKm(options.displayPath || []));
+  const rawDistanceKm = normalizeDistanceKm(computePathDistanceKm(filterRouteLocations(points)));
+  const maxSpeed = computeReliableMaxSpeed(points) || normalizeSpeed(trip.max_speed) || 0;
 
   return {
     duration: formatDuration(durationMs),
+    distance: formatDistanceKm(summaryDistanceKm || displayDistanceKm || tripDistanceKm || rawDistanceKm),
     maxSpeed,
-    avgSpeed,
   };
 }
 
@@ -717,7 +772,7 @@ export async function closeMap() {
   document.getElementById('tab-trip')?.classList.add('active');
   document.getElementById('tab-btn-trip')?.classList.add('active');
   try {
-    const { loadCurrentTrip } = await import('./trip.js?v=5169');
+    const { loadCurrentTrip } = await import('./trip.js?v=5170');
     await loadCurrentTrip();
   } catch (e) { console.warn('[MAP] closeMap load error', e); }
 }
@@ -884,10 +939,12 @@ export async function showTripRouteOnMap(trip, options = {}) {
 
   let path = [];
   let rawLocations = [];
+  let routeSummary = null;
   try {
     const res  = await smartFetch(`${BASE_URL}/api/vehicle-tracking/trips/${trip.id}/matched-route`);
     const data = await res.json();
     rawLocations = Array.isArray(data.locations) ? data.locations : (Array.isArray(data.data) ? data.data : []);
+    routeSummary = data.summary || null;
     path = (Array.isArray(data.matchedPath) && data.matchedPath.length >= 2)
       ? data.matchedPath
       : rawLocations;
@@ -919,15 +976,18 @@ export async function showTripRouteOnMap(trip, options = {}) {
       const cleanPath = path._matchedSource === 'naver-directions15' ? path : filterRouteLocations(path);
       const s = cleanPath[0] || path[0];
       const e = cleanPath[cleanPath.length - 1] || path[path.length - 1];
-      const stats = buildRouteStats(trip, rawLocations.length ? rawLocations : cleanPath);
+      const stats = buildRouteStats(trip, rawLocations.length ? rawLocations : cleanPath, {
+        displayPath: cleanPath,
+        summary: routeSummary,
+      });
       const isCompleted = trip.status === 'completed';
       const endLabel = isCompleted ? '도착' : '현재';
       const endColor = isCompleted ? '#dc2626' : '#2563eb';
 
       const statsHtml = [
         `<div><b>총운행시간</b>: ${stats.duration}</div>`,
+        `<div><b>운행거리</b>: ${stats.distance}</div>`,
         `<div><b>최고속도</b>: ${stats.maxSpeed} km/h</div>`,
-        `<div><b>평균속도</b>: ${stats.avgSpeed} km/h</div>`,
       ].join('');
 
       bodyEl.innerHTML = `

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   bearingDeg,
+  computeReliableRouteStats,
   detectStaleReplayLocation,
   filterRouteLocations,
   isRouteMarker,
@@ -97,6 +98,23 @@ test('같은 자리에서 튄 센서 속도는 정차 속도로 저장한다', (
   const current = { lat: 36.921030, lng: 127.049020, speed: 88, accuracy: 4, recorded_at: at(10) };
 
   assert.equal(normalizeStoredSpeedKmh({ previous, current }), 0);
+});
+
+test('운행 통계 최고속도는 센서 순간 튐 대신 좌표 진행 속도를 신뢰한다', () => {
+  const locations = [
+    { lat: 36.9000, lng: 127.0300, speed: 45, accuracy: 5, recorded_at: at(0) },
+    { lat: 36.9020, lng: 127.0300, speed: 160, accuracy: 5, recorded_at: at(9) },
+    { lat: 36.9040, lng: 127.0300, speed: 82, accuracy: 5, recorded_at: at(18) },
+  ];
+
+  const stats = computeReliableRouteStats(locations, {
+    started_at: at(0),
+    completed_at: at(18),
+  });
+
+  assert.ok(stats.distanceKm > 0.4);
+  assert.ok(stats.maxSpeed < 120);
+  assert.notEqual(stats.maxSpeed, 160);
 });
 
 test('실시간 추적 모드에서는 작지만 의미 있는 이동을 저장한다', () => {

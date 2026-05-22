@@ -1,52 +1,26 @@
-# ELS MISSION CONTROL (v5.14.129 / APK v5.11.28)
+# ELS MISSION CONTROL (v5.14.130 / APK v5.11.29)
 
-> 최신 업데이트: 운행 종료 후 오버레이 잔존을 막고, 실시간 관제 마커 표시 좌표를 가까운 도로 경로로 보정합니다.
+> 최신 업데이트: 관제 경로 통계는 좌표 기반 신뢰 최고속도와 운행거리 중심으로 표시하고, 저속 회전 구간은 GPS_TURN 마커로 더 촘촘히 남깁니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.129
+- **웹 버전**: v5.14.130
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
-- **APK 버전**: v5.11.28
+- **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
-  - 행사일정은 2026년 월력요항 기준 주요 한국 공휴일과 대체공휴일을 붉은 휴일 셀과 라벨로 표시한다. 예: 5/24 부처님오신날, 5/25 부처님오신날 대체공휴일.
-  - 아산 배차판 날짜 탭은 누적 전체를 모두 펼치지 않고 선택 날짜 기준 7개만 빠르게 보여주며, 오래된 자료는 일별/주별/월별/전체 선택으로 조회한다.
-  - 아산 배차판 날짜 탭과 기간 선택은 오늘 이후라도 정상 오더가 있으면 허용하고, 오더가 없거나 오류/문자값뿐인 날짜만 비활성화한다.
-  - 아산 배차판 데스크탑 기간 선택 드롭다운은 기간 버튼 옆 240px 폭으로 붙여 조작 거리를 줄이고, 모바일은 flex-basis를 리셋해 버튼/셀렉트/날짜탭을 연속 배치한다.
-  - WEB 전용 BKG/TARGET/비고 입력은 저장 직후와 화면 로드/전환 시 현재 화면 데이터 중 가장 긴 값 기준으로 컬럼 폭을 자동 확장한다.
-  - 아산 배차판 요약/행 색상/현황판은 `배차` 컬럼이 비거나 `#VALUE!` 등 오류일 때 `아산/부산/중부/부곡/인천` 등 지역 배차칸의 업체별 수량 합계로 실제 배차량을 보정한다.
-  - 글로비스/모비스 공통 `비고` 오른쪽 `특이사항` 엑셀 컬럼을 DB 조회·통합현황·엑셀 내보내기에 노출하고, 날짜별 헤더가 달라도 전체 탭은 헤더를 합산한다.
-  - 아산 배차판 자동 동기화는 파일 서명을 `mtime_ns+size`로 비교하고, 데이터가 같아 upsert를 생략해도 해당 시트 `file_modified_at`을 최신 저장시각으로 갱신한다.
-  - 배차판 엑셀 파싱은 어제 날짜부터 미래 날짜 시트를 먼저 처리하고, 수동 NAS 동기화 버튼은 백엔드 완료 상태를 폴링해 완료 후 화면을 최신 자료로 다시 읽는다.
-  - 통합현황에서도 `BKG1/BKG2/BKG3/TARGET VESSEL/비고` WEB 전용 칸을 항상 표시하고 같은 DB 저장 경로로 편집한다.
-  - WEB 전용 셀 행 식별은 통합/글로비스/모비스/엑셀 내보내기 모두 `col_12 -> T`, `col_15 -> TYPE` 헤더 복구 후 같은 서명으로 계산한다.
-  - 잘못 저장된 모비스 `BKG1/BKG1/BKG3` 헤더는 표시/저장 전 `BKG1/BKG2/BKG3`로 정리하고, 기존 레거시 row_signature 저장값도 조회 fallback으로 살린다.
-  - WEB 전용 셀은 row_signature가 흔들려도 같은 원본/날짜/행번호/컬럼의 최신 저장값을 행 컨텍스트 확인 후 복구하고, 저장 API는 기존 행번호 저장값을 현재 서명으로 재매핑한다.
-  - 통합현황처럼 전체 날짜 WEB 셀을 읽는 경로는 Supabase 기본 1000건 제한에 걸리지 않도록 페이지 단위로 끝까지 조회한다.
-  - 아산 배차판 `BKG1/BKG2/BKG3/TARGET VESSEL/비고`는 컷오버 후 엑셀 원본 칸을 무시하고 WEB DB 오버레이(`branch_dispatch_web_cells`)만 표시·저장한다.
-  - WEB 입력값은 `branch_dispatch_web_cell_history`에 변경 전/후 값, 사용자, 시각, 행 컨텍스트를 남긴다.
-  - BKG/TARGET VESSEL은 영문·숫자·기호만, 비고는 한글·영문·숫자·기호를 허용한다.
-  - `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `web/scripts/backfill-asan-dispatch-web-cells.mjs`로 현재 엑셀 값을 1회 보존해야 WEB 전용 모드가 활성화된다.
-  - 아산지점 첫 진입은 항상 배차판으로 시작하고, 실적관리 버튼 진입은 항상 종합실적 탭으로 시작한다.
-  - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
-  - 실적관리 하위 화면은 필요한 탭만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
-  - 종합실적 제목은 `컨테이너 운송 통합실적`, 주요 비율 문구는 `이익률`/`자사 비율`, 경영 판단 항목은 `이익률 우수`/`이익률 점검`으로 통일한다. 계약/차량 집중도는 매출/건수 비중을 구분하고, 연간·월간실적 테이블 검색은 금액 쉼표·공백을 정규화한다.
-  - 아산 배차판 자동 동기화는 행 데이터와 셀 메모 변경을 모두 감지하고, 화면은 선택 날짜를 유지한 채 60초마다 DB를 재조회한다.
-  - NAS `els-bot`은 컨테이너 기동 후 저장된 ETRANS 계정으로 Selenium 풀 워밍업을 백그라운드 시작한다.
-  - Vercel 서버리스 `api/els/*`는 NAS 프록시/사용불가 안내 경로만 사용하고, 로컬 `elsbot/dist`·프로필 대형 파일은 함수 trace에서 제외한다.
-  - Bot 자동 로그인은 브라우저/복구 경로 전체를 합쳐 계정 기준 최대 3회만 허용하고, 비밀번호성 실패는 즉시 전체 자동 시도를 중지한다.
-  - Bot 보호모드는 10분 후 자동 초기화하지 않으며, ETrans 계정 확인 후 `BOT 정지`로 수동 초기화해야 다시 로그인할 수 있다.
-  - 선적관리 컨테이너 수동 조회는 NAS core 백그라운드 job으로 실행하고, 구형 대량 스트림 경로도 job으로 넘겨 페이지 이동 후에도 BOT 조회와 Supabase 저장을 계속한다.
-  - 선적관리 컨테이너 이력 날짜시간은 `YYYY/MM/DD HH:mm` 24시간제로 표시해 `MOVE TIME`과 `조회시각` 서식을 통일한다.
-  - 선적관리 DB 동기화는 rows 저장 건수 검증 후 파일 메타를 갱신하며, 메타만 있고 실제 rows가 비면 엑셀 fallback으로 빈 화면을 막는다.
-  - 선적관리 100건 이상 컨테이너 조회는 대량 안정 모드로 병렬 1개, 워커대기 300초, 제출간격 2초를 기본 적용하고, 저장 이력 없는 컨테이너를 화면 정렬 순서 안에서 먼저 조회한다.
-  - 연간실적은 5분 기본 주기로 24시간 파일 변경을 감지하고, 월간실적 자동 감지는 미존재 미래월을 순환 후보에서 제외한 뒤 실제 존재하는 마지막 월 파일을 60초, 이전 월 파일을 120초 기준으로 확인해 변경된 파일만 외부 Node importer로 Supabase DB에 누적 반영한다.
-  - 월간실적 파일 설정 모달은 기준연도 12개월, 다음해 정리기간, 사용 월 수, 첫 번째 시트/직접 시트명, 표 제목 행 자동 탐지를 업무용 문구로 안내하고, 기준연도 변경 시 이월 슬롯 판정을 선택연도 기준으로 맞춘다.
-  - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정하고, 구성·차량 성과의 차량 TOP10은 매입액 기준으로 정렬·표시하며 건수만 함께 보여준다.
+  - 행사일정은 2026년 주요 공휴일/대체공휴일을 휴일 셀과 라벨로 표시한다.
+  - 아산 배차판은 날짜 탭/기간 선택/WEB 전용 BKG·TARGET·비고 오버레이/히스토리를 운영하며, WEB 셀 조회는 Supabase 페이지 조회로 1000건 제한을 회피한다.
+  - 아산지점은 배차판 첫 진입, 실적관리 종합실적 시작, 동적 청크/프리패치, 필요한 탭만 mount하는 구조를 유지한다.
+  - 선적관리 컨테이너 조회는 NAS core 백그라운드 job과 대량 안정 모드로 운영하고, 날짜시간 표기는 `YYYY/MM/DD HH:mm`으로 통일한다.
+  - 연간/월간/종합실적은 DB 누적 원장과 summary 재조회 구조를 유지하며, NAS가 끊겨도 저장된 DB 기준 화면을 유지한다.
+  - NAS `els-bot`은 Selenium 워밍업, 자동 로그인 3회 하드캡, 보호모드 수동 정지 정책을 유지한다.
   - Android 운행종료는 TRIP_END/서버 완료 후 오버레이·GPS·activeTrip·UI만 정리하고 앱 화면은 유지한다.
   - Android 오버레이는 `SET_VISIBILITY`로 살아나도 타이머/GPS 루프를 즉시 재가동하고, 앱 종료는 `killProcess()` 없이 task를 먼저 숨긴 뒤 정리한다.
-  - Android/native/web 위치 저장은 좌표 기반 추정속도와 센서속도를 비교해 160km/h급 저장 속도 튐을 줄인다.
+  - Android/native/web 위치 저장과 운행 통계는 좌표 기반 신뢰속도를 우선해 160km/h급 센서 속도 튐이 완료 화면 최고속도로 노출되지 않게 한다.
   - Android native 저속/정차 전송은 90초 heartbeat를 유지해 관제 지도에서 경로가 끊겨 보이는 시간을 줄인다.
+  - Android native 자이로/가속도 센서는 1km/h 이상 저속 회전도 `GPS_TURN` 마커로 남겨 출발/도착/골목길 경로 단순화를 줄인다.
   - 실시간 관제 마커는 원본 GPS를 보존하면서 표시 좌표만 네이버 Directions 15의 가까운 도로 경로로 스냅한다.
+  - 완료 경로 패널과 웹 기록 화면은 평균속도 대신 운행거리를 표시하고, 엑셀 내보내기에도 운행거리를 포함한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
 
 ## ACTIVE SYSTEMS
@@ -56,7 +30,7 @@
 | Supabase 인증/DB | 정상 | 실적관리 원장 DB + 배차판 WEB 셀 오버레이 구조 분리 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, 선적 컨테이너 백그라운드 job 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
-| Android 드라이버 앱 | 정상 | APK v5.11.28 빌드 완료 |
+| Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## INTRANET UI 기준
 - **목록 테이블**: 고정 헤더, 균일 버튼 높이, 모바일 카드 대체 뷰.
@@ -71,9 +45,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-129: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS 안정화
+- [x] v5.14.64-130: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계 안정화
 
 ## RECENT CHANGES
+- **v5.14.130 / APK v5.11.29**: 완료 경로 통계는 좌표 진행 기반 신뢰 최고속도로 계산해 센서 speed 160km/h 튐을 배제하고, 평균속도 대신 운행거리를 앱/웹/엑셀에 표시한다. Android native 자이로/가속도는 1km/h 이상 저속 회전을 `GPS_TURN` 마커로 저장해 출발/도착/골목길의 꺾임 포인트를 더 촘촘히 남긴다.
 - **v5.14.129 / APK v5.11.28**: 운행 종료 후 앱 전경 복귀에도 오버레이가 남는 경합을 막기 위해 JS 종료 호출을 await하고 native `STOP_OVERLAY_SERVICE` latch/전경 복귀 정리를 추가했다. `trips?mode=active`는 최근 정상 좌표를 네이버 Directions 15 경로에 맞춰 표시 좌표만 도로로 스냅한다.
 - **v5.14.128 / APK v5.11.27**: 12가0140 실시간 테스트 중 저속/정차 구간에서 native 저장 간격이 139~141초까지 벌어지는 것을 확인해 Android 서비스의 6km/h 미만 전송 주기를 180초에서 90초로 낮췄다. JS heartbeat와 맞춰 관제 지도 끊김 체감을 줄인다.
 - **v5.14.127**: 2026-05-22 12가0140 실시간 운행에서 좌표 경로는 단방향 정상 진행이고 좌표 간 추정속도 max 92km/h였지만 `android_bg` 센서 speed가 156~160km/h로 저장되는 케이스를 확인했다. `/api/vehicle-tracking/location` 저장 단계에서 직전 좌표와 현재 좌표의 거리/시간 기반 추정속도와 센서속도를 비교해 과속 튐을 보정한다.
@@ -84,12 +59,12 @@
 - **v5.14.122**: 행사일정 월간 매트릭스에 기본 한국 공휴일, 대체공휴일, 특별 휴일 정보를 붙여 휴일 셀을 붉은 톤으로 표시하고 라벨을 노출한다. 2026년 기준 어린이날, 부처님오신날(5/24), 부처님오신날 대체공휴일(5/25), 지방선거일 등을 테스트로 고정했다.
 - **v5.14.121**: 아산 배차판 모바일 기간 선택 영역에서 데스크탑용 `flex: 0 0 240px`가 세로 높이로 적용되던 문제를 막아 셀렉트 위아래 빈 공간을 제거했다.
 - **v5.14.120**: 아산 배차판 WEB 셀 오버레이가 기존 익명 TYPE 헤더 기준으로 저장된 레거시 row_signature도 조회한다. 모비스 중복 `BKG1/BKG1/BKG3` 헤더를 `BKG1/BKG2/BKG3`로 정리하고, WEB 컬럼 폭을 저장값 로드 시에도 자동 확장한다.
-- **v5.14.119**: 아산 배차판 WEB 전용 셀의 행 서명 생성 전에 글로비스 `col_12`와 모비스 `col_15` 익명 TYPE 헤더를 공통 복구한다. 통합현황, 글로비스, 모비스, 엑셀 내보내기가 같은 저장값을 공유한다.
+
 ## VERIFICATION
-- `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 31개 통과
-- `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/location/route.js utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과
+- `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 34개 통과
+- `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.28/versionCode 5169
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.29/versionCode 5170
 - `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
 
 ## EASTER EGGS

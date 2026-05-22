@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { createClient } from '@/utils/supabase/server';
+import { computeReliableRouteStats } from '@/utils/vehicleLocation.mjs';
 
 export const dynamic = 'force-dynamic';
 
 const headers = [
     '상태', '기사명', '차량번호', '컨테이너', '씰넘버', '타입', '종류', '시작일시', '종료일시',
-    '최고속도', '최종위치', '브레이크', '타이어', '램프', '적재물', '기사숙지', '메모'
+    '운행거리', '최고속도', '최종위치', '브레이크', '타이어', '램프', '적재물', '기사숙지', '메모'
 ];
 
 const TRIP_STATUS_LABELS = {
@@ -40,28 +41,29 @@ export async function GET(request) {
         const { data: trips, error } = await query;
         if (error) throw error;
 
-        // 위치 역지오코딩 가져오기 및 최고속도 계산
+        // 위치 역지오코딩 가져오기 및 운행 통계 계산
         const tripIds = trips.map(t => t.id);
         if (tripIds.length > 0) {
             const { data: locData } = await supabase
                 .from('vehicle_locations')
-                .select('trip_id, address, recorded_at, speed')
+                .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
                 .in('trip_id', tripIds)
                 .order('recorded_at', { ascending: false });
             
             if (locData) {
                 const locMap = {};
-                const maxSpeedMap = {};
+                const grouped = {};
                 locData.forEach(l => {
                     // address 컬럼이 null/빈값이 아닌 가장 최근 값을 찾음 (order가 내림차순이므로 첫 값이 최신)
                     if (!locMap[l.trip_id] && l.address) locMap[l.trip_id] = l.address;
-                    if (!maxSpeedMap[l.trip_id] || l.speed > maxSpeedMap[l.trip_id]) {
-                        maxSpeedMap[l.trip_id] = l.speed;
-                    }
+                    if (!grouped[l.trip_id]) grouped[l.trip_id] = [];
+                    grouped[l.trip_id].push(l);
                 });
                 trips.forEach(t => { 
+                    const stats = computeReliableRouteStats(grouped[t.id] || [], t);
                     t.last_location_address = locMap[t.id] || '-'; 
-                    t.max_speed = maxSpeedMap[t.id] ? Math.round(maxSpeedMap[t.id]) : 0;
+                    t.distance_km = stats.distanceKm;
+                    t.max_speed = stats.maxSpeed;
                 });
             }
         }
@@ -97,6 +99,7 @@ export async function GET(request) {
                 t.container_kind || '-',
                 formatDateTime(t.started_at),
                 formatDateTime(t.completed_at),
+                t.distance_km ? `${Number(t.distance_km).toFixed(1)} km` : '-',
                 t.max_speed ? `${t.max_speed} km/h` : '-',
                 t.last_location_address || '-',
                 t.chk_brake ? 'O' : 'X',
@@ -123,7 +126,7 @@ export async function GET(request) {
         sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } };
 
         // 열 너비 조절
-        const colWidths = [10, 15, 15, 18, 15, 12, 12, 18, 18, 15, 40, 10, 10, 10, 10, 10, 30];
+        const colWidths = [10, 15, 15, 18, 15, 12, 12, 18, 18, 14, 15, 40, 10, 10, 10, 10, 10, 30];
         sheet.columns.forEach((col, i) => {
             col.width = colWidths[i];
         });

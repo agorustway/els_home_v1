@@ -1,10 +1,10 @@
 /**
  * log.js — 운행 일지 목록, 상세, 수정, 삭제, 사진 추가
  */
-import { State, BASE_URL } from './store.js?v=5169';
-import { smartFetch } from './bridge.js?v=5169';
-import { formatDate, escHtml, showToast } from './utils.js?v=5169';
-import { validateISO6346 } from './trip.js?v=5169';
+import { State, BASE_URL } from './store.js?v=5170';
+import { smartFetch } from './bridge.js?v=5170';
+import { formatDate, escHtml, showToast } from './utils.js?v=5170';
+import { validateISO6346 } from './trip.js?v=5170';
 
 let _currentLogData = null;
 
@@ -79,6 +79,12 @@ export async function loadLogs() {
       return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
     }
 
+    function fmtDistance(value) {
+      const distance = Number(value);
+      if (!Number.isFinite(distance) || distance <= 0) return null;
+      return `${distance >= 10 ? distance.toFixed(1) : distance.toFixed(2)}km`;
+    }
+
     document.getElementById('log-list').innerHTML = trips.map(t => {
       let pCount = 0;
       try {
@@ -88,14 +94,14 @@ export async function loadLogs() {
 
       const endedAt = t.ended_at || t.completed_at;
       const duration = fmtDuration(t.started_at, endedAt);
-      const maxSpd = t.max_speed != null ? `${Math.round(t.max_speed)}km/h` : null;
-      const avgSpd = t.avg_speed != null ? `${Math.round(t.avg_speed)}km/h` : null;
+      const maxSpd = Number(t.max_speed) > 0 ? `${Math.round(t.max_speed)}km/h` : null;
+      const distance = fmtDistance(t.distance_km ?? t.route_distance_km);
 
-      const statsHtml = (duration || maxSpd || avgSpd) ? `
+      const statsHtml = (duration || distance || maxSpd) ? `
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px;font-size:10px;color:#64748b;">
           ${duration ? `<span>⏱ ${duration}</span>` : ''}
+          ${distance ? `<span>↔ ${distance}</span>` : ''}
           ${maxSpd ? `<span>⚡ 최고 ${maxSpd}</span>` : ''}
-          ${avgSpd ? `<span>📊 평균 ${avgSpd}</span>` : ''}
         </div>` : '';
 
       return `

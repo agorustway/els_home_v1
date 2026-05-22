@@ -451,6 +451,55 @@ export function pathDistanceKm(points = []) {
     return total;
 }
 
+export function computeReliableRouteStats(locations = [], trip = {}) {
+    const rawPoints = (locations || [])
+        .filter(Boolean)
+        .map((l) => ({ ...l, lat: Number(l.lat), lng: Number(l.lng), speed: Number(l.speed || 0) }))
+        .filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
+        .sort((a, b) => getPointTime(a) - getPointTime(b));
+    const cleanPoints = filterRouteLocations(rawPoints);
+    const points = cleanPoints.length ? cleanPoints : rawPoints;
+    const firstPoint = points[0] || null;
+    const lastPoint = points[points.length - 1] || null;
+    const startMs = trip?.started_at ? new Date(trip.started_at).getTime() : getPointTime(firstPoint);
+    const endRaw = trip?.completed_at || trip?.ended_at || trip?.updated_at;
+    const endMs = endRaw ? new Date(endRaw).getTime() : getPointTime(lastPoint);
+    const durationMs = Number.isFinite(startMs) && Number.isFinite(endMs) ? Math.max(0, endMs - startMs) : 0;
+    const distanceKm = pathDistanceKm(points);
+    const trustedSpeeds = [];
+
+    for (let i = 1; i < points.length; i += 1) {
+        const prev = points[i - 1];
+        const current = points[i];
+        const elapsedSec = Math.max(0, (getPointTime(current) - getPointTime(prev)) / 1000);
+        const distKm = haversineKm(prev.lat, prev.lng, current.lat, current.lng);
+        if (elapsedSec < 2 || distKm < 0.005) continue;
+
+        const impliedSpeed = distKm / (elapsedSec / 3600);
+        if (!Number.isFinite(impliedSpeed) || impliedSpeed <= 0 || impliedSpeed > HARD_TRUCK_SPEED_LIMIT_KMH) continue;
+
+        const sensorSpeed = Math.max(displaySpeedKmh(prev.speed), displaySpeedKmh(current.speed));
+        const plausibleSensorLimit = Math.max(35, impliedSpeed + 35);
+        const trustedSpeed = sensorSpeed > 0
+            && sensorSpeed <= HARD_TRUCK_SPEED_LIMIT_KMH
+            && sensorSpeed <= plausibleSensorLimit
+            ? Math.max(impliedSpeed, sensorSpeed)
+            : impliedSpeed;
+
+        if (trustedSpeed > 0 && trustedSpeed <= HARD_TRUCK_SPEED_LIMIT_KMH) {
+            trustedSpeeds.push(trustedSpeed);
+        }
+    }
+
+    return {
+        points,
+        durationMs,
+        distanceKm: Number(distanceKm.toFixed(3)),
+        maxSpeed: trustedSpeeds.length ? Math.round(Math.max(...trustedSpeeds)) : 0,
+        avgSpeed: durationMs > 0 && distanceKm > 0 ? Math.round(distanceKm / (durationMs / 3600000)) : 0,
+    };
+}
+
 function pointToSegmentDistanceKm(point, a, b) {
     const px = Number(point?.lng);
     const py = Number(point?.lat);
@@ -639,12 +688,51 @@ export function sampleRouteWaypoints(locations = [], maxWaypoints = 12) {
     const clean = filterRouteLocations(locations);
     const routePoints = simplifyRouteLocations(clean);
     if (routePoints.length <= 2) return { clean: routePoints, waypoints: [] };
-    const middle = routePoints.slice(1, -1);
-    if (middle.length <= maxWaypoints) return { clean: routePoints, waypoints: middle };
-    const step = (middle.length - 1) / Math.max(1, maxWaypoints - 1);
-    const waypoints = [];
-    for (let i = 0; i < maxWaypoints; i += 1) {
-        waypoints.push(middle[Math.round(i * step)]);
+
+    const middleIndexes = routePoints.slice(1, -1).map((_, index) => index + 1);
+    if (middleIndexes.length <= maxWaypoints) {
+        return { clean: routePoints, waypoints: middleIndexes.map((index) => routePoints[index]) };
     }
-    return { clean: routePoints, waypoints };
+
+    const sampleIndexes = (indexes, limit) => {
+        if (indexes.length <= limit) return indexes;
+        const step = (indexes.length - 1) / Math.max(1, limit - 1);
+        const sampled = new Set();
+        for (let i = 0; i < limit; i += 1) sampled.add(indexes[Math.round(i * step)]);
+        return [...sampled].sort((a, b) => a - b);
+    };
+
+    const priority = new Set();
+    const addPriority = (index) => {
+        if (index > 0 && index < routePoints.length - 1) priority.add(index);
+    };
+
+    for (let i = 1; i < routePoints.length - 1; i += 1) {
+        const current = routePoints[i];
+        if (i <= 3 || i >= routePoints.length - 4 || isRouteMarker(current)) {
+            addPriority(i);
+            continue;
+        }
+
+        const prev = routePoints[i - 1];
+        const next = routePoints[i + 1];
+        const incoming = bearingDeg(prev.lat, prev.lng, current.lat, current.lng);
+        const outgoing = bearingDeg(current.lat, current.lng, next.lat, next.lng);
+        const turn = angleDiffDeg(incoming, outgoing);
+        const speed = normalizeSpeedKmh(current.speed || prev.speed || next.speed);
+        if (turn != null && turn > 35 && speed < 45) addPriority(i);
+    }
+
+    let selected = sampleIndexes([...priority].sort((a, b) => a - b), maxWaypoints);
+    if (selected.length < maxWaypoints) {
+        const fill = sampleIndexes(middleIndexes, maxWaypoints);
+        const selectedSet = new Set(selected);
+        for (const index of fill) {
+            if (selectedSet.size >= maxWaypoints) break;
+            selectedSet.add(index);
+        }
+        selected = [...selectedSet].sort((a, b) => a - b);
+    }
+
+    return { clean: routePoints, waypoints: selected.map((index) => routePoints[index]) };
 }

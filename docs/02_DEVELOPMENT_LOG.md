@@ -1,3 +1,20 @@
+## [2026-05-22] 관제 통계 운행거리 전환과 저속 회전 포인트 보강 (v5.14.130 / APK v5.11.29)
+### 핵심
+- 형이 지적한 대로 12가0140 완료 경로의 `최고속도 160km/h`는 실제 주행보다 센서 speed 순간 튐을 그대로 표시한 문제였습니다. 완료 통계는 좌표 간 거리/시간 기반 신뢰 최고속도를 우선하고, 센서값은 좌표 진행과 맞을 때만 보조로 쓰도록 바꿨습니다.
+- 앱 완료 경로 패널, 앱 운행기록, 웹 관제 기록 화면은 평균속도보다 관제 판단에 유용한 `운행거리`를 표시합니다. 엑셀 내보내기도 운행거리 컬럼을 추가하고 최고속도는 같은 신뢰 통계로 계산합니다.
+- 출발/도착/서행 골목길에서 경로가 건물이나 도로 끝을 가로질러 단순화되지 않도록 Android native 자이로/가속도 센서가 1km/h 이상 저속 회전도 `GPS_TURN` 마커로 저장하게 했습니다. 완료 경로 매칭 waypoint도 출발/도착 주변과 저속 회전 포인트를 우선 보존합니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs web/tests/driverMapCamera.test.mjs`: 34개 통과
+- `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
+- `npm.cmd run build`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.29/versionCode 5170
+### 변경 파일
+- `web/utils/vehicleLocation.mjs`, `web/app/api/vehicle-tracking/trips/route.js`, `web/app/api/vehicle-tracking/trips/[id]/matched-route/route.js`
+- `web/app/api/vehicle-tracking/export/excel/route.js`, `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/driver-src/modules/map.js`, `web/driver-src/modules/log.js`, `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/android/app/build.gradle`, `web/public/apk/version.json`, `web/public/apk/els_driver.apk`
+- `web/tests/vehicleLocation.test.mjs`, `web/tests/driverMapCamera.test.mjs`, `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 오버레이 종료 latch와 실시간 마커 도로 스냅 (v5.14.129 / APK v5.11.28)
 ### 핵심
 - 형이 종료 후 앱으로 복귀했는데도 오버레이가 앱 위에 남는 것을 확인했습니다. JS 종료 호출을 `await stopOverlayService()`로 바꾸고, native에는 `STOP_OVERLAY_SERVICE` latch를 추가해 sticky service 재시작과 전경 복귀 모두에서 잔존 오버레이를 정리합니다.

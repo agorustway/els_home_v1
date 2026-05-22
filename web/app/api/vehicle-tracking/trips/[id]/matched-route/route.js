@@ -36,7 +36,7 @@ export async function GET(_request, { params }) {
             });
         }
 
-        const { clean, waypoints } = sampleRouteWaypoints(locations, 12);
+        const { clean, waypoints } = sampleRouteWaypoints(locations, 15);
         const start = clean[0];
         const goal = clean[clean.length - 1];
         const naverParams = new URLSearchParams({

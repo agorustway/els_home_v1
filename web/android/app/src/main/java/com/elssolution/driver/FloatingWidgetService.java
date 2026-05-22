@@ -73,6 +73,7 @@ public class FloatingWidgetService extends Service {
     private Location mLastNativePostedLocation;
     private long mLastNativePostedAtMs = 0;
     private long mLastSendTime = 0;
+    private long mLastTurnMarkerSendTime = 0;
     private long mCurrentIntervalMs = 60_000; // 기본 60초
 
     // 자이로스코프
@@ -107,6 +108,9 @@ public class FloatingWidgetService extends Service {
     private static final long GPS_DEAD_THRESHOLD_MS = 15_000;
     private static final long GPS_CHECK_INTERVAL_MS = 2_000;
     private static final float NATIVE_ACCURACY_HARD_SKIP_M = 120f;
+    private static final long SENSOR_TURN_SEND_COOLDOWN_MS = 8_000;
+    private static final float SENSOR_TURN_MIN_SPEED_KPH = 1f;
+    private static final float SENSOR_TURN_LOW_SPEED_KPH = 25f;
     private long mLastGpsCheckTime = 0;
 
     // [v4.2.50] 네이티브 역지오코딩 주기 (30초마다 한 번)
@@ -659,6 +663,21 @@ public class FloatingWidgetService extends Service {
         new Handler(Looper.getMainLooper()).post(this::applyLocationTracking);
     }
 
+    private void sendSensorTurnMarker(float magnitude, float lowSpeedThreshold, float drivingThreshold) {
+        if (mLastLocation == null || mNetworkHandler == null || !"driving".equals(mStatus)) return;
+        if (mLastSpeedKph < SENSOR_TURN_MIN_SPEED_KPH) return;
+        float threshold = mLastSpeedKph < SENSOR_TURN_LOW_SPEED_KPH ? lowSpeedThreshold : drivingThreshold;
+        if (magnitude < threshold) return;
+
+        long now = System.currentTimeMillis();
+        if (now - mLastTurnMarkerSendTime < SENSOR_TURN_SEND_COOLDOWN_MS) return;
+
+        mLastTurnMarkerSendTime = now;
+        mLastSendTime = now;
+        final Location turnLocation = new Location(mLastLocation);
+        mNetworkHandler.post(() -> sendLocationToServerWithMarker(turnLocation, -1, "GPS_TURN"));
+    }
+
     // ─── 자이로스코프 — 급커브 감지 시 즉시 전송 ─────────────────
     private void startGyroListener() {
         if (mSensorManager != null && mGyroListener != null) return;
@@ -672,20 +691,12 @@ public class FloatingWidgetService extends Service {
             mGyroListener = new SensorEventListener() {
                 @Override
                 public void onSensorChanged(SensorEvent event) {
-                    // [v4.3.20] 6km/h 미만 정차/도보 시 센서 연산 완전 스킵 (배터리 절약)
-                    if (mLastSpeedKph < 6f) return;
                     // 중력 제거 후 순수 가속도 크기 계산
                     float ax = event.values[0], ay = event.values[1], az = event.values[2];
                     float magnitude = (float) Math.sqrt(ax*ax + ay*ay + az*az);
                     mLastGyroMagnitude = Math.max(magnitude - 9.8f, 0); // 중력(9.8) 제거
-                    // 급가속/감속(3 m/s² 이상) 감지 → 즉시 위치 전송
-                    if (mLastGyroMagnitude > 3.0f && mLastLocation != null && "driving".equals(mStatus)) {
-                        long now = System.currentTimeMillis();
-                        if (now - mLastSendTime > 10_000) {
-                            mLastSendTime = now;
-                            sendLocationToServer(mLastLocation, -1);
-                        }
-                    }
+                    // 저속 골목/출도착 회전도 경로에 남기기 위해 GPS_TURN 마커로 보존
+                    sendSensorTurnMarker(mLastGyroMagnitude, 1.6f, 3.0f);
                 }
                 @Override public void onAccuracyChanged(Sensor s, int a) {}
             };
@@ -695,22 +706,14 @@ public class FloatingWidgetService extends Service {
         mGyroListener = new SensorEventListener() {
             @Override
             public void onSensorChanged(SensorEvent event) {
-                // [v4.3.20] 6km/h 미만 정차/도보 시 자이로 연산 완전 스킵 (배터리 절약)
-                if (mLastSpeedKph < 6f) return;
                 // 3축 각속도 크기 (rad/s)
                 mLastGyroMagnitude = (float) Math.sqrt(
                     event.values[0] * event.values[0] +
                     event.values[1] * event.values[1] +
                     event.values[2] * event.values[2]
                 );
-                // [BugFix #3] 자이로 민감도 현실화: 1.0f → 0.35f (유턴/우회전 감지)
-                if (mLastGyroMagnitude > 0.35f && mLastLocation != null && "driving".equals(mStatus)) {
-                    long now = System.currentTimeMillis();
-                    if (now - mLastSendTime > 10_000) { // 10초 쿨다운
-                        mLastSendTime = now;
-                        sendLocationToServer(mLastLocation, -1);
-                    }
-                }
+                // 저속에서는 더 민감하게, 주행 중에는 기존 임계값으로 GPS_TURN 마커를 남긴다.
+                sendSensorTurnMarker(mLastGyroMagnitude, 0.18f, 0.35f);
             }
             @Override public void onAccuracyChanged(Sensor s, int a) {}
         };
@@ -839,6 +842,7 @@ public class FloatingWidgetService extends Service {
                 jsonBody.put("source", "android_bg");
                 if (outboundSpeedKph >= 0) jsonBody.put("speed", outboundSpeedKph);
                 if (markerType != null && !markerType.isEmpty()) jsonBody.put("marker_type", markerType);
+                if ("GPS_TURN".equals(markerType)) jsonBody.put("gyro", mLastGyroMagnitude);
                 
                 float accuracy = outboundLocation.hasAccuracy() ? outboundLocation.getAccuracy() : 0f;
                 jsonBody.put("accuracy", accuracy);

@@ -1018,9 +1018,10 @@ export default function VehicleTrackingPage() {
         return `${diffMins}분`;
     };
 
-    const getAverageSpeed = (trip) => {
-        const value = Number(trip.avg_speed ?? trip.average_speed);
-        return Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+    const getTripDistance = (trip) => {
+        const value = Number(trip.distance_km ?? trip.route_distance_km);
+        if (!Number.isFinite(value) || value <= 0) return '';
+        return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} km`;
     };
 
     const educationRows = useMemo(() => {
@@ -1535,7 +1536,7 @@ export default function VehicleTrackingPage() {
                                     <td title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
                                         <div>{trip.last_location_address || '-'}</div>
                                         {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
-                                        {trip.status === 'completed' && getAverageSpeed(trip) > 0 && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>평균속도: {getAverageSpeed(trip)} km/h</div>}
+                                        {trip.status === 'completed' && getTripDistance(trip) && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>운행거리: {getTripDistance(trip)}</div>}
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>

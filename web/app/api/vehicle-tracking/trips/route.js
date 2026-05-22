@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 import {
-    displaySpeedKmh,
+    computeReliableRouteStats,
     filterRouteLocations,
     pickLatestDisplayLocation,
     prepareLiveTrips,
@@ -29,6 +29,33 @@ function setRoadSnapCache(key, value) {
         const firstKey = roadSnapCache.keys().next().value;
         if (firstKey) roadSnapCache.delete(firstKey);
     }
+}
+
+function groupLocationsByTrip(locations = []) {
+    const grouped = {};
+    locations.forEach((location) => {
+        if (!grouped[location.trip_id]) grouped[location.trip_id] = [];
+        grouped[location.trip_id].push(location);
+    });
+    return grouped;
+}
+
+function applyTripLocationStats(trips = [], groupedLocations = {}, options = {}) {
+    trips.forEach((trip) => {
+        const list = groupedLocations[trip.id] || [];
+        const stats = computeReliableRouteStats(list, trip);
+        trip.distance_km = stats.distanceKm;
+        trip.route_distance_km = stats.distanceKm;
+        trip.max_speed = stats.maxSpeed;
+        trip.avg_speed = stats.avgSpeed;
+
+        if (options.includeLastLocation) {
+            const displayLocation = pickLatestDisplayLocation(list) || stats.points[stats.points.length - 1] || null;
+            trip.lastLocation = displayLocation;
+            trip.last_location_address = displayLocation?.address || null;
+        }
+    });
+    return trips;
 }
 
 async function getRoadSnappedLocation(trip, locations = []) {
@@ -198,7 +225,7 @@ export async function GET(request) {
                 const locationBatches = await Promise.all(tripIds.map(async (tripId) => {
                     const { data: locData, error: locError } = await supabase
                         .from('vehicle_locations')
-                        .select('trip_id, lat, lng, accuracy, speed, address, recorded_at')
+                        .select('trip_id, lat, lng, accuracy, speed, address, recorded_at, method')
                         .eq('trip_id', tripId)
                         .order('recorded_at', { ascending: false })
                         .limit(300);
@@ -225,11 +252,8 @@ export async function GET(request) {
             }
 
             const locationMap = {};
-            const groupedLocations = {};
-            locations.forEach(l => {
-                if (!groupedLocations[l.trip_id]) groupedLocations[l.trip_id] = [];
-                groupedLocations[l.trip_id].push(l);
-            });
+            const groupedLocations = groupLocationsByTrip(locations);
+            applyTripLocationStats(data, groupedLocations);
             await Promise.all(Object.entries(groupedLocations).map(async ([tripId, list]) => {
                 const trip = data.find(t => String(t.id) === String(tripId));
                 const displayLocation = pickLatestDisplayLocation(list);
@@ -287,42 +311,13 @@ export async function GET(request) {
                 // RPC 대신 일반 쿼리로 최신 데이터 가져오기 (메모리에서 최신값 추출)
                 const { data: locData, error: locError } = await supabase
                     .from('vehicle_locations')
-                    .select('trip_id, lat, lng, address, recorded_at, speed')
+                    .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
                     .in('trip_id', tripIds)
                     .order('recorded_at', { ascending: true });
                 
                 if (!locError && locData) {
-                    const grouped = {};
-                    locData.forEach(l => {
-                        if (!grouped[l.trip_id]) grouped[l.trip_id] = [];
-                        grouped[l.trip_id].push(l);
-                    });
-                    const locMap = {};
-                    const maxSpeedMap = {};
-                    const speedSumMap = {};
-                    const speedCountMap = {};
-
-                    Object.entries(grouped).forEach(([tripId, list]) => {
-                        const clean = filterRouteLocations(list);
-                        const route = clean.length ? clean : list;
-                        locMap[tripId] = pickLatestDisplayLocation(list) || route[route.length - 1] || null;
-                        route.forEach(l => {
-                            const speed = displaySpeedKmh(l.speed);
-                            if (!maxSpeedMap[tripId] || speed > maxSpeedMap[tripId]) {
-                                maxSpeedMap[tripId] = speed;
-                            }
-                            if (speed > 0) {
-                                speedSumMap[tripId] = (speedSumMap[tripId] || 0) + speed;
-                                speedCountMap[tripId] = (speedCountMap[tripId] || 0) + 1;
-                            }
-                        });
-                    });
-                    data.forEach(t => {
-                        t.lastLocation = locMap[t.id] || null;
-                        t.last_location_address = locMap[t.id]?.address || null;
-                        t.max_speed = maxSpeedMap[t.id] ? Math.round(maxSpeedMap[t.id]) : 0;
-                        t.avg_speed = speedCountMap[t.id] ? Math.round(speedSumMap[t.id] / speedCountMap[t.id]) : 0;
-                    });
+                    const grouped = groupLocationsByTrip(locData);
+                    applyTripLocationStats(data, grouped, { includeLastLocation: true });
                 }
             }
 
@@ -409,6 +404,15 @@ export async function GET(request) {
 
             if (enriched && enriched.length > 0) {
                 const tripIds = enriched.map(t => t.id);
+                const { data: locData, error: locError } = await supabase
+                    .from('vehicle_locations')
+                    .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
+                    .in('trip_id', tripIds)
+                    .order('recorded_at', { ascending: true });
+                if (!locError && locData) {
+                    applyTripLocationStats(enriched, groupLocationsByTrip(locData), { includeLastLocation: true });
+                }
+
                 const { data: logs } = await supabase
                     .from('vehicle_trip_logs')
                     .select('trip_id, field_name')
