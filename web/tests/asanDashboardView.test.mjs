@@ -486,18 +486,23 @@ test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를
   );
 
   assert.match(source, /const todayKey = useMemo\(\(\) => getTodayKey\(\), \[\]\);/);
-  assert.match(source, /const eligibleItems = data\.filter\(item => item\.target_date <= todayKey\);/);
-  assert.match(source, /const months = \[\.\.\.new Set\(eligibleItems\.map/);
-  assert.match(source, /eligibleItems\.forEach\(\(item\) =>/);
+  assert.match(source, /const validItems = \(data \|\| \[\]\)\.filter\(item => item\.target_date <= todayKey && hasValidOrderRows\(item, viewType\)\);/);
+  assert.match(source, /dates: validItems\.map\(item => item\.target_date\)/);
+  assert.match(source, /const months = \[\.\.\.new Set\(validItems\.map/);
+  assert.match(source, /validItems\.forEach\(\(item\) =>/);
   assert.match(source, /const shortWeekLabel = weekLabel\.replace/);
   assert.match(source, /shortLabel: shortWeekLabel/);
-  assert.match(source, /className=\{`\$\{styles\.monthBtn\} \$\{styles\.periodWeekBtn\}/);
-  assert.match(source, /title=\{week\.fullLabel \|\| week\.label\}/);
-  assert.match(source, /className=\{styles\.weekLabelShort\}/);
-  assert.match(css, /\.weekLabelShort\s*{[\s\S]*display: none;/);
-  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.periodWeekBtn\s*{[\s\S]*font-size: 0\.66rem;/);
-  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.weekLabelFull\s*{[\s\S]*display: none;/);
-  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.weekLabelShort\s*{[\s\S]*display: inline;/);
+  assert.match(source, /const periodMode = !isAllTab \? 'daily' : \(allTabWeek \? 'weekly' : \(allTabMonth \? 'monthly' : 'total'\)\);/);
+  assert.match(source, /\['daily', '일별'\]/);
+  assert.match(source, /\['weekly', '주별'\]/);
+  assert.match(source, /\['monthly', '월별'\]/);
+  assert.match(source, /\['total', '전체'\]/);
+  assert.match(source, /periodOptions\.weeks\.map\(week =>/);
+  assert.match(source, /periodOptions\.months\.map\(month =>/);
+  assert.match(css, /\.periodPickerBar\s*{[\s\S]*display: flex;/);
+  assert.match(css, /\.periodModeGroup\s*{[\s\S]*display: inline-flex;/);
+  assert.match(css, /\.periodSelect\s*{[\s\S]*max-width: 360px;/);
+  assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.periodModeGroup\s*{[\s\S]*grid-template-columns: repeat\(4, 1fr\);/);
 });
 
 test('아산 현황판 추세 돋보기는 포인트 위치에 따라 위아래 배치를 바꾼다', () => {
@@ -562,10 +567,15 @@ test('아산 배차 날짜 탭은 유효 오더 없는 날짜를 비활성화한
   assert.match(source, /disabled=\{!hasRows\}/);
   assert.match(source, /styles\.dateTabDisabled/);
   assert.match(source, /title=\{!hasRows \? '유효 오더 없음' : undefined\}/);
-  assert.match(source, /if \(!hasRows\) return; setActiveTab\(idx\);/);
+  assert.match(source, /const visibleDateTabs = useMemo\(\(\) => \{/);
+  assert.match(source, /const limit = Math\.min\(QUICK_DATE_TAB_LIMIT, data\.length\);/);
+  assert.match(source, /data\.slice\(start, start \+ limit\)\.map\(\(item, offset\) => \(\{ item, idx: start \+ offset \}\)\)/);
+  assert.match(source, /onClick=\{\(\) => selectDailyDate\(item\.target_date\)\}/);
+  assert.match(source, /data-tab-index=\{idx\}/);
   assert.match(source, /hasValidOrderRows\(data\[activeTab\], viewType\)/);
   assert.match(source, /for \(let i = items\.length - 1; i >= 0; i -= 1\)/);
   assert.match(css, /\.dateTabDisabled,[\s\S]*cursor: not-allowed;/);
+  assert.match(css, /\.dateTabsMeta\s*{[\s\S]*white-space: nowrap;/);
 });
 
 test('아산 배차 검색/필터 합계는 실제 표시 행 기준으로 맞춘다', () => {

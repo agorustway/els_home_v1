@@ -124,6 +124,7 @@ function isHoliday(dateStr) {
 const CENTER_HEADERS = new Set(['오더', '배차', '검증', '계', '수량', '추가', 'T', 'TYPE', '오더(계)', '담당자']);
 const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡', '인천'];
 const PREFS_KEY = 'asan_dispatch_prefs';
+const QUICK_DATE_TAB_LIMIT = 7;
 
 // ===== 헬퍼 =====
 function getTabType(dateStr) {
@@ -189,6 +190,9 @@ function getWeekFilterRange(dateStr) {
         shortLabel: shortWeekLabel,
         fullLabel: `${label} (${weekLabel})`,
     };
+}
+function findWeekOptionByDate(weeks = [], dateStr = '') {
+    return weeks.find(week => dateStr >= week.start && dateStr <= week.end) || null;
 }
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
 function parseQty(value) {
@@ -466,6 +470,7 @@ function AsanDispatchContent() {
     const dataRef = useRef([]);
     const activeTabRef = useRef(-1);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
+    const todayKey = useMemo(() => getTodayKey(), []);
 
     useEffect(() => { dataRef.current = data; }, [data]);
     useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
@@ -603,12 +608,6 @@ function AsanDispatchContent() {
     }, [fetchData, viewType, syncing, showSettings, showBrowser]);
     // 검색 디바운스 (300ms)
     useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
-    useEffect(() => {
-        if (tabsRef.current && activeTab >= 0 && activeTab < data.length) {
-            const el = tabsRef.current.children[activeTab];
-            scrollDateTabHorizontally(tabsRef.current, el);
-        }
-    }, [activeTab, data]);
     // localStorage 로드
     useEffect(() => {
         const p = loadPrefs(viewType);
@@ -629,7 +628,6 @@ function AsanDispatchContent() {
 
     // ===== "전체" 탭 데이터 (모든 날짜 합산, 내림차순) =====
     const isAllTab = activeTab === data.length;
-    const todayKey = useMemo(() => getTodayKey(), []);
 
     useEffect(() => {
         if (isAllTab || data.length === 0 || activeTab < 0) return;
@@ -637,6 +635,48 @@ function AsanDispatchContent() {
         const fallbackIdx = findDefaultValidTabIndex(data, viewType, todayKey);
         if (fallbackIdx !== activeTab) setActiveTab(fallbackIdx);
     }, [activeTab, data, isAllTab, todayKey, viewType]);
+
+    const periodOptions = useMemo(() => {
+        const validItems = (data || []).filter(item => item.target_date <= todayKey && hasValidOrderRows(item, viewType));
+        const months = [...new Set(validItems.map(item => item.target_date.slice(5, 7)))].sort();
+        const weekMap = new Map();
+        validItems.forEach((item) => {
+            const week = getWeekFilterRange(item.target_date);
+            if (week && !weekMap.has(week.key)) weekMap.set(week.key, week);
+        });
+        return {
+            dates: validItems.map(item => item.target_date),
+            months,
+            weeks: [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start)),
+        };
+    }, [data, todayKey, viewType]);
+
+    const validDateSet = useMemo(() => new Set(periodOptions.dates), [periodOptions.dates]);
+    const selectedDailyIndex = useMemo(() => {
+        if (activeTab >= 0 && activeTab < data.length) return activeTab;
+        return findDefaultValidTabIndex(data, viewType, todayKey);
+    }, [activeTab, data, todayKey, viewType]);
+    const visibleDateTabs = useMemo(() => {
+        if (!data || data.length === 0) return [];
+        const limit = Math.min(QUICK_DATE_TAB_LIMIT, data.length);
+        const fallbackIndex = data.findIndex(item => item.target_date >= todayKey);
+        const baseIndex = selectedDailyIndex >= 0
+            ? selectedDailyIndex
+            : (fallbackIndex >= 0 ? fallbackIndex : data.length - 1);
+        let start = Math.max(0, baseIndex - Math.floor(limit / 2));
+        start = Math.min(start, Math.max(0, data.length - limit));
+        return data.slice(start, start + limit).map((item, offset) => ({ item, idx: start + offset }));
+    }, [data, selectedDailyIndex, todayKey]);
+    const periodMode = !isAllTab ? 'daily' : (allTabWeek ? 'weekly' : (allTabMonth ? 'monthly' : 'total'));
+
+    useEffect(() => {
+        if (!tabsRef.current) return;
+        const selector = activeTab >= 0 && activeTab < data.length
+            ? `[data-tab-index="${activeTab}"]`
+            : '[data-period-tab="total"]';
+        const el = tabsRef.current.querySelector(selector);
+        if (el) scrollDateTabHorizontally(tabsRef.current, el);
+    }, [activeTab, data.length, visibleDateTabs, periodMode]);
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
@@ -1012,20 +1052,150 @@ function AsanDispatchContent() {
         });
     }, []);
 
+    const resetGridFilters = useCallback(() => {
+        setSearchInput('');
+        setSearchTerm('');
+        setColumnFilters({});
+        setFilterDropdown(null);
+        setDisplayLimit(100);
+    }, []);
+
+    const selectDailyDate = useCallback((dateStr) => {
+        const nextIdx = data.findIndex(item => item.target_date === dateStr && hasValidOrderRows(item, viewType));
+        if (nextIdx < 0) return;
+        setActiveTab(nextIdx);
+        setAllTabMonth(null);
+        setAllTabWeek(null);
+        resetGridFilters();
+    }, [data, resetGridFilters, viewType]);
+
+    const selectWeekOption = useCallback((week) => {
+        if (!week) return;
+        setActiveTab(data.length);
+        setAllTabWeek(week);
+        setAllTabMonth(null);
+        resetGridFilters();
+    }, [data.length, resetGridFilters]);
+
+    const selectMonthOption = useCallback((month) => {
+        if (!month) return;
+        setActiveTab(data.length);
+        setAllTabMonth(month);
+        setAllTabWeek(null);
+        resetGridFilters();
+    }, [data.length, resetGridFilters]);
+
+    const selectTotalPeriod = useCallback(() => {
+        setActiveTab(data.length);
+        setAllTabMonth(null);
+        setAllTabWeek(null);
+        resetGridFilters();
+    }, [data.length, resetGridFilters]);
+
+    const handlePeriodModeClick = useCallback((mode) => {
+        if (mode === 'daily') {
+            const date = activeItem?.target_date || periodOptions.dates.find(d => d === todayKey) || periodOptions.dates[periodOptions.dates.length - 1];
+            if (date) selectDailyDate(date);
+            return;
+        }
+        if (mode === 'weekly') {
+            const baseDate = activeItem?.target_date || todayKey;
+            const week = findWeekOptionByDate(periodOptions.weeks, baseDate)
+                || periodOptions.weeks[periodOptions.weeks.length - 1];
+            selectWeekOption(week);
+            return;
+        }
+        if (mode === 'monthly') {
+            const baseMonth = (activeItem?.target_date || todayKey).slice(5, 7);
+            const month = periodOptions.months.includes(baseMonth)
+                ? baseMonth
+                : periodOptions.months[periodOptions.months.length - 1];
+            selectMonthOption(month);
+            return;
+        }
+        selectTotalPeriod();
+    }, [activeItem?.target_date, periodOptions, selectDailyDate, selectMonthOption, selectTotalPeriod, selectWeekOption, todayKey]);
+
     const dateControls = (
         <>
+            <div className={styles.periodPickerBar}>
+                <div className={styles.periodModeGroup} role="group" aria-label="배차판 기간 선택">
+                    {[
+                        ['daily', '일별'],
+                        ['weekly', '주별'],
+                        ['monthly', '월별'],
+                        ['total', '전체'],
+                    ].map(([mode, label]) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            className={`${styles.periodModeBtn} ${periodMode === mode ? styles.periodModeBtnActive : ''}`}
+                            onClick={() => handlePeriodModeClick(mode)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <div className={styles.periodSelectWrap}>
+                    {periodMode === 'daily' && (
+                        <select
+                            className={styles.periodSelect}
+                            value={activeItem?.target_date || ''}
+                            onChange={(event) => selectDailyDate(event.target.value)}
+                            aria-label="일별 날짜 선택"
+                        >
+                            {periodOptions.dates.map(date => {
+                                const { mm, dd, day } = formatTabLabel(date);
+                                return <option key={date} value={date}>{mm}/{dd}({day})</option>;
+                            })}
+                        </select>
+                    )}
+                    {periodMode === 'weekly' && (
+                        <select
+                            className={styles.periodSelect}
+                            value={allTabWeek?.key || ''}
+                            onChange={(event) => {
+                                const week = periodOptions.weeks.find(item => item.key === event.target.value);
+                                selectWeekOption(week);
+                            }}
+                            aria-label="주별 기간 선택"
+                        >
+                            {periodOptions.weeks.map(week => (
+                                <option key={week.key} value={week.key}>{week.fullLabel || week.label}</option>
+                            ))}
+                        </select>
+                    )}
+                    {periodMode === 'monthly' && (
+                        <select
+                            className={styles.periodSelect}
+                            value={allTabMonth || ''}
+                            onChange={(event) => selectMonthOption(event.target.value)}
+                            aria-label="월별 기간 선택"
+                        >
+                            {periodOptions.months.map(month => (
+                                <option key={month} value={month}>{parseInt(month, 10)}월</option>
+                            ))}
+                        </select>
+                    )}
+                    {periodMode === 'total' && (
+                        <span className={styles.periodTotalText}>누적 전체 {periodOptions.dates.length.toLocaleString()}일</span>
+                    )}
+                </div>
+            </div>
             <div className={styles.dateTabs} ref={tabsRef}>
-                {data.map((item, idx) => {
+                {visibleDateTabs.map(({ item, idx }) => {
                     const { mm, dd, day } = formatTabLabel(item.target_date);
                     const tabType = getTabType(item.target_date);
-                    const hasRows = hasValidOrderRows(item, viewType);
+                    const hasRows = validDateSet.has(item.target_date);
                     return (
                         <button
                             key={item.id}
+                            type="button"
+                            data-tab-index={idx}
                             className={`${styles.dateTab} ${styles[`tab_${tabType}`]} ${!hasRows ? styles.dateTabDisabled : ''} ${activeTab === idx ? styles.dateTabActive : ''}`}
                             disabled={!hasRows}
                             title={!hasRows ? '유효 오더 없음' : undefined}
-                            onClick={() => { if (!hasRows) return; setActiveTab(idx); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}
+                            onClick={() => selectDailyDate(item.target_date)}
                         >
                             <span className={styles.tabMonth}>{mm}/{dd}</span>
                             <span className={styles.tabDay}>({day})</span>
@@ -1033,40 +1203,19 @@ function AsanDispatchContent() {
                     );
                 })}
                 {data.length > 0 && (
-                    <button className={`${styles.dateTab} ${styles.tab_all} ${isAllTab ? styles.dateTabActive : ''}`}
-                        onClick={() => { setActiveTab(data.length); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setFilterDropdown(null); setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}>
+                    <button
+                        type="button"
+                        data-period-tab="total"
+                        className={`${styles.dateTab} ${styles.tab_all} ${periodMode === 'total' ? styles.dateTabActive : ''}`}
+                        onClick={selectTotalPeriod}
+                    >
                         <span className={styles.tabMonth}>📊 전체</span>
                     </button>
                 )}
+                {data.length > visibleDateTabs.length && (
+                    <span className={styles.dateTabsMeta}>빠른 날짜 {visibleDateTabs.length}개 · 누적 {periodOptions.dates.length.toLocaleString()}일</span>
+                )}
             </div>
-
-            {isAllTab && mergedView?.months && (
-                <div className={styles.periodFilterPanel}>
-                    <div className={styles.monthFilter}>
-                        <span className={styles.periodFilterLabel}>월간</span>
-                        <button className={`${styles.monthBtn} ${allTabMonth === null && allTabWeek === null ? styles.monthBtnActive : ''}`}
-                            onClick={() => { setAllTabMonth(null); setAllTabWeek(null); setDisplayLimit(100); }}>전체</button>
-                        {mergedView.months.map(m => (
-                            <button key={m} className={`${styles.monthBtn} ${allTabMonth === m ? styles.monthBtnActive : ''}`}
-                                onClick={() => { setAllTabMonth(m); setAllTabWeek(null); setDisplayLimit(100); }}>{parseInt(m)}월</button>
-                        ))}
-                    </div>
-                    <div className={styles.monthFilter}>
-                        <span className={styles.periodFilterLabel}>주간</span>
-                        {mergedView.weeks.map(week => (
-                            <button
-                                key={week.key}
-                                className={`${styles.monthBtn} ${styles.periodWeekBtn} ${allTabWeek?.key === week.key ? styles.monthBtnActive : ''}`}
-                                title={week.fullLabel || week.label}
-                                onClick={() => { setAllTabWeek(week); setAllTabMonth(null); setDisplayLimit(100); }}
-                            >
-                                <span className={styles.weekLabelFull}>{week.fullLabel || week.label}</span>
-                                <span className={styles.weekLabelShort}>{week.shortLabel || week.weekLabel || week.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
         </>
     );
 

@@ -1,3 +1,18 @@
+## [2026-05-22] 아산 배차판 누적 날짜 탐색 UI 정리 (v5.14.116)
+### 핵심
+- 배차판 날짜 탭이 누적 DB의 모든 날짜를 펼치지 않도록 선택 날짜 기준 빠른 탭 7개만 표시하게 했습니다.
+- 오래된 날짜는 `일별/주별/월별/전체` 버튼과 드롭다운으로 선택하도록 바꿔, 오늘 자동 선택 흐름은 유지하면서 누적 조회 부담을 줄였습니다.
+- 주별/월별/전체 선택지는 오늘 이후 사전기입 날짜와 유효 오더 없는 날짜를 제외하고, 모바일은 4분할 기간 버튼과 한 줄 드롭다운으로 정리했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 선적관리 컨테이너 이력 날짜시간 표시 통일 (v5.14.115)
 ### 핵심
 - 선적관리 테이블의 `이력 MOVE TIME`과 `이력 조회시각`을 `YYYY/MM/DD HH:mm` 24시간제 표시로 통일했습니다.

@@ -727,6 +727,85 @@
 }
 
 /* ===== 날짜 탭 ===== */
+.periodPickerBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.periodModeGroup {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.periodModeBtn {
+    min-width: 52px;
+    border: 0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.periodModeBtn:hover {
+    color: #1d4ed8;
+    background: #eef6ff;
+}
+
+.periodModeBtnActive {
+    color: #fff;
+    background: #2563eb;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.22);
+}
+
+.periodModeBtnActive:hover {
+    color: #fff;
+    background: #1d4ed8;
+}
+
+.periodSelectWrap {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-width: min(360px, 42vw);
+}
+
+.periodSelect {
+    width: 100%;
+    max-width: 360px;
+    height: 31px;
+    padding: 0 30px 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.periodTotalText {
+    display: inline-flex;
+    align-items: center;
+    height: 31px;
+    padding: 0 12px;
+    border: 1px solid #bbf7d0;
+    border-radius: 7px;
+    background: #f0fdf4;
+    color: #047857;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
 .dateTabs {
     display: flex;
     gap: 2px;
@@ -735,6 +814,16 @@
     margin-bottom: 0;
     scrollbar-width: thin;
     border-bottom: 2px solid #e2e8f0;
+}
+
+.dateTabsMeta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .dateTab {
@@ -1531,6 +1620,48 @@
         font-size: 0.8rem;
         text-align: center;
         white-space: nowrap;
+    }
+
+    .periodPickerBar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding: 4px 0;
+    }
+
+    .periodModeGroup {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        width: 100%;
+    }
+
+    .periodModeBtn {
+        min-width: 0;
+        padding: 6px 4px;
+        font-size: 0.7rem;
+    }
+
+    .periodSelectWrap {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .periodSelect {
+        max-width: none;
+        height: 34px;
+        font-size: 0.72rem;
+    }
+
+    .periodTotalText {
+        width: 100%;
+        justify-content: center;
+        height: 34px;
+        font-size: 0.72rem;
+    }
+
+    .dateTabsMeta {
+        font-size: 0.66rem;
+        padding: 0 6px;
     }
 
     .periodFilterPanel {
