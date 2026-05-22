@@ -1,13 +1,13 @@
 /**
  * trip.js — 운행 관리, 체크리스트, 오버레이 서비스
  */
-import { Store, State, BASE_URL } from './store.js?v=5168';
-import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5168';
+import { Store, State, BASE_URL } from './store.js?v=5169';
+import { Overlay, smartFetch, remoteLog } from './bridge.js?v=5169';
 import {
   startGPS, stopGPS,
   startTripStatusTimer, updateTripStatusLine, onGpsUpdate,
-} from './gps.js?v=5168';
-import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5168';
+} from './gps.js?v=5169';
+import { GENERAL_TRANSPORT_TYPES } from './cargoOptions.js?v=5169';
 
 function showToast(msg, d) { window.App?.showToast(msg, d); }
 function formatDate(d) { return window.App?.formatDate(d) ?? d.toLocaleString(); }
@@ -169,8 +169,16 @@ export function updateOverlayStatus() {
   }).catch(() => { });
 }
 
-export function stopOverlayService() {
-  Overlay()?.stopService().catch(() => { });
+export async function stopOverlayService() {
+  const overlay = Overlay();
+  if (!overlay) return { stopped: false, reason: 'overlay_plugin_missing' };
+  try {
+    await overlay.setWidgetVisible?.({ visible: false }).catch?.(() => null);
+    return await overlay.stopService();
+  } catch (e) {
+    remoteLog('Overlay stopService error: ' + (e?.message || e), 'OVERLAY_ERR');
+    return { stopped: false, error: e?.message || String(e) };
+  }
 }
 
 // ─── 컨테이너 번호 ISO 6346 검증 ─────────────────────────────────
@@ -292,7 +300,7 @@ export async function loadCurrentTrip() {
         startTripStatusTimer();
       }
     } else {
-      stopOverlayService();
+      await stopOverlayService();
       stopGPS();
       Store.rm('activeTrip');
       State.trip = { id: null, status: 'idle', startTime: null, containerNo: '', sealNo: '' };
@@ -442,7 +450,7 @@ export async function togglePause() {
  *   3) 둘 다 실패 시 마지막 알려진 위치를 forced=true 로 강제 기록
  */
 async function _recordTripEndMarker(tripId) {
-  const gpsModule = await import('./gps.js?v=5168');
+  const gpsModule = await import('./gps.js?v=5169');
   const { onGpsUpdate: _onGpsUpdate } = gpsModule;
 
   const tryGps = (highAccuracy, timeoutMs) =>
@@ -510,7 +518,7 @@ export async function endTrip() {
         special_notes:    document.getElementById('trip-memo')?.value.trim()    || undefined,
       }),
     });
-    stopOverlayService();
+    await stopOverlayService();
     stopGPS();
     Store.rm('activeTrip');
     clearTripData(true);

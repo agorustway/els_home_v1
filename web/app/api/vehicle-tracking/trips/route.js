@@ -1,6 +1,119 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
-import { displaySpeedKmh, filterRouteLocations, pickLatestDisplayLocation, prepareLiveTrips } from '@/utils/vehicleLocation.mjs';
+import {
+    displaySpeedKmh,
+    filterRouteLocations,
+    pickLatestDisplayLocation,
+    prepareLiveTrips,
+    sampleRouteWaypoints,
+    snapPointToRoadPath,
+    validateMatchedRoute,
+} from '@/utils/vehicleLocation.mjs';
+
+const roadSnapCache = new Map();
+const ROAD_SNAP_CACHE_TTL_MS = 20 * 1000;
+
+function getRoadSnapCache(key) {
+    const cached = roadSnapCache.get(key);
+    if (!cached) return undefined;
+    if (Date.now() - cached.cachedAt > ROAD_SNAP_CACHE_TTL_MS) {
+        roadSnapCache.delete(key);
+        return undefined;
+    }
+    return cached.value;
+}
+
+function setRoadSnapCache(key, value) {
+    roadSnapCache.set(key, { value, cachedAt: Date.now() });
+    if (roadSnapCache.size > 200) {
+        const firstKey = roadSnapCache.keys().next().value;
+        if (firstKey) roadSnapCache.delete(firstKey);
+    }
+}
+
+async function getRoadSnappedLocation(trip, locations = []) {
+    if (!trip || !['driving', 'paused'].includes(trip.status)) return null;
+
+    const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID;
+    const clientSecret = process.env.NAVER_MAP_CLIENT_SECRET;
+    if (!clientId || !clientSecret) return null;
+
+    const clean = filterRouteLocations(locations || []).slice(-14);
+    if (clean.length < 2) return null;
+
+    const latest = clean[clean.length - 1];
+    const speed = Number(latest.speed || 0);
+    const accuracy = Number(latest.accuracy || 0);
+    if (!Number.isFinite(speed) || !Number.isFinite(accuracy) || accuracy > 80) return null;
+
+    const cacheKey = `${trip.id}:${latest.recorded_at || latest.created_at || latest.lat},${latest.lng}`;
+    const cached = getRoadSnapCache(cacheKey);
+    if (cached !== undefined) return cached;
+
+    try {
+        const { clean: sampled, waypoints } = sampleRouteWaypoints(clean, 8);
+        if (sampled.length < 2) return null;
+
+        const start = sampled[0];
+        const goal = sampled[sampled.length - 1];
+        const naverParams = new URLSearchParams({
+            start: `${start.lng},${start.lat}`,
+            goal: `${goal.lng},${goal.lat}`,
+            option: 'trafast',
+            cartype: '6',
+            fueltype: 'diesel',
+        });
+        if (waypoints.length > 0) {
+            naverParams.set('waypoints', waypoints.map((p) => `${p.lng},${p.lat}`).join('|'));
+        }
+
+        const apiRes = await fetch(`https://maps.apigw.ntruss.com/map-direction-15/v1/driving?${naverParams.toString()}`, {
+            headers: {
+                'X-NCP-APIGW-API-KEY-ID': clientId,
+                'X-NCP-APIGW-API-KEY': clientSecret,
+            },
+            signal: AbortSignal.timeout(4500),
+        });
+        const data = await apiRes.json();
+        const route = data?.route?.trafast?.[0] || Object.values(data?.route || {})?.[0]?.[0];
+        const path = Array.isArray(route?.path)
+            ? route.path.map(([lng, lat]) => ({ lat, lng }))
+            : [];
+
+        if (!apiRes.ok || data.code !== 0 || path.length < 2) return null;
+
+        const routeDecision = validateMatchedRoute(sampled, path, {
+            summaryDistanceM: route.summary?.distance,
+        });
+        if (!routeDecision.ok) return null;
+
+        const snap = snapPointToRoadPath(latest, path, {
+            maxDistanceKm: speed <= 4 ? 0.06 : 0.09,
+            minDistanceKm: 0.004,
+            ignoreFinalWithinKm: 0.006,
+        });
+        if (!snap.ok) {
+            setRoadSnapCache(cacheKey, null);
+            return null;
+        }
+
+        const snapped = {
+            ...latest,
+            raw_lat: latest.lat,
+            raw_lng: latest.lng,
+            lat: snap.lat,
+            lng: snap.lng,
+            road_snapped: true,
+            road_snap_distance_m: Math.round(snap.distanceKm * 1000),
+            road_snap_source: 'naver-directions15',
+        };
+        setRoadSnapCache(cacheKey, snapped);
+        return snapped;
+    } catch {
+        setRoadSnapCache(cacheKey, null);
+        return null;
+    }
+}
 
 /**
  * GET /api/vehicle-tracking/trips
@@ -117,9 +230,12 @@ export async function GET(request) {
                 if (!groupedLocations[l.trip_id]) groupedLocations[l.trip_id] = [];
                 groupedLocations[l.trip_id].push(l);
             });
-            Object.entries(groupedLocations).forEach(([tripId, list]) => {
-                locationMap[tripId] = pickLatestDisplayLocation(list);
-            });
+            await Promise.all(Object.entries(groupedLocations).map(async ([tripId, list]) => {
+                const trip = data.find(t => String(t.id) === String(tripId));
+                const displayLocation = pickLatestDisplayLocation(list);
+                const roadSnapped = await getRoadSnappedLocation(trip, list);
+                locationMap[tripId] = roadSnapped || displayLocation;
+            }));
 
             const enriched = await attachDriverMeta(supabase, data);
             const merged = prepareLiveTrips(enriched.map(trip => ({

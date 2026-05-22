@@ -1,3 +1,20 @@
+## [2026-05-22] 오버레이 종료 latch와 실시간 마커 도로 스냅 (v5.14.129 / APK v5.11.28)
+### 핵심
+- 형이 종료 후 앱으로 복귀했는데도 오버레이가 앱 위에 남는 것을 확인했습니다. JS 종료 호출을 `await stopOverlayService()`로 바꾸고, native에는 `STOP_OVERLAY_SERVICE` latch를 추가해 sticky service 재시작과 전경 복귀 모두에서 잔존 오버레이를 정리합니다.
+- `OverlayPlugin.setWidgetVisible()`은 active trip이 없으면 서비스를 새로 깨우지 않고 남은 서비스만 정지합니다. `MainActivity.onResume/onPause()`도 active trip이 없으면 `FloatingWidgetService`를 직접 stop합니다.
+- 관제 마커가 도로 가장자리로 밀려 보이는 문제는 원본 GPS 저장값은 유지하고, `trips?mode=active` 응답의 표시 좌표만 최근 정상 좌표 기반 Naver Directions 15 경로에 가까운 도로 위치로 스냅하도록 했습니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs web/tests/driverMapCamera.test.mjs`: 31개 통과
+- `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/location/route.js utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과
+- `npm.cmd run build`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.28/versionCode 5169
+### 변경 파일
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`, `MainActivity.java`, `OverlayPlugin.java`
+- `web/driver-src/modules/trip.js`, `web/app/api/vehicle-tracking/trips/route.js`, `web/utils/vehicleLocation.mjs`
+- `web/tests/driverMapCamera.test.mjs`, `web/tests/vehicleLocation.test.mjs`
+- `web/android/app/build.gradle`, `web/public/apk/version.json`, `web/public/apk/els_driver.apk`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] Android 저속/정차 GPS heartbeat 90초 보정 (v5.14.128 / APK v5.11.27)
 ### 핵심
 - 12가0140 실시간 테스트 중 경로와 속도 튐은 안정됐지만, 저속/정차 구간에서 native 저장 간격이 139~141초까지 벌어져 관제 화면에서는 잠깐 멈춘 것처럼 보일 수 있었습니다.

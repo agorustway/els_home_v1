@@ -480,6 +480,64 @@ function distanceToPolylineKm(point, line = []) {
     return best;
 }
 
+export function snapPointToRoadPath(point, line = [], options = {}) {
+    const raw = {
+        lat: Number(point?.lat),
+        lng: Number(point?.lng),
+    };
+    const path = (line || [])
+        .map((p) => ({ lat: Number(p?.lat), lng: Number(p?.lng) }))
+        .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+    if (!Number.isFinite(raw.lat) || !Number.isFinite(raw.lng) || path.length < 2) {
+        return { ok: false, reason: 'invalid_input' };
+    }
+
+    const maxDistanceKm = Number.isFinite(Number(options.maxDistanceKm)) ? Number(options.maxDistanceKm) : 0.08;
+    const minDistanceKm = Number.isFinite(Number(options.minDistanceKm)) ? Number(options.minDistanceKm) : 0.004;
+    const ignoreFinalWithinKm = Number.isFinite(Number(options.ignoreFinalWithinKm)) ? Number(options.ignoreFinalWithinKm) : 0.006;
+    const finalIsRawConnector = haversineKm(raw.lat, raw.lng, path[path.length - 1].lat, path[path.length - 1].lng) <= ignoreFinalWithinKm;
+
+    let best = null;
+    for (let i = 1; i < path.length; i += 1) {
+        if (finalIsRawConnector && i === path.length - 1 && path.length > 2) continue;
+
+        const a = path[i - 1];
+        const b = path[i];
+        const vx = b.lng - a.lng;
+        const vy = b.lat - a.lat;
+        const wx = raw.lng - a.lng;
+        const wy = raw.lat - a.lat;
+        const lenSq = vx * vx + vy * vy;
+        const t = lenSq > 0 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / lenSq)) : 0;
+        const projected = {
+            lat: a.lat + t * vy,
+            lng: a.lng + t * vx,
+        };
+        const distanceKm = haversineKm(raw.lat, raw.lng, projected.lat, projected.lng);
+        if (!best || distanceKm < best.distanceKm) {
+            best = { ...projected, distanceKm, segmentIndex: i - 1 };
+        }
+    }
+
+    if (!best) return { ok: false, reason: 'no_candidate' };
+    if (best.distanceKm > maxDistanceKm) {
+        return { ok: false, reason: 'too_far_from_route', distanceKm: best.distanceKm };
+    }
+    if (best.distanceKm < minDistanceKm) {
+        return { ok: false, reason: 'already_on_road', distanceKm: best.distanceKm };
+    }
+
+    return {
+        ok: true,
+        lat: best.lat,
+        lng: best.lng,
+        distanceKm: best.distanceKm,
+        segmentIndex: best.segmentIndex,
+        finalIsRawConnector,
+    };
+}
+
 function hasLoopExcursion(points = []) {
     if (points.length < 8) return false;
     const cumulative = [0];

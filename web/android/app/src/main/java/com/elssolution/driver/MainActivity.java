@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
+    private static final String KEY_STOP_OVERLAY = "STOP_OVERLAY_SERVICE";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,6 +81,7 @@ public class MainActivity extends BridgeActivity {
             .edit().putString("EXPLICIT_EXIT", "true").apply();
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .edit()
+            .putBoolean(KEY_STOP_OVERLAY, true)
             .remove(KEY_TRIP_ID)
             .remove(KEY_START_TIME)
             .remove("SERVICE_HEARTBEAT")
@@ -147,6 +149,8 @@ public class MainActivity extends BridgeActivity {
             intent.setAction("SET_VISIBILITY");
             intent.putExtra("visible", false);
             try { startService(intent); } catch (Exception ignored) {}
+        } else {
+            try { stopService(new Intent(this, FloatingWidgetService.class)); } catch (Exception ignored) {}
         }
     }
 
@@ -160,6 +164,8 @@ public class MainActivity extends BridgeActivity {
             intent.setAction("SET_VISIBILITY");
             intent.putExtra("visible", true);
             try { startService(intent); } catch (Exception ignored) {}
+        } else {
+            try { stopService(new Intent(this, FloatingWidgetService.class)); } catch (Exception ignored) {}
         }
     }
 }

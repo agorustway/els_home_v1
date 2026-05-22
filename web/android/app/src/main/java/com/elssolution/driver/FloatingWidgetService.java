@@ -58,6 +58,7 @@ public class FloatingWidgetService extends Service {
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
+    private static final String KEY_STOP_OVERLAY = "STOP_OVERLAY_SERVICE";
     private static final String BASE_URL = "https://www.elssolution.com";
 
     // 오버레이 위젯
@@ -207,6 +208,13 @@ public class FloatingWidgetService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         boolean initialVisible = intent != null && intent.getBooleanExtra("visible", false);
 
+        SharedPreferences servicePrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (servicePrefs.getBoolean(KEY_STOP_OVERLAY, false)) {
+            Log.d(TAG, "STOP_OVERLAY_SERVICE 감지 → 서비스 즉시 종료");
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         // [v4.3.22] EXPLICIT_EXIT 플래그 체크: exitApp() 호출 후 Android가 START_STICKY로
         // 서비스를 재시작 시도할 때, 이 플래그가 있으면 즉시 자멸 → 알림 생성 원천 차단
         SharedPreferences capPrefs = getSharedPreferences("CapacitorStorage", MODE_PRIVATE);
@@ -230,6 +238,7 @@ public class FloatingWidgetService extends Service {
                 // [Fix] 운행 종료 시 명시적으로 LAST_TRIP_ID 삭제하여 좀비 알람 부활 방지
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     .edit()
+                    .putBoolean(KEY_STOP_OVERLAY, true)
                     .remove(KEY_TRIP_ID)
                     .remove(KEY_START_TIME)
                     .apply();

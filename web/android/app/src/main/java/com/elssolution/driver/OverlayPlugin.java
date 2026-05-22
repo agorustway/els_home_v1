@@ -35,10 +35,12 @@ public class OverlayPlugin extends Plugin {
     private static final String PREFS_NAME = "ELS_DRIVER_PREFS";
     private static final String KEY_TRIP_ID = "LAST_TRIP_ID";
     private static final String KEY_START_TIME = "LAST_START_TIME";
+    private static final String KEY_STOP_OVERLAY = "STOP_OVERLAY_SERVICE";
 
     private void clearNativeTripState(Context context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
+            .putBoolean(KEY_STOP_OVERLAY, true)
             .remove(KEY_TRIP_ID)
             .remove(KEY_START_TIME)
             .remove("SERVICE_HEARTBEAT")
@@ -108,6 +110,7 @@ public class OverlayPlugin extends Plugin {
             if (tripId != null && !tripId.trim().isEmpty()) {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
+                    .remove(KEY_STOP_OVERLAY)
                     .putString(KEY_TRIP_ID, tripId)
                     .putLong(KEY_START_TIME, startTime)
                     .apply();
@@ -137,15 +140,22 @@ public class OverlayPlugin extends Plugin {
     // JS → 오버레이 위젯 표시/숨김 제어
     @PluginMethod
     public void setWidgetVisible(PluginCall call) {
+        Context context = getContext();
         boolean visible = call.getBoolean("visible", true);
-        Intent intent = new Intent(getContext(), FloatingWidgetService.class);
+        if (!hasNativeTrip(context)) {
+            try { context.stopService(new Intent(context, FloatingWidgetService.class)); } catch (Exception ignored) {}
+            call.resolve(new JSObject().put("visible", false).put("reason", "no_active_trip"));
+            return;
+        }
+
+        Intent intent = new Intent(context, FloatingWidgetService.class);
         intent.setAction("SET_VISIBILITY");
         intent.putExtra("visible", visible);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                getContext().startForegroundService(intent);
+                context.startForegroundService(intent);
             } else {
-                getContext().startService(intent);
+                context.startService(intent);
             }
             call.resolve(new JSObject().put("visible", visible));
         } catch (Exception e) {

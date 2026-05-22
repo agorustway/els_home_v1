@@ -1,20 +1,20 @@
 /**
  * init.js — 앱 초기화, 화면 전환 오케스트레이션
  */
-import { Store, State, AppConfig } from './store.js?v=5168';
-import { Overlay, remoteLog } from './bridge.js?v=5168';
-import { showScreen } from './nav.js?v=5168';
+import { Store, State, AppConfig } from './store.js?v=5169';
+import { Overlay, remoteLog } from './bridge.js?v=5169';
+import { showScreen } from './nav.js?v=5169';
 import {
   updatePermStatuses, permStatuses, setupPermNav, requestAllPerms,
-} from './permissions.js?v=5168';
-import { applyProfileToUI } from './profile.js?v=5168';
-import { loadCurrentTrip, registerBackHandler } from './trip.js?v=5168';
-import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=5168';
-import { loadNotices } from './notice.js?v=5168';
-import { startEmergencyPoll, pollEmergency } from './emergency.js?v=5168';
-import { checkUpdate } from './update.js?v=5168';
-import { openMap } from './map.js?v=5168';
-import { loadLogs } from './log.js?v=5168';
+} from './permissions.js?v=5169';
+import { applyProfileToUI } from './profile.js?v=5169';
+import { loadCurrentTrip, registerBackHandler } from './trip.js?v=5169';
+import { startGPS, stopGPS, onGpsUpdate, lastGpsTimestamp } from './gps.js?v=5169';
+import { loadNotices } from './notice.js?v=5169';
+import { startEmergencyPoll, pollEmergency } from './emergency.js?v=5169';
+import { checkUpdate } from './update.js?v=5169';
+import { openMap } from './map.js?v=5169';
+import { loadLogs } from './log.js?v=5169';
 
 let isAppInitialized = false;
 
@@ -104,7 +104,7 @@ export async function init() {
 
             if (State.trip.status === 'driving') {
               // [v5.11.13 Fix] window.App._gpsWatchId는 항상 undefined → import된 gpsWatchId로 정확히 체크
-              const { gpsWatchId: currentWatchId } = await import('./gps.js?v=5168');
+              const { gpsWatchId: currentWatchId } = await import('./gps.js?v=5169');
               if (!currentWatchId) {
                 remoteLog('포그라운드 복귀: GPS watcher 미존재 — 재기동', 'GPS_RESUME');
                 stopGPS();
