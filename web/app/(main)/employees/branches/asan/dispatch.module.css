@@ -1645,8 +1645,10 @@
     }
 
     .periodSelectWrap {
+        flex: 0 0 auto;
         min-width: 0;
         width: 100%;
+        min-height: 0;
     }
 
     .periodSelect {

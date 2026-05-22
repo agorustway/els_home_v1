@@ -1,3 +1,16 @@
+## [2026-05-22] 아산 배차판 모바일 기간 선택 간격 보정 (v5.14.121)
+### 핵심
+- 모바일 현황판 중간의 `일별/주별/월별/전체` 버튼과 날짜 선택 드롭다운 사이에 큰 빈 공간이 생기던 문제를 보정했습니다.
+- 데스크탑용 드롭다운 폭 설정 `flex: 0 0 240px`가 모바일 세로 배치에서 높이 240px처럼 작동한 것이 원인이었습니다.
+- 모바일에서는 `periodSelectWrap`의 flex-basis를 `auto`로 리셋하고 최소 높이를 0으로 고정해 버튼, 셀렉트, 날짜탭이 연속으로 붙게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
+- `npm.cmd run lint`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB BKG 레거시 표시/폭 보정 (v5.14.120)
 ### 핵심
 - 오늘 모비스 WEB BKG 입력값이 통합현황에 보이지 않는 문제를 기존 저장 row_signature fallback으로 보정했습니다.
