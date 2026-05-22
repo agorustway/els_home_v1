@@ -1,3 +1,17 @@
+## [2026-05-22] 아산 배차판 WEB 비고 출처 분리 (v5.14.131)
+### 핵심
+- 형이 확인한 대로 엑셀 `비고`는 화면으로 가져오면 안 되고, 엑셀에서 가져올 값은 `비고` 오른쪽 `특이사항`만 맞습니다.
+- 기존 컷오버 과정에서 `branch_dispatch_web_cells.field_key=NOTE`로 저장된 엑셀 비고가 `source=cutover` 상태로 남아 화면에 WEB 비고처럼 노출되고 있었습니다.
+- WEB 셀 오버레이는 `NOTE`에 한해 `source=web`인 값만 표시하도록 바꿨습니다. 컷오버 데이터는 삭제하지 않고 보존하되 화면/내보내기에는 쓰지 않습니다.
+- 백필 스크립트도 앞으로 엑셀 `비고`를 `NOTE`로 가져오지 않도록 막았습니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 45개 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/scripts/backfill-asan-dispatch-web-cells.mjs`
+- `web/tests/asanDispatchWebCells.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 관제 통계 운행거리 전환과 저속 회전 포인트 보강 (v5.14.130 / APK v5.11.29)
 ### 핵심
 - 형이 지적한 대로 12가0140 완료 경로의 `최고속도 160km/h`는 실제 주행보다 센서 speed 순간 튐을 그대로 표시한 문제였습니다. 완료 통계는 좌표 간 거리/시간 기반 신뢰 최고속도를 우선하고, 센서값은 좌표 진행과 맞을 때만 보조로 쓰도록 바꿨습니다.

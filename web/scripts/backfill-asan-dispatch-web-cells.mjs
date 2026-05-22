@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import {
+  ASAN_DISPATCH_WEB_CELL_FIELDS,
   normalizeDispatchWebCellFieldKey,
   normalizeDispatchWebCellValue,
 } from '../utils/asanDispatchWebCellFields.mjs';
@@ -77,6 +78,7 @@ function buildCutoverCells(records = []) {
       const meta = buildMeta(row, rowIndex);
 
       for (const column of webColumns) {
+        if (column.fieldKey === ASAN_DISPATCH_WEB_CELL_FIELDS.NOTE) continue;
         const value = normalizeDispatchWebCellValue(row[column.idx]);
         if (!value) continue;
         cells.push({

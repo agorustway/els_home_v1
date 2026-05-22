@@ -1,15 +1,15 @@
-# ELS MISSION CONTROL (v5.14.130 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.131 / APK v5.11.29)
 
-> 최신 업데이트: 관제 경로 통계는 좌표 기반 신뢰 최고속도와 운행거리 중심으로 표시하고, 저속 회전 구간은 GPS_TURN 마커로 더 촘촘히 남깁니다.
+> 최신 업데이트: 아산 배차판 WEB 전용 비고는 `source=web` 저장값만 표시하고, 엑셀/컷오버 비고는 숨깁니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.130
+- **웹 버전**: v5.14.131
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 행사일정은 2026년 주요 공휴일/대체공휴일을 휴일 셀과 라벨로 표시한다.
-  - 아산 배차판은 날짜 탭/기간 선택/WEB 전용 BKG·TARGET·비고 오버레이/히스토리를 운영하며, WEB 셀 조회는 Supabase 페이지 조회로 1000건 제한을 회피한다.
+  - 아산 배차판은 날짜 탭/기간 선택/WEB 전용 BKG·TARGET·비고 오버레이/히스토리를 운영하며, WEB 셀 조회는 Supabase 페이지 조회로 1000건 제한을 회피한다. 비고는 `source=web` 저장값만 화면/내보내기에 반영하고 엑셀 특이사항은 별도 컬럼으로 유지한다.
   - 아산지점은 배차판 첫 진입, 실적관리 종합실적 시작, 동적 청크/프리패치, 필요한 탭만 mount하는 구조를 유지한다.
   - 선적관리 컨테이너 조회는 NAS core 백그라운드 job과 대량 안정 모드로 운영하고, 날짜시간 표기는 `YYYY/MM/DD HH:mm`으로 통일한다.
   - 연간/월간/종합실적은 DB 누적 원장과 summary 재조회 구조를 유지하며, NAS가 끊겨도 저장된 DB 기준 화면을 유지한다.
@@ -45,9 +45,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-130: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계 안정화
+- [x] v5.14.64-131: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계 안정화
 
 ## RECENT CHANGES
+- **v5.14.131**: 아산 배차판 WEB 전용 `비고`는 WEB 입력 출처(`source=web`)만 표시한다. 초기 컷오버/엑셀 백필로 남은 `NOTE` 값은 삭제하지 않고 화면/내보내기 오버레이에서 제외해, 엑셀 `특이사항`과 WEB `비고` 저장 책임을 분리했다. 백필 스크립트도 앞으로 엑셀 `비고`를 `NOTE`로 가져오지 않는다.
 - **v5.14.130 / APK v5.11.29**: 완료 경로 통계는 좌표 진행 기반 신뢰 최고속도로 계산해 센서 speed 160km/h 튐을 배제하고, 평균속도 대신 운행거리를 앱/웹/엑셀에 표시한다. Android native 자이로/가속도는 1km/h 이상 저속 회전을 `GPS_TURN` 마커로 저장해 출발/도착/골목길의 꺾임 포인트를 더 촘촘히 남긴다.
 - **v5.14.129 / APK v5.11.28**: 운행 종료 후 앱 전경 복귀에도 오버레이가 남는 경합을 막기 위해 JS 종료 호출을 await하고 native `STOP_OVERLAY_SERVICE` latch/전경 복귀 정리를 추가했다. `trips?mode=active`는 최근 정상 좌표를 네이버 Directions 15 경로에 맞춰 표시 좌표만 도로로 스냅한다.
 - **v5.14.128 / APK v5.11.27**: 12가0140 실시간 테스트 중 저속/정차 구간에서 native 저장 간격이 139~141초까지 벌어지는 것을 확인해 Android 서비스의 6km/h 미만 전송 주기를 180초에서 90초로 낮췄다. JS heartbeat와 맞춰 관제 지도 끊김 체감을 줄인다.
@@ -65,7 +66,7 @@
 - `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.29/versionCode 5170
-- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 45개 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

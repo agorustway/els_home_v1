@@ -241,6 +241,12 @@ function webCellUpdatedTime(cell = {}) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function shouldDisplayDispatchWebCell(cell = {}) {
+  const fieldKey = normalizeDispatchWebCellFieldKey(cell.field_key);
+  if (fieldKey !== ASAN_DISPATCH_WEB_CELL_FIELDS.NOTE) return true;
+  return String(cell.source || '').toLowerCase() === 'web';
+}
+
 function setLatestWebCell(cellMap, key, cell) {
   if (!key) return;
   const existing = cellMap.get(key);
@@ -288,6 +294,7 @@ export function buildWebCellMap(cells = []) {
   const cellMap = new Map();
   const sortedCells = [...(cells || [])].sort((a, b) => webCellUpdatedTime(a) - webCellUpdatedTime(b));
   for (const cell of sortedCells) {
+    if (!shouldDisplayDispatchWebCell(cell)) continue;
     const key = buildWebCellLookupKey({
       branchId: cell.branch_id || DEFAULT_BRANCH_ID,
       dispatchType: cell.dispatch_type,
@@ -345,7 +352,7 @@ export function webCellFieldSummary(headers = []) {
 }
 
 async function fetchDispatchWebCells(supabase, { branchId, dispatchTypes, targetDates }) {
-  const selectFields = 'branch_id, dispatch_type, target_date, row_signature, field_key, value, row_index, row_context, updated_at';
+  const selectFields = 'branch_id, dispatch_type, target_date, row_signature, field_key, value, source, row_index, row_context, updated_at';
   const cells = [];
   let from = 0;
 

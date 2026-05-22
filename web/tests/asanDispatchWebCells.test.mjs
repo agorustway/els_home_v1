@@ -307,6 +307,42 @@ test('오버레이 활성화 후 WEB 전용 컬럼은 DB 값만 표시하고 엑
   assert.equal(applied[13], '');
 });
 
+test('비고는 WEB 입력 출처만 표시하고 컷오버 엑셀 비고는 숨긴다', () => {
+  const buildMeta = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-18',
+    headers,
+  });
+  const row = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', '', '', '', '', 'EXCEL-NOTE'];
+  const meta = buildMeta(row, 0);
+
+  const cutoverMap = buildWebCellMap([
+    {
+      branch_id: 'asan',
+      dispatch_type: 'glovis',
+      target_date: '2026-05-18',
+      row_signature: meta.rowSignature,
+      field_key: 'NOTE',
+      source: 'cutover',
+      value: 'CUTOVER-NOTE',
+    },
+  ]);
+  const webMap = buildWebCellMap([
+    {
+      branch_id: 'asan',
+      dispatch_type: 'glovis',
+      target_date: '2026-05-18',
+      row_signature: meta.rowSignature,
+      field_key: 'NOTE',
+      source: 'web',
+      value: 'WEB-NOTE',
+    },
+  ]);
+
+  assert.equal(applyDispatchWebCellOverlay({ headers, row, meta, cellMap: cutoverMap, enabled: true })[13], '');
+  assert.equal(applyDispatchWebCellOverlay({ headers, row, meta, cellMap: webMap, enabled: true })[13], 'WEB-NOTE');
+});
+
 test('WEB 셀 로더는 통합현황 전체 날짜 조회 시 Supabase 1000건 제한을 넘겨 읽는다', () => {
   const source = readFileSync(new URL('../utils/asanDispatchWebCells.mjs', import.meta.url), 'utf8');
 
