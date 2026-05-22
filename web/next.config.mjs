@@ -14,6 +14,9 @@ const nextConfig = {
       '/api/chat': ['./data/**/*', './public/data/**/*'],
       '/api/safe-freight/**/*': ['./public/data/**/*'],
     },
+    outputFileTracingExcludes: {
+      '/api/els/**/*': ['../elsbot/**/*', './node_modules/.cache/els/**/*'],
+    },
   },
   images: {
     // Cloudtype의 한정된 CPU를 On-the-fly 이미지 리사이징으로 낭비하지 않도록 강제 비활성화

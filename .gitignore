@@ -78,3 +78,4 @@ web/android/app/src/main/assets/public/
 .claude/settings.local.json
 els_cleanup_archive_*.zip
 _TRASH_BIN_/
+.vercel

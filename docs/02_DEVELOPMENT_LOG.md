@@ -1,3 +1,14 @@
+## [2026-05-22] Vercel 배포 함수 크기 초과 보정 (v5.14.124)
+### 핵심
+- 운영 Vercel 프로젝트 배포 중 `api/els/login`, `api/els/run`, `api/els/parse-xlsx` 등이 로컬 `elsbot/dist`와 임시 브라우저 프로필까지 함수 번들에 포함해 250MB 제한을 초과했습니다.
+- Next.js output file tracing exclude에 `../elsbot/**/*`와 임시 엑셀 캐시를 추가해 Vercel 서버리스 산출물에서 로컬 봇 대형 파일을 제외했습니다.
+- `api/els/*`는 운영에서 NAS 프록시 또는 사용불가 안내 경로로 동작하므로 Vercel 번들에 로컬 Python/Drission 실행파일이 필요하지 않습니다.
+### 검증
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/next.config.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB BKG/비고 조회 복구 보강 (v5.14.123)
 ### 핵심
 - 오늘 입력한 글로비스 BKG가 DB에는 저장됐지만 운영 화면 일부 경로에서 빈칸으로 내려오는 상황을 확인했습니다.
