@@ -1,3 +1,17 @@
+## [2026-05-22] 종합실적 경영 판단 용어 정규화 (v5.14.110)
+### 핵심
+- 종합실적 `경영 판단` 카드가 Supabase `summary-view`에 저장된 예전 제목을 받아도 화면 표시 직전에 새 용어로 정규화하게 했습니다.
+- `수익성 압력`은 `이익률`, `ELS/외부 집중도`는 `자사 비율`로 보정하고, 값/상세의 `ELS직계약` 표현도 자사 기준으로 바꿔 보이게 했습니다.
+- `고마진/저마진` 어감은 업무 보고용으로 낮춰 `이익률 우수 청구처/지급처`, `이익률 점검 청구처/지급처`로 변경했습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "utils/asanPerformanceSummary.mjs" "tests/asanSummaryPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/utils/asanPerformanceSummary.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 종합실적 용어 정리 (v5.14.109)
 ### 핵심
 - 종합실적 화면 제목을 `아산 종합 실적 지휘판`에서 `컨테이너 운송 통합실적`로 바꿨습니다.

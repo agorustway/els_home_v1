@@ -12,6 +12,19 @@ const SCOPE_BUTTONS = [
     { key: 'month', label: '월별' },
     { key: 'day', label: '일별' },
 ];
+const LEGACY_PROFIT_RATE_LABEL = '손익' + '률';
+const LEGACY_PROFIT_SIGNAL_TITLE = '수익성 ' + '압력';
+const LEGACY_OWN_SIGNAL_TITLE = 'ELS/외부 ' + '집중도';
+const LEGACY_HIGH_MARGIN_LABEL = '고' + '마진';
+const LEGACY_LOW_MARGIN_LABEL = '저' + '마진';
+const EXECUTIVE_SIGNAL_TITLE_MAP = {
+    [LEGACY_PROFIT_SIGNAL_TITLE]: '이익률',
+    [LEGACY_OWN_SIGNAL_TITLE]: '자사 비율',
+    [`${LEGACY_HIGH_MARGIN_LABEL} 청구처`]: '이익률 우수 청구처',
+    [`${LEGACY_HIGH_MARGIN_LABEL} 지급처`]: '이익률 우수 지급처',
+    [`${LEGACY_LOW_MARGIN_LABEL} 청구처`]: '이익률 점검 청구처',
+    [`${LEGACY_LOW_MARGIN_LABEL} 지급처`]: '이익률 점검 지급처',
+};
 
 function safeNumber(value) {
     const number = Number(value);
@@ -90,6 +103,31 @@ function summaryScopeKey(scope = {}) {
     if (mode === 'month') return `month:${scope.month || ''}`;
     if (mode === 'day') return `day:${scope.dayKey || ''}`;
     return 'all';
+}
+
+function normalizeExecutiveText(value) {
+    return String(value ?? '-').replaceAll(LEGACY_PROFIT_RATE_LABEL, '이익률');
+}
+
+function normalizeOwnRatioText(value) {
+    return normalizeExecutiveText(value)
+        .replace(/^ELS(\s|$)/, '자사$1')
+        .replaceAll('ELS직계약차량', '자사 직계약')
+        .replaceAll('ELS직계약', '자사 직계약')
+        .replaceAll('ELS/', '자사/');
+}
+
+function normalizeExecutiveSignal(signal = {}) {
+    const originalTitle = String(signal.title || '');
+    const titleBase = normalizeExecutiveText(originalTitle);
+    const title = EXECUTIVE_SIGNAL_TITLE_MAP[originalTitle] || EXECUTIVE_SIGNAL_TITLE_MAP[titleBase] || titleBase || '-';
+    const isOwnRatio = originalTitle === LEGACY_OWN_SIGNAL_TITLE || title === '자사 비율';
+    return {
+        ...signal,
+        title,
+        value: isOwnRatio ? normalizeOwnRatioText(signal.value) : normalizeExecutiveText(signal.value),
+        detail: isOwnRatio ? normalizeOwnRatioText(signal.detail) : normalizeExecutiveText(signal.detail),
+    };
 }
 
 function KpiCard({ label, value, sub, tone = 'neutral' }) {
@@ -423,13 +461,16 @@ function ExecutiveSignals({ signals = [] }) {
                 </div>
             </div>
             <div className={styles.summarySignalGrid}>
-                {signals.map(signal => (
-                    <div className={`${styles.summarySignal} ${styles[`summaryTone_${signal.tone}`] || ''}`} key={signal.title}>
-                        <span>{signal.title}</span>
-                        <strong>{signal.value}</strong>
-                        <em>{signal.detail}</em>
-                    </div>
-                ))}
+                {signals.map((rawSignal, index) => {
+                    const signal = normalizeExecutiveSignal(rawSignal);
+                    return (
+                        <div className={`${styles.summarySignal} ${styles[`summaryTone_${signal.tone}`] || ''}`} key={`${signal.title}-${index}`}>
+                            <span>{signal.title}</span>
+                            <strong>{signal.value}</strong>
+                            <em>{signal.detail}</em>
+                        </div>
+                    );
+                })}
             </div>
         </section>
     );

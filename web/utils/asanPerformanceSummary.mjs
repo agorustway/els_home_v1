@@ -397,10 +397,10 @@ function buildExecutiveSignals({
       detail: `자사 직계약/외부 동시 표시 · 상위 5대 ${vehicleShare.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`,
       tone: signalTone(vehicleShare, 45, 65, true),
     },
-    buildMarginSignal('고마진 청구처', billingSection, 'high', 'revenue'),
-    buildMarginSignal('고마진 지급처', payeeSection, 'high', 'purchase'),
-    buildMarginSignal('저마진 청구처', billingSection, 'low', 'revenue'),
-    buildMarginSignal('저마진 지급처', payeeSection, 'low', 'purchase'),
+    buildMarginSignal('이익률 우수 청구처', billingSection, 'high', 'revenue'),
+    buildMarginSignal('이익률 우수 지급처', payeeSection, 'high', 'purchase'),
+    buildMarginSignal('이익률 점검 청구처', billingSection, 'low', 'revenue'),
+    buildMarginSignal('이익률 점검 지급처', payeeSection, 'low', 'purchase'),
   ];
 }
 
