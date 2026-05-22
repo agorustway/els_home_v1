@@ -588,9 +588,9 @@ public class FloatingWidgetService extends Service {
                 mGpsText = "60s 저속";
                 mCurrentIntervalMs = 60_000;
             } else {
-                // [v4.3.20] 6km/h 미만: 도보/정차 상태 → 3분 대기
-                mGpsText = "3m 도보/정차";
-                mCurrentIntervalMs = 180_000;
+                // 6km/h 미만 정차/도보도 관제 화면이 끊겨 보이지 않도록 90초 heartbeat 유지
+                mGpsText = "90s 정차";
+                mCurrentIntervalMs = 90_000;
             }
             mGpsColor = "#10b981";
         }

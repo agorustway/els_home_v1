@@ -1,3 +1,17 @@
+## [2026-05-22] Android 저속/정차 GPS heartbeat 90초 보정 (v5.14.128 / APK v5.11.27)
+### 핵심
+- 12가0140 실시간 테스트 중 경로와 속도 튐은 안정됐지만, 저속/정차 구간에서 native 저장 간격이 139~141초까지 벌어져 관제 화면에서는 잠깐 멈춘 것처럼 보일 수 있었습니다.
+- JS GPS heartbeat는 정차 90초인데 Android 네이티브 오버레이 서비스는 6km/h 미만을 180초로 전송하고 있어 정책이 어긋났습니다.
+- Android native 정차/도보 전송 주기를 90초로 낮추고 오버레이 문구도 `90s 정차`로 맞췄습니다. APK는 v5.11.27/versionCode 5168로 빌드했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 29개 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.27/versionCode 5168
+### 변경 파일
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/android/app/build.gradle`, `web/public/apk/version.json`, `web/public/apk/els_driver.apk`
+- `web/driver-src/**`, `web/tests/driverMapCamera.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 실시간 관제 서버 속도 저장 보정 (v5.14.127)
 ### 핵심
 - 형의 12가0140 실시간 운행 테스트를 보면서 위치 저장 파이프라인을 점검했습니다. 17:32 출발 이후 경로는 단방향으로 이어졌고 좌표 간 추정속도 최대는 약 92km/h라 좌표 점프는 없었습니다.

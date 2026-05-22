@@ -164,6 +164,12 @@ test('네이티브 오버레이는 표시 전환으로 살아나도 타이머와
   assert.ok(speedBody.includes('sanitized > sensorCap'), 'sensor speed spikes should be clipped before storage');
 });
 
+test('네이티브 정차 전송 간격은 관제 끊김 방지를 위해 90초를 넘지 않는다', () => {
+  assert.ok(floatingServiceSource.includes('mGpsText = "90s 정차"'), 'stationary overlay text should show the shorter heartbeat');
+  assert.ok(floatingServiceSource.includes('mCurrentIntervalMs = 90_000;'), 'stationary native send interval should be 90 seconds');
+  assert.equal(floatingServiceSource.includes('mCurrentIntervalMs = 180_000;'), false, 'stationary native send interval must not be 3 minutes');
+});
+
 test('핵심 진행 버튼은 불가 상태 빨강, 진행 가능 상태 파랑을 사용한다', () => {
   assert.ok(indexSource.includes('id="btn-trip-start" style="background:#ef4444'), 'trip start should be red before checklist');
   assert.ok(tripSource.includes("startBtn.style.background = '#2563eb'"), 'trip start should turn blue when checklist is complete');
