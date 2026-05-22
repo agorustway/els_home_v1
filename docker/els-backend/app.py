@@ -168,6 +168,7 @@ def post_debug_log():
 
 # --- [v4.4.40] 아산지점 배차판 자동 동기화 로직 ---
 last_mtime_cache = {}
+last_file_signature_cache = {}
 dispatch_settings_cache = {"data": None, "loaded_at": 0.0}
 
 
@@ -223,7 +224,7 @@ def _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
 
 def sync_asan_dispatch_python(force=False):
     """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
-    global last_mtime_cache
+    global last_mtime_cache, last_file_signature_cache
     if not supabase: return
     try:
         if force:
@@ -248,13 +249,15 @@ def sync_asan_dispatch_python(force=False):
             mtime_ts = file_stat.st_mtime
             mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
             cached_mtime = last_mtime_cache.get(dtype)
-            file_signature = (mtime_ts, file_stat.st_size)
+            cached_signature = last_file_signature_cache.get(dtype)
+            file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
             
             # 변경 감지 (force 옵션이 없으면 캐시 확인)
-            if not force and cached_mtime == mtime:
+            if not force and cached_signature == file_signature:
                 continue
 
-            if not force and not cached_mtime and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+            if not force and not cached_signature and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+                last_file_signature_cache[dtype] = file_signature
                 dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
                 app.logger.info(f"[자동동기화] {dtype} DB 최신 상태 확인, 컨테이너 재시작 후 최초 전체 파싱 생략")
                 continue
@@ -324,6 +327,21 @@ def sync_asan_dispatch_python(force=False):
                 continue
             
             # 가중치 점수 순으로 정렬 (최신순으로 처리하되, 모든 시트 동기화)
+            def _sheet_priority(item):
+                _, month, day, _ = item
+                year = now.year
+                if current_month <= 3 and month >= 10:
+                    year -= 1
+                elif current_month >= 10 and month <= 3:
+                    year += 1
+                target_day = datetime(year, month, day, tzinfo=KST).date()
+                priority_start = now.date() - timedelta(days=1)
+                if target_day >= priority_start:
+                    return (0, target_day.toordinal())
+                return (1, -target_day.toordinal())
+
+            date_sheets.sort(key=_sheet_priority)
+
             # 초절전 메모리 최적화: read_only=True 모드 사용
             wb = None
             try:
@@ -448,6 +466,7 @@ def sync_asan_dispatch_python(force=False):
             gc.collect()
 
             last_mtime_cache[dtype] = mtime
+            last_file_signature_cache[dtype] = file_signature
             dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
             
             # 임시 파일 삭제

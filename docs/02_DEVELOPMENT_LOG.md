@@ -1,3 +1,21 @@
+## [2026-05-22] 아산 배차판 자동 동기화 저장시각/완료 피드백 보강 (v5.14.112)
+### 핵심
+- 자동 동기화 변경 감지를 단순 `mtime` 비교에서 `mtime_ns+파일크기` 서명 비교로 바꿔 저장 감지 누락 가능성을 줄였습니다.
+- 시트 데이터와 메모 해시가 같아 upsert를 생략하더라도 `branch_dispatch.file_modified_at`/`updated_at`은 최신 파일 저장시각으로 갱신해 화면 `저장:` 표시가 밀리지 않게 했습니다.
+- 엑셀 파싱 순서를 어제 날짜부터 미래 날짜 시트 우선으로 정렬해 현장 확인이 필요한 최근/선기입 자료가 먼저 반영되게 했습니다.
+- `NAS 동기화` 버튼은 백엔드 상태 API를 폴링해 완료될 때까지 진행 상태를 유지하고, 완료 후 자동으로 배차판 데이터를 다시 읽어 `동기화 완료` 메시지를 보여줍니다.
+- 통합현황에서도 `BKG1/BKG2/BKG3/TARGET VESSEL/비고` WEB 전용 칸을 숨김 설정과 관계없이 표시하고 동일한 WEB 저장 API로 편집되게 했습니다.
+### 검증
+- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app_core.py docker/els-backend/app.py docker/els-backend/file_sync_gate.py`: 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchWebCells.test.mjs`: 34개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/sync/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/api/branches/asan/sync/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 WEB 전용 셀 저장 구조 (v5.14.111)
 ### 핵심
 - `BKG1/BKG2/BKG3/TARGET VESSEL/비고`를 엑셀 원본이 아닌 WEB DB 오버레이 값으로 관리하도록 `branch_dispatch_web_cells`/`branch_dispatch_web_cell_history` 스키마와 저장 API를 추가했습니다.

@@ -583,10 +583,13 @@ test('아산 배차 NAS 스케줄러는 컨테이너 재시작 후 DB 최신 파
 
   for (const source of [core, legacy]) {
     assert.match(source, /def _dispatch_db_has_current_mtime/);
+    assert.match(source, /last_file_signature_cache/);
     assert.match(source, /branch_dispatch/);
     assert.match(source, /file_modified_at/);
     assert.match(source, /DB 최신 상태 확인, 컨테이너 재시작 후 최초 전체 파싱 생략/);
     assert.match(source, /dispatch_sync_gate\.mark_synced\(f"dispatch:\{dtype\}", file_signature\)/);
+    assert.match(source, /cached_signature == file_signature/);
+    assert.doesNotMatch(source, /cache(?:d)?_mtime == mtime/);
     assert.match(source, /shipping_cache\.pop\(normalized_path, None\)/);
     assert.match(source, /gc\.collect\(\)/);
   }
@@ -638,7 +641,37 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(source, /}, 60000\);/);
   assert.match(source, /if \(!silent\) setLoading\(true\);/);
   assert.match(source, /if \(!silent\) setData\(\[\]\);/);
+  assert.match(source, /NAS 동기화 진행 중입니다\. 완료되면 화면을 갱신합니다\./);
+  assert.match(source, /fetch\(`\/api\/branches\/asan\/sync\?t=\$\{Date\.now\(\)\}`/);
+  assert.match(source, /동기화 완료\. 최신 자료로 갱신했습니다\./);
   assert.match(core, /"comments": comments_dict/);
   assert.match(core, /sort_keys=True/);
+  assert.match(core, /def _touch_dispatch_file_modified_at/);
+  assert.match(core, /\.in_\(.*"target_date", chunk\)/s);
+  assert.match(core, /metadata_only_dates\.append\(target_date\)/);
+  assert.match(core, /데이터 동일 시트 .*파일수정일만 갱신/);
+  assert.match(core, /_dispatch_sheet_sort_key\(target_date, now\)/);
+  assert.match(core, /priority_start = now\.date\(\) - timedelta\(days=1\)/);
+  assert.match(core, /methods=\["GET", "POST"\]/);
+  assert.match(core, /_get_asan_sync_status/);
   assert.doesNotMatch(core, /sheet_hash = hashlib\.md5\(str\(rows\)\.encode/);
+});
+
+test('아산 배차 통합현황도 WEB 전용 BKG/비고 칸을 항상 표시하고 편집한다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const route = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/route.js'),
+    'utf8',
+  );
+
+  assert.match(source, /isDispatchWebCellField/);
+  assert.match(source, /if \(isDispatchWebCellField\(h\)\) return true;/);
+  assert.match(source, /dispatchType: meta\.sourceType/);
+  assert.match(route, /webCellRows: \[\]/);
+  assert.match(route, /webCellRows\.push\(webCellState\.enabled \? rowMeta : null\)/);
+  assert.match(route, /applyDispatchWebCellOverlay\(\{/);
+  assert.match(route, /headers: unifiedHeaders/);
 });

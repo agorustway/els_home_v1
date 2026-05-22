@@ -60,9 +60,19 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 last_mtime_cache = {}
+last_file_signature_cache = {}
 last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
 asan_sync_start_time = 0
+asan_sync_status_lock = threading.Lock()
+asan_sync_status = {
+    "running": False,
+    "started_at": None,
+    "finished_at": None,
+    "ok": True,
+    "message": "대기 중",
+    "results": [],
+}
 dispatch_settings_cache = {"data": None, "loaded_at": 0.0}
 
 def _env_int(name, default, minimum=0):
@@ -149,9 +159,70 @@ def _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
     return False
 
 
+def _set_asan_sync_status(**updates):
+    with asan_sync_status_lock:
+        asan_sync_status.update(updates)
+        return dict(asan_sync_status)
+
+
+def _get_asan_sync_status():
+    with asan_sync_status_lock:
+        return dict(asan_sync_status)
+
+
+def _dispatch_date_chunks(items, size=50):
+    items = list(items)
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
+def _touch_dispatch_file_modified_at(dtype, target_dates, file_modified_at, updated_at):
+    """데이터가 같아 upsert를 생략한 시트도 저장시각 표시는 최신 파일 저장 기준으로 맞춘다."""
+    if not supabase:
+        return 0
+    dates = sorted({d for d in target_dates if d})
+    touched = 0
+    for chunk in _dispatch_date_chunks(dates):
+        res = (
+            supabase.from_("branch_dispatch")
+            .update({"file_modified_at": file_modified_at, "updated_at": updated_at})
+            .eq("branch_id", "asan")
+            .eq("type", dtype)
+            .in_("target_date", chunk)
+            .execute()
+        )
+        touched += len(res.data or []) or len(chunk)
+    return touched
+
+
+def _resolve_dispatch_sheet_date(sheet_name, now):
+    match = re.search(r'(\d+)\s*[\.월]\s*(\d+)', sheet_name)
+    if not match:
+        return None
+    m, d = int(match.group(1)), int(match.group(2))
+    year = now.year
+    if m == 12 and now.month == 1:
+        year -= 1
+    elif m == 1 and now.month == 12:
+        year += 1
+    return f"{year}-{m:02d}-{d:02d}"
+
+
+def _dispatch_sheet_sort_key(target_date, now):
+    try:
+        target_day = datetime.strptime(target_date, "%Y-%m-%d").date()
+    except Exception:
+        return (2, target_date)
+    priority_start = now.date() - timedelta(days=1)
+    if target_day >= priority_start:
+        return (0, target_day.toordinal())
+    return (1, -target_day.toordinal())
+
+
 def sync_asan_dispatch_python(force=False):
-    global last_mtime_cache, last_sheet_hash_cache, asan_sync_start_time
-    if not supabase: return
+    global last_mtime_cache, last_file_signature_cache, last_sheet_hash_cache, asan_sync_start_time
+    if not supabase:
+        return {"ok": False, "message": "Supabase 미설정", "results": []}
     
     # 중복 실행 방지 및 좀비 락 해제 (30분 초과 시)
     if asan_sync_lock.locked():
@@ -162,9 +233,25 @@ def sync_asan_dispatch_python(force=False):
 
     if not asan_sync_lock.acquire(blocking=False):
         app.logger.warning("[자동동기화] 이미 동기화가 진행 중입니다. 이번 요청은 건너뜁니다.")
-        return
+        _set_asan_sync_status(
+            running=True,
+            ok=True,
+            message="이미 동기화가 진행 중입니다.",
+        )
+        return {"ok": True, "running": True, "message": "이미 동기화가 진행 중입니다.", "results": []}
 
     asan_sync_start_time = time.time()
+    sync_results = []
+    sync_error = None
+    _set_asan_sync_status(
+        running=True,
+        started_at=datetime.now(KST).isoformat(),
+        finished_at=None,
+        ok=True,
+        message="아산 배차판 동기화 준비 중",
+        results=[],
+        force=bool(force),
+    )
 
     try:
         if force:
@@ -172,16 +259,24 @@ def sync_asan_dispatch_python(force=False):
         settings = get_asan_dispatch_settings(force=force)
         if not settings: 
             app.logger.error("[자동동기화] 아산 배차 설정을 찾을 수 없습니다.")
-            return
+            sync_error = "아산 배차 설정을 찾을 수 없습니다."
+            return {"ok": False, "message": sync_error, "results": sync_results}
 
         for dtype in ['glovis', 'mobis']:
+            dtype_result = {"type": dtype, "success": True, "sheets": 0, "metadata_touched": 0, "message": ""}
+            _set_asan_sync_status(message=f"{dtype} 파일 확인 중", results=sync_results)
             rel_path = settings.get(f"{dtype}_path")
-            if not rel_path: continue
+            if not rel_path:
+                dtype_result["message"] = "파일 경로 없음"
+                sync_results.append(dtype_result)
+                continue
             
             full_path = Path("/app/data") / rel_path.lstrip("/")
             
             if not full_path.exists():
                 app.logger.warning(f"[자동동기화] 파일을 찾을 수 없음: {full_path}")
+                dtype_result.update({"success": False, "message": "파일을 찾을 수 없음"})
+                sync_results.append(dtype_result)
                 continue
             
             # 파일 수정 시간 체크
@@ -189,14 +284,20 @@ def sync_asan_dispatch_python(force=False):
             mtime_ts = file_stat.st_mtime
             mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
             cache_mtime = last_mtime_cache.get(dtype)
-            file_signature = (mtime_ts, file_stat.st_size)
+            cached_signature = last_file_signature_cache.get(dtype)
+            file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
 
-            if not force and cache_mtime == mtime:
+            if not force and cached_signature == file_signature:
+                dtype_result["message"] = "파일 서명 변경 없음"
+                sync_results.append(dtype_result)
                 continue
 
-            if not force and not cache_mtime and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+            if not force and not cached_signature and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+                last_file_signature_cache[dtype] = file_signature
                 dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
                 app.logger.info(f"[자동동기화] {dtype} DB 최신 상태 확인, 컨테이너 재시작 후 최초 전체 파싱 생략")
+                dtype_result["message"] = "DB 최신 상태"
+                sync_results.append(dtype_result)
                 continue
 
             if cache_mtime:
@@ -221,6 +322,8 @@ def sync_asan_dispatch_python(force=False):
                 app.logger.info(f"[자동동기화] {dtype} 로컬 임시 파일 복사 완료: {temp_path}")
             except Exception as e:
                 app.logger.error(f"[자동동기화] {dtype} 로컬 임시 파일 복사 실패: {e}")
+                dtype_result.update({"success": False, "message": f"로컬 임시 파일 복사 실패: {e}"})
+                sync_results.append(dtype_result)
                 continue
             
             # 파일에 현재 남아있는 날짜 시트. 파일에서 사라진 날짜는 마감 스냅샷으로 DB에 보존한다.
@@ -246,18 +349,19 @@ def sync_asan_dispatch_python(force=False):
                 except Exception as e:
                     app.logger.warning(f"[자동동기화] {dtype} 메모 워크북 로드 실패: {e}")
                 
+                now = datetime.now(KST)
+                sheet_jobs = []
                 for sheet_name in xl.sheet_names:
                     # [v5.10.9] 더 유연한 시트명 파싱 ("4.29", "04. 29", "4월29일" 등 모두 매칭)
-                    match = re.search(r'(\d+)\s*[\.월]\s*(\d+)', sheet_name)
-                    if not match: continue
-                    
-                    m, d = int(match.group(1)), int(match.group(2))
-                    now = datetime.now(KST)
-                    year = now.year
-                    # 12월 시트인데 현재 1월인 경우 등의 예외 처리
-                    if m == 12 and now.month == 1: year -= 1
-                    elif m == 1 and now.month == 12: year += 1
-                    target_date = f"{year}-{m:02d}-{d:02d}"
+                    target_date = _resolve_dispatch_sheet_date(sheet_name, now)
+                    if not target_date:
+                        continue
+                    sheet_jobs.append((_dispatch_sheet_sort_key(target_date, now), target_date, sheet_name))
+                sheet_jobs.sort(key=lambda item: item[0])
+                _set_asan_sync_status(message=f"{dtype} 최근/미래 날짜 우선 처리 중", results=sync_results)
+
+                metadata_only_dates = []
+                for _, target_date, sheet_name in sheet_jobs:
                     valid_dates.append(target_date)
                     
                     # 시트 파싱
@@ -338,7 +442,8 @@ def sync_asan_dispatch_python(force=False):
                         sheet_hash = hashlib.md5(sheet_hash_payload.encode('utf-8')).hexdigest()
                         cache_key = f"{dtype}:{sheet_name}"
                         if not force and last_sheet_hash_cache.get(cache_key) == sheet_hash:
-                            continue  # 데이터 동일 → Supabase 호출 생략
+                            metadata_only_dates.append(target_date)
+                            continue  # 데이터 동일 → Supabase upsert 생략, 저장시각 메타만 갱신
                         
                         for attempt in range(3): # 최대 3번 재시도
                             try:
@@ -361,9 +466,29 @@ def sync_asan_dispatch_python(force=False):
                     comments_dict = None
                     gc.collect()
                 
+                metadata_touched = 0
+                if metadata_only_dates:
+                    metadata_touched = _touch_dispatch_file_modified_at(
+                        dtype,
+                        metadata_only_dates,
+                        mtime,
+                        now.isoformat(),
+                    )
+                    app.logger.info(
+                        f"[자동동기화] {dtype} 데이터 동일 시트 {metadata_touched}건 파일수정일만 갱신"
+                    )
+
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
                 last_mtime_cache[dtype] = mtime
+                last_file_signature_cache[dtype] = file_signature
                 dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
+                dtype_result.update({
+                    "success": True,
+                    "sheets": sync_count,
+                    "metadata_touched": metadata_touched,
+                    "message": "동기화 완료",
+                })
+                sync_results.append(dtype_result)
                 
                 # [v5.14.21] 엑셀에서 삭제된 과거 시트는 "마감된 자료"로 간주해 DB에 보존한다.
                 # 현행 파일은 진행 중 입력판이고, branch_dispatch는 삭제된 시트까지 포함하는 조회 원장이다.
@@ -379,6 +504,8 @@ def sync_asan_dispatch_python(force=False):
                     except: pass
             except Exception as e:
                 app.logger.error(f"[자동동기화] {dtype} 엑셀 처리 중 에러: {e}")
+                dtype_result.update({"success": False, "message": str(e)})
+                sync_results.append(dtype_result)
             finally:
                 # 임시 파일 삭제
                 try:
@@ -406,9 +533,20 @@ def sync_asan_dispatch_python(force=False):
                 gc.collect()
 
     except Exception as e:
+        sync_error = str(e)
         app.logger.error(f"[자동동기화] 전체 프로세스 에러: {e}", exc_info=True)
     finally:
+        ok = sync_error is None and all(result.get("success", True) for result in sync_results)
+        message = sync_error or "아산 배차판 동기화 완료"
+        _set_asan_sync_status(
+            running=False,
+            finished_at=datetime.now(KST).isoformat(),
+            ok=ok,
+            message=message,
+            results=sync_results,
+        )
         asan_sync_lock.release()
+    return {"ok": ok, "message": message, "results": sync_results}
 
 def asan_sync_scheduler():
     app.logger.info(
@@ -1862,14 +2000,39 @@ def get_asan_shipping():
         return jsonify({"error": str(e)}), 500
 
 # 3-2. 아산 배차판 강제 동기화 (Manual Trigger)
-@app.route("/api/branches/asan/sync", methods=["POST"])
+@app.route("/api/branches/asan/sync", methods=["GET", "POST"])
 def trigger_asan_sync():
     """웹 UI의 'NAS 동기화' 버튼 클릭 시 호출됨"""
+    if request.method == "GET":
+        return jsonify({"ok": True, "status": _get_asan_sync_status()})
+
     try:
         app.logger.info("🚀 [API] 아산 배차판 강제 동기화 요청 수신")
+        if asan_sync_lock.locked():
+            return jsonify({
+                "ok": True,
+                "running": True,
+                "status": _get_asan_sync_status(),
+                "message": "이미 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
+            }), 202
+
         # force=True 옵션으로 캐시 무시하고 강제 실행하되, 백그라운드 쓰레드로 분리하여 Vercel Timeout(504) 방지
+        _set_asan_sync_status(
+            running=True,
+            started_at=datetime.now(KST).isoformat(),
+            finished_at=None,
+            ok=True,
+            message="아산 배차판 동기화 대기 중",
+            results=[],
+            force=True,
+        )
         threading.Thread(target=sync_asan_dispatch_python, args=(True,), daemon=True).start()
-        return jsonify({"ok": True, "message": "강제 동기화가 백그라운드에서 시작되었습니다. 잠시 후 새로고침 해주세요."}), 202
+        return jsonify({
+            "ok": True,
+            "running": True,
+            "status": _get_asan_sync_status(),
+            "message": "동기화를 시작했습니다. 완료까지 기다려 주세요.",
+        }), 202
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -6,6 +6,7 @@ import AsanDashboard from './AsanDashboard';
 import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
 import {
     getDispatchWebCellFieldLabel,
+    isDispatchWebCellField,
     normalizeDispatchWebCellFieldKey,
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
@@ -385,6 +386,7 @@ function scrollDateTabHorizontally(tabsEl, tabEl) {
     const targetLeft = Math.max(0, tabEl.offsetLeft - ((tabsEl.clientWidth - tabEl.offsetWidth) / 2));
     tabsEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
 }
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function AsanDispatchContent() {
     const [viewType, setViewType] = useState('integrated');
@@ -487,18 +489,44 @@ function AsanDispatchContent() {
     }, []);
     const handleSync = async () => {
         setSyncing(true);
-        setSyncStatus(null);
+        setSyncStatus({ message: 'NAS 동기화 요청 중...', isError: false });
         try {
             const r = await fetch('/api/branches/asan/sync', { method: 'POST' });
             const j = await r.json();
-            const msg = j.message || (j.results || []).map(r => `${r.type === 'glovis' ? '글로비스' : '모비스'}: ${r.success ? `성공 (${r.sheets}시트)` : '실패'}`).join(' / ') || '응답 없음';
-            setSyncStatus({ message: msg, isError: j.ok === false || (j.results && !j.results.every(r => r.success)) });
+            if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '동기화 요청 실패');
+
+            let finalStatus = j.status || j;
+            if (j.running || finalStatus?.running) {
+                setSyncStatus({ message: 'NAS 동기화 진행 중입니다. 완료되면 화면을 갱신합니다.', isError: false });
+                for (let attempt = 0; attempt < 180; attempt += 1) {
+                    await wait(2000);
+                    const statusResponse = await fetch(`/api/branches/asan/sync?t=${Date.now()}`, { cache: 'no-store' });
+                    const statusJson = await statusResponse.json().catch(() => ({}));
+                    if (!statusResponse.ok) throw new Error(statusJson.error || '동기화 상태 확인 실패');
+                    finalStatus = statusJson.status || statusJson;
+                    const running = Boolean(statusJson.running || finalStatus?.running);
+                    if (!running) break;
+                    setSyncStatus({ message: finalStatus?.message || 'NAS 동기화 진행 중입니다.', isError: false });
+                }
+                if (finalStatus?.running) throw new Error('동기화가 오래 걸리고 있습니다. 잠시 후 다시 확인해 주세요.');
+            }
+
+            const results = finalStatus?.results || j.results || [];
+            const hasError = finalStatus?.ok === false || results.some(result => result.success === false);
+            if (hasError) {
+                const fail = results.find(result => result.success === false);
+                throw new Error(fail?.message || finalStatus?.message || 'NAS 동기화 실패');
+            }
             await fetchData(viewType, { preserveActiveDate: true });
+            const detail = results.length
+                ? results.map(result => `${result.type === 'glovis' ? '글로비스' : '모비스'} ${result.sheets || 0}시트`).join(' / ')
+                : '완료';
+            setSyncStatus({ message: `동기화 완료. 최신 자료로 갱신했습니다. (${detail})`, isError: false });
         } catch (e) {
             setSyncStatus({ message: '동기화 실패: ' + e.message, isError: true });
         } finally {
             setSyncing(false);
-            setTimeout(() => setSyncStatus(null), 5000);
+            setTimeout(() => setSyncStatus(null), 8000);
         }
     };
     const loadFolder = async (path) => {
@@ -719,6 +747,7 @@ function AsanDispatchContent() {
     // 보이는 컬럼 인덱스
     const visibleCols = useMemo(() => headers.map((h, i) => i).filter(i => {
         const h = headers[i];
+        if (isDispatchWebCellField(h)) return true;
         if (hiddenCols.has(h)) return false;
         // [v5.10.20] col_NN 형식(의미없는 익명 컬럼)은 자동 숨김
         if (/^col_\d+$/.test(h)) return false;
