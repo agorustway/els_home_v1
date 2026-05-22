@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
-import { detectStaleReplayLocation, sanitizeRecordedAt, shouldAcceptLocation, shouldStoreLocation } from '@/utils/vehicleLocation.mjs';
+import {
+    detectStaleReplayLocation,
+    normalizeStoredSpeedKmh,
+    sanitizeRecordedAt,
+    shouldAcceptLocation,
+    shouldStoreLocation,
+} from '@/utils/vehicleLocation.mjs';
 
 /**
  * POST /api/vehicle-tracking/location
@@ -123,6 +129,11 @@ export async function POST(request) {
             });
         }
 
+        const storedSpeedKmh = normalizeStoredSpeedKmh({
+            current: currentPoint,
+            previous: previousForDecision,
+        });
+
         // 역지오코딩은 저장할 포인트에만 수행해 API/서버 부하를 줄인다.
         try {
             const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
@@ -149,7 +160,7 @@ export async function POST(request) {
             lat,
             lng,
             accuracy: accuracy || null,
-            speed: Number.isFinite(speedKmh) ? Math.max(0, Math.min(speedKmh, 160)) : null,
+            speed: Number.isFinite(storedSpeedKmh) ? storedSpeedKmh : null,
             method: resolvedMethod,
             address,
             // 일부 운영 DB에는 marker_type/gyro 컬럼이 아직 없을 수 있어 실패 시 아래에서 재시도한다.

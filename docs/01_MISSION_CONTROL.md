@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.126 / APK v5.11.26)
+# ELS MISSION CONTROL (v5.14.127 / APK v5.11.26)
 
-> 최신 업데이트: 아산 배차판 통합현황이 WEB 셀 1000건 초과 저장값도 끝까지 읽도록 페이지네이션을 추가했습니다.
+> 최신 업데이트: 12가0140 실시간 운행 중 좌표는 정상 진행인데 android_bg 센서 속도만 156~160km/h로 튀는 케이스를 서버 저장 단계에서 좌표 기반 추정속도로 보정합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.126
+- **웹 버전**: v5.14.127
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.26
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -44,7 +44,7 @@
   - 월간실적 모바일 분석 기준 제목 영역은 480px 이하에서 내용 높이만 쓰도록 보정하고, 구성·차량 성과의 차량 TOP10은 매입액 기준으로 정렬·표시하며 건수만 함께 보여준다.
   - Android 운행종료는 TRIP_END/서버 완료 후 오버레이·GPS·activeTrip·UI만 정리하고 앱 화면은 유지한다.
   - Android 오버레이는 `SET_VISIBILITY`로 살아나도 타이머/GPS 루프를 즉시 재가동하고, 앱 종료는 `killProcess()` 없이 task를 먼저 숨긴 뒤 정리한다.
-  - Android native GPS는 좌표 기반 추정속도와 센서속도를 비교해 160km/h급 저장 속도 튐을 줄인다.
+  - Android/native/web 위치 저장은 좌표 기반 추정속도와 센서속도를 비교해 160km/h급 저장 속도 튐을 줄인다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
 
 ## ACTIVE SYSTEMS
@@ -69,9 +69,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-126: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS 안정화
+- [x] v5.14.64-127: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS 안정화
 
 ## RECENT CHANGES
+- **v5.14.127**: 2026-05-22 12가0140 실시간 운행에서 좌표 경로는 단방향 정상 진행이고 좌표 간 추정속도 max 92km/h였지만 `android_bg` 센서 speed가 156~160km/h로 저장되는 케이스를 확인했다. `/api/vehicle-tracking/location` 저장 단계에서 직전 좌표와 현재 좌표의 거리/시간 기반 추정속도와 센서속도를 비교해 과속 튐을 보정한다.
 - **v5.14.126**: 아산 배차판 통합현황 WEB 셀 조회가 Supabase 기본 1000건 제한으로 최근 BKG/비고 저장값을 놓치지 않도록 `branch_dispatch_web_cells`를 1000건 단위로 페이지 조회한다.
 - **v5.14.125**: Android 오버레이가 앱 최소화/표시 전환으로 살아난 경우에도 `startNativeTimer()`와 위치 루프를 즉시 재가동한다. 첫 렌더에서 운행시간이 빈칸으로 보이지 않게 하고, 앱 종료는 `moveTaskToBack(true)`로 먼저 숨긴 뒤 정리해 체감 버벅임을 줄였다. 2026-05-21~22 12가0140 운행 3건은 시작/종료 마커와 경로 연속성은 정상이며, 저장 속도 max 160km/h 튐만 native 속도 보정으로 대응했다. APK v5.11.26.
 - **v5.14.124**: Vercel 프로덕션 배포가 `api/els/*` 함수 크기 250MB 제한에 막히던 문제를 보정했다. Next output file tracing에서 `../elsbot/**/*`와 임시 엑셀 캐시를 제외해 로컬 봇 실행파일/프로필이 서버리스 번들에 포함되지 않게 했다.
@@ -81,9 +82,10 @@
 - **v5.14.120**: 아산 배차판 WEB 셀 오버레이가 기존 익명 TYPE 헤더 기준으로 저장된 레거시 row_signature도 조회한다. 모비스 중복 `BKG1/BKG1/BKG3` 헤더를 `BKG1/BKG2/BKG3`로 정리하고, WEB 컬럼 폭을 저장값 로드 시에도 자동 확장한다.
 - **v5.14.119**: 아산 배차판 WEB 전용 셀의 행 서명 생성 전에 글로비스 `col_12`와 모비스 `col_15` 익명 TYPE 헤더를 공통 복구한다. 통합현황, 글로비스, 모비스, 엑셀 내보내기가 같은 저장값을 공유한다.
 ## VERIFICATION
-- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
-- `npm.cmd run lint`: 통과
+- `node --test web/tests/vehicleLocation.test.mjs web/tests/driverMapCamera.test.mjs`: 28개 통과
+- `npm.cmd run lint -- app/api/vehicle-tracking/location/route.js utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과
 - `npm.cmd run build`: 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

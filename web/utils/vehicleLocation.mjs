@@ -86,6 +86,39 @@ export function normalizeSpeedKmh(speed) {
     return n;
 }
 
+export function normalizeStoredSpeedKmh({ current, previous = null }) {
+    const rawSpeed = normalizeSpeedKmh(current?.speed);
+    if (!rawSpeed) return 0;
+
+    const cappedSpeed = Math.min(rawSpeed, 160);
+    if (!previous) return cappedSpeed > HARD_TRUCK_SPEED_LIMIT_KMH ? HARD_TRUCK_SPEED_LIMIT_KMH : cappedSpeed;
+
+    const currLat = Number(current?.lat);
+    const currLng = Number(current?.lng);
+    const prevLat = Number(previous?.lat);
+    const prevLng = Number(previous?.lng);
+    if (![currLat, currLng, prevLat, prevLng].every(Number.isFinite)) {
+        return cappedSpeed > HARD_TRUCK_SPEED_LIMIT_KMH ? HARD_TRUCK_SPEED_LIMIT_KMH : cappedSpeed;
+    }
+
+    const currTime = getPointTime(current) || Date.now();
+    const prevTime = getPointTime(previous) || currTime;
+    const elapsedSec = Math.max(1, (currTime - prevTime) / 1000);
+    const distKm = haversineKm(prevLat, prevLng, currLat, currLng);
+
+    if (distKm < 0.03 && cappedSpeed > 20) return 0;
+
+    if (elapsedSec >= 3 && distKm >= 0.03) {
+        const impliedSpeed = distKm / (elapsedSec / 3600);
+        const sensorCap = Math.max(35, impliedSpeed + 35);
+        if (cappedSpeed > sensorCap) {
+            return Math.max(0, Math.min(impliedSpeed, HARD_TRUCK_SPEED_LIMIT_KMH));
+        }
+    }
+
+    return cappedSpeed > HARD_TRUCK_SPEED_LIMIT_KMH ? HARD_TRUCK_SPEED_LIMIT_KMH : cappedSpeed;
+}
+
 export function displaySpeedKmh(speed) {
     const n = Number(speed);
     if (!Number.isFinite(n) || n < 0) return 0;

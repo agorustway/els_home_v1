@@ -6,6 +6,7 @@ import {
   filterRouteLocations,
   isRouteMarker,
   isForwardProgressCandidate,
+  normalizeStoredSpeedKmh,
   pathDistanceKm,
   pickLatestDisplayLocation,
   prepareLiveTrips,
@@ -79,6 +80,22 @@ test('서버 저장 전 같은 자리 반복 포인트는 heartbeat 전까지 �
 
   assert.equal(decision.ok, false);
   assert.equal(decision.reason, 'duplicate_location');
+});
+
+test('서버 저장 속도는 좌표 진행보다 과한 센서 튐을 보정한다', () => {
+  const previous = { lat: 36.921000, lng: 127.049000, speed: 55, recorded_at: at(0) };
+  const current = { lat: 36.921850, lng: 127.049700, speed: 156.3, accuracy: 4, recorded_at: at(8) };
+  const normalized = normalizeStoredSpeedKmh({ previous, current });
+
+  assert.ok(normalized < 100);
+  assert.ok(normalized > 40);
+});
+
+test('같은 자리에서 튄 센서 속도는 정차 속도로 저장한다', () => {
+  const previous = { lat: 36.921000, lng: 127.049000, speed: 0, recorded_at: at(0) };
+  const current = { lat: 36.921030, lng: 127.049020, speed: 88, accuracy: 4, recorded_at: at(10) };
+
+  assert.equal(normalizeStoredSpeedKmh({ previous, current }), 0);
 });
 
 test('실시간 추적 모드에서는 작지만 의미 있는 이동을 저장한다', () => {

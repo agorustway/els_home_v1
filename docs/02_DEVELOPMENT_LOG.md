@@ -1,3 +1,18 @@
+## [2026-05-22] 실시간 관제 서버 속도 저장 보정 (v5.14.127)
+### 핵심
+- 형의 12가0140 실시간 운행 테스트를 보면서 위치 저장 파이프라인을 점검했습니다. 17:32 출발 이후 경로는 단방향으로 이어졌고 좌표 간 추정속도 최대는 약 92km/h라 좌표 점프는 없었습니다.
+- 다만 `android_bg` 포인트 2개가 좌표 이동량과 맞지 않게 speed 156~160km/h로 저장되었습니다. 이는 지도 경로 튐이 아니라 센서 속도값만 튄 케이스라, 앱 방어와 별개로 서버 저장 단계에서 한 번 더 보정하도록 했습니다.
+- `/api/vehicle-tracking/location`은 저장 직전 직전 좌표와 현재 좌표의 거리/시간 기반 추정속도를 계산하고, 센서 속도가 과하게 높거나 같은 자리에서 속도만 튀면 저장 speed를 추정속도/0으로 낮춥니다.
+### 검증
+- `node --test web/tests/vehicleLocation.test.mjs web/tests/driverMapCamera.test.mjs`: 28개 통과
+- `npm.cmd run lint -- app/api/vehicle-tracking/location/route.js utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/vehicleLocation.mjs`
+- `web/app/api/vehicle-tracking/location/route.js`
+- `web/tests/vehicleLocation.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] Android 오버레이 타이머 즉시 표시와 운행 데이터 점검 (v5.14.125 / APK v5.11.26)
 ### 핵심
 - 형이 제보한 “오버레이가 몇 분간 운행시간 없이 GPS/주소만 보이다가 나중에 작동”하는 현상은 `SET_VISIBILITY` 액션으로 서비스가 살아난 경우 `mStartTimeMillis`만 복구하고 타이머/GPS runtime을 다시 켜지 않은 경로가 원인이었습니다.
