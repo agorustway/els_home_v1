@@ -305,7 +305,7 @@ export async function GET(request) {
         left: { style: 'thin', color: { argb: 'FFD7DEE8' } },
         right: { style: 'thin', color: { argb: 'FFD7DEE8' } }
     };
-    const NUMBER_FORMAT = '#,##0.###';
+    const NUMBER_FORMAT = '#,##0';
 
     processedData.forEach(pData => {
         const sheet = workbook.addWorksheet(pData.sheetName);

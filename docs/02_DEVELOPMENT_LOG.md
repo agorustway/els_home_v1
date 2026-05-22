@@ -1,3 +1,16 @@
+## [2026-05-23] 아산 배차판 엑셀 숫자 소수점 표시 제거 (v5.14.134)
+### 핵심
+- 다운로드 엑셀에서 `오더`, `배차` 숫자에 소수점이 보이지 않도록 숫자 표시 형식을 `#,##0`으로 고정했습니다.
+- 숫자 셀 타입은 유지해 합계/계산은 그대로 바로 가능합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 엑셀 다운로드 숫자/테두리 보정 (v5.14.133)
 ### 핵심
 - 형이 말한 대로 다운로드 엑셀의 `오더`, `배차`가 문자열로 내려가면 바로 합계/계산이 안 됩니다.

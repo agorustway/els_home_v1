@@ -748,7 +748,7 @@ test('아산 배차 엑셀 다운로드는 오더와 배차를 숫자 셀로 쓰
   assert.match(exportRoute, /\['오더\(계\)', '오더', '계', '수량', '배차'\]/);
   assert.match(exportRoute, /function normalizeDispatchExportRowForExcel\(headers = \[\], row = \[\]\)/);
   assert.match(exportRoute, /return isNumericDispatchExportHeader\(header\) \? toDispatchExportNumber\(value\) : value;/);
-  assert.match(exportRoute, /const NUMBER_FORMAT = '#,\#\#0\.\#\#\#';/);
+  assert.match(exportRoute, /const NUMBER_FORMAT = '#,\#\#0';/);
   assert.match(exportRoute, /sheet\.addRow\(normalizeDispatchExportRowForExcel\(pData\.headers, rowData\)\)/);
   assert.match(exportRoute, /r\.getCell\(colIdx\)/);
   assert.match(exportRoute, /style: 'thin'/);
