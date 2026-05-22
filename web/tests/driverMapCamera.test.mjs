@@ -76,7 +76,7 @@ test('백그라운드 위치 수신은 앱 최소화 위젯 표시와 독립적�
   assert.ok(floatingServiceSource.includes('requestLocationUpdates(request, mLocationCallback'), 'service must request fused location updates');
   assert.ok(floatingServiceSource.includes('sendLocationToServer(location, speedKph)'), 'native location callback must send locations to server');
   assert.ok(startTripBody.indexOf('startOverlayService();') < startTripBody.indexOf('startGPS();'), 'native service should start before JS GPS watcher');
-  assert.ok(setVisibilityBody.includes('mFloatingWidget.setVisibility'), 'minimize should only toggle widget visibility');
+  assert.ok(setVisibilityBody.includes('ensureActiveTripRuntime(visible)'), 'visibility-only service restarts must resume timer/location runtime');
   assert.equal(setVisibilityBody.includes('removeLocationUpdates'), false, 'minimize must not stop native GPS updates');
   assert.equal(setVisibilityBody.includes('stopForeground'), false, 'minimize must not stop foreground service');
 });
@@ -139,8 +139,29 @@ test('앱 종료 경로는 Samsung crash dialog를 만들 수 있는 process kil
   assert.equal(overlayPluginSource.includes('killProcess'), false, 'OverlayPlugin must not kill the app process');
   assert.ok(cleanExitBody.includes('clearNativeTripState()'), 'native exit should clear trip/service state');
   assert.ok(exitForceBody.includes('clearNativeTripState(context)'), 'plugin exit should clear trip/service state');
+  assert.ok(cleanExitBody.includes('moveTaskToBack(true)'), 'native exit should hide the task immediately before final cleanup');
+  assert.ok(exitForceBody.includes('moveTaskToBack(true)'), 'plugin exit should hide the task immediately before final cleanup');
   assert.ok(loadCurrentTripBody.includes('stopOverlayService()'), 'server-completed saved trips should stop native service');
   assert.ok(loadCurrentTripBody.includes("Store.rm('activeTrip')"), 'server-completed saved trips should clear local active trip');
+});
+
+test('네이티브 오버레이는 표시 전환으로 살아나도 타이머와 속도 보정을 즉시 적용한다', () => {
+  const ensureStart = floatingServiceSource.indexOf('private void ensureActiveTripRuntime');
+  const ensureEnd = floatingServiceSource.indexOf('// ─── 오버레이 위젯', ensureStart);
+  const ensureBody = floatingServiceSource.slice(ensureStart, ensureEnd);
+  const updateStart = floatingServiceSource.indexOf('private void updateWidgetDisplay');
+  const updateEnd = floatingServiceSource.indexOf('private String getStatusLabel', updateStart);
+  const updateBody = floatingServiceSource.slice(updateStart, updateEnd);
+  const speedStart = floatingServiceSource.indexOf('private float sanitizeOutboundSpeedKph');
+  const speedEnd = floatingServiceSource.indexOf('// ─── 위치 서버 전송', speedStart);
+  const speedBody = floatingServiceSource.slice(speedStart, speedEnd);
+
+  assert.ok(ensureBody.includes('startNativeTimer()'), 'visibility-only service path must start native timer');
+  assert.ok(ensureBody.includes('startLocationTracking()'), 'visibility-only service path must start location tracking');
+  assert.ok(updateBody.includes('tvTimer.setText(formatTime(elapsed))'), 'widget should not render a blank timer before first tick');
+  assert.ok(floatingServiceSource.includes('if (mSensorManager != null && mGyroListener != null) return;'), 'gyro listener must not duplicate on repeated visibility changes');
+  assert.ok(speedBody.includes('impliedKph'), 'native speed should be checked against coordinate-implied speed');
+  assert.ok(speedBody.includes('sanitized > sensorCap'), 'sensor speed spikes should be clipped before storage');
 });
 
 test('핵심 진행 버튼은 불가 상태 빨강, 진행 가능 상태 파랑을 사용한다', () => {

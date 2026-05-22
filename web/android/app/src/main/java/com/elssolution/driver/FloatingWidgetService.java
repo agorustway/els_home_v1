@@ -292,11 +292,7 @@ public class FloatingWidgetService extends Service {
                     mStartTimeMillis = prefs.getLong(KEY_START_TIME, System.currentTimeMillis());
                 }
                 boolean visible = intent.getBooleanExtra("visible", true);
-                if (mFloatingWidget != null) {
-                    mFloatingWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
-                } else if (visible) {
-                    setupFloatingWidget(true);
-                }
+                ensureActiveTripRuntime(visible);
                 return START_STICKY;
             }
 
@@ -336,14 +332,18 @@ public class FloatingWidgetService extends Service {
         // 알림 텍스트만 갱신
         updateNotification("ELS 운송관리 실행 중");
 
-        if (mTripId != null) {
-            setupFloatingWidget(initialVisible);
-            startLocationTracking();
-            startGyroListener();
-            startNativeTimer();
-        }
+        ensureActiveTripRuntime(initialVisible);
 
         return (mTripId != null && !mTripId.trim().isEmpty()) ? START_STICKY : START_NOT_STICKY;
+    }
+
+    private void ensureActiveTripRuntime(boolean initialVisible) {
+        if (mTripId == null || mTripId.trim().isEmpty()) return;
+        setupFloatingWidget(initialVisible);
+        startLocationTracking();
+        startGyroListener();
+        startNativeTimer();
+        updateNotification("ELS 운송관리 실행 중");
     }
 
     // ─── 오버레이 위젯 ────────────────────────────────────────────
@@ -460,6 +460,10 @@ public class FloatingWidgetService extends Service {
         tvGps.setText("GPS " + mGpsText);
         try { tvGps.setTextColor(Color.parseColor(mGpsColor)); } catch(Exception e) { tvGps.setTextColor(Color.WHITE); }
         
+        if (tvTimer != null && mStartTimeMillis > 0 && tvTimer.getText().length() == 0) {
+            long elapsed = Math.max(0, System.currentTimeMillis() - mStartTimeMillis - mTotalPausedMs);
+            tvTimer.setText(formatTime(elapsed));
+        }
         if (tvAddr != null) tvAddr.setText(mAddress);
     }
 
@@ -648,6 +652,7 @@ public class FloatingWidgetService extends Service {
 
     // ─── 자이로스코프 — 급커브 감지 시 즉시 전송 ─────────────────
     private void startGyroListener() {
+        if (mSensorManager != null && mGyroListener != null) return;
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         Sensor gyro = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         if (gyro == null) {
@@ -761,6 +766,29 @@ public class FloatingWidgetService extends Service {
         mLastNativePostedAtMs = System.currentTimeMillis();
     }
 
+    private float sanitizeOutboundSpeedKph(Location location, float speedKph) {
+        if (speedKph < 0f) return speedKph;
+        if (location == null || !location.hasSpeed()) return 0f;
+
+        float sanitized = Math.max(0f, Math.min(speedKph, 160f));
+        if (mLastNativePostedLocation == null) return sanitized;
+
+        long currTime = getLocationTimeMs(location);
+        long prevTime = getLocationTimeMs(mLastNativePostedLocation);
+        double elapsedSec = Math.max(1d, (currTime - prevTime) / 1000d);
+        float distKm = mLastNativePostedLocation.distanceTo(location) / 1000f;
+
+        if (distKm < 0.03f && sanitized > 20f) return 0f;
+        if (elapsedSec >= 3d && distKm >= 0.03f) {
+            float impliedKph = (float) (distKm / (elapsedSec / 3600d));
+            float sensorCap = Math.max(35f, impliedKph + 35f);
+            if (sanitized > sensorCap) {
+                return Math.max(0f, Math.min(impliedKph, 160f));
+            }
+        }
+        return sanitized;
+    }
+
     // ─── 위치 서버 전송 ───────────────────────────────────────────
     private void sendLocationToServer(final Location location, final float speedKph) {
         // [v4.2.50] HandlerThread 사용 — GPS 콜백마다 new Thread() 생성 제거
@@ -773,7 +801,7 @@ public class FloatingWidgetService extends Service {
      */
     private void sendLocationToServerWithMarker(final Location location, final float speedKph, final String markerType) {
         Location candidateLocation = location;
-        float candidateSpeedKph = speedKph;
+        float candidateSpeedKph = sanitizeOutboundSpeedKph(candidateLocation, speedKph);
         if (markerType == null || markerType.isEmpty()) {
             if (!isNativeLocationPlausible(candidateLocation, candidateSpeedKph, false)) return;
         } else if ("TRIP_END".equals(markerType) && mLastNativePostedLocation != null

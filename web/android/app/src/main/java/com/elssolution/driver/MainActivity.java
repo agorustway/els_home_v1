@@ -92,9 +92,11 @@ public class MainActivity extends BridgeActivity {
         try {
             stopService(new Intent(this, FloatingWidgetService.class));
         } catch (Exception ignored) {}
-        finishAffinity();
+        moveTaskToBack(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             try { finishAndRemoveTask(); } catch (Exception ignored) {}
+        } else {
+            finishAffinity();
         }
     }
 

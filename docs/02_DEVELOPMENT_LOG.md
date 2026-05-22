@@ -1,3 +1,22 @@
+## [2026-05-22] Android 오버레이 타이머 즉시 표시와 운행 데이터 점검 (v5.14.125 / APK v5.11.26)
+### 핵심
+- 형이 제보한 “오버레이가 몇 분간 운행시간 없이 GPS/주소만 보이다가 나중에 작동”하는 현상은 `SET_VISIBILITY` 액션으로 서비스가 살아난 경우 `mStartTimeMillis`만 복구하고 타이머/GPS runtime을 다시 켜지 않은 경로가 원인이었습니다.
+- `SET_VISIBILITY`에서도 `ensureActiveTripRuntime()`을 거쳐 오버레이, 위치 수신, 자이로, native timer를 즉시 보장하게 했고, 첫 렌더 시 `tvTimer`가 빈칸이면 바로 현재 운행시간을 채웁니다.
+- 앱 종료는 `moveTaskToBack(true)`로 먼저 화면을 숨긴 뒤 서비스 정리를 이어가게 바꿔 체감 버벅임을 줄였습니다. `killProcess()`는 계속 금지합니다.
+- 2026-05-21~2026-05-22 12가0140 운행 3건을 공개 API로 분석했습니다. 시작/종료 마커와 종료 시각 정합성은 정상, 좌표 기준 비정상 점프는 없었고, 두 건의 저장 속도 max 160km/h만 센서 속도 튐으로 확인되어 좌표 기반 추정속도와 비교해 저장 전 보정하도록 했습니다.
+### 검증
+- `node --test web/tests/driverMapCamera.test.mjs`: 11개 통과
+- `npm.cmd run lint -- tests/driverMapCamera.test.mjs`: 통과
+- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.26/versionCode 5167
+- APK 내부 `assets/public/modules/store.js`: v5.11.26 / BUILD_CODE 5167 확인
+### 변경 파일
+- `web/android/app/src/main/java/com/elssolution/driver/FloatingWidgetService.java`
+- `web/android/app/src/main/java/com/elssolution/driver/MainActivity.java`
+- `web/android/app/src/main/java/com/elssolution/driver/OverlayPlugin.java`
+- `web/android/app/build.gradle`, `web/public/apk/version.json`, `web/public/apk/els_driver.apk`
+- `web/tests/driverMapCamera.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] Vercel 배포 함수 크기 초과 보정 (v5.14.124)
 ### 핵심
 - 운영 Vercel 프로젝트 배포 중 `api/els/login`, `api/els/run`, `api/els/parse-xlsx` 등이 로컬 `elsbot/dist`와 임시 브라우저 프로필까지 함수 번들에 포함해 250MB 제한을 초과했습니다.

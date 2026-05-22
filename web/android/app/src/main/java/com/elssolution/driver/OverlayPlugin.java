@@ -216,9 +216,11 @@ public class OverlayPlugin extends Plugin {
         } catch (Exception ignored) {}
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
-                getActivity().finishAffinity();
+                getActivity().moveTaskToBack(true);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     try { getActivity().finishAndRemoveTask(); } catch (Exception ignored) {}
+                } else {
+                    getActivity().finishAffinity();
                 }
             });
         }
