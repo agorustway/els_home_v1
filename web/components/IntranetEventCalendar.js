@@ -248,7 +248,7 @@ export default function IntranetEventCalendar() {
                     return (
                         <div
                             key={day.date}
-                            className={`${styles.dayCell} ${!day.inMonth ? styles.mutedDay : ''} ${day.date === today ? styles.todayCell : ''}`}
+                            className={`${styles.dayCell} ${day.isSunday ? styles.sundayCell : ''} ${day.holiday ? styles.holidayCell : ''} ${day.holiday?.isSubstitute ? styles.substituteHolidayCell : ''} ${day.holiday?.isSpecial ? styles.specialHolidayCell : ''} ${!day.inMonth ? styles.mutedDay : ''} ${day.date === today ? styles.todayCell : ''}`}
                         >
                             <button
                                 type="button"
@@ -265,6 +265,11 @@ export default function IntranetEventCalendar() {
                                 <span>{day.day}</span>
                                 {day.date === today && <span className={styles.todayMark}>오늘</span>}
                             </button>
+                            {day.holiday && (
+                                <span className={styles.holidayLabel} title={day.holiday.label}>
+                                    {day.holiday.label}
+                                </span>
+                            )}
                             <div className={styles.eventList}>
                                 {visibleEvents.map((item) => (
                                     <button

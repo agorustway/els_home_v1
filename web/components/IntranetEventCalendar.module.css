@@ -165,6 +165,34 @@
     box-shadow: inset 0 0 0 1px #93c5fd;
 }
 
+.sundayCell {
+    background: #fff7f7;
+}
+
+.holidayCell {
+    background: #fff1f2;
+    box-shadow: inset 0 0 0 1px #fecdd3;
+}
+
+.substituteHolidayCell {
+    background: #fff5f5;
+}
+
+.specialHolidayCell {
+    background: #fff7ed;
+    box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.todayCell.holidayCell {
+    background: #fee2e2;
+    box-shadow: inset 0 0 0 1px #fb7185;
+}
+
+.holidayCell .dayButton,
+.sundayCell .dayButton {
+    color: #be123c;
+}
+
 .dayButton {
     display: flex;
     align-items: center;
@@ -188,6 +216,34 @@
     color: #ffffff;
     font-size: 0.62rem;
     line-height: 1;
+}
+
+.holidayLabel {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 19px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.substituteHolidayCell .holidayLabel {
+    background: #ffe4e6;
+    color: #be123c;
+}
+
+.specialHolidayCell .holidayLabel {
+    background: #ffedd5;
+    color: #c2410c;
 }
 
 .eventList {
@@ -682,6 +738,12 @@
         display: none;
     }
 
+    .holidayLabel {
+        min-height: 17px;
+        padding: 2px 4px;
+        font-size: 0.56rem;
+    }
+
     .eventChip {
         grid-template-columns: minmax(0, 1fr);
         gap: 1px;
@@ -779,6 +841,13 @@
     .eventChip {
         min-height: 23px;
         font-size: 0.58rem;
+    }
+
+    .holidayLabel {
+        max-width: 100%;
+        min-height: 15px;
+        padding: 1px 3px;
+        font-size: 0.5rem;
     }
 
     .eventTime {

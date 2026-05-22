@@ -8,6 +8,30 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const SOLAR_KOREAN_HOLIDAYS = [
+    { mmdd: '01-01', name: '신정' },
+    { mmdd: '03-01', name: '삼일절', substitute: true },
+    { mmdd: '05-05', name: '어린이날', substitute: true },
+    { mmdd: '06-06', name: '현충일' },
+    { mmdd: '08-15', name: '광복절', substitute: true },
+    { mmdd: '10-03', name: '개천절', substitute: true },
+    { mmdd: '10-09', name: '한글날', substitute: true },
+    { mmdd: '12-25', name: '성탄절', substitute: true },
+];
+
+const YEAR_SPECIFIC_KOREAN_HOLIDAYS = {
+    2026: [
+        { date: '2026-02-16', name: '설날 연휴' },
+        { date: '2026-02-17', name: '설날' },
+        { date: '2026-02-18', name: '설날 연휴' },
+        { date: '2026-05-24', name: '부처님오신날', substitute: true },
+        { date: '2026-06-03', name: '전국동시지방선거', special: true },
+        { date: '2026-09-24', name: '추석 연휴' },
+        { date: '2026-09-25', name: '추석' },
+        { date: '2026-09-26', name: '추석 연휴' },
+    ],
+};
+
 export function isDateString(value) {
     return typeof value === 'string' && DATE_RE.test(value);
 }
@@ -33,6 +57,82 @@ export function addDays(dateString, days) {
     const base = parseDateString(dateString);
     if (!base) return null;
     return toDateString(new Date(base.getTime() + days * DAY_MS));
+}
+
+function getNextWeekday(dateString, blockedDates = new Set()) {
+    let next = addDays(dateString, 1);
+    while (next) {
+        const parsed = parseDateString(next);
+        const day = parsed.getUTCDay();
+        if (day !== 0 && day !== 6 && !blockedDates.has(next)) return next;
+        next = addDays(next, 1);
+    }
+    return null;
+}
+
+function addHolidayToMap(map, record) {
+    if (!isDateString(record.date)) return;
+    const existing = map.get(record.date) || [];
+    existing.push(record);
+    map.set(record.date, existing);
+}
+
+export function getKoreanHolidaysForYear(yearValue) {
+    const year = Number(yearValue);
+    if (!Number.isInteger(year)) return [];
+
+    const baseRecords = [
+        ...SOLAR_KOREAN_HOLIDAYS.map((item) => ({
+            ...item,
+            date: `${year}-${item.mmdd}`,
+            source: 'solar',
+        })),
+        ...(YEAR_SPECIFIC_KOREAN_HOLIDAYS[year] || []).map((item) => ({
+            ...item,
+            source: item.special ? 'special' : 'lunar',
+        })),
+    ];
+
+    const map = new Map();
+    baseRecords.forEach((record) => addHolidayToMap(map, record));
+
+    const blockedDates = new Set(map.keys());
+    baseRecords
+        .filter((record) => record.substitute)
+        .forEach((record) => {
+            const parsed = parseDateString(record.date);
+            if (!parsed) return;
+            const day = parsed.getUTCDay();
+            const needsSubstitute = day === 0 || day === 6 || (map.get(record.date) || []).length > 1;
+            if (!needsSubstitute) return;
+            const substituteDate = getNextWeekday(record.date, blockedDates);
+            if (!substituteDate) return;
+            blockedDates.add(substituteDate);
+            addHolidayToMap(map, {
+                date: substituteDate,
+                name: `${record.name} 대체공휴일`,
+                substituteFor: record.name,
+                isSubstitute: true,
+                source: 'substitute',
+            });
+        });
+
+    return [...map.entries()]
+        .map(([date, records]) => ({
+            date,
+            names: records.map((record) => record.name),
+            label: records.map((record) => record.name).join(' · '),
+            isHoliday: true,
+            isSubstitute: records.some((record) => record.isSubstitute),
+            isSpecial: records.some((record) => record.special),
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function getKoreanHoliday(dateString) {
+    if (!isDateString(dateString)) return null;
+    const year = Number(dateString.slice(0, 4));
+    return getKoreanHolidaysForYear(year).find((holiday) => holiday.date === dateString) || null;
 }
 
 export function getKstDateString(date = new Date()) {
@@ -72,6 +172,9 @@ export function buildMonthMatrix(monthString) {
             date: dateString,
             day: date.getUTCDate(),
             inMonth: dateString.startsWith(month),
+            holiday: getKoreanHoliday(dateString),
+            isSunday: date.getUTCDay() === 0,
+            isSaturday: date.getUTCDay() === 6,
             isWeekend: date.getUTCDay() === 0 || date.getUTCDay() === 6,
         };
     });

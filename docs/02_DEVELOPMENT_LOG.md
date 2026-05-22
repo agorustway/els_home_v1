@@ -1,3 +1,20 @@
+## [2026-05-22] 행사일정 한국 공휴일 라벨과 붉은 휴일 배경 추가 (v5.14.122)
+### 핵심
+- 행사일정 월간 매트릭스 날짜 데이터에 한국 공휴일 정보를 붙이고, 공휴일/대체공휴일/특별 휴일 셀을 붉은 계열 배경과 라벨로 표시했습니다.
+- 2026년 기준 설날·추석·부처님오신날·지방선거일과 기본 양력 공휴일을 포함했고, 주말과 겹치는 적용 대상 공휴일은 다음 평일 대체공휴일로 계산합니다.
+- 형 요청 예시인 `2026-05-24 부처님오신날`, `2026-05-25 부처님오신날 대체공휴일`을 테스트로 고정했습니다.
+### 검증
+- `node --test web/tests/intranetEvents.test.mjs`: 6개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- Browser: `/employees/events?debug=true`에서 어린이날/부처님오신날/대체공휴일 라벨 노출 확인, 360x780 모바일 가로 넘침 없음.
+### 변경 파일
+- `web/utils/intranetEvents.mjs`
+- `web/components/IntranetEventCalendar.js`
+- `web/components/IntranetEventCalendar.module.css`
+- `web/tests/intranetEvents.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 모바일 기간 선택 간격 보정 (v5.14.121)
 ### 핵심
 - 모바일 현황판 중간의 `일별/주별/월별/전체` 버튼과 날짜 선택 드롭다운 사이에 큰 빈 공간이 생기던 문제를 보정했습니다.

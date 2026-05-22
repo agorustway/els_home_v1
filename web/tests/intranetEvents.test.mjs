@@ -8,6 +8,8 @@ import {
     daysUntilEvent,
     eventMatchesRole,
     getDueReminderOffset,
+    getKoreanHoliday,
+    getKoreanHolidaysForYear,
     getMonthRange,
     getReminderLabel,
     normalizeAudienceRoles,
@@ -22,6 +24,23 @@ test('월간 행사일정 매트릭스는 일요일 시작 6주 그리드로 생
     assert.equal(matrix[5].date, '2026-05-01');
     assert.equal(matrix.at(-1).date, '2026-06-06');
     assert.equal(matrix.filter((day) => day.inMonth).length, 31);
+});
+
+test('한국 공휴일은 월간 매트릭스에 휴일명과 대체공휴일로 표시된다', () => {
+    const matrix = buildMonthMatrix('2026-05');
+    const buddhaDay = matrix.find((day) => day.date === '2026-05-24');
+    const substituteDay = matrix.find((day) => day.date === '2026-05-25');
+
+    assert.equal(buddhaDay.holiday.label, '부처님오신날');
+    assert.equal(substituteDay.holiday.label, '부처님오신날 대체공휴일');
+    assert.equal(substituteDay.holiday.isSubstitute, true);
+    assert.equal(getKoreanHoliday('2026-05-05').label, '어린이날');
+});
+
+test('특별 휴일과 기본 공휴일 목록을 연도별로 조회한다', () => {
+    const holidays = getKoreanHolidaysForYear(2026);
+    assert.equal(holidays.some((holiday) => holiday.date === '2026-06-03' && holiday.label === '전국동시지방선거'), true);
+    assert.equal(getKoreanHoliday('2026-03-02').label, '삼일절 대체공휴일');
 });
 
 test('월 범위와 날짜 덧셈은 YYYY-MM-DD 기준으로 계산된다', () => {

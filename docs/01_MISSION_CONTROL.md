@@ -1,13 +1,14 @@
-# ELS MISSION CONTROL (v5.14.121 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.122 / APK v5.11.25)
 
-> 최신 업데이트: 아산 배차판 모바일 기간 선택 드롭다운이 240px 높이 빈 공간을 만들던 flex 기준을 리셋해 버튼/셀렉트/날짜탭 간격을 압축했습니다.
+> 최신 업데이트: 행사일정 월간 매트릭스에 한국 공휴일·대체공휴일·특별 휴일 라벨과 붉은 휴일 배경을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.121
+- **웹 버전**: v5.14.122
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
+  - 행사일정은 2026년 월력요항 기준 주요 한국 공휴일과 대체공휴일을 붉은 휴일 셀과 라벨로 표시한다. 예: 5/24 부처님오신날, 5/25 부처님오신날 대체공휴일.
   - 아산 배차판 날짜 탭은 누적 전체를 모두 펼치지 않고 선택 날짜 기준 7개만 빠르게 보여주며, 오래된 자료는 일별/주별/월별/전체 선택으로 조회한다.
   - 아산 배차판 날짜 탭과 기간 선택은 오늘 이후라도 정상 오더가 있으면 허용하고, 오더가 없거나 오류/문자값뿐인 날짜만 비활성화한다.
   - 아산 배차판 데스크탑 기간 선택 드롭다운은 기간 버튼 옆 240px 폭으로 붙여 조작 거리를 줄이고, 모바일은 flex-basis를 리셋해 버튼/셀렉트/날짜탭을 연속 배치한다.
@@ -64,9 +65,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-121: 월간/연간/종합실적 분석, 행사일정, 선적 job, 배차판 DB 누적·자동갱신·WEB 전용 셀 저장 구조 보정, 누적 날짜 탐색 UI 보정
+- [x] v5.14.64-122: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB 누적·자동갱신·WEB 전용 셀 저장 구조 보정, 누적 날짜 탐색 UI 보정
 
 ## RECENT CHANGES
+- **v5.14.122**: 행사일정 월간 매트릭스에 기본 한국 공휴일, 대체공휴일, 특별 휴일 정보를 붙여 휴일 셀을 붉은 톤으로 표시하고 라벨을 노출한다. 2026년 기준 어린이날, 부처님오신날(5/24), 부처님오신날 대체공휴일(5/25), 지방선거일 등을 테스트로 고정했다.
 - **v5.14.121**: 아산 배차판 모바일 기간 선택 영역에서 데스크탑용 `flex: 0 0 240px`가 세로 높이로 적용되던 문제를 막아 셀렉트 위아래 빈 공간을 제거했다.
 - **v5.14.120**: 아산 배차판 WEB 셀 오버레이가 기존 익명 TYPE 헤더 기준으로 저장된 레거시 row_signature도 조회한다. 모비스 중복 `BKG1/BKG1/BKG3` 헤더를 `BKG1/BKG2/BKG3`로 정리하고, WEB 컬럼 폭을 저장값 로드 시에도 자동 확장한다.
 - **v5.14.119**: 아산 배차판 WEB 전용 셀의 행 서명 생성 전에 글로비스 `col_12`와 모비스 `col_15` 익명 TYPE 헤더를 공통 복구한다. 통합현황, 글로비스, 모비스, 엑셀 내보내기가 같은 저장값을 공유한다.
@@ -86,6 +88,7 @@
 - `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
 - `npm.cmd run lint`: 통과
 - `npm.cmd run build`: 통과
+- `node --test web/tests/intranetEvents.test.mjs`: 6개 통과
 - `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
 - `npm.cmd run lint -- "utils/containerHistoryResults.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
 - `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker\els-backend\app_core.py`: 통과
