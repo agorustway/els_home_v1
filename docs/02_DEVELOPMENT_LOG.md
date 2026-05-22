@@ -1,3 +1,18 @@
+## [2026-05-22] 아산 배차판 엑셀 다운로드 숫자/테두리 보정 (v5.14.133)
+### 핵심
+- 형이 말한 대로 다운로드 엑셀의 `오더`, `배차`가 문자열로 내려가면 바로 합계/계산이 안 됩니다.
+- `오더(계)`, `오더`, `계`, `수량`, `배차` 헤더는 ExcelJS에 숫자 셀로 저장하도록 변환했습니다. 쉼표가 들어간 숫자도 숫자로 바꿉니다.
+- 데이터 행은 빈 칸까지 `thin` 테두리를 적용해 표가 엑셀에서 선명하게 보이게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 31개 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 46개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 종합실적 비교 카드 제목 정리 (v5.14.132)
 ### 핵심
 - 종합실적 구성·차량 성과 카드 제목을 `계약/차량 집중도`에서 `당사 / 협력사 비교`로 바꿨습니다.

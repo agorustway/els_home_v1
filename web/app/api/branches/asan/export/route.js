@@ -43,6 +43,30 @@ function mapDispatchExportRow(row = [], sourceHeaders = [], targetHeaders = []) 
     });
 }
 
+const NUMERIC_DISPATCH_EXPORT_HEADERS = new Set(
+    ['오더(계)', '오더', '계', '수량', '배차'].map(normalizeDispatchHeader)
+);
+
+function isNumericDispatchExportHeader(header) {
+    return NUMERIC_DISPATCH_EXPORT_HEADERS.has(normalizeDispatchHeader(header));
+}
+
+function toDispatchExportNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : '';
+    const text = String(value ?? '').replace(/,/g, '').trim();
+    if (!text) return '';
+    if (!/^-?\d+(?:\.\d+)?$/.test(text)) return value ?? '';
+    const numberValue = Number(text);
+    return Number.isFinite(numberValue) ? numberValue : value ?? '';
+}
+
+function normalizeDispatchExportRowForExcel(headers = [], row = []) {
+    return headers.map((header, idx) => {
+        const value = row[idx] ?? '';
+        return isNumericDispatchExportHeader(header) ? toDispatchExportNumber(value) : value;
+    });
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'glovis';
@@ -276,17 +300,18 @@ export async function GET(request) {
     };
     const DEFAULT_CELL_FONT = { size: 10, name: '맑은 고딕' };
     const CELL_BORDER = {
-        top: { style: 'hair', color: { argb: 'FFE2E8F0' } },
-        bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } },
-        left: { style: 'hair', color: { argb: 'FFE2E8F0' } },
-        right: { style: 'hair', color: { argb: 'FFE2E8F0' } }
+        top: { style: 'thin', color: { argb: 'FFD7DEE8' } },
+        bottom: { style: 'thin', color: { argb: 'FFD7DEE8' } },
+        left: { style: 'thin', color: { argb: 'FFD7DEE8' } },
+        right: { style: 'thin', color: { argb: 'FFD7DEE8' } }
     };
+    const NUMBER_FORMAT = '#,##0.###';
 
     processedData.forEach(pData => {
         const sheet = workbook.addWorksheet(pData.sheetName);
         const hRow = sheet.addRow(pData.headers);
 
-        hRow.eachCell(cell => {
+        hRow.eachCell({ includeEmpty: true }, cell => {
             cell.fill = HEADER_FILL;
             cell.font = HEADER_FONT;
             cell.border = HEADER_BORDER;
@@ -294,12 +319,15 @@ export async function GET(request) {
         });
 
         pData.rows.forEach(rowData => {
-            const r = sheet.addRow(rowData);
-            r.eachCell(cell => {
+            const r = sheet.addRow(normalizeDispatchExportRowForExcel(pData.headers, rowData));
+            for (let colIdx = 1; colIdx <= pData.headers.length; colIdx += 1) {
+                const cell = r.getCell(colIdx);
+                const numeric = isNumericDispatchExportHeader(pData.headers[colIdx - 1]);
                 cell.border = CELL_BORDER;
                 cell.font = DEFAULT_CELL_FONT;
-                cell.alignment = { vertical: 'middle' };
-            });
+                cell.alignment = { vertical: 'middle', horizontal: numeric ? 'right' : 'left' };
+                if (numeric) cell.numFmt = NUMBER_FORMAT;
+            }
         });
 
         // 틀고정
