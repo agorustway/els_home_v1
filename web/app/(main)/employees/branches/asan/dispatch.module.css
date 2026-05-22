@@ -1065,6 +1065,74 @@
     border-right: none;
 }
 
+.webCellEditableTd {
+    padding: 2px 4px !important;
+    background: #f8fbff;
+}
+
+.webCellEditableTd:hover {
+    background: #eef6ff !important;
+}
+
+.webCellInputWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 90px;
+}
+
+.webCellInput {
+    width: 100%;
+    min-width: 70px;
+    height: 24px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 700;
+    padding: 2px 22px 2px 5px;
+    outline: none;
+}
+
+.webCellInput:hover {
+    border-color: #bfdbfe;
+    background: #fff;
+}
+
+.webCellInput:focus {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.webCellState {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.62rem;
+    font-weight: 900;
+    pointer-events: none;
+}
+
+.webCellSaving {
+    color: #2563eb;
+}
+
+.webCellSaved {
+    color: #059669;
+}
+
+.webCellError {
+    color: #dc2626;
+}
+
+.webCellErrorTd .webCellInput {
+    border-color: #ef4444;
+    background: #fff5f5;
+}
+
 .oddRow {
     background: #f8fafc;
 }
@@ -1534,6 +1602,17 @@
     .table td {
         padding: 6px 4px;
         font-size: 0.68rem;
+    }
+
+    .webCellInputWrap {
+        min-width: 76px;
+    }
+
+    .webCellInput {
+        height: 28px;
+        min-width: 64px;
+        font-size: 0.68rem;
+        padding-right: 20px;
     }
 
     .tableWrap {

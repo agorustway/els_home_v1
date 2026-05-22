@@ -4,6 +4,11 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 import { buildAsanDashboardScope } from '@/utils/asanDashboardView.mjs';
+import {
+    getDispatchWebCellFieldLabel,
+    normalizeDispatchWebCellFieldKey,
+    validateDispatchWebCellValue,
+} from '@/utils/asanDispatchWebCellFields.mjs';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
@@ -342,6 +347,10 @@ function loadPrefs(vt) {
 function savePrefs(vt, p) {
     try { localStorage.setItem(`${PREFS_KEY}_${vt}`, JSON.stringify(p)); } catch { }
 }
+function makeWebCellClientKey(meta, fieldKey) {
+    if (!meta?.rowSignature || !fieldKey) return '';
+    return [meta.sourceType, meta.targetDate, meta.rowSignature, fieldKey].join('|');
+}
 function resetScrollChainToTop(target) {
     if (typeof window === 'undefined') return;
     const scrollToTop = (node) => {
@@ -405,6 +414,7 @@ function AsanDispatchContent() {
     const [elapsed, setElapsed] = useState('');
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
+    const [webCellStatus, setWebCellStatus] = useState({});
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -563,6 +573,7 @@ function AsanDispatchContent() {
         const mHeaders = ['날짜', ...baseHeaders];
         const mRows = [];
         const mComments = {};
+        const mWebCellRows = [];
         const eligibleItems = data.filter(item => item.target_date <= todayKey);
         const sorted = [...eligibleItems].sort((a, b) => b.target_date.localeCompare(a.target_date));
         sorted.forEach(item => {
@@ -575,6 +586,7 @@ function AsanDispatchContent() {
             (item.data || []).forEach((row, origIdx) => {
                 const newIdx = mRows.length;
                 mRows.push([dateLabel, ...row]);
+                mWebCellRows.push(item.webCellRows?.[origIdx] || null);
                 Object.entries(item.comments || {}).forEach(([key, val]) => {
                     const [ri, ci] = key.split(':').map(Number);
                     if (ri === origIdx) mComments[`${newIdx}:${ci + 1}`] = val;
@@ -589,7 +601,7 @@ function AsanDispatchContent() {
             if (week && !weekMap.has(week.key)) weekMap.set(week.key, week);
         });
         const weeks = [...weekMap.values()].sort((a, b) => a.start.localeCompare(b.start));
-        return { headers: mHeaders, data: mRows, comments: mComments, months, weeks };
+        return { headers: mHeaders, data: mRows, comments: mComments, webCellRows: mWebCellRows, months, weeks };
     }, [data, allTabMonth, allTabWeek, todayKey]);
 
     useEffect(() => {
@@ -602,11 +614,12 @@ function AsanDispatchContent() {
     const activeItem = useMemo(() => isAllTab ? null : data[activeTab], [isAllTab, data, activeTab]);
     const currentView = useMemo(() => {
         if (isAllTab) return mergedView;
-        return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {} } : null;
+        return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
     const headers = useMemo(() => currentView?.headers || [], [currentView]);
     const allData = useMemo(() => currentView?.data || [], [currentView]);
     const comments = useMemo(() => currentView?.comments || {}, [currentView]);
+    const webCellRows = useMemo(() => currentView?.webCellRows || [], [currentView]);
 
     // 날짜 정보
     const dateInfo = useMemo(() => {
@@ -671,9 +684,10 @@ function AsanDispatchContent() {
         return allData.map((row, idx) => {
             const r = [...row];
             r.origIdx = idx; // DB 저장 순서 (comments 키 기준)
+            r.webCellMeta = webCellRows[idx] || null;
             return r;
         });
-    }, [allData]);
+    }, [allData, webCellRows]);
 
     const processedData = useMemo(() => {
         if (viewType !== 'integrated' || !dataWithIndices || dataWithIndices.length === 0) return dataWithIndices;
@@ -767,6 +781,82 @@ function AsanDispatchContent() {
         if (filterDropdown === null) return [];
         const vals = new Set(); allData.forEach(row => { const v = row[filterDropdown]; if (v) vals.add(String(v)); }); return [...vals].sort();
     }, [filterDropdown, allData]);
+
+    const updateWebCellValueInData = useCallback((meta, fieldKey, value) => {
+        const fieldLabel = getDispatchWebCellFieldLabel(fieldKey);
+        if (!meta?.rowSignature || !fieldLabel) return;
+        setData(prev => prev.map(item => {
+            if (item.target_date !== meta.targetDate) return item;
+            const rowIdx = (item.webCellRows || []).findIndex(rowMeta => (
+                rowMeta?.rowSignature === meta.rowSignature && rowMeta?.sourceType === meta.sourceType
+            ));
+            if (rowIdx < 0) return item;
+            const colIdx = (item.headers || []).findIndex(header => normalizeDispatchWebCellFieldKey(header) === fieldKey);
+            if (colIdx < 0) return item;
+            const nextRows = (item.data || []).map((row, idx) => {
+                if (idx !== rowIdx) return row;
+                const nextRow = [...row];
+                nextRow[colIdx] = value;
+                return nextRow;
+            });
+            return { ...item, data: nextRows };
+        }));
+    }, []);
+
+    const saveWebCellValue = useCallback(async ({ meta, fieldKey, value, previousValue }) => {
+        const cellKey = makeWebCellClientKey(meta, fieldKey);
+        if (!cellKey || !fieldKey) return previousValue;
+
+        const validation = validateDispatchWebCellValue(fieldKey, value);
+        if (!validation.ok) {
+            setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'error', message: validation.error } }));
+            return undefined;
+        }
+
+        if (validation.value === String(previousValue ?? '').trim()) {
+            setWebCellStatus(prev => {
+                const next = { ...prev };
+                delete next[cellKey];
+                return next;
+            });
+            return validation.value;
+        }
+
+        setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'saving', message: '저장 중' } }));
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/web-cell', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dispatchType: meta.sourceType,
+                    targetDate: meta.targetDate,
+                    rowSignature: meta.rowSignature,
+                    rowIndex: meta.sourceRowIndex,
+                    fieldKey,
+                    value: validation.value,
+                    rowContext: meta.rowContext || {},
+                }),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'WEB 입력값 저장 실패');
+
+            const savedValue = result.data?.value ?? validation.value;
+            updateWebCellValueInData(meta, fieldKey, savedValue);
+            setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'saved', message: '저장됨' } }));
+            setTimeout(() => {
+                setWebCellStatus(prev => {
+                    if (prev[cellKey]?.state !== 'saved') return prev;
+                    const next = { ...prev };
+                    delete next[cellKey];
+                    return next;
+                });
+            }, 1500);
+            return savedValue;
+        } catch (error) {
+            setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'error', message: error.message || '저장 실패' } }));
+            return undefined;
+        }
+    }, [updateWebCellValueInData]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);
@@ -1083,14 +1173,60 @@ function AsanDispatchContent() {
                                                 // integrated 정렬 후에도 origIdx(DB row 번호)로 comments를 찾아야 함.
                                                 const ck = `${origIdx}:${ci}`;
                                                 const hc = !!comments[ck];
-                                                const w = colWidths[headers[ci]];
+                                                const header = headers[ci];
+                                                const w = colWidths[header];
+                                                const fieldKey = normalizeDispatchWebCellFieldKey(header);
+                                                const webCellMeta = row.webCellMeta;
+                                                const webCellKey = makeWebCellClientKey(webCellMeta, fieldKey);
+                                                const cellStatus = webCellKey ? webCellStatus[webCellKey] : null;
+                                                const isWebEditable = Boolean(fieldKey && webCellMeta?.rowSignature);
                                                 return (
                                                     <td key={ci}
-                                                        className={`${centerCols.has(ci) ? styles.centerCell : ''} ${hc ? styles.hasComment : ''}`}
+                                                        className={`${centerCols.has(ci) ? styles.centerCell : ''} ${hc ? styles.hasComment : ''} ${isWebEditable ? styles.webCellEditableTd : ''} ${cellStatus?.state === 'error' ? styles.webCellErrorTd : ''}`}
                                                         style={w ? { maxWidth: w, overflow: 'hidden', textOverflow: 'ellipsis' } : undefined}
                                                         onMouseEnter={hc ? (e) => showTooltip(e, comments[ck]) : undefined}
                                                         onMouseLeave={hc ? () => setTooltip(null) : undefined}>
-                                                        {row[ci]}
+                                                        {isWebEditable ? (
+                                                            <div className={styles.webCellInputWrap}>
+                                                                <input
+                                                                    key={`${webCellKey}:${row[ci] ?? ''}`}
+                                                                    className={styles.webCellInput}
+                                                                    defaultValue={row[ci] ?? ''}
+                                                                    title={cellStatus?.message || `${getDispatchWebCellFieldLabel(fieldKey)} WEB 저장값`}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    onChange={() => {
+                                                                        if (cellStatus?.state === 'error') {
+                                                                            setWebCellStatus(prev => {
+                                                                                const next = { ...prev };
+                                                                                delete next[webCellKey];
+                                                                                return next;
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') e.currentTarget.blur();
+                                                                        if (e.key === 'Escape') {
+                                                                            e.currentTarget.value = row[ci] ?? '';
+                                                                            e.currentTarget.blur();
+                                                                        }
+                                                                    }}
+                                                                    onBlur={async (e) => {
+                                                                        const savedValue = await saveWebCellValue({
+                                                                            meta: webCellMeta,
+                                                                            fieldKey,
+                                                                            value: e.currentTarget.value,
+                                                                            previousValue: row[ci] ?? '',
+                                                                        });
+                                                                        if (savedValue !== undefined) e.currentTarget.value = savedValue;
+                                                                    }}
+                                                                />
+                                                                {cellStatus?.state && (
+                                                                    <span className={`${styles.webCellState} ${cellStatus.state === 'saving' ? styles.webCellSaving : ''} ${cellStatus.state === 'saved' ? styles.webCellSaved : ''} ${cellStatus.state === 'error' ? styles.webCellError : ''}`}>
+                                                                        {cellStatus.state === 'saving' ? '저장' : cellStatus.state === 'saved' ? '완료' : '!'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : row[ci]}
                                                     </td>
                                                 );
                                             })}

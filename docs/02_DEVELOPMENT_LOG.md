@@ -1,3 +1,21 @@
+## [2026-05-22] 아산 배차판 WEB 전용 셀 저장 구조 (v5.14.111)
+### 핵심
+- `BKG1/BKG2/BKG3/TARGET VESSEL/비고`를 엑셀 원본이 아닌 WEB DB 오버레이 값으로 관리하도록 `branch_dispatch_web_cells`/`branch_dispatch_web_cell_history` 스키마와 저장 API를 추가했습니다.
+- 컷오버 전 현재 엑셀 값을 보존하는 `web/scripts/backfill-asan-dispatch-web-cells.mjs`를 만들고, 백필이 끝나야 WEB 전용 모드가 활성화되도록 안전장치를 뒀습니다.
+- 배차판 조회/엑셀 내보내기는 WEB 전용 모드 활성 후 해당 컬럼의 엑셀 값을 무시하고 DB 값을 병합합니다.
+- 화면 테이블은 대상 컬럼만 인라인 입력으로 바꾸고, BKG/TARGET VESSEL은 영문·숫자·기호만, 비고는 한글·영문·숫자·기호를 허용합니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 33개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/dispatch/web-cell/route.js" "app/api/branches/asan/export/route.js" "tests/asanDispatchWebCells.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/route.js`, `web/app/api/branches/asan/dispatch/web-cell/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/utils/asanDispatchWebCellFields.mjs`, `web/utils/asanDispatchWebCells.mjs`, `web/tests/asanDispatchWebCells.test.mjs`
+- `web/supabase_sql/20260522_asan_dispatch_web_cells.sql`, `web/scripts/backfill-asan-dispatch-web-cells.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 종합실적 경영 판단 용어 정규화 (v5.14.110)
 ### 핵심
 - 종합실적 `경영 판단` 카드가 Supabase `summary-view`에 저장된 예전 제목을 받아도 화면 표시 직전에 새 용어로 정규화하게 했습니다.

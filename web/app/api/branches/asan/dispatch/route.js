@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+    applyDispatchWebCellOverlay,
+    createDispatchRowMetaBuilder,
+    loadDispatchWebCellState,
+    shouldIncludeDispatchRow,
+} from '@/utils/asanDispatchWebCells.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // [v5.10.22] 데이터 부정합 문제로 캐시 완전 비활성화 (정확성 우선)
@@ -26,6 +32,7 @@ export async function GET(request) {
     const { data, error } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const webCellState = await loadDispatchWebCellState(supabase, data || []);
 
     if (type === 'integrated') {
         const unifiedHeaders = [
@@ -57,6 +64,7 @@ export async function GET(request) {
                     headers: unifiedHeaders,
                     data: [],
                     comments: {},
+                    webCellRows: [],
                     file_modified_at: item.file_modified_at
                 };
             }
@@ -119,21 +127,29 @@ export async function GET(request) {
                 "비고": getCol(["비고"])
             };
 
-            const currentOffset = byDate[item.target_date].data.length;
-            const orderColIdx = unifiedHeaders.indexOf('오더(계)');
+            const buildRowMeta = createDispatchRowMetaBuilder({
+                dispatchType: itemType,
+                targetDate: item.target_date,
+                headers: item.headers || [],
+            });
             (item.data || []).forEach((row, rIdx) => {
-                const newRow = unifiedHeaders.map(h => {
+                if (!shouldIncludeDispatchRow(item.headers || [], row, itemType)) return;
+
+                const rowMeta = buildRowMeta(row, rIdx);
+                const mappedRow = unifiedHeaders.map(h => {
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
                 });
-                // [v5.10.20] 컬럼 매핑 성공 시에만 필터링 수행 (매핑 실패 시 데이터 유실 방지)
-                const cIdxForOrder = mapCols['오더(계)'];
-                if (cIdxForOrder >= 0) {
-                    const orderVal = String(row[cIdxForOrder] || '').trim();
-                    if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return;
-                }
+                const newRow = applyDispatchWebCellOverlay({
+                    headers: unifiedHeaders,
+                    row: mappedRow,
+                    meta: rowMeta,
+                    cellMap: webCellState.cellMap,
+                    enabled: webCellState.enabled,
+                });
 
                 byDate[item.target_date].data.push(newRow);
+                byDate[item.target_date].webCellRows.push(webCellState.enabled ? rowMeta : null);
 
                 const newRi = byDate[item.target_date].data.length - 1;
 
@@ -193,23 +209,28 @@ export async function GET(request) {
                 return -1;
             };
 
-            let targetIdx = -1;
-            if (item.type === 'glovis') {
-                targetIdx = getCol(['오더', '오더(계)']);
-            } else if (item.type === 'mobis') {
-                targetIdx = getCol(['계', '수량', '오더']);
-            }
-
             const newData = [];
+            const webCellRows = [];
             const rowMapping = {}; // old_ri -> new_ri
+            const buildRowMeta = createDispatchRowMetaBuilder({
+                dispatchType: item.type,
+                targetDate: item.target_date,
+                headers: item.headers || [],
+            });
             
             (item.data || []).forEach((row, ri) => {
-                if (targetIdx >= 0) {
-                    const val = String(row[targetIdx] || '').trim();
-                    if (!val || val === '0' || val === 'nan' || val === 'None') return;
-                }
+                if (!shouldIncludeDispatchRow(item.headers || [], row, item.type)) return;
                 rowMapping[ri] = newData.length;
-                newData.push(validIndices.map(vi => row[vi]));
+                const rowMeta = buildRowMeta(row, ri);
+                const mappedRow = validIndices.map(vi => row[vi]);
+                newData.push(applyDispatchWebCellOverlay({
+                    headers: newHeaders,
+                    row: mappedRow,
+                    meta: rowMeta,
+                    cellMap: webCellState.cellMap,
+                    enabled: webCellState.enabled,
+                }));
+                webCellRows.push(webCellState.enabled ? rowMeta : null);
             });
 
             const newComments = {};
@@ -231,7 +252,8 @@ export async function GET(request) {
                 ...item,
                 headers: newHeaders,
                 data: newData,
-                comments: newComments
+                comments: newComments,
+                webCellRows
             };
         });
         return NextResponse.json({ data: filteredData });

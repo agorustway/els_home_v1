@@ -1,0 +1,116 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  normalizeDispatchWebCellFieldKey,
+  validateDispatchWebCellValue,
+} from '../utils/asanDispatchWebCellFields.mjs';
+import {
+  applyDispatchWebCellOverlay,
+  buildWebCellMap,
+  createDispatchRowMetaBuilder,
+  shouldIncludeDispatchRow,
+} from '../utils/asanDispatchWebCells.mjs';
+
+const headers = [
+  '구분',
+  '화주',
+  '담당자',
+  '작업지',
+  '고객사(국가)',
+  '포트(도착항)',
+  '라인(선사명)',
+  'TYPE',
+  '오더(계)',
+  'BKG1',
+  'BKG2',
+  'BKG3',
+  'TARGET VESSEL',
+  '비고',
+];
+
+test('WEB 전용 컬럼은 표기 흔들림을 표준 field_key로 정규화한다', () => {
+  assert.equal(normalizeDispatchWebCellFieldKey('BKG1'), 'BKG1');
+  assert.equal(normalizeDispatchWebCellFieldKey('target vessel'), 'TARGET_VESSEL');
+  assert.equal(normalizeDispatchWebCellFieldKey('VECELL'), 'TARGET_VESSEL');
+  assert.equal(normalizeDispatchWebCellFieldKey('비고'), 'NOTE');
+});
+
+test('BKG와 TARGET VESSEL은 영문·숫자·기호만 허용한다', () => {
+  assert.deepEqual(validateDispatchWebCellValue('BKG1', ' 005GX11331 / A-1 '), {
+    ok: true,
+    value: '005GX11331 / A-1',
+    error: '',
+  });
+  assert.equal(validateDispatchWebCellValue('TARGET VESSEL', '현대호').ok, false);
+});
+
+test('비고는 한글·영문·숫자·기호를 허용하고 제어문자는 막는다', () => {
+  assert.deepEqual(validateDispatchWebCellValue('비고', '안전화 미착용시 작업불가 #1'), {
+    ok: true,
+    value: '안전화 미착용시 작업불가 #1',
+    error: '',
+  });
+  assert.equal(validateDispatchWebCellValue('비고', '정상\u0001오류').ok, false);
+});
+
+test('행 서명은 WEB 전용 컬럼 값을 제외하고 동일 행을 안정적으로 식별한다', () => {
+  const buildMetaA = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-18',
+    headers,
+  });
+  const buildMetaB = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-18',
+    headers,
+  });
+  const rowA = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', '', '', '', '', ''];
+  const rowB = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', 'ABC123', '', '', 'VESSEL-1', '비고 변경'];
+
+  assert.equal(buildMetaA(rowA, 0).rowSignature, buildMetaB(rowB, 0).rowSignature);
+});
+
+test('동일한 핵심값의 중복 행은 occurrence 번호로 분리한다', () => {
+  const buildMeta = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-18',
+    headers,
+  });
+  const row = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', '', '', '', '', ''];
+
+  const first = buildMeta(row, 0).rowSignature;
+  const second = buildMeta(row, 1).rowSignature;
+  assert.notEqual(first, second);
+  assert.match(first, /:001$/);
+  assert.match(second, /:002$/);
+});
+
+test('오더칸 문자·오류값은 WEB 오버레이 대상 행에서 제외한다', () => {
+  assert.equal(shouldIncludeDispatchRow(headers, ['수출', '', '', '', '', '', '', '40HC', '오류'], 'glovis'), false);
+  assert.equal(shouldIncludeDispatchRow(headers, ['수출', '', '', '', '', '', '', '40HC', '2'], 'glovis'), true);
+});
+
+test('오버레이 활성화 후 WEB 전용 컬럼은 DB 값만 표시하고 엑셀 값은 비운다', () => {
+  const buildMeta = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-18',
+    headers,
+  });
+  const row = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', 'EXCEL-BKG', '', '', 'EXCEL-VESSEL', 'EXCEL-NOTE'];
+  const meta = buildMeta(row, 0);
+  const cellMap = buildWebCellMap([
+    {
+      branch_id: 'asan',
+      dispatch_type: 'glovis',
+      target_date: '2026-05-18',
+      row_signature: meta.rowSignature,
+      field_key: 'BKG1',
+      value: 'WEB-BKG',
+    },
+  ]);
+
+  const applied = applyDispatchWebCellOverlay({ headers, row, meta, cellMap, enabled: true });
+  assert.equal(applied[9], 'WEB-BKG');
+  assert.equal(applied[12], '');
+  assert.equal(applied[13], '');
+});

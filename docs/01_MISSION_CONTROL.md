@@ -1,20 +1,17 @@
-# ELS MISSION CONTROL (v5.14.110 / APK v5.11.25)
+# ELS MISSION CONTROL (v5.14.111 / APK v5.11.25)
 
-> 최신 업데이트: 종합실적 경영 판단의 예전 스냅샷 문구까지 이익률/자사 비율/이익률 우수·점검 기준으로 표시 정규화했습니다.
+> 최신 업데이트: 아산 배차판 BKG1/2/3, TARGET VESSEL, 비고를 WEB 전용 DB 입력/이력 구조로 분리했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.110
+- **웹 버전**: v5.14.111
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.25
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
-  - 인트라넷 홈 메뉴에서 AI 어시스턴트 바로 아래 `행사일정` 단독 페이지를 제공하고, 구글캘린더형 월간 매트릭스와 관리자/본사 계정 일정 등록·수정·삭제 및 공지범위 선택을 지원한다.
-  - 행사일정 칩 클릭 시 일자/시간/장소/공지범위/상세내용/팝업공지 시점을 카드형 상세 모달로 보여주며, 일정이 많은 날짜는 전체 목록 모달을 먼저 제공한다.
-  - 행사일정은 Supabase `intranet_events`/`intranet_event_dismissals` 기준으로 저장하며, 대상 사용자 접속 시 7일전/3일전/1일전/당일 팝업 공지를 띄우고 `다시 보지 않음`은 사용자별로 저장한다.
-  - Galaxy S24급 360x780 뷰포트에서 월간 7열 매트릭스가 가로 스크롤 없이 유지되도록 모바일 셀·버튼·모달 폭을 보정했다.
-  - 관리자 활동 로그 API는 `profiles.full_name`과 `user_roles.name`을 조회해 `user_name`을 응답에 붙이고, 검색은 이름/이메일 모두 지원한다.
-  - 연간실적 요일 분석은 매출 중심/업무량/수익성/점검 요약, 매출 분포 리본, 7요일 포지션 맵으로 구분해 반복 카드 느낌을 줄인다.
-  - 실적관리 종합 화면은 `summary-view` 스냅샷으로 1차 렌더 payload를 줄이고, 연간/월간 분석 화면은 중복 첫 조회를 차단하며 dashboard summary 내부 미사용 시계열을 압축한다.
+  - 아산 배차판 `BKG1/BKG2/BKG3/TARGET VESSEL/비고`는 컷오버 후 엑셀 원본 칸을 무시하고 WEB DB 오버레이(`branch_dispatch_web_cells`)만 표시·저장한다.
+  - WEB 입력값은 `branch_dispatch_web_cell_history`에 변경 전/후 값, 사용자, 시각, 행 컨텍스트를 남긴다.
+  - BKG/TARGET VESSEL은 영문·숫자·기호만, 비고는 한글·영문·숫자·기호를 허용한다.
+  - `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `web/scripts/backfill-asan-dispatch-web-cells.mjs`로 현재 엑셀 값을 1회 보존해야 WEB 전용 모드가 활성화된다.
   - 아산지점 첫 진입은 항상 배차판으로 시작하고, 실적관리 버튼 진입은 항상 종합실적 탭으로 시작한다.
   - 아산지점 메인 페이지는 선적관리/종합실적/월간실적/연간실적을 동적 청크로 분리하고, hover/focus/touch/idle 프리패치로 탭 이동 체감 속도를 보강한다.
   - 실적관리 하위 화면은 필요한 탭만 mount하고, 선적관리 저장 컨테이너 이력 및 실적 동기화 상태 조회는 첫 렌더 이후로 미룬다.
@@ -37,7 +34,7 @@
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
-| Supabase 인증/DB | 정상 | 실적관리 원장 DB + 현황판 스냅샷 DB 분리 운영 |
+| Supabase 인증/DB | 정상 | 실적관리 원장 DB + 배차판 WEB 셀 오버레이 구조 분리 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, 선적 컨테이너 백그라운드 job 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡/보호모드/수동 정지 지원 |
 | Android 드라이버 앱 | 정상 | APK v5.11.25 빌드 완료 |
@@ -55,35 +52,17 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64: 월간실적 선택 단계별 누적 그래프와 중복 트리 제거
-- [x] v5.14.66: Android 백그라운드 위치수신 회귀 테스트와 버튼 색상 정리
-- [x] v5.14.67: 월간실적 그래프 단위와 세분화 탭 기준 보정
-- [x] v5.14.69-72: 선적관리 스케줄, 종합/연간/월간실적 분석 보정
-- [x] v5.14.73: 월간실적 보고서 표 없음 배너 제거
-- [x] v5.14.74: 실적관리 하위 페이지 테이블 하단 슬라이드와 모바일 폭 보정
-- [x] v5.14.75: 컨테이너 Bot 자동 워밍업과 수동 정지 버튼
-- [x] v5.14.76: 월간실적 NAS 파일 자동 감지와 종합실적 동기화 완료 후 새로고침
-- [x] v5.14.77: 월간실적 파일 설정창 업무용 라벨과 기간 요약 정리
-- [x] v5.14.78: 월간실적 기준연도 변경 시 이월 슬롯 판정 보정
-- [x] v5.14.79: ELS Bot 03:00 일일 리셋 워밍업 재시도 보강
-- [x] v5.14.80: ELS Bot 계정 잠금 팝업 감지와 자동 재시도 차단
-- [x] v5.14.81: 월간실적 모바일 분석 기준 공백 보정
-- [x] v5.14.82: Android 운행종료 후 앱 화면 유지 복구
-- [x] v5.14.83: 선적관리 컨테이너 자동조회 장시간 스트림과 봇 stop 분리
-- [x] v5.14.84: 아산지점 하위 화면 동적 로딩과 초기 조회 지연
-- [x] v5.14.85-92: ELS Bot 보호모드/대량조회 안정화, 종합실적/관리자/행사일정/실적검색, Android crash dialog 방지, 월간실적 자동감지 보정
-- [x] v5.14.93-110: 연간실적 요일별 비중/포지션 맵, 관리자 로그, 실적관리 스냅샷/용어, 행사일정, 선적 조회 job, 실적 설정/근거표/차량 기준 정리, 배차판/선적 DB 방어 보정
+- [x] v5.14.64-111: 월간/연간/종합실적 분석, 행사일정, 선적 job, 배차판 DB 누적·자동갱신·WEB 전용 셀 저장 구조 보정
 
 ## RECENT CHANGES
+- **v5.14.111**: 아산 배차판 BKG1/2/3, TARGET VESSEL, 비고를 WEB DB 전용 입력으로 분리. 컷오버 백필 스크립트, 저장 API, 이력 테이블, 입력 검증, 화면 인라인 편집을 추가했다.
 - **v5.14.110**: 종합실적 `경영 판단`의 구버전 summary-view 문구도 표시 직전 정규화해 `수익성 압력`은 `이익률`, `ELS/외부 집중도`는 `자사 비율`, 마진 표현은 `이익률 우수/점검`으로 보이게 했다.
 - **v5.14.109**: 종합실적 화면 제목을 `컨테이너 운송 통합실적`로 바꾸고, `손익률`은 `이익률`, `수익성 압력`은 `이익률`, `ELS/외부 집중도`는 `자사 비율`로 정리했다. 자사 비율 값도 `자사/외부` 표현으로 맞췄다.
 - **v5.14.108**: 선적관리 구형 대량 컨테이너 조회 API도 NAS background job으로 전환해 페이지 이동으로 스트림이 끊겨도 조회가 계속되게 했다. job id가 없는 복원 요청은 최신 실행 job을 반환하고, 선적관리 DB 동기화는 rows 저장 count 검증 후 메타를 갱신하며 rows가 비어 있으면 DB 대신 엑셀 fallback을 사용한다.
 - **v5.14.107**: 아산 배차판 자동 동기화 해시에 셀 메모를 포함해 메모만 수정한 저장도 DB upsert 대상이 되도록 보정. 배차판 화면은 수동 NAS 동기화/새로고침 없이도 60초마다 조용히 재조회하며 현재 선택 날짜/전체 탭을 유지한 채 `저장:` 시각을 갱신한다.
-- **v5.14.105**: 월간실적 `구성·차량 성과`의 차량 TOP10은 매입액 기준 표이므로 마지막 컬럼에서 손익 금액을 제거하고 건수만 표시한다. 모바일 폭도 건수 전용 컬럼 기준으로 줄여 가로 스크롤 부담을 낮췄다.
 ## VERIFICATION
-- `node --test web/tests/asanShippingFlow.test.mjs`: 36개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/branches/asan/shipping/container-lookup/route.js" "app/api/branches/asan/shipping/container-lookup/jobs/route.js" "tests/asanShippingFlow.test.mjs"`: 통과
-- `C:\Users\hoon\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 33개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/dispatch/web-cell/route.js" "app/api/branches/asan/export/route.js" "tests/asanDispatchWebCells.test.mjs"`: 통과
 - `npm.cmd run build`, `git diff --check`: 통과
 
 ## EASTER EGGS
@@ -91,6 +70,7 @@
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
+- 배차판 WEB 전용 셀 DB 적용 대기: `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `cd web; node scripts/backfill-asan-dispatch-web-cells.mjs`를 1회 실행해야 컷오버가 활성화된다.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용해야 운영 DB에서 저장/팝업 조회가 활성화된다. 적용 전 로컬 디버그 화면에는 `intranet_events` 테이블 없음 안내가 보일 수 있다.
 
 ## FIXED RULES

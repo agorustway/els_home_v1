@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
+import {
+    applyDispatchWebCellOverlay,
+    createDispatchRowMetaBuilder,
+    loadDispatchWebCellState,
+    shouldIncludeDispatchRow,
+} from '@/utils/asanDispatchWebCells.mjs';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -30,6 +36,7 @@ export async function GET(request) {
     const { data: rawData, error } = await query;
     if (error) return new Response('DB 오류: ' + error.message, { status: 500 });
     if (!rawData || rawData.length === 0) return new Response('데이터 없음', { status: 404 });
+    const webCellState = await loadDispatchWebCellState(supabase, rawData || []);
 
     // 통합현황(integrated) 처리 로직 (dispatch/route.js와 동일하게 구현)
     let processedData = [];
@@ -87,17 +94,26 @@ export async function GET(request) {
                 "비고": getCol(["비고"])
             };
 
+            const buildRowMeta = createDispatchRowMetaBuilder({
+                dispatchType: itemType,
+                targetDate: item.target_date,
+                headers: item.headers || [],
+            });
+
             const dayRows = (item.data || []).filter(row => {
-                const cIdxForOrder = mapCols['오더(계)'];
-                if (cIdxForOrder >= 0) {
-                    const orderVal = String(row[cIdxForOrder] || '').trim();
-                    if (!orderVal || orderVal === '0' || orderVal === 'nan' || orderVal === 'None') return false;
-                }
-                return true;
-            }).map(row => {
-                return headers.map(h => {
+                return shouldIncludeDispatchRow(item.headers || [], row, itemType);
+            }).map((row, rowIndex) => {
+                const rowMeta = buildRowMeta(row, rowIndex);
+                const mappedRow = headers.map(h => {
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
+                });
+                return applyDispatchWebCellOverlay({
+                    headers,
+                    row: mappedRow,
+                    meta: rowMeta,
+                    cellMap: webCellState.cellMap,
+                    enabled: webCellState.enabled,
                 });
             });
             byDate[item.target_date].push(...dayRows);
@@ -143,33 +159,48 @@ export async function GET(request) {
                 const d = new Date(item.target_date + 'T00:00:00');
                 const days = ['일', '월', '화', '수', '목', '금', '토'];
                 const label = `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
-                let orderIdx = item.headers.findIndex(h => h && h.trim() === '오더');
-                if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '수량');
-                if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '계');
+                const buildRowMeta = createDispatchRowMetaBuilder({
+                    dispatchType: item.type,
+                    targetDate: item.target_date,
+                    headers: item.headers || [],
+                });
 
-                (item.data || []).forEach(r => {
-                    if (orderIdx >= 0) {
-                        const val = String(r[orderIdx] || '').trim();
-                        if (!val || val === '0' || val === 'nan' || val === 'None') return;
-                    }
+                (item.data || []).forEach((r, rowIndex) => {
+                    if (!shouldIncludeDispatchRow(item.headers || [], r, item.type)) return;
+                    const rowMeta = buildRowMeta(r, rowIndex);
                     const rowData = validIndices.map(vi => r[vi]);
-                    finalRows.push([label, ...rowData]);
+                    const finalRow = applyDispatchWebCellOverlay({
+                        headers,
+                        row: rowData,
+                        meta: rowMeta,
+                        cellMap: webCellState.cellMap,
+                        enabled: webCellState.enabled,
+                    });
+                    finalRows.push([label, ...finalRow]);
                 });
             });
             processedData = [{ sheetName: type === 'glovis' ? '글로비스_전체' : '모비스_전체', headers: finalHeaders, rows: finalRows }];
         } else {
             const item = rawData[0];
-            let orderIdx = item.headers.findIndex(h => h && h.trim() === '오더');
-            if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '수량');
-            if (orderIdx < 0) orderIdx = item.headers.findIndex(h => h && h.trim() === '계');
+            const buildRowMeta = createDispatchRowMetaBuilder({
+                dispatchType: item.type,
+                targetDate: item.target_date,
+                headers: item.headers || [],
+            });
 
             const finalData = (item.data || []).filter(r => {
-                if (orderIdx >= 0) {
-                    const val = String(r[orderIdx] || '').trim();
-                    if (!val || val === '0' || val === 'nan' || val === 'None') return false;
-                }
-                return true;
-            }).map(r => validIndices.map(vi => r[vi]));
+                return shouldIncludeDispatchRow(item.headers || [], r, item.type);
+            }).map((r, rowIndex) => {
+                const rowMeta = buildRowMeta(r, rowIndex);
+                const rowData = validIndices.map(vi => r[vi]);
+                return applyDispatchWebCellOverlay({
+                    headers,
+                    row: rowData,
+                    meta: rowMeta,
+                    cellMap: webCellState.cellMap,
+                    enabled: webCellState.enabled,
+                });
+            });
             processedData = [{ sheetName: item.target_date, headers: headers, rows: finalData }];
         }
     }
