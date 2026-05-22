@@ -38,7 +38,7 @@ export async function GET(request) {
         const unifiedHeaders = [
             "구분", "화주", "담당자", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
             "라인(선사명)", "TYPE", "배차정보", "오더(계)", "배차예정", "기타", "아산", "부산",
-            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고"
+            "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고", "특이사항"
         ];
 
         const byDate = {};
@@ -75,27 +75,34 @@ export async function GET(request) {
 
             const itemType = item.type; // 'glovis' or 'mobis'
             // [v5.10.21] 더 정교한 컬럼 매핑 (완전 일치 우선, 그 다음 부분 일치)
-            const getCol = (nameArr) => {
-                // 1. 완전 일치 우선 검색
-                for (let n of nameArr) {
-                    const idx = item.headers.findIndex(h => {
-                        const trimmed = (h || '').replace(/\s+/g, '');
-                        const target = n.replace(/\s+/g, '');
-                        return trimmed === target;
-                    });
+            const normalizeHeader = (value) => (value || '').replace(/\s+/g, '').toUpperCase();
+            const normalizedHeaders = (item.headers || []).map(normalizeHeader);
+            const findHeader = (nameArr, predicate = () => true) => {
+                const targets = nameArr.map(normalizeHeader);
+                for (let target of targets) {
+                    const idx = normalizedHeaders.findIndex((header, i) => predicate(i) && header === target);
                     if (idx >= 0) return idx;
                 }
-                // 2. 부분 일치 검색 (완전 일치가 없을 경우에만)
-                for (let n of nameArr) {
-                    const idx = item.headers.findIndex(h => {
-                        const trimmed = (h || '').replace(/\s+/g, '');
-                        const target = n.replace(/\s+/g, '');
-                        return trimmed.includes(target);
-                    });
+                for (let target of targets) {
+                    const idx = normalizedHeaders.findIndex((header, i) => predicate(i) && header && header.includes(target));
                     if (idx >= 0) return idx;
                 }
                 return -1;
             };
+            const getCol = (nameArr) => {
+                return findHeader(nameArr);
+            };
+            const getColAfter = (nameArr, anchorArr) => {
+                const anchor = getCol(anchorArr);
+                if (anchor < 0) return -1;
+                return findHeader(nameArr, idx => idx > anchor);
+            };
+            const getColBefore = (nameArr, anchorArr) => {
+                const anchor = getCol(anchorArr);
+                if (anchor < 0) return -1;
+                return findHeader(nameArr, idx => idx < anchor);
+            };
+            const firstCol = (...indices) => indices.find(idx => idx >= 0) ?? -1;
 
             const mapCols = {
                 "구분": getCol(["구분"]),
@@ -104,7 +111,9 @@ export async function GET(request) {
                 "작업지": getCol(["작업지"]),
                 "고객사(국가)": itemType === 'glovis' ? getCol(["고객사"]) : getCol(["국가", "국가명"]),
                 "포트(도착항)": itemType === 'glovis' ? getCol(["포트"]) : getCol(["도착항"]),
-                "특이사항(Nomi,구간)": itemType === 'glovis' ? getCol(["특이사항"]) : getCol(["Nomi,구간", "특이사항"]),
+                "특이사항(Nomi,구간)": itemType === 'glovis'
+                    ? firstCol(getCol(["특이사항(Nomi,구간)", "Nomi,구간"]), getColBefore(["특이사항"], ["라인", "선사명", "선사", "TYPE", "T"]))
+                    : getCol(["Nomi,구간"]),
                 "라인(선사명)": itemType === 'glovis' ? getCol(["라인", "선사"]) : getCol(["선사명", "선사"]),
                 "TYPE": getCol(["TYPE", "T"]),
                 "배차정보": getCol(["배차정보"]),
@@ -124,7 +133,8 @@ export async function GET(request) {
                 "BKG2": getCol(["BKG2"]),
                 "BKG3": getCol(["BKG3"]),
                 "TARGET VESSEL": getCol(["TARGET VESSEL", "TARGETVESSEL"]),
-                "비고": getCol(["비고"])
+                "비고": getCol(["비고"]),
+                "특이사항": getColAfter(["특이사항"], ["비고"])
             };
 
             const buildRowMeta = createDispatchRowMetaBuilder({

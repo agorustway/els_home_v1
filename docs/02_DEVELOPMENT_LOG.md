@@ -1,3 +1,21 @@
+## [2026-05-22] 아산 배차판 WEB 입력 폭/공통 특이사항 컬럼 보강 (v5.14.113)
+### 핵심
+- WEB 전용 `BKG1/BKG2/BKG3/TARGET VESSEL/비고` 입력 저장 후 현재 화면 데이터와 저장값 중 가장 긴 값 기준으로 컬럼 폭을 자동 확장하게 했습니다.
+- 글로비스와 모비스 모두 `비고` 오른쪽 `특이사항` 엑셀 컬럼을 같은 의미로 보고, 통합현황 테이블과 엑셀 내보내기에 `비고` 다음 공통 컬럼으로 노출했습니다.
+- 모비스의 새 `특이사항`처럼 오늘 이후 날짜부터 생긴 컬럼도 전체 탭에서 빠지지 않도록 날짜별 헤더를 합산해 표시합니다.
+- 새 `특이사항`은 엑셀 원본 입력값으로 표시하고, WEB 전용 셀 행 서명을 흔들지 않도록 `비고` 오른쪽 특이사항은 서명 안정값에서 제외했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchWebCells.test.mjs`: 37개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "utils/asanDispatchWebCells.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchWebCells.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 자동 동기화 저장시각/완료 피드백 보강 (v5.14.112)
 ### 핵심
 - 자동 동기화 변경 감지를 단순 `mtime` 비교에서 `mtime_ns+파일크기` 서명 비교로 바꿔 저장 감지 누락 가능성을 줄였습니다.

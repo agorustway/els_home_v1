@@ -352,6 +352,45 @@ function makeWebCellClientKey(meta, fieldKey) {
     if (!meta?.rowSignature || !fieldKey) return '';
     return [meta.sourceType, meta.targetDate, meta.rowSignature, fieldKey].join('|');
 }
+function normalizeDispatchHeaderForMerge(value) {
+    return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
+}
+function findMergedHeaderIndex(headers = [], target) {
+    const normalizedTarget = normalizeDispatchHeaderForMerge(target);
+    return headers.findIndex(header => normalizeDispatchHeaderForMerge(header) === normalizedTarget);
+}
+function mergeDispatchHeaders(items = []) {
+    const merged = [];
+    items.forEach(item => {
+        (item.headers || []).forEach(header => {
+            if (!header || findMergedHeaderIndex(merged, header) >= 0) return;
+            merged.push(header);
+        });
+    });
+    return merged;
+}
+function mapDispatchRowToHeaders(row = [], sourceHeaders = [], targetHeaders = []) {
+    return targetHeaders.map(header => {
+        const sourceIdx = findMergedHeaderIndex(sourceHeaders, header);
+        return sourceIdx >= 0 ? row[sourceIdx] : '';
+    });
+}
+function measureDispatchTextWidth(value) {
+    return Array.from(String(value ?? '')).reduce((sum, ch) => {
+        const code = ch.charCodeAt(0);
+        if (code > 0x7f) return sum + 1.75;
+        if (/[MW@#%&]/.test(ch)) return sum + 1.2;
+        if (/[ilI.,'`| ]/.test(ch)) return sum + 0.55;
+        return sum + 1;
+    }, 0);
+}
+function estimateDispatchColumnWidth(header, values = []) {
+    const longest = Math.max(
+        measureDispatchTextWidth(header),
+        ...values.map(measureDispatchTextWidth),
+    );
+    return Math.ceil(Math.min(560, Math.max(80, longest * 8 + 40)));
+}
 function resetScrollChainToTop(target) {
     if (typeof window === 'undefined') return;
     const scrollToTop = (node) => {
@@ -597,12 +636,12 @@ function AsanDispatchContent() {
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
-        const baseHeaders = data[0]?.headers || [];
+        const eligibleItems = data.filter(item => item.target_date <= todayKey);
+        const baseHeaders = mergeDispatchHeaders(eligibleItems);
         const mHeaders = ['날짜', ...baseHeaders];
         const mRows = [];
         const mComments = {};
         const mWebCellRows = [];
-        const eligibleItems = data.filter(item => item.target_date <= todayKey);
         const sorted = [...eligibleItems].sort((a, b) => b.target_date.localeCompare(a.target_date));
         sorted.forEach(item => {
             // 전체 탭 기간 필터: 월간/주간 중 하나만 적용
@@ -613,11 +652,14 @@ function AsanDispatchContent() {
             const dateLabel = `${mm}/${dd}(${day})`;
             (item.data || []).forEach((row, origIdx) => {
                 const newIdx = mRows.length;
-                mRows.push([dateLabel, ...row]);
+                const mappedRow = mapDispatchRowToHeaders(row, item.headers || [], baseHeaders);
+                mRows.push([dateLabel, ...mappedRow]);
                 mWebCellRows.push(item.webCellRows?.[origIdx] || null);
                 Object.entries(item.comments || {}).forEach(([key, val]) => {
                     const [ri, ci] = key.split(':').map(Number);
-                    if (ri === origIdx) mComments[`${newIdx}:${ci + 1}`] = val;
+                    if (ri !== origIdx) return;
+                    const mappedCi = findMergedHeaderIndex(baseHeaders, item.headers?.[ci]);
+                    if (mappedCi >= 0) mComments[`${newIdx}:${mappedCi + 1}`] = val;
                 });
             });
         });
@@ -832,6 +874,21 @@ function AsanDispatchContent() {
         }));
     }, []);
 
+    const expandWebCellColumnWidth = useCallback((fieldKey, nextValue) => {
+        const colIdx = headers.findIndex(header => normalizeDispatchWebCellFieldKey(header) === fieldKey);
+        if (colIdx < 0) return;
+        const header = headers[colIdx];
+        const nextWidth = estimateDispatchColumnWidth(header, [
+            ...allData.map(row => row?.[colIdx] ?? ''),
+            nextValue,
+        ]);
+        setColWidths(prev => {
+            const current = Number(prev[header] || 0);
+            if (current >= nextWidth) return prev;
+            return { ...prev, [header]: nextWidth };
+        });
+    }, [allData, headers]);
+
     const saveWebCellValue = useCallback(async ({ meta, fieldKey, value, previousValue }) => {
         const cellKey = makeWebCellClientKey(meta, fieldKey);
         if (!cellKey || !fieldKey) return previousValue;
@@ -871,6 +928,7 @@ function AsanDispatchContent() {
 
             const savedValue = result.data?.value ?? validation.value;
             updateWebCellValueInData(meta, fieldKey, savedValue);
+            expandWebCellColumnWidth(fieldKey, savedValue);
             setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'saved', message: '저장됨' } }));
             setTimeout(() => {
                 setWebCellStatus(prev => {
@@ -885,7 +943,7 @@ function AsanDispatchContent() {
             setWebCellStatus(prev => ({ ...prev, [cellKey]: { state: 'error', message: error.message || '저장 실패' } }));
             return undefined;
         }
-    }, [updateWebCellValueInData]);
+    }, [expandWebCellColumnWidth, updateWebCellValueInData]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);

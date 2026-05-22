@@ -76,9 +76,21 @@ export function shouldIncludeDispatchRow(headers = [], row = [], dispatchType = 
 
 function stableFieldEntries(headers = [], row = []) {
   return STABLE_FIELD_CANDIDATES.map(([key, candidates]) => {
-    const idx = findDispatchHeaderIndex(headers, candidates);
+    const idx = key === 'nomi'
+      ? findStableNomiIndex(headers)
+      : findDispatchHeaderIndex(headers, candidates);
     return [key, idx >= 0 ? normalizeDispatchCell(row[idx]) : ''];
   });
+}
+
+function findStableNomiIndex(headers = []) {
+  const directIdx = findDispatchHeaderIndex(headers, ['특이사항(Nomi,구간)', 'Nomi,구간']);
+  if (directIdx >= 0) return directIdx;
+
+  const noteIdx = findDispatchHeaderIndex(headers, ['특이사항']);
+  if (noteIdx < 0) return -1;
+  const beforeLineIdx = findDispatchHeaderIndex(headers, ['라인(선사명)', '라인', '선사명', '선사', 'TYPE', 'T']);
+  return beforeLineIdx < 0 || noteIdx < beforeLineIdx ? noteIdx : -1;
 }
 
 function hashStablePayload(payload) {
