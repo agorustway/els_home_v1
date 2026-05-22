@@ -9,6 +9,7 @@ import {
 const DEFAULT_BRANCH_ID = 'asan';
 const WEB_CELL_TABLE = 'branch_dispatch_web_cells';
 const WEB_CELL_SETTINGS_TABLE = 'branch_dispatch_web_column_settings';
+const WEB_CELL_PAGE_SIZE = 1000;
 
 const STABLE_FIELD_CANDIDATES = Object.freeze([
   ['direction', ['구분']],
@@ -343,6 +344,27 @@ export function webCellFieldSummary(headers = []) {
     .filter(Boolean);
 }
 
+async function fetchDispatchWebCells(supabase, { branchId, dispatchTypes, targetDates }) {
+  const selectFields = 'branch_id, dispatch_type, target_date, row_signature, field_key, value, row_index, row_context, updated_at';
+  const cells = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(WEB_CELL_TABLE)
+      .select(selectFields)
+      .eq('branch_id', branchId)
+      .in('dispatch_type', dispatchTypes)
+      .in('target_date', targetDates)
+      .range(from, from + WEB_CELL_PAGE_SIZE - 1);
+
+    if (error) return { data: cells, error };
+    cells.push(...(data || []));
+    if (!data || data.length < WEB_CELL_PAGE_SIZE) return { data: cells, error: null };
+    from += WEB_CELL_PAGE_SIZE;
+  }
+}
+
 function isMissingWebCellTableError(error) {
   const code = String(error?.code || '');
   const message = String(error?.message || '');
@@ -384,12 +406,11 @@ export async function loadDispatchWebCellState(supabase, records = [], { branchI
       return { ...baseState, enabled: true, settings, reason: 'no_records' };
     }
 
-    const { data: cells, error: cellsError } = await supabase
-      .from(WEB_CELL_TABLE)
-      .select('branch_id, dispatch_type, target_date, row_signature, field_key, value, row_index, row_context, updated_at')
-      .eq('branch_id', branchId)
-      .in('dispatch_type', dispatchTypes)
-      .in('target_date', targetDates);
+    const { data: cells, error: cellsError } = await fetchDispatchWebCells(supabase, {
+      branchId,
+      dispatchTypes,
+      targetDates,
+    });
 
     if (cellsError) {
       if (isMissingWebCellTableError(cellsError)) return { ...baseState, settings, reason: 'not_configured' };

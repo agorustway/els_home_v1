@@ -17,6 +17,20 @@
 - `web/tests/driverMapCamera.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
+## [2026-05-22] 아산 배차판 통합 WEB 셀 페이지 조회 보강 (v5.14.126)
+### 핵심
+- 운영 통합현황에서 모비스 개별 행과 같은 `row_signature`가 내려오는데도 BKG/비고가 빈칸으로 보이는 현상을 확인했습니다.
+- 통합현황은 모든 날짜·양쪽 원본의 WEB 셀을 한 번에 읽어 Supabase 기본 1000건 응답 제한에 걸릴 수 있어, `branch_dispatch_web_cells` 조회를 1000건 단위 페이지네이션으로 바꿨습니다.
+- 기존 row_signature/행번호 fallback은 유지하면서, 통합현황도 최근 저장값까지 끝까지 읽어 글로비스·모비스·통합의 표시 기준을 맞췄습니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/tests/asanDispatchWebCells.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] Vercel 배포 함수 크기 초과 보정 (v5.14.124)
 ### 핵심
 - 운영 Vercel 프로젝트 배포 중 `api/els/login`, `api/els/run`, `api/els/parse-xlsx` 등이 로컬 `elsbot/dist`와 임시 브라우저 프로필까지 함수 번들에 포함해 250MB 제한을 초과했습니다.

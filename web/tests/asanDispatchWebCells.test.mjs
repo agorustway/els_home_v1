@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   normalizeDispatchWebCellFieldKey,
@@ -304,4 +305,12 @@ test('오버레이 활성화 후 WEB 전용 컬럼은 DB 값만 표시하고 엑
   assert.equal(applied[9], 'WEB-BKG');
   assert.equal(applied[12], '');
   assert.equal(applied[13], '');
+});
+
+test('WEB 셀 로더는 통합현황 전체 날짜 조회 시 Supabase 1000건 제한을 넘겨 읽는다', () => {
+  const source = readFileSync(new URL('../utils/asanDispatchWebCells.mjs', import.meta.url), 'utf8');
+
+  assert.match(source, /const WEB_CELL_PAGE_SIZE = 1000;/);
+  assert.match(source, /\.range\(from, from \+ WEB_CELL_PAGE_SIZE - 1\)/);
+  assert.match(source, /from \+= WEB_CELL_PAGE_SIZE;/);
 });

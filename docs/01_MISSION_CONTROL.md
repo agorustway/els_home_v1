@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.125 / APK v5.11.26)
+# ELS MISSION CONTROL (v5.14.126 / APK v5.11.26)
 
-> 최신 업데이트: Android 오버레이 표시 전환 시 운행시간이 늦게 뜨는 문제와 native 속도 튐 저장을 보정했습니다.
+> 최신 업데이트: 아산 배차판 통합현황이 WEB 셀 1000건 초과 저장값도 끝까지 읽도록 페이지네이션을 추가했습니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.125
+- **웹 버전**: v5.14.126
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.26
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -21,6 +21,7 @@
   - WEB 전용 셀 행 식별은 통합/글로비스/모비스/엑셀 내보내기 모두 `col_12 -> T`, `col_15 -> TYPE` 헤더 복구 후 같은 서명으로 계산한다.
   - 잘못 저장된 모비스 `BKG1/BKG1/BKG3` 헤더는 표시/저장 전 `BKG1/BKG2/BKG3`로 정리하고, 기존 레거시 row_signature 저장값도 조회 fallback으로 살린다.
   - WEB 전용 셀은 row_signature가 흔들려도 같은 원본/날짜/행번호/컬럼의 최신 저장값을 행 컨텍스트 확인 후 복구하고, 저장 API는 기존 행번호 저장값을 현재 서명으로 재매핑한다.
+  - 통합현황처럼 전체 날짜 WEB 셀을 읽는 경로는 Supabase 기본 1000건 제한에 걸리지 않도록 페이지 단위로 끝까지 조회한다.
   - 아산 배차판 `BKG1/BKG2/BKG3/TARGET VESSEL/비고`는 컷오버 후 엑셀 원본 칸을 무시하고 WEB DB 오버레이(`branch_dispatch_web_cells`)만 표시·저장한다.
   - WEB 입력값은 `branch_dispatch_web_cell_history`에 변경 전/후 값, 사용자, 시각, 행 컨텍스트를 남긴다.
   - BKG/TARGET VESSEL은 영문·숫자·기호만, 비고는 한글·영문·숫자·기호를 허용한다.
@@ -68,9 +69,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-125: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS 안정화
+- [x] v5.14.64-126: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS 안정화
 
 ## RECENT CHANGES
+- **v5.14.126**: 아산 배차판 통합현황 WEB 셀 조회가 Supabase 기본 1000건 제한으로 최근 BKG/비고 저장값을 놓치지 않도록 `branch_dispatch_web_cells`를 1000건 단위로 페이지 조회한다.
 - **v5.14.125**: Android 오버레이가 앱 최소화/표시 전환으로 살아난 경우에도 `startNativeTimer()`와 위치 루프를 즉시 재가동한다. 첫 렌더에서 운행시간이 빈칸으로 보이지 않게 하고, 앱 종료는 `moveTaskToBack(true)`로 먼저 숨긴 뒤 정리해 체감 버벅임을 줄였다. 2026-05-21~22 12가0140 운행 3건은 시작/종료 마커와 경로 연속성은 정상이며, 저장 속도 max 160km/h 튐만 native 속도 보정으로 대응했다. APK v5.11.26.
 - **v5.14.124**: Vercel 프로덕션 배포가 `api/els/*` 함수 크기 250MB 제한에 막히던 문제를 보정했다. Next output file tracing에서 `../elsbot/**/*`와 임시 엑셀 캐시를 제외해 로컬 봇 실행파일/프로필이 서버리스 번들에 포함되지 않게 했다.
 - **v5.14.123**: 아산 배차판 WEB BKG/비고 조회가 canonical/legacy row_signature 모두 실패해도 같은 원본·날짜·행번호·컬럼 최신값을 복구한다. 저장 API도 같은 행번호 기존값을 새 row_signature로 갱신해 글로비스/모비스/통합현황 간 입력값 누락을 막는다.
@@ -78,12 +80,10 @@
 - **v5.14.121**: 아산 배차판 모바일 기간 선택 영역에서 데스크탑용 `flex: 0 0 240px`가 세로 높이로 적용되던 문제를 막아 셀렉트 위아래 빈 공간을 제거했다.
 - **v5.14.120**: 아산 배차판 WEB 셀 오버레이가 기존 익명 TYPE 헤더 기준으로 저장된 레거시 row_signature도 조회한다. 모비스 중복 `BKG1/BKG1/BKG3` 헤더를 `BKG1/BKG2/BKG3`로 정리하고, WEB 컬럼 폭을 저장값 로드 시에도 자동 확장한다.
 - **v5.14.119**: 아산 배차판 WEB 전용 셀의 행 서명 생성 전에 글로비스 `col_12`와 모비스 `col_15` 익명 TYPE 헤더를 공통 복구한다. 통합현황, 글로비스, 모비스, 엑셀 내보내기가 같은 저장값을 공유한다.
-- **v5.14.118**: 아산 배차판 빠른 날짜 탭/일별·주별·월별 선택지는 미래 여부가 아니라 유효 오더 기준으로 열리게 했다. 정상 선기입 날짜는 조회 가능하고, 오류/문자/0 오더만 있는 날짜는 비활성화된다.
-- **v5.14.117**: 아산 배차판 일별/주별/월별/전체 기간 선택 드롭다운을 데스크탑에서 버튼 바로 옆에 붙이고 240px 폭으로 줄였다. 모바일은 기존 전체 폭 선택을 유지했다.
 ## VERIFICATION
-- `node --test web/tests/driverMapCamera.test.mjs`: 11개 통과
-- `npm.cmd run lint -- tests/driverMapCamera.test.mjs`: 통과
-- `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK/내부 assets v5.11.26/versionCode 5167 확인
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
