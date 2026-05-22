@@ -1,3 +1,16 @@
+## [2026-05-22] 아산 배차판 기간 선택 위치 보정 (v5.14.117)
+### 핵심
+- 배차판 누적 조회의 `일별/주별/월별/전체` 버튼과 날짜/기간 드롭다운이 데스크탑에서 멀리 떨어지지 않도록 같은 흐름에 붙였습니다.
+- 드롭다운 폭을 240px로 줄여 버튼 옆에서 바로 선택하게 하고, 모바일은 기존처럼 전체 폭 선택을 유지했습니다.
+- 새 배치 기준에 맞춰 아산 배차판 회귀 테스트의 CSS 단언을 갱신했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 30개 통과
+- `npm.cmd run lint`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-22] 아산 배차판 누적 날짜 탐색 UI 정리 (v5.14.116)
 ### 핵심
 - 배차판 날짜 탭이 누적 DB의 모든 날짜를 펼치지 않도록 선택 날짜 기준 빠른 탭 7개만 표시하게 했습니다.

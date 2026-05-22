@@ -729,7 +729,7 @@
 /* ===== 날짜 탭 ===== */
 .periodPickerBar {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 8px;
     padding: 6px 0;
@@ -775,14 +775,16 @@
 
 .periodSelectWrap {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
-    min-width: min(360px, 42vw);
+    flex: 0 0 240px;
+    width: 240px;
+    min-width: 0;
 }
 
 .periodSelect {
     width: 100%;
-    max-width: 360px;
+    max-width: 240px;
     height: 31px;
     padding: 0 30px 0 10px;
     border: 1px solid #cbd5e1;

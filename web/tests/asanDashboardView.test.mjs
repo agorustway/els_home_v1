@@ -501,7 +501,9 @@ test('아산 전체 탭 기간 선택지는 오늘 이후 사전기입 날짜를
   assert.match(source, /periodOptions\.months\.map\(month =>/);
   assert.match(css, /\.periodPickerBar\s*{[\s\S]*display: flex;/);
   assert.match(css, /\.periodModeGroup\s*{[\s\S]*display: inline-flex;/);
-  assert.match(css, /\.periodSelect\s*{[\s\S]*max-width: 360px;/);
+  assert.match(css, /\.periodPickerBar\s*{[\s\S]*justify-content: flex-start;/);
+  assert.match(css, /\.periodSelectWrap\s*{[\s\S]*flex: 0 0 240px;/);
+  assert.match(css, /\.periodSelect\s*{[\s\S]*max-width: 240px;/);
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.periodModeGroup\s*{[\s\S]*grid-template-columns: repeat\(4, 1fr\);/);
 });
 
