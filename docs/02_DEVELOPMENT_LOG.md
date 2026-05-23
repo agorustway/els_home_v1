@@ -19,6 +19,7 @@
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
+
 ## [2026-05-23] GLAPS 상세배차내역 탭 1차 구현 (v5.14.139)
 ### 배경
 - GLAPS는 상차-경유(작업)-하차 기준의 업로드 구조를 요구하지만, 현재 아산 배차판은 지역별 배차칸에 `민경3, 이지1`처럼 1차 접수 수량이 묶여 있습니다.
@@ -40,6 +41,47 @@
 - `web/app/(main)/employees/branches/asan/page.js`
 - `web/app/(main)/employees/branches/asan/dispatch.module.css`
 - `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-23] 상세배차 아산 지역칸 상차지 선택필요 보정 (v5.14.142)
+### 핵심
+- 상세배차내역에서 `아산` 지역칸을 자동 `아산` 상차지로 확정하던 동작을 제거했습니다.
+- `아산` 지역칸은 실제 아산 상차가 아니라 배차 접수 분류로 쓰일 수 있으므로 `기타/철송`, `기타`, `중부`와 같이 상차지 선택필요 상태로 둡니다.
+- 선택 목록에는 `아산` 값을 남겨 실제로 아산 상차가 맞는 경우에만 사용자가 직접 고를 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 38개 통과
+- `npm.cmd run lint -- "utils/asanDispatchDetailLines.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-23] GLAPS 마스터 원장 1.5단계 구현 (v5.14.141)
+### 핵심
+- `GLAPS_마스터코드.xlsx`를 외부 원본 그대로 쓰지 않고, 아산 WEB DB의 버전 원장(`glaps_master_versions`)과 운송경로(`glaps_transport_routes`), 항목매핑(`glaps_master_aliases`)으로 적재하는 구조를 추가했습니다.
+- 아산지점 상단에 `GLAPS마스터` 탭을 추가해 NAS 마스터 반영, 파일 업로드, 운송경로/항목매핑 수정양식 내보내기, 수정양식 재업로드를 할 수 있게 했습니다.
+- 화면에 `상세배차 → 매칭쿼리 → 운송경로` 연결도를 표시해 최종 목표인 상세배차 운송경로코드 도출 기준을 직접 확인할 수 있게 했습니다.
+- 운송경로 매칭 기준은 `상세배차.상차지 = route.start_location_name`, `상세배차.경유지(ELS) = route.waypoint_els_name`, `상세배차.하차지(선적) = route.destination_name`입니다.
+### 운영 메모
+- 운영 DB에는 `web/supabase_sql/20260523_asan_glaps_master_codes.sql` 적용이 먼저 필요합니다.
+- DB 적용 후 `GLAPS마스터 > NAS 마스터 반영` 버튼으로 `/아산지점/A_운송실무/GLAPS_마스터코드.xlsx`를 바로 파싱할 수 있습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 37개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---

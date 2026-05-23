@@ -631,6 +631,48 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /if \(normalizedRegion === '부곡'\) return '의왕ICD';/);
 });
 
+test('아산지점은 GLAPS 마스터 원장 화면과 DB 적용 SQL을 제공한다', () => {
+  const pageSource = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
+    'utf8',
+  );
+  const masterSource = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/AsanGlapsMaster.js'),
+    'utf8',
+  );
+  const apiSource = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/glaps/master/route.js'),
+    'utf8',
+  );
+  const templateSource = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/glaps/master/template/route.js'),
+    'utf8',
+  );
+  const sql = fs.readFileSync(
+    path.join(webRoot, 'supabase_sql/20260523_asan_glaps_master_codes.sql'),
+    'utf8',
+  );
+  const util = fs.readFileSync(
+    path.join(webRoot, 'utils/glapsMasterData.mjs'),
+    'utf8',
+  );
+
+  assert.match(pageSource, /loadAsanGlapsMaster/);
+  assert.match(pageSource, /GLAPS마스터/);
+  assert.match(masterSource, /NAS 마스터 반영/);
+  assert.match(masterSource, /수정양식 내보내기/);
+  assert.match(masterSource, /matchQuery/);
+  assert.match(util, /상세배차\.상차지 = route\.start_location_name/);
+  assert.match(apiSource, /parseGlapsMasterSheets/);
+  assert.match(apiSource, /DEFAULT_GLAPS_MASTER_PATH = '\/아산지점\/A_운송실무\/GLAPS_마스터코드\.xlsx'/);
+  assert.match(templateSource, /GLAPS_ROUTE_TEMPLATE_HEADERS/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_master_versions/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_transport_routes/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_master_aliases/);
+  assert.match(sql, /ALTER TABLE public\.glaps_transport_routes ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /REVOKE ALL ON TABLE public\.glaps_transport_routes FROM anon, authenticated/);
+});
+
 test('아산 배차 NAS 스케줄러는 컨테이너 재시작 후 DB 최신 파일이면 전체 파싱을 건너뛴다', () => {
   const core = fs.readFileSync(
     path.join(webRoot, '../docker/els-backend/app_core.py'),

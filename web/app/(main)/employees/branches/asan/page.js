@@ -21,10 +21,11 @@ import {
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
-const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
+const MAIN_TABS = ['dispatch', 'shipping', 'performance', 'glaps-master'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
 
 const loadAsanShipping = () => import('./AsanShipping');
+const loadAsanGlapsMaster = () => import('./AsanGlapsMaster');
 const loadAsanSummaryPerformance = () => import('./AsanSummaryPerformance');
 const loadAsanMonthlyPerformance = () => import('./AsanMonthlyPerformance');
 const loadAsanAnnualPerformance = () => import('./AsanAnnualPerformance');
@@ -34,6 +35,7 @@ function AsanModuleLoading() {
 }
 
 const AsanShipping = dynamic(loadAsanShipping, { ssr: false, loading: AsanModuleLoading });
+const AsanGlapsMaster = dynamic(loadAsanGlapsMaster, { ssr: false, loading: AsanModuleLoading });
 const AsanSummaryPerformance = dynamic(loadAsanSummaryPerformance, { ssr: false, loading: AsanModuleLoading });
 const AsanMonthlyPerformance = dynamic(loadAsanMonthlyPerformance, { ssr: false, loading: AsanModuleLoading });
 const AsanAnnualPerformance = dynamic(loadAsanAnnualPerformance, { ssr: false, loading: AsanModuleLoading });
@@ -41,6 +43,7 @@ const AsanAnnualPerformance = dynamic(loadAsanAnnualPerformance, { ssr: false, l
 const ASAN_MAIN_TAB_LOADERS = {
     shipping: [loadAsanShipping],
     performance: [loadAsanSummaryPerformance, loadAsanMonthlyPerformance, loadAsanAnnualPerformance],
+    'glaps-master': [loadAsanGlapsMaster],
 };
 
 const ASAN_PERFORMANCE_TAB_LOADERS = {
@@ -1857,6 +1860,15 @@ export default function AsanBranchPage() {
                     >
                         실적관리
                     </button>
+                    <button
+                        className={`${styles.mainTabBtn} ${activeMainTab === 'glaps-master' ? styles.mainTabBtnActive : ''}`}
+                        onClick={() => switchMainTab('glaps-master')}
+                        onMouseEnter={() => prefetchMainTab('glaps-master')}
+                        onFocus={() => prefetchMainTab('glaps-master')}
+                        onTouchStart={() => prefetchMainTab('glaps-master')}
+                    >
+                        GLAPS마스터
+                    </button>
                 </div>
             </div>
             
@@ -1865,6 +1877,7 @@ export default function AsanBranchPage() {
                 {activeMainTab === 'dispatch' && <AsanDispatchContent />}
                 {activeMainTab === 'shipping' && <AsanShipping />}
                 {activeMainTab === 'performance' && <AsanPerformanceManagement />}
+                {activeMainTab === 'glaps-master' && <AsanGlapsMaster />}
             </div>
         </div>
     );

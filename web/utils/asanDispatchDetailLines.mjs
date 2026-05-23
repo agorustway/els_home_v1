@@ -48,7 +48,7 @@ const DISPATCH_REGION_HEADERS = Object.freeze([
   '울산',
 ]);
 
-const MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '중부']);
+const MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '아산', '중부']);
 
 function cleanText(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -130,7 +130,6 @@ export function resolveGlapsStartLocation(region, suffix = '') {
   if (normalizedRegion === '부곡') return '의왕ICD';
   if (normalizedRegion === '광양') return '광양항';
   if (normalizedRegion === '평택') return '평택항';
-  if (normalizedRegion === '아산') return '아산';
   return '';
 }
 

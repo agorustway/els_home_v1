@@ -1,0 +1,382 @@
+export const DEFAULT_GLAPS_BRANCH_ID = 'asan';
+
+export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
+  'id',
+  'route_code',
+  'route_name',
+  'start_location_name',
+  'waypoint_name',
+  'waypoint_els_name',
+  'destination_name',
+  'review_status',
+  'review_note',
+  '삭제(Y)',
+]);
+
+export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
+  'id',
+  'alias_type',
+  'source_name',
+  'els_name',
+  'glaps_name',
+  'glaps_code',
+  'route_code',
+  'review_status',
+  'review_note',
+  '삭제(Y)',
+]);
+
+export const GLAPS_REVIEW_STATUS_LABELS = Object.freeze({
+  ready: '확정',
+  needs_mapping: '조정필요',
+  missing_route_code: '코드없음',
+});
+
+const ROUTE_HEADER_CANDIDATES = Object.freeze({
+  routeCode: ['운송경로코드', '경로코드', 'ROUTE CODE', 'ROUTECODE'],
+  routeName: ['운송경로명', '경로명', 'ROUTE NAME', 'ROUTENAME'],
+  startLocationName: ['상차지', '상차지명', '출발지', '출발지명'],
+  waypointName: ['경유지', '경유지명', '작업지', '작업지명'],
+  waypointElsName: ['경유지(ELS)', 'ELS경유지', 'ELS작업지', '우리작업지'],
+  destinationName: ['하차지', '하차지명', '도착지', '도착지명', '도착항', '선적'],
+  reviewNote: ['비고', '메모', '조정안내'],
+});
+
+const ROUTE_TEMPLATE_ALIASES = Object.freeze({
+  id: ['id', 'ID'],
+  routeCode: ['route_code', '운송경로코드', '경로코드'],
+  routeName: ['route_name', '운송경로명', '경로명'],
+  startLocationName: ['start_location_name', '상차지'],
+  waypointName: ['waypoint_name', '경유지', '작업지'],
+  waypointElsName: ['waypoint_els_name', '경유지(ELS)'],
+  destinationName: ['destination_name', '하차지', '선적'],
+  reviewStatus: ['review_status', '매칭상태'],
+  reviewNote: ['review_note', '조정안내', '비고'],
+  deleteFlag: ['삭제(Y)', '삭제', 'delete'],
+});
+
+const ALIAS_TEMPLATE_ALIASES = Object.freeze({
+  id: ['id', 'ID'],
+  aliasType: ['alias_type', '항목', '구분'],
+  sourceName: ['source_name', '원본명', '배차판명'],
+  elsName: ['els_name', 'ELS명', 'ELS'],
+  glapsName: ['glaps_name', 'GLAPS명', '마스터명'],
+  glapsCode: ['glaps_code', 'GLAPS코드', '코드'],
+  routeCode: ['route_code', '운송경로코드'],
+  reviewStatus: ['review_status', '매칭상태'],
+  reviewNote: ['review_note', '조정안내', '비고'],
+  deleteFlag: ['삭제(Y)', '삭제', 'delete'],
+});
+
+export function cleanGlapsText(value) {
+  return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+}
+
+export function normalizeGlapsKey(value) {
+  return cleanGlapsText(value).replace(/[()\[\]{}_\-\s]/g, '').toUpperCase();
+}
+
+function routePartKey(value) {
+  return cleanGlapsText(value).replace(/\s+/g, '').toUpperCase();
+}
+
+function isElsHeader(value) {
+  return normalizeGlapsKey(value).includes('ELS');
+}
+
+export function findGlapsHeaderIndex(headers = [], candidates = [], options = {}) {
+  const normalizedHeaders = headers.map(normalizeGlapsKey);
+  const normalizedCandidates = candidates.map(normalizeGlapsKey).filter(Boolean);
+  const predicate = typeof options.predicate === 'function' ? options.predicate : () => true;
+
+  for (const candidate of normalizedCandidates) {
+    const idx = normalizedHeaders.findIndex((header, i) => header === candidate && predicate(headers[i], i));
+    if (idx >= 0) return idx;
+  }
+  for (const candidate of normalizedCandidates) {
+    const idx = normalizedHeaders.findIndex((header, i) => header && header.includes(candidate) && predicate(headers[i], i));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function findRouteHeaderRowIndex(rows = []) {
+  const scanRows = rows.slice(0, 12);
+  for (let idx = 0; idx < scanRows.length; idx += 1) {
+    const row = scanRows[idx] || [];
+    const hasCode = findGlapsHeaderIndex(row, ROUTE_HEADER_CANDIDATES.routeCode) >= 0;
+    const hasName = findGlapsHeaderIndex(row, ROUTE_HEADER_CANDIDATES.routeName) >= 0;
+    const hasWaypointEls = findGlapsHeaderIndex(row, ROUTE_HEADER_CANDIDATES.waypointElsName) >= 0;
+    if ((hasCode && hasName) || (hasName && hasWaypointEls)) return idx;
+  }
+  return -1;
+}
+
+function getRowValue(row, idx) {
+  return idx >= 0 ? cleanGlapsText(row[idx]) : '';
+}
+
+export function inferGlapsRouteParts(routeName = '') {
+  const text = cleanGlapsText(routeName);
+  if (!text) return { startLocationName: '', waypointName: '', destinationName: '' };
+  const parts = text.split(' ').filter(Boolean);
+  if (parts.length < 3) {
+    return { startLocationName: '', waypointName: text, destinationName: '' };
+  }
+  return {
+    startLocationName: parts[0],
+    waypointName: parts.slice(1, -1).join(' '),
+    destinationName: parts[parts.length - 1],
+  };
+}
+
+function buildRawPayload(headers = [], row = []) {
+  return headers.reduce((payload, header, idx) => {
+    const key = cleanGlapsText(header) || `col_${idx + 1}`;
+    payload[key] = cleanGlapsText(row[idx]);
+    return payload;
+  }, {});
+}
+
+export function buildGlapsRouteFingerprint({
+  startLocationName = '',
+  waypointElsName = '',
+  waypointName = '',
+  destinationName = '',
+} = {}) {
+  return [
+    routePartKey(startLocationName),
+    routePartKey(waypointElsName || waypointName),
+    routePartKey(destinationName),
+  ].join('|');
+}
+
+export function getGlapsRouteReviewStatus(route = {}) {
+  if (!cleanGlapsText(route.routeCode)) return 'missing_route_code';
+  if (!cleanGlapsText(route.startLocationName) || !cleanGlapsText(route.destinationName)) return 'needs_mapping';
+  if (!cleanGlapsText(route.waypointElsName)) return 'needs_mapping';
+  return 'ready';
+}
+
+function normalizeReviewStatus(value, fallback = 'needs_mapping') {
+  const normalized = cleanGlapsText(value).toLowerCase();
+  if (['ready', '확정', '정상'].includes(normalized)) return 'ready';
+  if (['missing_route_code', '코드없음', '코드 없음'].includes(normalized)) return 'missing_route_code';
+  if (['needs_mapping', '조정필요', '조정 필요', '확인필요', '확인 필요'].includes(normalized)) return 'needs_mapping';
+  return fallback;
+}
+
+function buildRouteColumns(headers = []) {
+  return {
+    routeCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeCode),
+    routeName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeName),
+    startLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.startLocationName),
+    waypointName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointName, {
+      predicate: (header) => !isElsHeader(header),
+    }),
+    waypointElsName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointElsName),
+    destinationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.destinationName),
+    reviewNote: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.reviewNote),
+  };
+}
+
+export function parseGlapsRouteSheet(sheet = {}) {
+  const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
+  const headerRowIndex = findRouteHeaderRowIndex(rows);
+  if (headerRowIndex < 0) return [];
+
+  const headers = rows[headerRowIndex].map(cleanGlapsText);
+  const cols = buildRouteColumns(headers);
+  const routes = [];
+
+  rows.slice(headerRowIndex + 1).forEach((row, offset) => {
+    const sourceRowNumber = headerRowIndex + offset + 2;
+    const routeCode = getRowValue(row, cols.routeCode);
+    const routeName = getRowValue(row, cols.routeName);
+    if (!routeCode && !routeName) return;
+
+    const inferred = inferGlapsRouteParts(routeName);
+    const route = {
+      routeCode,
+      routeName,
+      startLocationName: getRowValue(row, cols.startLocationName) || inferred.startLocationName,
+      waypointName: getRowValue(row, cols.waypointName) || inferred.waypointName,
+      waypointElsName: getRowValue(row, cols.waypointElsName),
+      destinationName: getRowValue(row, cols.destinationName) || inferred.destinationName,
+      reviewNote: getRowValue(row, cols.reviewNote),
+      sourceSheet: cleanGlapsText(sheet.name || '운송경로'),
+      sourceRowNumber,
+      rawPayload: buildRawPayload(headers, row),
+    };
+
+    route.routeFingerprint = buildGlapsRouteFingerprint(route);
+    route.reviewStatus = getGlapsRouteReviewStatus(route);
+    routes.push(route);
+  });
+
+  return routes;
+}
+
+function findRouteCandidateSheet(sheets = []) {
+  const routeNameSheet = sheets.find(sheet => cleanGlapsText(sheet.name).includes('운송경로'));
+  if (routeNameSheet) return routeNameSheet;
+  return sheets.find(sheet => findRouteHeaderRowIndex(sheet.rows || []) >= 0) || null;
+}
+
+function aliasKey(alias) {
+  return [
+    cleanGlapsText(alias.aliasType),
+    routePartKey(alias.sourceName),
+    routePartKey(alias.elsName),
+    cleanGlapsText(alias.routeCode),
+  ].join('|');
+}
+
+export function buildGlapsAliasesFromRoutes(routes = []) {
+  const aliases = new Map();
+  const addAlias = (alias) => {
+    if (!alias.sourceName && !alias.elsName && !alias.glapsName) return;
+    const normalized = {
+      aliasType: alias.aliasType,
+      sourceName: cleanGlapsText(alias.sourceName),
+      elsName: cleanGlapsText(alias.elsName),
+      glapsName: cleanGlapsText(alias.glapsName),
+      glapsCode: cleanGlapsText(alias.glapsCode),
+      routeCode: cleanGlapsText(alias.routeCode),
+      reviewStatus: normalizeReviewStatus(alias.reviewStatus, cleanGlapsText(alias.elsName) ? 'ready' : 'needs_mapping'),
+      reviewNote: cleanGlapsText(alias.reviewNote),
+    };
+    aliases.set(aliasKey(normalized), normalized);
+  };
+
+  routes.forEach((route) => {
+    addAlias({
+      aliasType: 'start',
+      sourceName: route.startLocationName,
+      elsName: route.startLocationName,
+      glapsName: route.startLocationName,
+      routeCode: route.routeCode,
+      reviewStatus: route.startLocationName ? 'ready' : 'needs_mapping',
+    });
+    addAlias({
+      aliasType: 'waypoint',
+      sourceName: route.waypointName || route.waypointElsName,
+      elsName: route.waypointElsName || route.waypointName,
+      glapsName: route.waypointName || route.waypointElsName,
+      routeCode: route.routeCode,
+      reviewStatus: route.waypointElsName ? 'ready' : 'needs_mapping',
+    });
+    addAlias({
+      aliasType: 'destination',
+      sourceName: route.destinationName,
+      elsName: route.destinationName,
+      glapsName: route.destinationName,
+      routeCode: route.routeCode,
+      reviewStatus: route.destinationName ? 'ready' : 'needs_mapping',
+    });
+  });
+
+  return [...aliases.values()];
+}
+
+export function summarizeGlapsRoutes(routes = []) {
+  const byStatus = routes.reduce((acc, route) => {
+    acc[route.reviewStatus] = (acc[route.reviewStatus] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    total: routes.length,
+    ready: byStatus.ready || 0,
+    needsMapping: byStatus.needs_mapping || 0,
+    missingRouteCode: byStatus.missing_route_code || 0,
+  };
+}
+
+export function parseGlapsMasterSheets(sheets = []) {
+  const routeSheet = findRouteCandidateSheet(sheets);
+  const routes = routeSheet ? parseGlapsRouteSheet(routeSheet) : [];
+  const aliases = buildGlapsAliasesFromRoutes(routes);
+  return {
+    routes,
+    aliases,
+    summary: summarizeGlapsRoutes(routes),
+    sourceSheets: sheets.map(sheet => cleanGlapsText(sheet.name)).filter(Boolean),
+    routeSheetName: routeSheet?.name || '',
+  };
+}
+
+function findTemplateHeaderRowIndex(rows = [], aliases = {}) {
+  const keys = Object.values(aliases).flat();
+  for (let idx = 0; idx < Math.min(rows.length, 8); idx += 1) {
+    const row = rows[idx] || [];
+    const matches = keys.filter(key => findGlapsHeaderIndex(row, [key]) >= 0).length;
+    if (matches >= 3) return idx;
+  }
+  return -1;
+}
+
+function buildTemplateColumns(headers = [], aliases = {}) {
+  return Object.fromEntries(Object.entries(aliases).map(([key, candidates]) => [
+    key,
+    findGlapsHeaderIndex(headers, candidates),
+  ]));
+}
+
+function templateRowsFromSheet(sheet = {}, aliases = {}) {
+  const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
+  const headerRowIndex = findTemplateHeaderRowIndex(rows, aliases);
+  if (headerRowIndex < 0) return [];
+  const headers = rows[headerRowIndex].map(cleanGlapsText);
+  const cols = buildTemplateColumns(headers, aliases);
+  return rows.slice(headerRowIndex + 1)
+    .map((row, offset) => ({ row, cols, sourceRowNumber: headerRowIndex + offset + 2 }))
+    .filter(({ row }) => row.some(cell => cleanGlapsText(cell)));
+}
+
+export function parseGlapsRouteTemplateSheets(sheets = []) {
+  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ROUTE_TEMPLATE_ALIASES).map(({ row, cols, sourceRowNumber }) => {
+    const route = {
+      id: getRowValue(row, cols.id),
+      routeCode: getRowValue(row, cols.routeCode),
+      routeName: getRowValue(row, cols.routeName),
+      startLocationName: getRowValue(row, cols.startLocationName),
+      waypointName: getRowValue(row, cols.waypointName),
+      waypointElsName: getRowValue(row, cols.waypointElsName),
+      destinationName: getRowValue(row, cols.destinationName),
+      reviewNote: getRowValue(row, cols.reviewNote),
+      deleteFlag: getRowValue(row, cols.deleteFlag).toUpperCase() === 'Y',
+      sourceSheet: cleanGlapsText(sheet.name),
+      sourceRowNumber,
+    };
+    route.routeFingerprint = buildGlapsRouteFingerprint(route);
+    route.reviewStatus = normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getGlapsRouteReviewStatus(route));
+    return route;
+  }));
+}
+
+export function parseGlapsAliasTemplateSheets(sheets = []) {
+  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ALIAS_TEMPLATE_ALIASES).map(({ row, cols, sourceRowNumber }) => ({
+    id: getRowValue(row, cols.id),
+    aliasType: getRowValue(row, cols.aliasType) || 'waypoint',
+    sourceName: getRowValue(row, cols.sourceName),
+    elsName: getRowValue(row, cols.elsName),
+    glapsName: getRowValue(row, cols.glapsName),
+    glapsCode: getRowValue(row, cols.glapsCode),
+    routeCode: getRowValue(row, cols.routeCode),
+    reviewStatus: normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getRowValue(row, cols.elsName) ? 'ready' : 'needs_mapping'),
+    reviewNote: getRowValue(row, cols.reviewNote),
+    deleteFlag: getRowValue(row, cols.deleteFlag).toUpperCase() === 'Y',
+    sourceSheet: cleanGlapsText(sheet.name),
+    sourceRowNumber,
+  })));
+}
+
+export function getGlapsRouteMatchQuery() {
+  return [
+    "branch_id = 'asan'",
+    'active_version = true',
+    '상세배차.상차지 = route.start_location_name',
+    '상세배차.경유지(ELS) = route.waypoint_els_name',
+    '상세배차.하차지(선적) = route.destination_name',
+  ];
+}
