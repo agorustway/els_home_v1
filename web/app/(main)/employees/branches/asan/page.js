@@ -1028,7 +1028,7 @@ function AsanDispatchContent() {
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
-            glapsPortCode: getGlapsAliasCode(glapsAliasMaps.port, line.port),
+            glapsPortCode: getGlapsAliasCode(glapsAliasMaps.port, line.port) || line.port || '',
             glapsLineCode: getGlapsAliasCode(glapsAliasMaps.line, line.line),
             glapsTypeCode: getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
                 || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType),

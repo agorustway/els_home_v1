@@ -623,6 +623,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /glapsDetailLookup/);
   assert.match(source, /buildGlapsRouteFingerprint/);
   assert.match(source, /buildGlapsAliasCodeMap/);
+  assert.match(source, /glapsPortCode: getGlapsAliasCode\(glapsAliasMaps\.port, line\.port\) \|\| line\.port \|\| ''/);
   assert.match(source, /mainView === 'detail'/);
   assert.match(source, /상세배차내역/);
   assert.match(source, /상세배차수량/);
