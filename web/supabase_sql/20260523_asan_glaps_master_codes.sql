@@ -23,6 +23,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_glaps_master_versions_active
     ON public.glaps_master_versions (branch_id)
     WHERE active;
 
+ALTER TABLE public.glaps_master_versions
+    ADD COLUMN IF NOT EXISTS sheet_row_count INTEGER NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS public.glaps_transport_routes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     branch_id TEXT NOT NULL DEFAULT 'asan',
@@ -47,6 +50,24 @@ CREATE TABLE IF NOT EXISTS public.glaps_transport_routes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (branch_id, version_id, route_code, source_sheet, source_row_number)
 );
+
+ALTER TABLE public.glaps_transport_routes
+    DROP CONSTRAINT IF EXISTS glaps_transport_routes_branch_id_version_id_route_code_key;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'glaps_transport_routes_branch_version_route_source_key'
+          AND conrelid = 'public.glaps_transport_routes'::regclass
+    ) THEN
+        ALTER TABLE public.glaps_transport_routes
+            ADD CONSTRAINT glaps_transport_routes_branch_version_route_source_key
+            UNIQUE (branch_id, version_id, route_code, source_sheet, source_row_number);
+    END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_glaps_transport_routes_match
     ON public.glaps_transport_routes (branch_id, version_id, start_location_name, waypoint_els_name, destination_name)
@@ -76,6 +97,13 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_aliases (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (branch_id, version_id, alias_type, source_name, route_code)
 );
+
+ALTER TABLE public.glaps_master_aliases
+    DROP CONSTRAINT IF EXISTS glaps_master_aliases_alias_type_check;
+
+ALTER TABLE public.glaps_master_aliases
+    ADD CONSTRAINT glaps_master_aliases_alias_type_check
+    CHECK (alias_type IN ('start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic'));
 
 CREATE INDEX IF NOT EXISTS idx_glaps_master_aliases_lookup
     ON public.glaps_master_aliases (branch_id, version_id, alias_type, source_name)

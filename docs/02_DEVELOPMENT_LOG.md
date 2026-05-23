@@ -1,3 +1,18 @@
+## [2026-05-23] GLAPS 전 시트 원장 운영 DB 적용 및 재반영 (v5.14.144)
+### 핵심
+- 기존 운영 DB에는 `glaps_master_versions.sheet_row_count`와 `glaps_master_sheet_rows`가 아직 없어 화면의 `원본시트`가 0으로 보이던 원인을 확인했습니다.
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`을 기존 테이블에도 안전하게 적용되도록 `ALTER TABLE ADD COLUMN IF NOT EXISTS`, alias type CHECK 재생성, 운송경로 unique 제약 보강 방식으로 수정했습니다.
+- 운영 Supabase에 스키마를 적용하고 NAS `/아산지점/A_운송실무/GLAPS_마스터코드.xlsx`를 새 활성 버전으로 재반영했습니다.
+### 검증
+- 활성 버전 `c9906902-d262-47a5-8fb5-77fa812d65c3`: 운송경로 540건, 항목매핑 2,052건, 원본행 1,165건.
+- 원본시트 7개 확인: `선사코드`, `실출하지코드`, `포트코드`, `운송경로`, `컨테이너규격`, `운송사코드`, `컨샤이니`.
+- 시트별 원본행: 선사코드 280, 실출하지코드 27, 포트코드 91, 운송경로 541, 컨테이너규격 129, 운송사코드 20, 컨샤이니 77.
+### 변경 파일
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] GLAPS 마스터 위치·전 시트 원장·기존 코드 도출 보정 (v5.14.143)
 ### 핵심
 - `GLAPS마스터`를 아산 상위 메뉴에서 제거하고 배차판 내부 보기로 이동했습니다.
