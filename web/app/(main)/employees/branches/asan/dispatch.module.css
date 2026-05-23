@@ -614,6 +614,43 @@
     flex-shrink: 0;
 }
 
+.detailIssueFilters {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.detailIssueButton {
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.detailIssueButton:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.detailIssueButton:disabled {
+    opacity: 0.48;
+    cursor: default;
+}
+
+.detailIssueButtonActive {
+    background: #fff7ed;
+    border-color: #fb923c;
+    color: #c2410c;
+}
+
 .colBtnSm {
     padding: 5px 12px;
     border: 1px solid #cbd5e1;
@@ -1176,7 +1213,8 @@
     height: 30px;
 }
 
-.detailSelect {
+.detailSelect,
+.detailComboInput {
     width: 100%;
     min-width: 132px;
     height: 24px;
@@ -1189,7 +1227,8 @@
     padding: 2px 6px;
 }
 
-.detailSelect:focus {
+.detailSelect:focus,
+.detailComboInput:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
@@ -1786,7 +1825,12 @@
         font-size: 0.68rem;
     }
 
-    .detailSelect {
+    .detailIssueFilters {
+        justify-content: flex-start;
+    }
+
+    .detailSelect,
+    .detailComboInput {
         height: 28px;
         min-width: 120px;
         font-size: 0.68rem;

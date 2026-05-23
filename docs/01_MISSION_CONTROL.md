@@ -1,6 +1,6 @@
 # ELS MISSION CONTROL (v5.14.147 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 상단 요약의 배차량에서 `배차예정` 수량을 제외해 실제 미배차 대수가 바로 보이게 했습니다.
+> 최신 업데이트: 상세배차는 GLAPS 코드 ELS코드1~3 별칭을 읽어 선사/포트/타입/운송사 코드를 도출하고, 수정필요 항목별 필터 버튼으로 검수 대상을 좁힙니다.
 
 ## CURRENT STATUS
 - **웹 버전**: v5.14.147
@@ -10,9 +10,8 @@
 - **이번 변경 핵심**:
   - 행사일정은 2026년 주요 공휴일/대체공휴일을 휴일 셀과 라벨로 표시한다.
   - 아산 GLAPS 마스터는 배차판 내부 보기에서 관리하며, 전 시트 원본행/항목코드를 보관하고 상세배차 `상차지 + 경유지(ELS) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출한다.
-  - 아산 배차판은 `상세배차내역` 탭에서 작업일자/상차지/작업지/선적/운송경로/포트·라인·타입 코드/BKG/TARGET/비고를 GLAPS 검수용 1건 단위 라인으로 분해한다. 인천 `K`는 `인천항국제여객터미널`, `아산` 지역칸은 선택필요로 둔다.
+  - 아산 배차판은 `상세배차내역` 탭에서 운송사코드/작업일자/상차지/작업지/선적/운송경로/포트·라인·타입 코드/BKG/TARGET/비고를 GLAPS 검수용 1건 단위 라인으로 분해한다. 인천 `K`는 `인천항국제여객터미널`, `아산` 지역칸은 선택필요로 둔다.
   - 아산 배차판 원본 엑셀 2건은 BKG1~3/TARGET VESSEL/비고를 삭제하고, WEB/API/엑셀 다운로드는 Supabase WEB 셀 DB 기준으로 해당 컬럼을 재주입한다. 글로비스 `T` 헤더는 화면에서 `TYPE`으로 표준화한다.
-  - 아산 배차판 상단 요약/현황판 실제 배차량은 `배차예정` 수량을 제외하고 계산해 `오더 80 / 배차 78 / 미배차 2`처럼 표시한다.
   - 아산 배차판은 날짜 탭/기간 선택/WEB 전용 BKG·TARGET·비고 오버레이/히스토리를 운영하며, WEB 셀 조회는 Supabase 페이지 조회로 1000건 제한을 회피한다. 비고는 `source=web` 저장값만 화면/내보내기에 반영하고 엑셀 특이사항은 별도 컬럼으로 유지한다.
   - 아산 배차판 통합현황은 글로비스/모비스 원본의 `선적` 컬럼을 `담당자`와 `작업지` 사이에 공통 표시하며, 원본에 없는 예전 날짜는 공란으로 둔다.
   - 아산 배차판 엑셀 다운로드는 `오더(계)/오더/계/수량/배차` 컬럼을 숫자 타입과 정수 표시 형식으로 저장하고 빈 셀까지 테두리를 입힌다.
@@ -54,10 +53,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-147: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차/마스터 원장 1.5단계, 배차판 원본 엑셀 WEB 컬럼 분리, 배차예정 제외 집계
+- [x] v5.14.64-147: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차/마스터 원장 1.5단계, 배차판 원본 엑셀 WEB 컬럼 분리
 
 ## RECENT CHANGES
-- **v5.14.147**: 아산 배차판 상단 요약과 현황판 실제 배차량에서 `배차예정` 지역칸 수량을 제외한다. 엑셀 `배차` 공식이 예정분을 포함해도 WEB은 예정분을 빼고, 지역 배차칸 실제 배정 합계와 비교해 더 신뢰도 높은 실제 배차량을 표시한다.
+- **v5.14.147**: GLAPS 코드 원장은 각 시트의 `ELS코드`, `ELS코드1~3`을 GLAPS 기본 코드의 별칭으로 파싱한다. 상세배차 맨 앞에 `운송사코드`를 추가하고 기본 `ELS`는 운송사코드 원장의 `1011`로 표시한다. 상차지/운송사코드는 직접 타이핑 가능한 목록 입력으로 바꾸고, 상차지·운송경로·포트·라인·타입·운송사 수정필요 버튼을 누르면 해당 건만 필터링하고 재클릭 시 해제한다. NAS 최신 GLAPS 마스터를 활성 버전 `296d0cc9-3048-4460-8d53-5a4b4465bfec`으로 재반영했다.
 - **v5.14.146**: 상세배차 `포트코드`는 GLAPS 항목매핑에 정정값이 있으면 그 값을 쓰고, 없으면 원본 배차판 `포트` 값을 그대로 표시한다. `USSAV/USMOB/INKAT`처럼 현재 원장에 없는 임의 작성값도 빈칸으로 숨기지 않아 후속 정정 대상을 바로 식별할 수 있다.
 - **v5.14.145**: 상세배차 운송경로 도출은 `부산신항 -> KRBNP` 같은 GLAPS 포트코드 후보를 함께 조회해 `GLC00017` 같은 기존 운송경로코드를 찾는다. 컨테이너 `40HC`는 컨테이너규격 원본시트의 `세관코드 -> ISO코드` 기준으로 `4510`을 표시하고, 화면 명칭은 `GLAPS코드`로 바꿨다.
 - **v5.14.144**: GLAPS SQL을 기존 운영 테이블에도 `sheet_row_count`, 확장 alias type, `glaps_master_sheet_rows`가 적용되도록 보강했다. 운영 Supabase에 적용 후 NAS `GLAPS_마스터코드.xlsx`를 재반영해 활성 버전 기준 7개 시트, 운송경로 540건, 항목매핑 2,052건, 원본행 1,165건을 확인했다.
@@ -75,23 +74,21 @@
 - **v5.14.132**: 종합실적 구성·차량 비교 카드 제목을 `계약/차량 집중도`에서 `당사 / 협력사 비교`로 바꿔 좌우 비교 의도를 명확히 했다.
 - **v5.14.131**: 아산 배차판 WEB 전용 `비고`는 WEB 입력 출처(`source=web`)만 표시한다. 초기 컷오버/엑셀 백필로 남은 `NOTE` 값은 삭제하지 않고 화면/내보내기 오버레이에서 제외해, 엑셀 `특이사항`과 WEB `비고` 저장 책임을 분리했다. 백필 스크립트도 앞으로 엑셀 `비고`를 `NOTE`로 가져오지 않는다.
 - **v5.14.130 / APK v5.11.29**: 완료 경로 통계는 좌표 진행 기반 신뢰 최고속도로 계산해 센서 speed 160km/h 튐을 배제하고, 평균속도 대신 운행거리를 앱/웹/엑셀에 표시한다. Android native 자이로/가속도는 1km/h 이상 저속 회전을 `GPS_TURN` 마커로 저장해 출발/도착/골목길의 꺾임 포인트를 더 촘촘히 남긴다.
-- **v5.14.129 / APK v5.11.28**: 운행 종료 후 앱 전경 복귀에도 오버레이가 남는 경합을 막기 위해 JS 종료 호출을 await하고 native `STOP_OVERLAY_SERVICE` latch/전경 복귀 정리를 추가했다. `trips?mode=active`는 최근 정상 좌표를 네이버 Directions 15 경로에 맞춰 표시 좌표만 도로로 스냅한다.
 ## VERIFICATION
-- `node --test web/tests/koreanPhoneNumber.test.mjs web/tests/contactPhoneNormalization.test.mjs`: 11개 통과
-- `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 34개 통과
 - `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.29/versionCode 5170
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
-- `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과
 - `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "utils/glapsMasterData.mjs" "utils/asanDispatchDetailLines.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- GLAPS 활성 원장 확인: `ELS -> 1011`, `CMA -> CMA`, `40HC -> 4510`, `KRBNP|글로비스KD센터2포장장|KRBNP -> GLC00017`
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.
 - `/employees/news` 하단 숨은 트리거로 미니 모달 진입 가능.
 
 ## IN-PROGRESS
-- GLAPS 마스터 운영 DB 적용 완료: 활성 버전 `c9906902-d262-47a5-8fb5-77fa812d65c3`, 7개 시트/원본행 1,165건 확인.
+- GLAPS 마스터 운영 DB 적용 완료: 활성 버전 `296d0cc9-3048-4460-8d53-5a4b4465bfec`, 7개 시트/원본행 1,165건 확인.
 - 배차판 WEB 전용 셀 DB 적용 대기: `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `cd web; node scripts/backfill-asan-dispatch-web-cells.mjs`를 1회 실행해야 컷오버가 활성화된다.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용해야 운영 DB에서 저장/팝업 조회가 활성화된다. 적용 전 로컬 디버그 화면에는 `intranet_events` 테이블 없음 안내가 보일 수 있다.
 

@@ -1,4 +1,5 @@
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
+  '운송사코드',
   '작업일자',
   '구분',
   '화주',
@@ -231,6 +232,7 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
 
 export function detailLineToRow(line = {}) {
   return [
+    line.carrierCode || 'ELS',
     line.workDate || '',
     line.direction || '',
     line.shipper || '',
@@ -259,5 +261,10 @@ export function summarizeDispatchDetailLines(lines = []) {
   return {
     total: lines.length,
     manualStartLocationCount: lines.filter((line) => line.needsStartLocationSelection).length,
+    routeMissingCount: lines.filter((line) => line.needsRouteCodeMapping).length,
+    portMissingCount: lines.filter((line) => line.needsPortCodeMapping).length,
+    lineMissingCount: lines.filter((line) => line.needsLineCodeMapping).length,
+    typeMissingCount: lines.filter((line) => line.needsTypeCodeMapping).length,
+    carrierMissingCount: lines.filter((line) => line.needsCarrierCodeMapping).length,
   };
 }

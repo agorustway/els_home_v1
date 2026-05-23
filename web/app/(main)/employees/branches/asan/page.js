@@ -139,6 +139,16 @@ const CENTER_HEADERS = new Set(['오더', '배차', '검증', '계', '수량', '
 const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡', '인천'];
 const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
+const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
+const DETAIL_CARRIER_CODE_DATALIST_ID = 'asan-detail-carrier-code-options';
+const DETAIL_ISSUE_FILTERS = Object.freeze([
+    { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount' },
+    { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount' },
+    { key: 'port', label: '포트코드 미도출', clearLabel: '포트코드 필터해제', countKey: 'portMissingCount' },
+    { key: 'line', label: '라인코드 미도출', clearLabel: '라인코드 필터해제', countKey: 'lineMissingCount' },
+    { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount' },
+    { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount' },
+]);
 
 // ===== 헬퍼 =====
 function getTabType(dateStr) {
@@ -403,8 +413,34 @@ function buildGlapsAliasCodeMap(aliases = [], aliasType) {
         });
     return map;
 }
+function buildGlapsCodeOptions(aliases = [], aliasType) {
+    const seen = new Set();
+    const options = [];
+    aliases
+        .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
+        .forEach((alias) => {
+            const code = String(alias.glaps_code || '').trim();
+            if (!code || seen.has(code)) return;
+            seen.add(code);
+            options.push({
+                code,
+                label: String(alias.glaps_name || alias.source_name || alias.els_name || code).trim() || code,
+            });
+        });
+    return options.sort((a, b) => a.code.localeCompare(b.code, 'ko'));
+}
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
+}
+function getGlapsSheetPayloadValues(payload = {}, tokens = []) {
+    const normalizedTokens = tokens.map(normalizeGlapsKey).filter(Boolean);
+    return Object.entries(payload)
+        .filter(([key]) => {
+            const normalizedKey = normalizeGlapsKey(key);
+            return normalizedTokens.every(token => normalizedKey.includes(token));
+        })
+        .map(([, value]) => String(value || '').trim())
+        .filter(Boolean);
 }
 function buildGlapsContainerIsoCodeMap(sheetRows = []) {
     const map = new Map();
@@ -416,12 +452,23 @@ function buildGlapsContainerIsoCodeMap(sheetRows = []) {
             const isoCode = payload['ISO코드'] || values[0] || '';
             const customsCode = payload['세관코드'] || values[1] || '';
             const description = payload['설명 (Description)'] || values[2] || '';
-            [customsCode, isoCode, description].forEach((value) => {
+            const elsCodes = getGlapsSheetPayloadValues(payload, ['ELS', '코드']);
+            [isoCode, customsCode, ...elsCodes, description].forEach((value) => {
                 const key = normalizeGlapsKey(value);
                 if (key && isoCode && !map.has(key)) map.set(key, isoCode);
             });
         });
     return map;
+}
+function matchesDetailIssueFilter(line, filterKey) {
+    if (!filterKey) return true;
+    if (filterKey === 'start') return Boolean(line.needsStartLocationSelection);
+    if (filterKey === 'route') return Boolean(line.needsRouteCodeMapping);
+    if (filterKey === 'port') return Boolean(line.needsPortCodeMapping);
+    if (filterKey === 'line') return Boolean(line.needsLineCodeMapping);
+    if (filterKey === 'type') return Boolean(line.needsTypeCodeMapping);
+    if (filterKey === 'carrier') return Boolean(line.needsCarrierCodeMapping);
+    return true;
 }
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
@@ -528,6 +575,8 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
+    const [detailCarrierOverrides, setDetailCarrierOverrides] = useState({});
+    const [detailIssueFilter, setDetailIssueFilter] = useState('');
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
@@ -1009,38 +1058,57 @@ function AsanDispatchContent() {
         line: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'line'),
         containerType: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'container_type'),
         containerIso: buildGlapsContainerIsoCodeMap(glapsDetailLookup.sheetRows || []),
+        carrier: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'carrier'),
     }), [glapsDetailLookup.aliases, glapsDetailLookup.sheetRows]);
+
+    const carrierCodeOptions = useMemo(() => {
+        const options = buildGlapsCodeOptions(glapsDetailLookup.aliases || [], 'carrier');
+        return options.length > 0 ? options : [{ code: 'ELS', label: 'ELS' }];
+    }, [glapsDetailLookup.aliases]);
 
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
-        const hasOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
-        const startLocation = hasOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
+        const hasStartOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
+        const startLocation = hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
+        const hasCarrierOverride = Object.prototype.hasOwnProperty.call(detailCarrierOverrides, lineKey);
+        const carrierInput = hasCarrierOverride ? detailCarrierOverrides[lineKey] || '' : 'ELS';
+        const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, carrierInput) || carrierInput || '';
         const routeKeys = buildGlapsDispatchRouteFingerprints({
             startLocationName: startLocation,
             waypointElsName: line.workplace,
             destinationName: line.destination,
         });
         const glapsRoute = routeKeys.map(key => glapsRouteMap.get(key)).find(Boolean) || null;
+        const glapsPortCode = getGlapsAliasCode(glapsAliasMaps.port, line.port);
+        const glapsLineCode = getGlapsAliasCode(glapsAliasMaps.line, line.line);
+        const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
+            || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
         return {
             ...line,
+            carrierCode: carrierCode || 'ELS',
             startLocation,
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
-            glapsPortCode: getGlapsAliasCode(glapsAliasMaps.port, line.port) || line.port || '',
-            glapsLineCode: getGlapsAliasCode(glapsAliasMaps.line, line.line),
-            glapsTypeCode: getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
-                || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType),
+            glapsPortCode: glapsPortCode || line.port || '',
+            glapsLineCode,
+            glapsTypeCode,
+            needsRouteCodeMapping: !glapsRoute?.route_code,
+            needsPortCodeMapping: Boolean(line.port) && !glapsPortCode,
+            needsLineCodeMapping: Boolean(line.line) && !glapsLineCode,
+            needsTypeCodeMapping: Boolean(line.containerType) && !glapsTypeCode,
+            needsCarrierCodeMapping: !getGlapsAliasCode(glapsAliasMaps.carrier, carrierInput || 'ELS'),
         };
-    }), [detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap]);
+    }), [detailLines, detailCarrierOverrides, detailStartOverrides, glapsAliasMaps, glapsRouteMap]);
 
     const filteredDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
-        if (!term) return detailDisplayLines;
-        return detailDisplayLines.filter((line) => (
-            detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term))
-        ));
-    }, [detailDisplayLines, searchTerm]);
+        return detailDisplayLines.filter((line) => {
+            if (!matchesDetailIssueFilter(line, detailIssueFilter)) return false;
+            if (!term) return true;
+            return detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term));
+        });
+    }, [detailDisplayLines, detailIssueFilter, searchTerm]);
 
     const detailSummary = useMemo(() => ({
         ...summarizeDispatchDetailLines(detailDisplayLines),
@@ -1499,13 +1567,41 @@ function AsanDispatchContent() {
                             <span className={`${styles.summaryItem} ${detailSummary.manualStartLocationCount > 0 ? styles.summaryWarn : ''}`}>
                                 <b>상차지 선택필요</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
                             </span>
+                            {detailIssueFilter && <span className={styles.summaryItem}><b>필터표시</b> {detailSummary.visible.toLocaleString()}건</span>}
                         </div>
                         <div className={styles.summaryRight}>
+                            <div className={styles.detailIssueFilters}>
+                                {DETAIL_ISSUE_FILTERS.map((filter) => {
+                                    const count = detailSummary[filter.countKey] || 0;
+                                    const active = detailIssueFilter === filter.key;
+                                    return (
+                                        <button
+                                            key={filter.key}
+                                            type="button"
+                                            className={`${styles.detailIssueButton} ${active ? styles.detailIssueButtonActive : ''}`}
+                                            onClick={() => setDetailIssueFilter(active ? '' : filter.key)}
+                                            disabled={count === 0 && !active}
+                                        >
+                                            {active ? filter.clearLabel : filter.label} {count.toLocaleString()}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                             <span className={styles.detailHint}>GLAPS코드 기존 코드 도출 검수용 상세 라인</span>
                         </div>
                     </div>
                     <div className={styles.tableWrap}>
                         <div className={styles.tableScroll}>
+                            <datalist id={DETAIL_START_LOCATION_DATALIST_ID}>
+                                {GLAPS_START_LOCATION_OPTIONS.filter(Boolean).map((option) => (
+                                    <option key={option} value={option} />
+                                ))}
+                            </datalist>
+                            <datalist id={DETAIL_CARRIER_CODE_DATALIST_ID}>
+                                {carrierCodeOptions.map((option) => (
+                                    <option key={option.code} value={option.code} label={option.label} />
+                                ))}
+                            </datalist>
                             <table className={`${styles.table} ${styles.detailTable}`}>
                                 <thead>
                                     <tr>
@@ -1519,19 +1615,29 @@ function AsanDispatchContent() {
                                         return (
                                             <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''}`}>
                                                 {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
+                                                    if (header === '운송사코드') {
+                                                        return (
+                                                            <td key={header} className={line.needsCarrierCodeMapping ? styles.detailManualCell : ''}>
+                                                                <input
+                                                                    className={styles.detailComboInput}
+                                                                    list={DETAIL_CARRIER_CODE_DATALIST_ID}
+                                                                    value={line.carrierCode || 'ELS'}
+                                                                    onChange={(event) => setDetailCarrierOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
+                                                                />
+                                                            </td>
+                                                        );
+                                                    }
                                                     if (header === '상차지') {
                                                         return (
                                                             <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
-                                                                <select
-                                                                    className={styles.detailSelect}
+                                                                <input
+                                                                    className={styles.detailComboInput}
+                                                                    list={DETAIL_START_LOCATION_DATALIST_ID}
                                                                     value={line.startLocation || ''}
                                                                     onChange={(event) => setDetailStartOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
+                                                                    placeholder="선택"
                                                                     title={`${line.startRegion || ''}${line.startSuffix ? ` / ${line.startSuffix}` : ''}`}
-                                                                >
-                                                                    {GLAPS_START_LOCATION_OPTIONS.map((option) => (
-                                                                        <option key={option || '__empty'} value={option}>{option || '선택'}</option>
-                                                                    ))}
-                                                                </select>
+                                                                />
                                                             </td>
                                                         );
                                                     }

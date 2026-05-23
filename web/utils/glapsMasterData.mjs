@@ -193,6 +193,26 @@ function inferSheetAliasType(sheetName = '') {
   return found?.[1] || 'generic';
 }
 
+function findElsCodeIndexes(headers = []) {
+  return headers
+    .map((header, idx) => {
+      const normalized = normalizeGlapsKey(header);
+      if (!normalized.includes('ELS') || (!normalized.includes('코드') && !normalized.includes('CODE'))) return null;
+      const orderMatch = normalized.match(/(?:ELS코드|ELSCODE|ELS)(\d+)/);
+      return {
+        idx,
+        order: orderMatch ? Number(orderMatch[1]) : 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order || a.idx - b.idx)
+    .map(item => item.idx);
+}
+
+function getRowValues(row, indexes = []) {
+  return indexes.map(idx => getRowValue(row, idx)).filter(Boolean);
+}
+
 export function inferGlapsRouteParts(routeName = '') {
   const text = cleanGlapsText(routeName);
   if (!text) return { startLocationName: '', waypointName: '', destinationName: '' };
@@ -411,7 +431,8 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
         reviewStatus: name || glapsCode ? 'ready' : 'needs_mapping',
         reviewNote: cleanGlapsText(alias.reviewNote),
       };
-      aliases.set(aliasKey(normalized), normalized);
+      const key = aliasKey(normalized);
+      if (!aliases.has(key)) aliases.set(key, normalized);
     });
   };
 
@@ -430,21 +451,23 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
     if (aliasType === 'container_type') {
       const isoIdx = findColumn(['ISO코드', 'ISO CODE']);
       const customsIdx = findColumn(['세관코드', '규격', '컨테이너규격']);
+      const elsCodeIdxs = findElsCodeIndexes(headers);
       const descriptionIdx = findColumn(['설명 (Description)', '설명', 'Description']);
       const registerKeyIdx = findColumn(['GLAPS 등록 KEY', '등록 KEY']);
 
       rows.slice(headerRowIndex + 1).forEach((row) => {
         const isoCode = getRowValue(row, isoIdx);
         const customsCode = getRowValue(row, customsIdx);
+        const elsCodes = getRowValues(row, elsCodeIdxs);
         const description = getRowValue(row, descriptionIdx);
         const registerKey = getRowValue(row, registerKeyIdx);
-        if (!isoCode && !customsCode && !description && !registerKey) return;
+        if (!isoCode && !customsCode && !elsCodes.length && !description && !registerKey) return;
         addAlias({
           aliasType,
-          sourceName: customsCode || isoCode || description,
+          sourceName: isoCode || customsCode || elsCodes[0] || description,
           glapsName: description || customsCode || isoCode,
           glapsCode: isoCode,
-          extraNames: [isoCode, registerKey],
+          extraNames: [customsCode, ...elsCodes, registerKey, description],
           reviewNote: sheetName,
         });
       });
@@ -454,6 +477,7 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
     if (aliasType === 'port') {
       const glapsPortIdx = findColumn(['GLAPS 포트', 'GLAPS PORT']);
       const glapsCodeIdx = findColumn(['GLAPS 코드', 'GLAPS CODE']);
+      const elsCodeIdxs = findElsCodeIndexes(headers);
       const kdValueIdx = findColumn(['KD보낼값', 'KD 보낼값']);
       const gloveNameIdx = findColumn(['명칭(GLOVE)', '명칭', 'GLOVE명']);
       const gloveTypeIdx = findColumn(['구분(GLOVE)', '구분']);
@@ -462,39 +486,71 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
       rows.slice(headerRowIndex + 1).forEach((row) => {
         const glapsPort = getRowValue(row, glapsPortIdx);
         const glapsCode = getRowValue(row, glapsCodeIdx);
+        const elsCodes = getRowValues(row, elsCodeIdxs);
         const kdValue = getRowValue(row, kdValueIdx);
         const gloveName = getRowValue(row, gloveNameIdx);
         const gloveType = getRowValue(row, gloveTypeIdx);
         const location = getRowValue(row, locationIdx);
-        if (!glapsPort && !glapsCode && !kdValue && !gloveName && !location) return;
+        if (!glapsPort && !glapsCode && !elsCodes.length && !kdValue && !gloveName && !location) return;
         addAlias({
           aliasType,
-          sourceName: glapsPort || kdValue || gloveName || glapsCode,
+          sourceName: glapsCode || elsCodes[0] || glapsPort || kdValue || gloveName,
           glapsName: glapsPort || kdValue || gloveName || glapsCode,
-          glapsCode: glapsPort || glapsCode,
-          extraNames: [glapsCode, kdValue, gloveName, gloveType, location],
+          glapsCode: glapsCode || glapsPort,
+          extraNames: [...elsCodes, glapsPort, kdValue, gloveName, gloveType, location],
           reviewNote: sheetName,
         });
       });
       return;
     }
 
-    const codeIdx = normalizedHeaders.findIndex(header => header.includes('코드') || header.includes('CODE'));
+    if (aliasType === 'line') {
+      const codeIdx = findColumn(['선사코드 (GLAPS)', '선사코드(GLAPS)', '선사코드', 'GLAPS 코드', 'LINE CODE']);
+      const elsCodeIdxs = findElsCodeIndexes(headers);
+      const nameIdx = findColumn(['선사명(영문)', '선사명', '선사', 'LINE NAME', 'CARRIER NAME']);
+
+      rows.slice(headerRowIndex + 1).forEach((row) => {
+        const glapsCode = getRowValue(row, codeIdx);
+        const elsCodes = getRowValues(row, elsCodeIdxs);
+        const glapsName = getRowValue(row, nameIdx);
+        if (!glapsCode && !elsCodes.length && !glapsName) return;
+        addAlias({
+          aliasType,
+          sourceName: glapsCode || elsCodes[0] || glapsName,
+          glapsName: glapsName || glapsCode || elsCodes[0],
+          glapsCode,
+          extraNames: [...elsCodes, glapsName],
+          reviewNote: sheetName,
+        });
+      });
+      return;
+    }
+
+    const elsCodeIdxs = findElsCodeIndexes(headers);
+    const elsCodeIdxSet = new Set(elsCodeIdxs);
+    const codeIdx = normalizedHeaders.findIndex((header, idx) => (
+      !elsCodeIdxSet.has(idx) && (header.includes('코드') || header.includes('CODE'))
+    ));
     const nameIdx = normalizedHeaders.findIndex((header, idx) => (
       idx !== codeIdx
+      && !elsCodeIdxSet.has(idx)
       && (header.includes('명') || header.includes('NAME') || header.includes('규격') || header.includes('선사') || header.includes('컨사이니') || header.includes('포트'))
     ));
-    const fallbackNameIdx = nameIdx >= 0 ? nameIdx : rows[headerRowIndex].findIndex((_, idx) => idx !== codeIdx);
+    const fallbackNameIdx = nameIdx >= 0 ? nameIdx : rows[headerRowIndex].findIndex((_, idx) => idx !== codeIdx && !elsCodeIdxSet.has(idx));
 
     rows.slice(headerRowIndex + 1).forEach((row) => {
       const glapsCode = getRowValue(row, codeIdx);
+      const elsCodes = getRowValues(row, elsCodeIdxs);
       const glapsName = getRowValue(row, fallbackNameIdx);
-      if (!glapsCode && !glapsName) return;
+      if (!glapsCode && !elsCodes.length && !glapsName) return;
+      const extraNames = [...elsCodes];
+      if (aliasType === 'carrier' && normalizeGlapsKey(glapsName).includes('ELS')) extraNames.push('ELS');
       addAlias({
         aliasType,
-        sourceName: glapsName || glapsCode,
+        sourceName: glapsCode || elsCodes[0] || glapsName,
         glapsName: glapsName || glapsCode,
         glapsCode,
+        extraNames,
         reviewNote: sheetName,
       });
     });

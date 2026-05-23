@@ -1,19 +1,27 @@
-## [2026-05-23] 배차예정 제외 실제 배차량 보정 (v5.14.147)
+## [2026-05-23] GLAPS ELS코드 별칭·상세배차 수정필요 필터 보강 (v5.14.147)
 ### 핵심
-- 배차판 상단 요약의 `배차량`에서 `배차예정` 지역칸 수량을 제외합니다.
-- 엑셀 `배차` 공식이 예정분을 포함하는 경우에도 WEB은 예정분을 뺀 값과 실제 지역 배차칸 합계를 비교해 실제 배차량을 표시합니다.
-- 예: 오더 80, 배차 공식 80, 배차예정 2, 실제 지역 배차 78이면 `배차량 78 / 연매치 2`로 계산합니다.
+- GLAPS 코드마스터 파서가 `ELS코드`, `ELS코드1~3` 컬럼을 GLAPS 기본 코드의 별칭으로 읽도록 보강했습니다. 선사 `CMA`, 컨테이너 `40HC`, 운송사 기본 `ELS`처럼 우리 배차판 값이 ELS코드 칸에 있으면 해당 행의 GLAPS 코드를 표시합니다.
+- 상세배차내역 맨 앞에 `운송사코드`를 추가했습니다. 기본값 `ELS`는 운송사코드 원장의 `ELS솔루션 -> 1011`로 도출되고, 필요 시 다른 운송사코드를 목록 입력으로 선택/타이핑할 수 있습니다.
+- 상차지와 운송사코드는 `select` 대신 `datalist` 입력으로 바꿔 목록 선택과 직접 타이핑을 함께 지원합니다.
+- 상세배차 상단에 `상차지 선택필요`, `운송경로 미도출`, `포트코드 미도출`, `라인코드 미도출`, `타입코드 미도출`, `운송사코드 확인` 필터 버튼을 추가했습니다. 버튼을 누르면 해당 수정필요 건만 보이고, 활성 버튼은 필터해제 버튼으로 바뀝니다.
+### 운영 데이터 반영
+- NAS `/아산지점/A_운송실무/GLAPS_마스터코드.xlsx`를 운영 GLAPS 원장에 재반영했습니다.
+- 활성 버전 `296d0cc9-3048-4460-8d53-5a4b4465bfec`: 운송경로 540건, 항목매핑 2,862건, 원본행 1,165건.
+- 확인값: `ELS -> 1011`, `CMA -> CMA`, `40HC -> 4510`, `KRBNP|글로비스KD센터2포장장|KRBNP -> GLC00017`.
+- 현재 NAS 마스터 기준 `USSAV/USMOB/INKAT/SIKOP` 포트 별칭은 아직 없어서 상세배차에서는 원본 포트값을 표시하고 `포트코드 미도출` 필터 대상으로 남깁니다.
 ### 검증
-- `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과
-- `npm.cmd run lint`: 통과
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/glapsMasterData.mjs" "utils/asanDispatchDetailLines.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
+- `http://127.0.0.1:3000/employees/branches/asan`: HTTP 200 확인
 ### 변경 파일
-- `web/utils/asanDashboardView.mjs`
-- `web/app/(main)/employees/branches/asan/page.js`
-- `web/tests/asanDashboardView.test.mjs`
+- `web/utils/glapsMasterData.mjs`, `web/utils/asanDispatchDetailLines.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
+
 ## [2026-05-23] 상세배차 포트코드 기본 표시 보강 (v5.14.146)
 ### 핵심
 - 상세배차 `포트코드`는 GLAPS 항목매핑에 정정값이 있으면 정정값을 우선 사용하고, 없으면 원본 배차판 `포트` 값을 그대로 표시하도록 보강했습니다.
