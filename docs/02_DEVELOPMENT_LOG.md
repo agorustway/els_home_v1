@@ -1,3 +1,19 @@
+## [2026-05-23] 배차예정 제외 실제 배차량 보정 (v5.14.147)
+### 핵심
+- 배차판 상단 요약의 `배차량`에서 `배차예정` 지역칸 수량을 제외합니다.
+- 엑셀 `배차` 공식이 예정분을 포함하는 경우에도 WEB은 예정분을 뺀 값과 실제 지역 배차칸 합계를 비교해 실제 배차량을 표시합니다.
+- 예: 오더 80, 배차 공식 80, 배차예정 2, 실제 지역 배차 78이면 `배차량 78 / 연매치 2`로 계산합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
 ## [2026-05-23] 상세배차 포트코드 기본 표시 보강 (v5.14.146)
 ### 핵심
 - 상세배차 `포트코드`는 GLAPS 항목매핑에 정정값이 있으면 정정값을 우선 사용하고, 없으면 원본 배차판 `포트` 값을 그대로 표시하도록 보강했습니다.

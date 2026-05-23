@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
-import { buildAsanDashboardScope, getDispatchAssignedQty } from '@/utils/asanDashboardView.mjs';
+import { buildAsanDashboardScope, getActualDispatchQty } from '@/utils/asanDashboardView.mjs';
 import {
     getDispatchWebCellFieldLabel,
     isDispatchWebCellField,
@@ -232,8 +232,7 @@ function roundMapQty(map) {
     return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, roundQty(v)]));
 }
 function getEffectiveDispatchQty(headers, row) {
-    const dispatchQty = parseQty(row[findCol(headers, '배차')]);
-    return dispatchQty > 0 ? dispatchQty : getDispatchAssignedQty(row, headers);
+    return getActualDispatchQty(row, headers, row[findCol(headers, '배차')]);
 }
 function fmtTs(dt) {
     if (!dt) return '';

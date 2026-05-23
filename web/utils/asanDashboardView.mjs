@@ -3,7 +3,8 @@ export const ASAN_DASHBOARD_CHART_MODES = {
   dispatcher: ['업체명', '고객사', '작업지', '라인/선사'],
 };
 
-const DISPATCH_REGIONS = ['배차예정', '기타/철송', '기타', '아산', '부산', '신항', '광양', '평택', '중부', '부곡', '인천'];
+const PLANNED_DISPATCH_REGION = '배차예정';
+const DISPATCH_REGIONS = [PLANNED_DISPATCH_REGION, '기타/철송', '기타', '아산', '부산', '신항', '광양', '평택', '중부', '부곡', '인천'];
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const LUNAR_HOLIDAYS = {
   2025: ['2025-01-28', '2025-01-29', '2025-01-30', '2025-05-05', '2025-10-05', '2025-10-06', '2025-10-07'],
@@ -136,8 +137,7 @@ function addFeu(scope, container, amount) {
 function addBaseRowMetrics(scope, row, headers, cols, viewType) {
   const order = getCustomerWeight(row, cols, viewType);
   if (order <= 0) return;
-  const sheetDispatch = parseDashboardQty(row[cols.dispatch]);
-  const dispatch = sheetDispatch > 0 ? sheetDispatch : getDispatchAssignedQty(row, headers);
+  const dispatch = getActualDispatchQty(row, headers, row[cols.dispatch]);
   scope.rowCount += 1;
   scope.orderTotal += order;
   scope.sheetDispatchTotal += dispatch;
@@ -181,10 +181,10 @@ function parseDispatchCell(text = '') {
   return records;
 }
 
-export function parseDispatchRecords(row = [], headers = []) {
+export function parseDispatchRecords(row = [], headers = [], { includePlanned = false } = {}) {
   const regions = DISPATCH_REGIONS
     .map((name) => ({ name, idx: findDashboardCol(headers, name) }))
-    .filter((region) => region.idx >= 0);
+    .filter((region) => region.idx >= 0 && (includePlanned || region.name !== PLANNED_DISPATCH_REGION));
 
   const records = [];
   regions.forEach((region) => {
@@ -200,6 +200,23 @@ export function parseDispatchRecords(row = [], headers = []) {
 
 export function getDispatchAssignedQty(row = [], headers = []) {
   return sumDispatchRecords(parseDispatchRecords(row, headers));
+}
+
+export function getDispatchPlannedQty(row = [], headers = []) {
+  const idx = findDashboardCol(headers, PLANNED_DISPATCH_REGION);
+  if (idx < 0) return 0;
+  return sumDispatchRecords(parseDispatchCell(row[idx]));
+}
+
+export function getActualDispatchQty(row = [], headers = [], sheetDispatchValue = '') {
+  const sheetDispatch = parseDashboardQty(sheetDispatchValue);
+  if (sheetDispatch <= 0) return getDispatchAssignedQty(row, headers);
+
+  const planned = getDispatchPlannedQty(row, headers);
+  if (planned <= 0) return sheetDispatch;
+
+  const adjustedSheetDispatch = Math.max(sheetDispatch - planned, 0);
+  return Math.max(adjustedSheetDispatch, getDispatchAssignedQty(row, headers));
 }
 
 function addDispatcherRow(scope, row, headers, cols, viewType) {
