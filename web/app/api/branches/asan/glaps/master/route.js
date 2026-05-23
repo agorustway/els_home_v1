@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
-const PAGE_LIMIT = 5000;
+const PAGE_SIZE = 1000;
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -177,6 +177,17 @@ async function getActiveVersion(adminSupabase, branchId) {
   return data || null;
 }
 
+async function fetchPagedGlapsRows(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 async function refreshVersionCounts(adminSupabase, versionId) {
   const [{ count: routeCount }, { count: aliasCount }, { count: sheetRowCount }] = await Promise.all([
     adminSupabase.from('glaps_transport_routes').select('id', { count: 'exact', head: true }).eq('version_id', versionId).eq('active', true),
@@ -228,33 +239,27 @@ export async function GET(request) {
       });
     }
 
-    const { data: routeRows, error: routeError } = await access.adminSupabase
-      .from('glaps_transport_routes')
-      .select('*')
-      .eq('version_id', version.id)
-      .eq('active', true)
-      .order('route_code', { ascending: true })
-      .limit(PAGE_LIMIT);
-    if (routeError) throw routeError;
-
-    const { data: aliasRows, error: aliasError } = await access.adminSupabase
-      .from('glaps_master_aliases')
-      .select('*')
-      .eq('version_id', version.id)
-      .eq('active', true)
-      .order('alias_type', { ascending: true })
-      .order('source_name', { ascending: true })
-      .limit(PAGE_LIMIT);
-    if (aliasError) throw aliasError;
-
-    const { data: sheetRows, error: sheetRowError } = await access.adminSupabase
-      .from('glaps_master_sheet_rows')
-      .select('*')
-      .eq('version_id', version.id)
-      .order('sheet_name', { ascending: true })
-      .order('row_number', { ascending: true })
-      .limit(PAGE_LIMIT);
-    if (sheetRowError) throw sheetRowError;
+    const [routeRows, aliasRows, sheetRows] = await Promise.all([
+      fetchPagedGlapsRows(() => access.adminSupabase
+        .from('glaps_transport_routes')
+        .select('*')
+        .eq('version_id', version.id)
+        .eq('active', true)
+        .order('route_code', { ascending: true })),
+      fetchPagedGlapsRows(() => access.adminSupabase
+        .from('glaps_master_aliases')
+        .select('*')
+        .eq('version_id', version.id)
+        .eq('active', true)
+        .order('alias_type', { ascending: true })
+        .order('source_name', { ascending: true })),
+      fetchPagedGlapsRows(() => access.adminSupabase
+        .from('glaps_master_sheet_rows')
+        .select('*')
+        .eq('version_id', version.id)
+        .order('sheet_name', { ascending: true })
+        .order('row_number', { ascending: true })),
+    ]);
 
     const filterRow = (row) => {
       if (status && row.review_status !== status) return false;

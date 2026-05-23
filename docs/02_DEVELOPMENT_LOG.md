@@ -1,3 +1,23 @@
+## [2026-05-24] GLAPS 라인/포트코드 조회 보정과 운송사코드 표시 정리 (v5.14.149)
+### 핵심
+- 라인코드가 마스터에 있는데도 상세배차에서 비던 원인은 `glaps_master_aliases` 조회가 Supabase 1000건 응답 cap에 잘려 `line/port` alias까지 내려오지 못했기 때문이었습니다.
+- GLAPS 마스터 API를 1000건 단위 페이지 조회로 변경해 운송경로/항목매핑/원본행을 모두 가져오도록 보강했습니다.
+- 상세배차 `포트코드`는 이제 마스터에 매핑된 값만 표시합니다. `함부르크`처럼 ELS 대체코드나 GLAPS 코드가 없는 포트는 원본값을 코드처럼 보여주지 않고 공란으로 둡니다.
+- 운송사코드는 상차지처럼 입력 목록으로 두지 않고, 기본 `ELS -> B000005273` 값을 다른 코드 컬럼처럼 표시만 하도록 정리했습니다.
+### 확인
+- 활성 원장 `6724943a-5c6c-416e-bab0-bbac487b8c4c`에서 `HMM`, `MAE`, `CMA`, `HLC`, `MSC`, `SML` 라인 alias가 존재함을 확인했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 45개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 후 원격 fetch `ECONNRESET` 로그는 있었지만 빌드 exit 0.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] GLAPS 최종코드 도출·마스터 ELS 입력칸 보강 (v5.14.148)
 ### 핵심
 - 상세배차내역의 최종 GLAPS 업로드용 코드 컬럼을 후미에 정리했습니다. 기존 비교용 `포트/라인/타입/운송경로` 코드는 앞쪽에 유지하고, 뒤쪽에는 앞에 없는 `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`만 추가했습니다.

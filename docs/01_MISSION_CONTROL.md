@@ -1,13 +1,13 @@
-# ELS MISSION CONTROL (v5.14.148 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.149 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 상세배차 최종 업로드용 코드 도출을 `오더구분/화주사/출발지/작업지/도착지/운송사 BP/컨샤이니`까지 확장하고, NAS `GLAPS_마스터코드.xlsx` ELS 입력칸을 보강해 활성 원장을 재반영했다.
+> 최신 업데이트: GLAPS 마스터 API가 Supabase 1000건 cap에 잘려 라인/포트 alias를 못 내려주던 문제를 페이지 조회로 보정하고, 포트코드는 마스터 매핑이 없으면 공란으로 둔다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.148
+- **웹 버전**: v5.14.149
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
-- **GLAPS 활성 원장**: `952c67b5-fefa-45cc-b97a-934f885e684b` / 8개 시트 / 운송경로 540건 / 항목매핑 2,923건 / 원본행 1,177건.
+- **GLAPS 활성 원장**: `6724943a-5c6c-416e-bab0-bbac487b8c4c` / 8개 시트 / 운송경로 540건 / 항목매핑 2,923건 / 원본행 1,177건.
 - **GLAPS NAS 백업**: `/아산지점/A_운송실무/GLAPS_마스터코드_backup_20260523_190603.xlsx`
 
 ## GLAPS OPERATING NOTES
@@ -19,7 +19,7 @@
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
 - 상세배차 수정필요 필터는 상차지, 운송경로, 오더구분, 화주사, 경로세부코드, 포트, 라인, 타입, 운송사, 컨샤이니 항목별로 토글한다.
-- 상차지/운송사코드 입력칸은 datalist 직접입력과 키보드 방향키 이동을 지원한다.
+- 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -31,16 +31,17 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.149**: GLAPS 마스터 API를 1000건 단위 페이지 조회로 바꿔 라인/포트 alias가 잘리지 않게 했다. 상세배차 `포트코드`는 마스터에 ELS/GLAPS 매핑이 있을 때만 표시하고, 함부르크처럼 미등록 값은 공란으로 둔다. 운송사코드는 입력 목록 UI를 제거하고 기본 ELS BP 코드를 일반 코드 셀로 표시한다.
 - **v5.14.148**: NAS `GLAPS_마스터코드.xlsx`에 선사/포트/POD/컨테이너/운송경로 화주/컨샤이니 ELS 입력칸을 보강하고 Supabase 활성 원장을 `952c67b5-fefa-45cc-b97a-934f885e684b`로 재반영했다. 상세배차는 운송사 BP를 맨 뒤 최종 컬럼으로 옮기고, 오더구분/화주사/경로세부코드/컨샤이니 도출 및 항목별 필터를 추가했다.
 - **v5.14.147**: GLAPS 코드 원장이 `ELS코드`, `ELS코드1~3`을 GLAPS 기본 코드 별칭으로 파싱하고, 상차지/운송사코드 datalist 입력과 수정필요 필터를 추가했다.
-- **v5.14.146**: 상세배차 `포트코드`는 GLAPS 항목매핑이 없으면 원본 배차판 `포트` 값을 그대로 표시한다.
+- **v5.14.146**: 상세배차 `포트코드` 기본 표시를 임시 보강했으나, v5.14.149에서 미등록 포트는 공란 표시로 되돌렸다.
 - **v5.14.145**: 상세배차 운송경로 도출은 GLAPS 포트코드 후보까지 조회하고, `40HC -> 4510` 타입코드를 표시한다.
 - **v5.14.143-144**: GLAPS코드를 배차판 내부 보기로 내리고, 전 시트 원본행/항목매핑을 운영 DB에 보관한다.
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 45개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/glapsMasterData.mjs" "utils/asanDispatchDetailLines.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과. 빌드 후 비치명 원격 fetch `ECONNRESET` 로그가 있었지만 Next 빌드는 성공했다.
 - `http://127.0.0.1:3000/employees/branches/asan`: 인증 리다이렉트 후 로그인 페이지 HTTP 200 확인
 

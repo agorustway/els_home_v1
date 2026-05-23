@@ -140,7 +140,6 @@ const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡'
 const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
-const DETAIL_CARRIER_CODE_DATALIST_ID = 'asan-detail-carrier-code-options';
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount' },
@@ -417,22 +416,6 @@ function buildGlapsAliasCodeMap(aliases = [], aliasType) {
         });
     return map;
 }
-function buildGlapsCodeOptions(aliases = [], aliasType) {
-    const seen = new Set();
-    const options = [];
-    aliases
-        .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
-        .forEach((alias) => {
-            const code = String(alias.glaps_code || '').trim();
-            if (!code || seen.has(code)) return;
-            seen.add(code);
-            options.push({
-                code,
-                label: String(alias.glaps_name || alias.source_name || alias.els_name || code).trim() || code,
-            });
-        });
-    return options.sort((a, b) => a.code.localeCompare(b.code, 'ko'));
-}
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
 }
@@ -657,7 +640,6 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
-    const [detailCarrierOverrides, setDetailCarrierOverrides] = useState({});
     const [detailIssueFilter, setDetailIssueFilter] = useState('');
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const tabsRef = useRef(null);
@@ -1150,18 +1132,11 @@ function AsanDispatchContent() {
         [glapsDetailLookup.routes],
     );
 
-    const carrierCodeOptions = useMemo(() => {
-        const options = buildGlapsCodeOptions(glapsDetailLookup.aliases || [], 'carrier');
-        return options.length > 0 ? options : [{ code: 'ELS', label: 'ELS' }];
-    }, [glapsDetailLookup.aliases]);
-
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
         const hasStartOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
         const startLocation = hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
-        const hasCarrierOverride = Object.prototype.hasOwnProperty.call(detailCarrierOverrides, lineKey);
-        const carrierInput = hasCarrierOverride ? detailCarrierOverrides[lineKey] || '' : 'ELS';
-        const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, carrierInput) || carrierInput || '';
+        const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, 'ELS');
         const routeKeys = buildGlapsDispatchRouteFingerprints({
             startLocationName: startLocation,
             waypointElsName: line.workplace,
@@ -1181,12 +1156,11 @@ function AsanDispatchContent() {
         return {
             ...line,
             glapsCarrierBpCode: carrierCode || '',
-            carrierInput,
             startLocation,
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
-            glapsPortCode: glapsPortCode || line.port || '',
+            glapsPortCode,
             glapsLineCode,
             glapsTypeCode,
             glapsOrderTypeCode,
@@ -1204,10 +1178,10 @@ function AsanDispatchContent() {
             needsPortCodeMapping: Boolean(line.port) && !glapsPortCode,
             needsLineCodeMapping: Boolean(line.line) && !glapsLineCode,
             needsTypeCodeMapping: Boolean(line.containerType) && !glapsTypeCode,
-            needsCarrierCodeMapping: !getGlapsAliasCode(glapsAliasMaps.carrier, carrierInput || 'ELS'),
+            needsCarrierCodeMapping: !carrierCode,
             needsConsigneeCodeMapping: Boolean(line.customer) && !glapsConsigneeCode,
         };
-    }), [detailLines, detailCarrierOverrides, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
+    }), [detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
 
     const filteredDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1705,11 +1679,6 @@ function AsanDispatchContent() {
                                     <option key={option} value={option} />
                                 ))}
                             </datalist>
-                            <datalist id={DETAIL_CARRIER_CODE_DATALIST_ID}>
-                                {carrierCodeOptions.map((option) => (
-                                    <option key={option.code} value={option.code} label={option.label} />
-                                ))}
-                            </datalist>
                             <table className={`${styles.table} ${styles.detailTable}`}>
                                 <thead>
                                     <tr>
@@ -1723,21 +1692,6 @@ function AsanDispatchContent() {
                                         return (
                                             <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''}`}>
                                                 {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
-                                                    if (header === '운송사코드') {
-                                                        return (
-                                                            <td key={header} className={line.needsCarrierCodeMapping ? styles.detailManualCell : ''}>
-                                                                <input
-                                                                    className={styles.detailComboInput}
-                                                                    list={DETAIL_CARRIER_CODE_DATALIST_ID}
-                                                                    data-detail-row-index={detailRowIdx}
-                                                                    data-detail-col-index={colIdx}
-                                                                    value={line.glapsCarrierBpCode || line.carrierInput || ''}
-                                                                    onChange={(event) => setDetailCarrierOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
-                                                                    onKeyDown={focusDetailGridInput}
-                                                                />
-                                                            </td>
-                                                        );
-                                                    }
                                                     if (header === '상차지') {
                                                         return (
                                                             <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
