@@ -1,28 +1,28 @@
 export const DEFAULT_GLAPS_BRANCH_ID = 'asan';
 
 export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
-  'id',
-  'route_code',
-  'route_name',
-  'start_location_name',
-  'waypoint_name',
-  'waypoint_els_name',
-  'destination_name',
-  'review_status',
-  'review_note',
+  'ID',
+  '운송경로코드',
+  '운송경로명',
+  '상차지',
+  '경유지',
+  '경유지(ELS)',
+  '하차지(선적)',
+  '매칭상태',
+  '조정안내',
   '삭제(Y)',
 ]);
 
 export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
-  'id',
-  'alias_type',
-  'source_name',
-  'els_name',
-  'glaps_name',
-  'glaps_code',
-  'route_code',
-  'review_status',
-  'review_note',
+  'ID',
+  '항목',
+  '원본명',
+  'ELS명',
+  'GLAPS명',
+  'GLAPS코드',
+  '운송경로코드',
+  '매칭상태',
+  '조정안내',
   '삭제(Y)',
 ]);
 
@@ -67,6 +67,32 @@ const ALIAS_TEMPLATE_ALIASES = Object.freeze({
   reviewNote: ['review_note', '조정안내', '비고'],
   deleteFlag: ['삭제(Y)', '삭제', 'delete'],
 });
+
+const CODE_SHEET_ALIAS_TYPES = Object.freeze([
+  ['컨테이너규격', 'container_type'],
+  ['규격', 'container_type'],
+  ['프로코드', 'port'],
+  ['포트', 'port'],
+  ['PORT', 'port'],
+  ['라인', 'line'],
+  ['선사', 'line'],
+  ['운송사코드', 'carrier'],
+  ['운송사', 'carrier'],
+  ['컨사이니', 'consignee'],
+  ['CONSIGNEE', 'consignee'],
+]);
+
+const GLAPS_CODE_ALIAS_TYPES = new Set([
+  'start',
+  'waypoint',
+  'destination',
+  'port',
+  'line',
+  'container_type',
+  'carrier',
+  'consignee',
+  'generic',
+]);
 
 export function cleanGlapsText(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -114,6 +140,16 @@ function findRouteHeaderRowIndex(rows = []) {
 
 function getRowValue(row, idx) {
   return idx >= 0 ? cleanGlapsText(row[idx]) : '';
+}
+
+function isNonEmptyRow(row = []) {
+  return row.some(cell => cleanGlapsText(cell));
+}
+
+function inferSheetAliasType(sheetName = '') {
+  const normalizedSheetName = normalizeGlapsKey(sheetName);
+  const found = CODE_SHEET_ALIAS_TYPES.find(([token]) => normalizedSheetName.includes(normalizeGlapsKey(token)));
+  return found?.[1] || 'generic';
 }
 
 export function inferGlapsRouteParts(routeName = '') {
@@ -223,6 +259,40 @@ function findRouteCandidateSheet(sheets = []) {
   return sheets.find(sheet => findRouteHeaderRowIndex(sheet.rows || []) >= 0) || null;
 }
 
+function findGenericHeaderRowIndex(rows = []) {
+  for (let idx = 0; idx < Math.min(rows.length, 10); idx += 1) {
+    const row = rows[idx] || [];
+    if (!isNonEmptyRow(row)) continue;
+    const hasCodeHeader = row.some(cell => normalizeGlapsKey(cell).includes('코드') || normalizeGlapsKey(cell).includes('CODE'));
+    if (hasCodeHeader) return idx;
+  }
+  return rows.findIndex(isNonEmptyRow);
+}
+
+function buildGenericRawPayload(headers = [], row = []) {
+  return row.reduce((payload, cell, idx) => {
+    const fallback = `col_${idx + 1}`;
+    const key = cleanGlapsText(headers[idx]) || fallback;
+    payload[key] = cleanGlapsText(cell);
+    return payload;
+  }, {});
+}
+
+export function buildGlapsMasterSheetRows(sheets = []) {
+  return sheets.flatMap((sheet) => {
+    const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
+    const headerRowIndex = findGenericHeaderRowIndex(rows);
+    const headers = headerRowIndex >= 0 ? (rows[headerRowIndex] || []).map(cleanGlapsText) : [];
+    return rows.map((row, idx) => ({
+      sheetName: cleanGlapsText(sheet.name),
+      rowNumber: idx + 1,
+      headerRow: idx === headerRowIndex,
+      rowValues: row.map(cleanGlapsText),
+      rowPayload: buildGenericRawPayload(headers, row),
+    })).filter(item => isNonEmptyRow(item.rowValues));
+  });
+}
+
 function aliasKey(alias) {
   return [
     cleanGlapsText(alias.aliasType),
@@ -279,6 +349,45 @@ export function buildGlapsAliasesFromRoutes(routes = []) {
   return [...aliases.values()];
 }
 
+export function buildGlapsAliasesFromCodeSheets(sheets = []) {
+  const aliases = new Map();
+  sheets.forEach((sheet) => {
+    const sheetName = cleanGlapsText(sheet.name);
+    if (!sheetName || sheetName.includes('운송경로')) return;
+    const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
+    const headerRowIndex = findGenericHeaderRowIndex(rows);
+    if (headerRowIndex < 0) return;
+
+    const headers = (rows[headerRowIndex] || []).map(cleanGlapsText);
+    const normalizedHeaders = headers.map(normalizeGlapsKey);
+    const codeIdx = normalizedHeaders.findIndex(header => header.includes('코드') || header.includes('CODE'));
+    const nameIdx = normalizedHeaders.findIndex((header, idx) => (
+      idx !== codeIdx
+      && (header.includes('명') || header.includes('NAME') || header.includes('규격') || header.includes('선사') || header.includes('컨사이니') || header.includes('포트'))
+    ));
+    const fallbackNameIdx = nameIdx >= 0 ? nameIdx : rows[headerRowIndex].findIndex((_, idx) => idx !== codeIdx);
+    const aliasType = inferSheetAliasType(sheetName);
+
+    rows.slice(headerRowIndex + 1).forEach((row) => {
+      const glapsCode = getRowValue(row, codeIdx);
+      const glapsName = getRowValue(row, fallbackNameIdx);
+      if (!glapsCode && !glapsName) return;
+      const alias = {
+        aliasType,
+        sourceName: glapsName || glapsCode,
+        elsName: glapsName || glapsCode,
+        glapsName: glapsName || glapsCode,
+        glapsCode,
+        routeCode: '',
+        reviewStatus: glapsName || glapsCode ? 'ready' : 'needs_mapping',
+        reviewNote: sheetName,
+      };
+      aliases.set(aliasKey(alias), alias);
+    });
+  });
+  return [...aliases.values()];
+}
+
 export function summarizeGlapsRoutes(routes = []) {
   const byStatus = routes.reduce((acc, route) => {
     acc[route.reviewStatus] = (acc[route.reviewStatus] || 0) + 1;
@@ -295,10 +404,17 @@ export function summarizeGlapsRoutes(routes = []) {
 export function parseGlapsMasterSheets(sheets = []) {
   const routeSheet = findRouteCandidateSheet(sheets);
   const routes = routeSheet ? parseGlapsRouteSheet(routeSheet) : [];
-  const aliases = buildGlapsAliasesFromRoutes(routes);
+  const aliases = [
+    ...buildGlapsAliasesFromRoutes(routes),
+    ...buildGlapsAliasesFromCodeSheets(sheets),
+  ].filter((alias, idx, list) => (
+    list.findIndex(item => aliasKey(item) === aliasKey(alias)) === idx
+  ));
+  const sheetRows = buildGlapsMasterSheetRows(sheets);
   return {
     routes,
     aliases,
+    sheetRows,
     summary: summarizeGlapsRoutes(routes),
     sourceSheets: sheets.map(sheet => cleanGlapsText(sheet.name)).filter(Boolean),
     routeSheetName: routeSheet?.name || '',
@@ -357,7 +473,7 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
 export function parseGlapsAliasTemplateSheets(sheets = []) {
   return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ALIAS_TEMPLATE_ALIASES).map(({ row, cols, sourceRowNumber }) => ({
     id: getRowValue(row, cols.id),
-    aliasType: getRowValue(row, cols.aliasType) || 'waypoint',
+    aliasType: GLAPS_CODE_ALIAS_TYPES.has(getRowValue(row, cols.aliasType)) ? getRowValue(row, cols.aliasType) : 'waypoint',
     sourceName: getRowValue(row, cols.sourceName),
     elsName: getRowValue(row, cols.elsName),
     glapsName: getRowValue(row, cols.glapsName),

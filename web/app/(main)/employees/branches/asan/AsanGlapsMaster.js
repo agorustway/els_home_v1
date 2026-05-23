@@ -66,9 +66,11 @@ export default function AsanGlapsMaster() {
 
     const routes = data?.routes || [];
     const aliases = data?.aliases || [];
+    const sheetRows = data?.sheetRows || [];
+    const sheetSummary = data?.sheetSummary || [];
     const summary = data?.summary || { total: 0, ready: 0, needsMapping: 0, missingRouteCode: 0 };
 
-    const tableRows = activeTable === 'routes' ? routes : aliases;
+    const tableRows = activeTable === 'routes' ? routes : (activeTable === 'aliases' ? aliases : sheetRows);
     const version = data?.version || null;
 
     const tableInfo = useMemo(() => ({
@@ -80,7 +82,11 @@ export default function AsanGlapsMaster() {
             title: '항목매핑',
             count: aliases.length,
         },
-    }), [aliases.length, routes.length]);
+        sheets: {
+            title: '원본시트',
+            count: sheetRows.length,
+        },
+    }), [aliases.length, routes.length, sheetRows.length]);
 
     const postWorkbook = async ({ mode, source = 'upload', file = null }) => {
         const formData = new FormData();
@@ -128,8 +134,8 @@ export default function AsanGlapsMaster() {
                     <input ref={templateFileRef} type="file" accept=".xlsx" hidden onChange={handleTemplateFileChange} />
                     <button type="button" onClick={() => postWorkbook({ mode: 'master', source: 'nas' })} disabled={saving}>NAS 마스터 반영</button>
                     <button type="button" onClick={() => masterFileRef.current?.click()} disabled={saving}>마스터 업로드</button>
-                    <button type="button" onClick={() => downloadTemplate(activeTable)} disabled={saving}>수정양식 내보내기</button>
-                    <button type="button" onClick={() => templateFileRef.current?.click()} disabled={saving}>수정양식 업로드</button>
+                    <button type="button" onClick={() => downloadTemplate(activeTable)} disabled={saving || activeTable === 'sheets'}>수정양식 내보내기</button>
+                    <button type="button" onClick={() => templateFileRef.current?.click()} disabled={saving || activeTable === 'sheets'}>수정양식 업로드</button>
                 </div>
             </div>
 
@@ -145,6 +151,7 @@ export default function AsanGlapsMaster() {
                 <div className={styles.metricCard}><span>확정</span><b>{summary.ready.toLocaleString()}</b></div>
                 <div className={styles.metricCard}><span>조정필요</span><b>{summary.needsMapping.toLocaleString()}</b></div>
                 <div className={styles.metricCard}><span>코드없음</span><b>{summary.missingRouteCode.toLocaleString()}</b></div>
+                <div className={styles.metricCard}><span>원본시트</span><b>{sheetSummary.length.toLocaleString()}</b></div>
             </div>
 
             <div className={styles.queryPanel}>
@@ -218,7 +225,7 @@ export default function AsanGlapsMaster() {
                             ))}
                         </tbody>
                     </table>
-                ) : (
+                ) : activeTable === 'aliases' ? (
                     <table className={styles.table}>
                         <thead>
                             <tr>
@@ -243,6 +250,27 @@ export default function AsanGlapsMaster() {
                                     <td>{row.glaps_code}</td>
                                     <td>{row.route_code}</td>
                                     <td>{row.review_note}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>시트</th>
+                                <th>행</th>
+                                <th>헤더</th>
+                                <th>원본값</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableRows.map((row) => (
+                                <tr key={row.id}>
+                                    <td>{row.sheet_name}</td>
+                                    <td>{row.row_number}</td>
+                                    <td>{row.header_row ? '헤더' : ''}</td>
+                                    <td>{JSON.stringify(row.row_payload || row.row_values || {})}</td>
                                 </tr>
                             ))}
                         </tbody>

@@ -17,11 +17,15 @@ import {
     detailLineToRow,
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
+import {
+    buildGlapsRouteFingerprint,
+    normalizeGlapsKey,
+} from '@/utils/glapsMasterData.mjs';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
-const MAIN_TABS = ['dispatch', 'shipping', 'performance', 'glaps-master'];
+const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
 
 const loadAsanShipping = () => import('./AsanShipping');
@@ -43,7 +47,6 @@ const AsanAnnualPerformance = dynamic(loadAsanAnnualPerformance, { ssr: false, l
 const ASAN_MAIN_TAB_LOADERS = {
     shipping: [loadAsanShipping],
     performance: [loadAsanSummaryPerformance, loadAsanMonthlyPerformance, loadAsanAnnualPerformance],
-    'glaps-master': [loadAsanGlapsMaster],
 };
 
 const ASAN_PERFORMANCE_TAB_LOADERS = {
@@ -388,6 +391,21 @@ function makeDispatchDetailLineKey(line) {
         line?.lineNo ?? '',
     ].join('|');
 }
+function buildGlapsAliasCodeMap(aliases = [], aliasType) {
+    const map = new Map();
+    aliases
+        .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
+        .forEach((alias) => {
+            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].forEach((value) => {
+                const key = normalizeGlapsKey(value);
+                if (key && !map.has(key)) map.set(key, alias.glaps_code);
+            });
+        });
+    return map;
+}
+function getGlapsAliasCode(map, value) {
+    return map.get(normalizeGlapsKey(value)) || '';
+}
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
 }
@@ -477,7 +495,7 @@ function AsanDispatchContent() {
     const [browserPath, setBrowserPath] = useState('/아산지점/A_운송실무');
     const [browserLoading, setBrowserLoading] = useState(false);
     const [searchInput, setSearchInput] = useState('');
-    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail'
+    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail' | 'glaps-master'
     const [searchTerm, setSearchTerm] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
     const [colorFilter, setColorFilter] = useState(null);
@@ -493,6 +511,7 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
+    const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [] });
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -530,6 +549,31 @@ function AsanDispatchContent() {
     useEffect(() => {
         setDetailStartOverrides({});
     }, [viewType, activeTab, allTabMonth, allTabWeek]);
+
+    useEffect(() => {
+        if (mainView !== 'detail') return undefined;
+        let cancelled = false;
+        const loadGlapsLookup = async () => {
+            try {
+                const response = await fetch(`/api/branches/asan/glaps/master?t=${Date.now()}`, { cache: 'no-store' });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || payload.setupRequired) {
+                    if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [] });
+                    return;
+                }
+                if (!cancelled) {
+                    setGlapsDetailLookup({
+                        routes: payload.routes || [],
+                        aliases: payload.aliases || [],
+                    });
+                }
+            } catch {
+                if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [] });
+            }
+        };
+        loadGlapsLookup();
+        return () => { cancelled = true; };
+    }, [mainView]);
 
     // ===== 데이터 fetch =====
     const fetchSettings = useCallback(async () => {
@@ -929,16 +973,46 @@ function AsanDispatchContent() {
         workDate: isAllTab ? '' : activeItem?.target_date || '',
     }), [headers, processedData, isAllTab, activeItem?.target_date]);
 
+    const glapsRouteMap = useMemo(() => {
+        const map = new Map();
+        (glapsDetailLookup.routes || []).forEach((route) => {
+            const key = route.route_fingerprint || buildGlapsRouteFingerprint({
+                startLocationName: route.start_location_name,
+                waypointElsName: route.waypoint_els_name || route.waypoint_name,
+                destinationName: route.destination_name,
+            });
+            if (key && !map.has(key)) map.set(key, route);
+        });
+        return map;
+    }, [glapsDetailLookup.routes]);
+
+    const glapsAliasMaps = useMemo(() => ({
+        port: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'port'),
+        line: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'line'),
+        containerType: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'container_type'),
+    }), [glapsDetailLookup.aliases]);
+
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
-        if (!Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey)) return line;
-        const startLocation = detailStartOverrides[lineKey] || '';
+        const hasOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
+        const startLocation = hasOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
+        const routeKey = buildGlapsRouteFingerprint({
+            startLocationName: startLocation,
+            waypointElsName: line.workplace,
+            destinationName: line.destination,
+        });
+        const glapsRoute = glapsRouteMap.get(routeKey);
         return {
             ...line,
             startLocation,
             needsStartLocationSelection: !startLocation,
+            glapsRouteName: glapsRoute?.route_name || '',
+            glapsRouteCode: glapsRoute?.route_code || '',
+            glapsPortCode: getGlapsAliasCode(glapsAliasMaps.port, line.port),
+            glapsLineCode: getGlapsAliasCode(glapsAliasMaps.line, line.line),
+            glapsTypeCode: getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType),
         };
-    }), [detailLines, detailStartOverrides]);
+    }), [detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap]);
 
     const filteredDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1323,6 +1397,9 @@ function AsanDispatchContent() {
                             <button className={`${styles.funcBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
                                 상세배차내역
                             </button>
+                            <button className={`${styles.funcBtn} ${mainView === 'glaps-master' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('glaps-master')}>
+                                GLAPS마스터
+                            </button>
                         </div>
                         <div className={styles.viewDivider} />
                         <div className={styles.viewSwitch}>
@@ -1374,7 +1451,9 @@ function AsanDispatchContent() {
 
             {(mainView === 'grid' || mainView === 'detail') && dateControls}
 
-            {loading ? (
+            {mainView === 'glaps-master' ? (
+                <AsanGlapsMaster />
+            ) : loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : !currentView ? (
                 <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;🔄 NAS 동기화&apos; 버튼을 누르세요.</div>
@@ -1402,7 +1481,7 @@ function AsanDispatchContent() {
                             </span>
                         </div>
                         <div className={styles.summaryRight}>
-                            <span className={styles.detailHint}>GLAPS 업로드 전 검수용 상세 라인</span>
+                            <span className={styles.detailHint}>GLAPS 마스터 기존 코드 도출 검수용 상세 라인</span>
                         </div>
                     </div>
                     <div className={styles.tableWrap}>
@@ -1860,15 +1939,6 @@ export default function AsanBranchPage() {
                     >
                         실적관리
                     </button>
-                    <button
-                        className={`${styles.mainTabBtn} ${activeMainTab === 'glaps-master' ? styles.mainTabBtnActive : ''}`}
-                        onClick={() => switchMainTab('glaps-master')}
-                        onMouseEnter={() => prefetchMainTab('glaps-master')}
-                        onFocus={() => prefetchMainTab('glaps-master')}
-                        onTouchStart={() => prefetchMainTab('glaps-master')}
-                    >
-                        GLAPS마스터
-                    </button>
                 </div>
             </div>
             
@@ -1877,7 +1947,6 @@ export default function AsanBranchPage() {
                 {activeMainTab === 'dispatch' && <AsanDispatchContent />}
                 {activeMainTab === 'shipping' && <AsanShipping />}
                 {activeMainTab === 'performance' && <AsanPerformanceManagement />}
-                {activeMainTab === 'glaps-master' && <AsanGlapsMaster />}
             </div>
         </div>
     );

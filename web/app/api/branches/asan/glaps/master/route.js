@@ -16,13 +16,14 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
-const PAGE_LIMIT = 500;
+const PAGE_LIMIT = 2000;
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
   return message.includes('glaps_master_versions')
     || message.includes('glaps_transport_routes')
     || message.includes('glaps_master_aliases')
+    || message.includes('glaps_master_sheet_rows')
     || message.includes('does not exist')
     || message.includes('schema cache');
 }
@@ -151,6 +152,18 @@ function toAliasDbRow(alias, { branchId, versionId, userEmail }) {
   };
 }
 
+function toSheetRowDbRow(sheetRow, { branchId, versionId }) {
+  return {
+    branch_id: branchId,
+    version_id: versionId,
+    sheet_name: sheetRow.sheetName || '',
+    row_number: sheetRow.rowNumber || 0,
+    header_row: Boolean(sheetRow.headerRow),
+    row_values: sheetRow.rowValues || [],
+    row_payload: sheetRow.rowPayload || {},
+  };
+}
+
 async function getActiveVersion(adminSupabase, branchId) {
   const { data, error } = await adminSupabase
     .from('glaps_master_versions')
@@ -165,14 +178,29 @@ async function getActiveVersion(adminSupabase, branchId) {
 }
 
 async function refreshVersionCounts(adminSupabase, versionId) {
-  const [{ count: routeCount }, { count: aliasCount }] = await Promise.all([
+  const [{ count: routeCount }, { count: aliasCount }, { count: sheetRowCount }] = await Promise.all([
     adminSupabase.from('glaps_transport_routes').select('id', { count: 'exact', head: true }).eq('version_id', versionId).eq('active', true),
     adminSupabase.from('glaps_master_aliases').select('id', { count: 'exact', head: true }).eq('version_id', versionId).eq('active', true),
+    adminSupabase.from('glaps_master_sheet_rows').select('id', { count: 'exact', head: true }).eq('version_id', versionId),
   ]);
   await adminSupabase
     .from('glaps_master_versions')
-    .update({ route_count: routeCount || 0, alias_count: aliasCount || 0 })
+    .update({ route_count: routeCount || 0, alias_count: aliasCount || 0, sheet_row_count: sheetRowCount || 0 })
     .eq('id', versionId);
+}
+
+function buildSheetSummary(rows = []) {
+  const summaryMap = new Map();
+  rows.forEach((row) => {
+    const sheetName = row.sheet_name || '';
+    if (!summaryMap.has(sheetName)) {
+      summaryMap.set(sheetName, { sheetName, rowCount: 0, headerRows: 0 });
+    }
+    const item = summaryMap.get(sheetName);
+    item.rowCount += 1;
+    if (row.header_row) item.headerRows += 1;
+  });
+  return [...summaryMap.values()];
 }
 
 export async function GET(request) {
@@ -193,6 +221,8 @@ export async function GET(request) {
         version: null,
         routes: [],
         aliases: [],
+        sheetRows: [],
+        sheetSummary: [],
         summary: summarizeGlapsRoutes([]),
         matchQuery: getGlapsRouteMatchQuery(),
       });
@@ -217,14 +247,33 @@ export async function GET(request) {
       .limit(PAGE_LIMIT);
     if (aliasError) throw aliasError;
 
+    const { data: sheetRows, error: sheetRowError } = await access.adminSupabase
+      .from('glaps_master_sheet_rows')
+      .select('*')
+      .eq('version_id', version.id)
+      .order('sheet_name', { ascending: true })
+      .order('row_number', { ascending: true })
+      .limit(PAGE_LIMIT);
+    if (sheetRowError) throw sheetRowError;
+
     const filterRow = (row) => {
       if (status && row.review_status !== status) return false;
       if (!search) return true;
       return Object.values(row).some(value => String(value || '').toLowerCase().includes(search));
     };
+    const filterSheetRow = (row) => {
+      if (!search) return true;
+      return [
+        row.sheet_name,
+        row.row_number,
+        JSON.stringify(row.row_values || []),
+        JSON.stringify(row.row_payload || {}),
+      ].some(value => String(value || '').toLowerCase().includes(search));
+    };
 
     const routes = (routeRows || []).filter(filterRow);
     const aliases = (aliasRows || []).filter(filterRow);
+    const filteredSheetRows = (sheetRows || []).filter(filterSheetRow);
     const activeRoutes = (routeRows || []).map(row => ({
       reviewStatus: row.review_status,
       routeCode: row.route_code,
@@ -236,6 +285,8 @@ export async function GET(request) {
       version,
       routes,
       aliases,
+      sheetRows: filteredSheetRows,
+      sheetSummary: buildSheetSummary(sheetRows || []),
       summary: summarizeGlapsRoutes(activeRoutes),
       matchQuery: getGlapsRouteMatchQuery(),
     });
@@ -285,8 +336,10 @@ export async function POST(request) {
           active: true,
           route_count: parsed.routes.length,
           alias_count: parsed.aliases.length,
+          sheet_row_count: parsed.sheetRows.length,
           metadata: {
             routeSheetName: parsed.routeSheetName,
+            sheetCount: parsed.sourceSheets.length,
             summary: parsed.summary,
           },
         })
@@ -296,6 +349,7 @@ export async function POST(request) {
 
       const routeRows = parsed.routes.map(route => toRouteDbRow(route, { branchId, versionId: version.id, userEmail: access.user.email }));
       const aliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: access.user.email }));
+      const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
         const { error } = await access.adminSupabase.from('glaps_transport_routes').insert(routeRows);
@@ -305,8 +359,18 @@ export async function POST(request) {
         const { error } = await access.adminSupabase.from('glaps_master_aliases').insert(aliasRows);
         if (error) throw error;
       }
+      if (sheetRows.length > 0) {
+        const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows);
+        if (error) throw error;
+      }
 
-      return NextResponse.json({ success: true, version, summary: parsed.summary, aliasCount: parsed.aliases.length });
+      return NextResponse.json({
+        success: true,
+        version,
+        summary: parsed.summary,
+        aliasCount: parsed.aliases.length,
+        sheetRowCount: parsed.sheetRows.length,
+      });
     }
 
     const version = await getActiveVersion(access.adminSupabase, branchId);

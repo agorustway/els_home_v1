@@ -1,3 +1,23 @@
+## [2026-05-23] GLAPS 마스터 위치·전 시트 원장·기존 코드 도출 보정 (v5.14.143)
+### 핵심
+- `GLAPS마스터`를 아산 상위 메뉴에서 제거하고 배차판 내부 보기로 이동했습니다.
+- GLAPS 마스터는 운송경로만이 아니라 전 시트 원본행을 `glaps_master_sheet_rows`에 보관하고, 프로코드/컨테이너규격/라인 등 현재 연결 가능한 GLAPS 코드는 마스터 원본에서만 읽어 항목매핑으로 노출합니다.
+- 상세배차내역은 `하차지(선적)`과 `고객사` 사이에 `운송경로`, `운송경로코드`를 추가하고, `포트/라인/타입` 옆에 각각 GLAPS 기존 코드 컬럼을 표시합니다. 없는 코드는 생성하지 않고 공란으로 둡니다.
+- 수정양식 다운로드 헤더를 `route_code` 같은 내부 필드명에서 `운송경로코드`, `경유지(ELS)`, `매칭상태` 등 한국어 업무 컬럼명으로 보정했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "utils/glapsMasterData.mjs" "utils/asanDispatchDetailLines.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- 로컬 개발서버 `http://127.0.0.1:3000/employees/branches/asan`: HTTP 200 응답 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`, `web/utils/glapsMasterData.mjs`, `web/utils/asanDispatchDetailLines.mjs`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] 배차판 원본 엑셀 WEB 컬럼 분리 (v5.14.140)
 ### 핵심
 - WEB 입력·누적이 정상 동작하므로 글로비스KD외/모비스AS 원본 `.xlsm` 2건에서 `BKG1`, `BKG2`, `BKG3`, `TARGET VESSEL`, `비고` 컬럼을 삭제했습니다.
