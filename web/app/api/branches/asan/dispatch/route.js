@@ -38,7 +38,7 @@ export async function GET(request) {
 
     if (type === 'integrated') {
         const unifiedHeaders = [
-            "구분", "화주", "담당자", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
+            "구분", "화주", "담당자", "선적", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
             "라인(선사명)", "TYPE", "배차정보", "오더(계)", "배차예정", "기타", "아산", "부산",
             "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고", "특이사항"
         ];
@@ -99,6 +99,7 @@ export async function GET(request) {
                 "구분": getCol(["구분"]),
                 "화주": getCol(["화주"]),
                 "담당자": getCol(["담당자", "당당자"]),
+                "선적": getCol(["선적"]),
                 "작업지": getCol(["작업지"]),
                 "고객사(국가)": itemType === 'glovis' ? getCol(["고객사"]) : getCol(["국가", "국가명"]),
                 "포트(도착항)": itemType === 'glovis' ? getCol(["포트"]) : getCol(["도착항"]),
