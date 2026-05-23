@@ -1,15 +1,16 @@
-# ELS MISSION CONTROL (v5.14.139 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.140 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판에 GLAPS 업로드 전 검수용 `상세배차내역` 탭을 추가해 지역 배차칸을 컨테이너 1건 단위 상세 라인으로 분해합니다.
+> 최신 업데이트: 아산 배차판 글로비스/모비스 원본 엑셀에서 WEB 전용 BKG1~3/TARGET VESSEL/비고 컬럼을 제거하고, 화면/API는 DB 오버레이 컬럼을 계속 노출합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.139
+- **웹 버전**: v5.14.140
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **이번 변경 핵심**:
   - 행사일정은 2026년 주요 공휴일/대체공휴일을 휴일 셀과 라벨로 표시한다.
   - 아산 배차판은 `상세배차내역` 탭에서 작업일자/상차지/작업지/선적/BKG/TARGET/비고를 GLAPS 검수용 1건 단위 라인으로 분해한다. 인천 업체 suffix `K`는 `인천항국제여객터미널`로 매핑한다.
+  - 아산 배차판 원본 엑셀 2건은 BKG1~3/TARGET VESSEL/비고를 삭제하고, WEB/API/엑셀 다운로드는 Supabase WEB 셀 DB 기준으로 해당 컬럼을 재주입한다. 글로비스 `T` 헤더는 화면에서 `TYPE`으로 표준화한다.
   - 아산 배차판은 날짜 탭/기간 선택/WEB 전용 BKG·TARGET·비고 오버레이/히스토리를 운영하며, WEB 셀 조회는 Supabase 페이지 조회로 1000건 제한을 회피한다. 비고는 `source=web` 저장값만 화면/내보내기에 반영하고 엑셀 특이사항은 별도 컬럼으로 유지한다.
   - 아산 배차판 통합현황은 글로비스/모비스 원본의 `선적` 컬럼을 `담당자`와 `작업지` 사이에 공통 표시하며, 원본에 없는 예전 날짜는 공란으로 둔다.
   - 아산 배차판 엑셀 다운로드는 `오더(계)/오더/계/수량/배차` 컬럼을 숫자 타입과 정수 표시 형식으로 저장하고 빈 셀까지 테두리를 입힌다.
@@ -51,9 +52,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-139: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차내역 1차
+- [x] v5.14.64-140: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차내역 1차, 배차판 원본 엑셀 WEB 컬럼 분리
 
 ## RECENT CHANGES
+- **v5.14.140**: 아산 배차판 글로비스/모비스 원본 `.xlsm`에서 BKG1~3/TARGET VESSEL/비고 컬럼을 삭제했다. VBA 보존을 위해 백업 후 Excel COM으로 열 삭제, 원본 `vbaProject.bin` 복원, Excel 열기 검증과 NAS 재동기화를 수행했다. WEB은 삭제된 컬럼을 DB 오버레이 전용 컬럼으로 계속 노출하고 글로비스 `T` 헤더는 `TYPE`으로 표준화한다.
 - **v5.14.139**: 아산 배차판 `상세배차내역` 탭을 추가했다. 지역 배차칸의 `민경3, 이지1` 같은 값을 컨테이너 1건씩 풀고, BKG1~3/TARGET VESSEL/비고를 반복 표시한다. 부산/인천/울산 suffix `B`, 인천 `K`, 부곡 `의왕ICD` 매핑과 기타/철송·중부 수동 선택지를 제공한다.
 - **v5.14.138**: 연락처 예하 등록/수정/검색/API/엑셀 업로드 전화번호는 `-`, `/`, `.`를 제거한 저장 기준값으로 정규화하고, 목록/상세 출력은 기존 대한민국 번호 표기 포맷터를 사용한다.
 - **v5.14.137**: 아산 배차판 통합현황 고정 헤더에 `선적`을 추가하고, 글로비스/모비스 원본 `선적` 값을 통합 행과 엑셀 다운로드에 함께 표시한다. 2026-05-26부터 모비스에 추가된 `운송사-선적-작업지` 구조는 통합에서 `담당자-선적-작업지` 위치로 맞추며, 예전 날짜는 공란으로 유지한다.
@@ -79,6 +81,7 @@
 - `npm.cmd run build`: 통과
 - `powershell -ExecutionPolicy Bypass -File scripts\build_driver_apk.ps1`: 통과, APK v5.11.29/versionCode 5170
 - `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 37개 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 53개 통과
 
 ## EASTER EGGS
 - `/employees/random-game`: 공식 메뉴에는 없는 숨은 게임.

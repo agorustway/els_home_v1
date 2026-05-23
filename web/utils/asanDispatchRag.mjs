@@ -333,7 +333,7 @@ export function findHeaderIndex(headers = [], candidates = [], { partial = true 
 
 function normalizeHeaders(headers = [], type = '') {
   return headers.map((header) => {
-    if (type === 'glovis' && header === 'col_12') return 'T';
+    if (type === 'glovis' && (header === 'col_12' || header === 'T')) return 'TYPE';
     if (type === 'mobis' && header === 'col_15') return 'TYPE';
     return header;
   });

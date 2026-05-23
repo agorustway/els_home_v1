@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
+    ensureDispatchWebCellHeaders,
     loadDispatchWebCellState,
     normalizeDispatchRecordHeaders,
     shouldIncludeDispatchRow,
@@ -33,7 +34,7 @@ function mergeDispatchExportHeaders(records = []) {
             headers.push(header);
         });
     });
-    return headers;
+    return ensureDispatchWebCellHeaders(headers);
 }
 
 function mapDispatchExportRow(row = [], sourceHeaders = [], targetHeaders = []) {
@@ -177,7 +178,11 @@ export async function GET(request) {
                 "BKG3": getCol(["BKG3"]),
                 "TARGET VESSEL": getCol(["TARGET VESSEL", "TARGETVESSEL"]),
                 "비고": getCol(["비고"]),
-                "특이사항": getColAfter(["특이사항"], ["비고"])
+                "특이사항": firstCol(
+                    getColAfter(["특이사항", "툭이사항"], ["비고"]),
+                    getColAfter(["특이사항", "툭이사항"], ["검증"]),
+                    getColAfter(["특이사항", "툭이사항"], ["배차"])
+                )
             };
 
             const buildRowMeta = createDispatchRowMetaBuilder({

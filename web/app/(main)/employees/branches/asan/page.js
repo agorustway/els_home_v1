@@ -202,6 +202,13 @@ function findWeekOptionByDate(weeks = [], dateStr = '') {
     return weeks.find(week => dateStr >= week.start && dateStr <= week.end) || null;
 }
 function findCol(headers, name) { return headers.findIndex(h => h.trim() === name); }
+function findAnyCol(headers, names = []) {
+    for (const name of names) {
+        const idx = findCol(headers, name);
+        if (idx >= 0) return idx;
+    }
+    return -1;
+}
 function parseQty(value) {
     const match = String(value ?? '').replace(/,/g, '').trim().match(/-?\d+(?:\.\d+)?/);
     return match ? Number(match[0]) || 0 : 0;
@@ -230,7 +237,7 @@ function fmtTs(dt) {
 function calcSummary(headers, data, viewType) {
     if (!headers || !data || data.length === 0) return null;
     if (viewType === 'glovis') {
-        const oC = findCol(headers, '오더'), tC = findCol(headers, 'T'), gC = findCol(headers, '구분');
+        const oC = findCol(headers, '오더'), tC = findAnyCol(headers, ['TYPE', 'T']), gC = findCol(headers, '구분');
         let order = 0, disp = 0, ft40 = 0, ft20 = 0;
         const cats = {};
         data.forEach(row => {

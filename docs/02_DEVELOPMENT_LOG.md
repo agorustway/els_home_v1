@@ -1,3 +1,24 @@
+## [2026-05-23] 배차판 원본 엑셀 WEB 컬럼 분리 (v5.14.140)
+### 핵심
+- WEB 입력·누적이 정상 동작하므로 글로비스KD외/모비스AS 원본 `.xlsm` 2건에서 `BKG1`, `BKG2`, `BKG3`, `TARGET VESSEL`, `비고` 컬럼을 삭제했습니다.
+- `.xlsm` VBA 손상을 막기 위해 NAS 원본을 백업한 뒤 Excel COM으로 컬럼을 삭제하고, 원본 `vbaProject.bin`을 복원한 후 Excel 열기 검증과 해시 검증을 수행했습니다.
+- 삭제된 컬럼은 WEB/API/엑셀 다운로드에서 Supabase WEB 셀 DB 전용 컬럼으로 계속 재주입합니다.
+- 글로비스 원본의 `T` 헤더는 화면/API 기준에서 `TYPE`으로 표준화했습니다.
+### 검증
+- 로컬 최종 `.xlsm` 2건 Excel COM read-only 열기: 통과
+- NAS 업로드 후 파일 해시 일치 및 아산 배차판 동기화 완료 확인
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 53개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- NAS 원본: `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외).xlsm`, `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(모비스AS).xlsm`
+- `web/utils/asanDispatchWebCells.mjs`, `web/utils/asanDispatchRag.mjs`
+- `web/app/api/branches/asan/dispatch/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDispatchWebCells.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
 ## [2026-05-23] GLAPS 상세배차내역 탭 1차 구현 (v5.14.139)
 ### 배경
 - GLAPS는 상차-경유(작업)-하차 기준의 업로드 구조를 요구하지만, 현재 아산 배차판은 지역별 배차칸에 `민경3, 이지1`처럼 1차 접수 수량이 묶여 있습니다.

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
+    ensureDispatchWebCellHeaders,
     loadDispatchWebCellState,
     normalizeDispatchRecordHeaders,
     shouldIncludeDispatchRow,
@@ -126,7 +127,11 @@ export async function GET(request) {
                 "BKG3": getCol(["BKG3"]),
                 "TARGET VESSEL": getCol(["TARGET VESSEL", "TARGETVESSEL"]),
                 "비고": getCol(["비고"]),
-                "특이사항": getColAfter(["특이사항"], ["비고"])
+                "특이사항": firstCol(
+                    getColAfter(["특이사항", "툭이사항"], ["비고"]),
+                    getColAfter(["특이사항", "툭이사항"], ["검증"]),
+                    getColAfter(["특이사항", "툭이사항"], ["배차"])
+                )
             };
 
             const buildRowMeta = createDispatchRowMetaBuilder({
@@ -180,7 +185,7 @@ export async function GET(request) {
         // Filter out junk columns for specific views (e.g. col_31, A, B...)
         const filteredData = records.map(item => {
             const validIndices = [];
-            const newHeaders = item.headers.filter((h, i) => {
+            const sourceHeaders = item.headers.filter((h, i) => {
                 const trimmed = (h || '').trim();
                 // [v5.10.20] A, B, 함축 및 col_N 형식 컬럼은 제외하되, 사용자가 요청한 BKG/TARGET은 보존
                 const isJunk = (/^(col_\d+)$/i.test(trimmed) || ['A', 'B', '함축'].includes(trimmed)) && 
@@ -188,6 +193,7 @@ export async function GET(request) {
                 if (!isJunk) validIndices.push(i);
                 return !isJunk;
             });
+            const newHeaders = ensureDispatchWebCellHeaders(sourceHeaders);
 
             // [v5.10.21] 통합현황과 동일한 로직으로 컬럼 찾기 (완전 일치 우선)
             const getCol = (nameArr) => {
@@ -226,7 +232,9 @@ export async function GET(request) {
                 if (!shouldIncludeDispatchRow(item.headers || [], row, item.type)) return;
                 rowMapping[ri] = newData.length;
                 const rowMeta = buildRowMeta(row, ri);
-                const mappedRow = validIndices.map(vi => row[vi]);
+                const mappedRow = newHeaders.map((_, idx) => (
+                    idx < validIndices.length ? row[validIndices[idx]] : ''
+                ));
                 newData.push(applyDispatchWebCellOverlay({
                     headers: newHeaders,
                     row: mappedRow,

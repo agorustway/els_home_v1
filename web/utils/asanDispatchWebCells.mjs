@@ -59,7 +59,7 @@ export function normalizeDispatchHeadersForType(headers = [], dispatchType = '')
   const nextHeaders = [...(headers || [])];
   const normalizedType = String(dispatchType || '').trim().toLowerCase();
   const replacements = normalizedType === 'glovis'
-    ? [['col_12', 'T']]
+    ? [['col_12', 'TYPE'], ['T', 'TYPE']]
     : normalizedType === 'mobis'
       ? [['col_15', 'TYPE']]
       : [];
@@ -81,6 +81,17 @@ export function normalizeDispatchHeadersForType(headers = [], dispatchType = '')
     });
   }
 
+  return nextHeaders;
+}
+
+export function ensureDispatchWebCellHeaders(headers = []) {
+  const nextHeaders = [...(headers || [])];
+  Object.values(ASAN_DISPATCH_WEB_CELL_FIELDS).forEach((fieldKey) => {
+    const label = getDispatchWebCellFieldLabel(fieldKey);
+    if (!label) return;
+    const exists = nextHeaders.some((header) => normalizeDispatchHeader(header) === normalizeDispatchHeader(label));
+    if (!exists) nextHeaders.push(label);
+  });
   return nextHeaders;
 }
 
