@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
+
+function normalizePartnerContactPayload(body) {
+    const updates = { ...body };
+    if (body.phone !== undefined) updates.phone = normalizeKoreanPhoneNumberInput(body.phone);
+    if (body.manager_phone !== undefined) updates.manager_phone = normalizeKoreanPhoneNumberInput(body.manager_phone);
+    return updates;
+}
 
 export async function GET(request, { params }) {
     const supabase = await createClient();
@@ -25,7 +33,7 @@ export async function PATCH(request, { params }) {
         const body = await request.json();
         const { data, error } = await supabase
             .from('partner_contacts')
-            .update(body)
+            .update(normalizePartnerContactPayload(body))
             .eq('id', id)
             .select()
             .single();

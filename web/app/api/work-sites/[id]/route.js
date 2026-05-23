@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET(request, { params }) {
     const { id } = await params;
@@ -27,7 +28,7 @@ export async function PATCH(request, { params }) {
         const updates = {};
         if (body.site_name !== undefined) updates.site_name = body.site_name;
         if (body.address !== undefined) updates.address = body.address;
-        if (body.contact !== undefined) updates.contact = body.contact;
+        if (body.contact !== undefined) updates.contact = normalizeKoreanPhoneNumberInput(body.contact);
         if (body.work_method !== undefined) updates.work_method = body.work_method;
         if (body.notes !== undefined) updates.notes = body.notes;
         if (body.attachments !== undefined) updates.attachments = Array.isArray(body.attachments) ? body.attachments : [];
@@ -44,7 +45,7 @@ export async function PATCH(request, { params }) {
                 const rows = managerList.map((m, i) => ({
                     work_site_id: id,
                     name: m.name || '',
-                    phone: m.phone ?? '',
+                    phone: normalizeKoreanPhoneNumberInput(m.phone ?? ''),
                     role: m.role ?? '',
                     sort_order: i,
                 }));

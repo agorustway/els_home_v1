@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET(request, { params }) {
     const { id } = await params;
@@ -21,10 +22,10 @@ export async function PATCH(request, { params }) {
         if (body.company_name !== undefined) updates.company_name = body.company_name;
         if (body.contact_type !== undefined) updates.contact_type = body.contact_type;
         if (body.address !== undefined) updates.address = body.address;
-        if (body.phone !== undefined) updates.phone = body.phone;
+        if (body.phone !== undefined) updates.phone = normalizeKoreanPhoneNumberInput(body.phone);
         if (body.email !== undefined) updates.email = body.email;
         if (body.contact_person !== undefined) updates.contact_person = body.contact_person;
-        if (body.contact_person_phone !== undefined) updates.contact_person_phone = body.contact_person_phone;
+        if (body.contact_person_phone !== undefined) updates.contact_person_phone = normalizeKoreanPhoneNumberInput(body.contact_person_phone);
         if (body.memo !== undefined) updates.memo = body.memo;
         const { data, error } = await supabase.from('external_contacts').update(updates).eq('id', id).select().single();
         if (error) throw error;

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import { CARGO_TYPES, CONTRACT_TYPE_OPTIONS, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../intranet.module.css';
 
@@ -12,13 +13,6 @@ export default function DriverContactsNewPage() {
     const router = useRouter();
 
     const BRANCHES = ['아산지점', '중부지점', '예산지점', '당진지점', '부산지점', '상암지점'];
-
-    const formatPhone = (val) => {
-        const num = val.replace(/[^0-9]/g, '');
-        if (num.length <= 3) return num;
-        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    };
 
     const [formData, setFormData] = useState({
         branch: '', name: '', phone: '', vehicle_type: '', chassis_type: '', photo_url: '',
@@ -37,7 +31,7 @@ export default function DriverContactsNewPage() {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         if (name === 'phone') {
-            setFormData(prev => ({ ...prev, [name]: formatPhone(value) }));
+            setFormData(prev => ({ ...prev, [name]: normalizeKoreanPhoneNumberInput(value) }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -100,7 +94,7 @@ export default function DriverContactsNewPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     ...formData, 
-                    phone: formData.phone.replace(/[^0-9]/g, ''), 
+                    phone: normalizeKoreanPhoneNumberInput(formData.phone),
                     additional_docs: attachments 
                 }),
             });
@@ -171,7 +165,7 @@ export default function DriverContactsNewPage() {
                         )}
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
-                            <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="전화번호" />
+                            <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="01012345678" inputMode="tel" />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속지점</label>

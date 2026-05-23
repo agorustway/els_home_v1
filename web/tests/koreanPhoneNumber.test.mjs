@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatKoreanPhoneNumber } from '../utils/koreanPhoneNumber.mjs';
+import { formatKoreanPhoneNumber, normalizeKoreanPhoneNumberInput } from '../utils/koreanPhoneNumber.mjs';
+
+test('전화번호 입력값은 하이픈, 슬래시, 점을 제거해 저장 기준값으로 정규화한다', () => {
+  assert.equal(normalizeKoreanPhoneNumberInput('010-2599/6159'), '01025996159');
+  assert.equal(normalizeKoreanPhoneNumberInput('041.544.2402'), '0415442402');
+  assert.equal(normalizeKoreanPhoneNumberInput('055/540.5616~8'), '0555405616~8');
+  assert.equal(normalizeKoreanPhoneNumberInput('051-607-7871~4, 6'), '0516077871~4,6');
+});
 
 test('휴대폰 번호는 010 시작 11자리를 3-4-4로 표시한다', () => {
   assert.equal(formatKoreanPhoneNumber('01025996159'), '010-2599-6159');

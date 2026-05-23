@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../../intranet.module.css';
 
 export default function ExternalContactEditPage() {
@@ -34,10 +35,10 @@ export default function ExternalContactEditPage() {
                         setCompanyName(data.item.company_name);
                         setContactType(data.item.contact_type || '고객사');
                         setAddress(data.item.address ?? '');
-                        setPhone(data.item.phone ?? '');
+                        setPhone(normalizeKoreanPhoneNumberInput(data.item.phone ?? ''));
                         setEmail(data.item.email ?? '');
                         setContactPerson(data.item.contact_person ?? '');
-                        setContactPersonPhone(data.item.contact_person_phone ?? '');
+                        setContactPersonPhone(normalizeKoreanPhoneNumberInput(data.item.contact_person_phone ?? ''));
                         setMemo(data.item.memo ?? '');
                     }
                 })
@@ -101,7 +102,7 @@ export default function ExternalContactEditPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>담당자 연락처</label>
-                        <input className={styles.input} value={contactPersonPhone} onChange={(e) => setContactPersonPhone(e.target.value)} />
+                        <input className={styles.input} value={contactPersonPhone} onChange={(e) => setContactPersonPhone(normalizeKoreanPhoneNumberInput(e.target.value))} inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>주소</label>
@@ -109,7 +110,7 @@ export default function ExternalContactEditPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>대표 연락처</label>
-                        <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                        <input className={styles.input} value={phone} onChange={(e) => setPhone(normalizeKoreanPhoneNumberInput(e.target.value))} inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이메일</label>

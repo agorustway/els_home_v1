@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 /**
  * GET /api/driver-contacts/search?phone=01012345678&vehicle_number=1234
@@ -19,7 +20,7 @@ export async function GET(request) {
         let query = supabase.from('driver_contacts').select('*');
         
         if (phone) {
-            const cleanPhone = phone.replace(/[^0-9]/g, '');
+            const cleanPhone = normalizeKoreanPhoneNumberInput(phone).replace(/[^0-9]/g, '');
             const last8 = cleanPhone.slice(-8);
             if (last8.length >= 8) {
                 // 뒷 8자리 매칭 시도 (ilike %12345678%)

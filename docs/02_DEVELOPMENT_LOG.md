@@ -1,3 +1,23 @@
+## [2026-05-23] 연락처 입력값 무하이픈 저장·정규화 검색 (v5.14.138)
+### 리서치
+- 국가법령정보센터 `전기통신번호관리세칙`의 번호 체계는 지역/식별번호 뒤에 국번호와 가입자번호가 붙는 구조입니다. 화면 표시는 마지막 가입자번호 4자리를 보존해 자릿수에 따라 `02-000-0000`, `031-000-0000`, `031-0000-0000`, `010-0000-0000`으로 나눕니다.
+- 운영 연락처에는 `055-540-5616~8`, `051-607-7871~4,6`처럼 본번호 뒤에 범위 suffix가 붙은 값이 있으므로, 입력 정규화는 본번호의 `-`, `/`, `.`만 제거하고 `~2`, `~4,6`은 보존합니다.
+### 핵심
+- 연락처 예하 등록/수정 화면은 전화번호 입력 중 하이픈을 자동 삽입하지 않고, 사용자가 `-`, `/`, `.`를 넣어도 저장 기준값으로 즉시 합칩니다.
+- 사내연락처, 외부연락처, 협력사정보, 운전원정보, 작업지정보 API와 연락처 엑셀 업로드도 저장 전 같은 정규화를 거칩니다.
+- 목록 검색은 저장값과 검색어 양쪽을 정규화해 `01012345678`로 검색해도 기존 `010-1234-5678` 데이터가 잡히도록 했습니다.
+- 화면 출력은 기존 `formatKoreanPhoneNumber` 기준을 유지해 하이픈 있는 대한민국 표준 표시로 보여줍니다.
+### 검증
+- `node --test web/tests/koreanPhoneNumber.test.mjs web/tests/contactPhoneNormalization.test.mjs`: 11개 통과
+### 변경 파일
+- `web/utils/koreanPhoneNumber.mjs`
+- `web/app/(main)/employees/(intranet)/*contacts*`, `web/app/(main)/employees/(intranet)/work-sites*`
+- `web/app/api/*contacts*`, `web/app/api/work-sites*`, `web/app/api/contacts/excel/upload/route.js`
+- `web/tests/koreanPhoneNumber.test.mjs`, `web/tests/contactPhoneNormalization.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] 아산 통합배차판 선적 컬럼 표시 (v5.14.137)
 ### 핵심
 - 모비스 배차판에 2026-05-26부터 추가된 `선적` 컬럼을 글로비스의 `선적`과 같은 의미로 통합현황에 노출합니다.

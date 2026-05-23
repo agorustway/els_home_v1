@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET() {
     const supabase = await createClient();
@@ -21,7 +22,7 @@ export async function POST(request) {
             name: body.name || '',
             department: body.department ?? '',
             position: body.position ?? '',
-            phone: body.phone ?? '',
+            phone: normalizeKoreanPhoneNumberInput(body.phone ?? ''),
             email: body.email ?? '',
             photo_url: body.photo_url ?? '',
             memo: body.memo ?? '',

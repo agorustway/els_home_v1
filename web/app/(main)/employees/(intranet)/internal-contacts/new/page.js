@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../intranet.module.css';
 
 export default function InternalContactsNewPage() {
@@ -126,7 +127,7 @@ export default function InternalContactsNewPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>연락처</label>
-                        <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="전화번호" />
+                        <input className={styles.input} value={phone} onChange={(e) => setPhone(normalizeKoreanPhoneNumberInput(e.target.value))} placeholder="01012345678" inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이메일</label>

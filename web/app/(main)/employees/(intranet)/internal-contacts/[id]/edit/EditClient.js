@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../../intranet.module.css';
 
 export default function InternalContactEditPage() {
@@ -35,7 +36,7 @@ export default function InternalContactEditPage() {
                         setName(data.item.name);
                         setDepartment(data.item.department ?? '');
                         setPosition(data.item.position ?? '');
-                        setPhone(data.item.phone ?? '');
+                        setPhone(normalizeKoreanPhoneNumberInput(data.item.phone ?? ''));
                         setEmail(data.item.email ?? '');
                         setPhotoUrl(data.item.photo_url ?? '');
                         setMemo(data.item.memo ?? '');
@@ -133,7 +134,7 @@ export default function InternalContactEditPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>연락처</label>
-                        <input className={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                        <input className={styles.input} value={phone} onChange={(e) => setPhone(normalizeKoreanPhoneNumberInput(e.target.value))} inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>이메일</label>

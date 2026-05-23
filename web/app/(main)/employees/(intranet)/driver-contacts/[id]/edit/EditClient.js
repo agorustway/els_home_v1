@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import { CARGO_TYPES, CONTRACT_TYPE_OPTIONS, GENERAL_BODY_TYPES, GENERAL_PAYLOADS, GENERAL_VEHICLE_TYPES, MAP_VISIBILITY_OPTIONS } from '@/utils/vehicleCargoOptions.mjs';
 import styles from '../../../intranet.module.css';
 
@@ -26,13 +27,6 @@ export default function DriverContactsEditPage() {
     const [submitting, setSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const formatPhone = (val) => {
-        const num = val.replace(/[^0-9]/g, '');
-        if (num.length <= 3) return num;
-        if (num.length <= 7) return `${num.slice(0, 3)}-${num.slice(3)}`;
-        return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
-    };
-
     useEffect(() => {
         if (!authLoading && !role) router.replace('/login?next=/employees/driver-contacts/' + params.id + '/edit');
     }, [role, authLoading, router, params.id]);
@@ -45,7 +39,7 @@ export default function DriverContactsEditPage() {
                     if (data.item) {
                         const { branch, name, phone, vehicle_type, chassis_type, photo_url, additional_docs, contract_type, partner_company, vehicle_number, vehicle_id, photo_driver, cargo_type, map_visibility, general_vehicle_type, general_payload, general_body_type } = data.item;
                         setFormData({ 
-                            branch: branch || '', name, phone: formatPhone(phone), vehicle_type, chassis_type, photo_url, 
+                            branch: branch || '', name, phone: normalizeKoreanPhoneNumberInput(phone), vehicle_type, chassis_type, photo_url,
                             contract_type: contract_type || 'uncontracted', 
                             partner_company: partner_company || '',
                             vehicle_number: vehicle_number || '', 
@@ -103,7 +97,7 @@ export default function DriverContactsEditPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     ...formData, 
-                    phone: formData.phone.replace(/[^0-9]/g, ''), 
+                    phone: normalizeKoreanPhoneNumberInput(formData.phone),
                     additional_docs: attachments 
                 }),
             });
@@ -170,7 +164,7 @@ export default function DriverContactsEditPage() {
                         )}
                         <div className={styles.formGroup}>
                             <label className={styles.label}>연락처</label>
-                            <input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} />
+                            <input name="phone" className={styles.input} value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: normalizeKoreanPhoneNumberInput(e.target.value) })} inputMode="tel" />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소속지점</label>

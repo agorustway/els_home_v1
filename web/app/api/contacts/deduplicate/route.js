@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function POST(request) {
     const supabase = await createClient();
@@ -31,8 +32,8 @@ export async function POST(request) {
             let key = '';
             if (tableName === 'internal_contacts') key = row.name + '|' + row.department;
             else if (tableName === 'driver_contacts') key = row.name + '|' + row.business_number;
-            else if (tableName === 'work_sites') key = row.address + '|' + row.contact;
-            else key = row.company_name + '|' + row.phone; // external_contacts, partner_contacts
+            else if (tableName === 'work_sites') key = row.address + '|' + normalizeKoreanPhoneNumberInput(row.contact);
+            else key = row.company_name + '|' + normalizeKoreanPhoneNumberInput(row.phone); // external_contacts, partner_contacts
 
             if (uniqueMap.has(key)) {
                 // If we already have the newest one (since we ordered by descending), this is a duplicate

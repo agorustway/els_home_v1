@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../intranet.module.css';
+
+const PHONE_FIELDS = new Set(['phone', 'manager_phone']);
 
 export default function PartnerContactsNewPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -30,7 +33,7 @@ export default function PartnerContactsNewPage() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: PHONE_FIELDS.has(name) ? normalizeKoreanPhoneNumberInput(value) : value }));
     };
 
     const handleFileUpload = async (e) => {
@@ -113,7 +116,7 @@ export default function PartnerContactsNewPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>회사 전화번호</label>
-                            <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="회사 연락처" />
+                            <input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} placeholder="0212345678" inputMode="tel" />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>소재지 (주소)</label>
@@ -125,7 +128,7 @@ export default function PartnerContactsNewPage() {
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>담당자 연락처</label>
-                            <input name="manager_phone" className={styles.input} value={formData.manager_phone} onChange={handleInputChange} placeholder="담당자 폰번호" />
+                            <input name="manager_phone" className={styles.input} value={formData.manager_phone} onChange={handleInputChange} placeholder="01012345678" inputMode="tel" />
                         </div>
                     </div>
                     <div className={styles.formGroup}>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET() {
     const supabase = await createClient();
@@ -42,7 +43,7 @@ export async function POST(request) {
         const row = {
             site_name: site_name ?? '',
             address: address || '',
-            contact: contact ?? '',
+            contact: normalizeKoreanPhoneNumberInput(contact ?? ''),
             work_method: work_method ?? '',
             notes: notes ?? '',
             attachments: Array.isArray(attachments) ? attachments : [],
@@ -55,7 +56,7 @@ export async function POST(request) {
             const rows = managerList.map((m, i) => ({
                 work_site_id: site.id,
                 name: m.name || '',
-                phone: m.phone ?? '',
+                phone: normalizeKoreanPhoneNumberInput(m.phone ?? ''),
                 role: m.role ?? '',
                 sort_order: i,
             }));

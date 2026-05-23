@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
+
+function normalizeDriverContactPayload(body) {
+    return {
+        ...body,
+        phone: normalizeKoreanPhoneNumberInput(body.phone ?? ''),
+    };
+}
 
 export async function GET(request) {
     const supabase = await createClient();
@@ -22,7 +30,7 @@ export async function POST(request) {
         const body = await request.json();
         const { data, error } = await supabase
             .from('driver_contacts')
-            .insert([body])
+            .insert([normalizeDriverContactPayload(body)])
             .select()
             .single();
 

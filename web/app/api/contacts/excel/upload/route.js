@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function POST(request) {
     const supabase = await createClient();
@@ -105,7 +106,7 @@ export async function POST(request) {
             name: getVal(row, 2),
             department: getVal(row, 3),
             position: getVal(row, 4),
-            phone: getVal(row, 5),
+            phone: normalizeKoreanPhoneNumberInput(getVal(row, 5)),
             email: getVal(row, 6),
             memo: getVal(row, 7)
         }));
@@ -115,10 +116,10 @@ export async function POST(request) {
             company_name: getVal(row, 2),
             contact_type: getVal(row, 3),
             address: getVal(row, 4),
-            phone: getVal(row, 5),
+            phone: normalizeKoreanPhoneNumberInput(getVal(row, 5)),
             email: getVal(row, 6),
             contact_person: getVal(row, 7),
-            contact_person_phone: getVal(row, 8),
+            contact_person_phone: normalizeKoreanPhoneNumberInput(getVal(row, 8)),
             memo: getVal(row, 9)
         }));
 
@@ -126,10 +127,10 @@ export async function POST(request) {
         await processSheet('협력사정보', 'partner_contacts', 2, 9, (row) => ({
             company_name: getVal(row, 2),
             ceo_name: getVal(row, 3),
-            phone: getVal(row, 4),
+            phone: normalizeKoreanPhoneNumberInput(getVal(row, 4)),
             address: getVal(row, 5),
             manager_name: getVal(row, 6),
-            manager_phone: getVal(row, 7),
+            manager_phone: normalizeKoreanPhoneNumberInput(getVal(row, 7)),
             memo: getVal(row, 8)
         }));
 
@@ -139,7 +140,7 @@ export async function POST(request) {
             branch: getVal(row, 3),
             business_number: getVal(row, 4),
             driver_id: getVal(row, 5),
-            phone: getVal(row, 6),
+            phone: normalizeKoreanPhoneNumberInput(getVal(row, 6)),
             vehicle_type: getVal(row, 7),
             chassis_type: getVal(row, 8)
         }));
@@ -148,7 +149,7 @@ export async function POST(request) {
         await processSheet('고객사정보', 'work_sites', 3, 7, (row) => ({
             site_name: getVal(row, 2),
             address: getVal(row, 3),
-            contact: getVal(row, 4),
+            contact: normalizeKoreanPhoneNumberInput(getVal(row, 4)),
             work_method: getVal(row, 5),
             notes: getVal(row, 6)
         }));

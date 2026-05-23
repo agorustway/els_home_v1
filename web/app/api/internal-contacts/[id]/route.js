@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET(request, { params }) {
     const { id } = await params;
@@ -21,7 +22,7 @@ export async function PATCH(request, { params }) {
         if (body.name !== undefined) updates.name = body.name;
         if (body.department !== undefined) updates.department = body.department;
         if (body.position !== undefined) updates.position = body.position;
-        if (body.phone !== undefined) updates.phone = body.phone;
+        if (body.phone !== undefined) updates.phone = normalizeKoreanPhoneNumberInput(body.phone);
         if (body.email !== undefined) updates.email = body.email;
         if (body.photo_url !== undefined) updates.photo_url = body.photo_url;
         if (body.memo !== undefined) updates.memo = body.memo;

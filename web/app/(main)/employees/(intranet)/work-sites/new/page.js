@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../intranet.module.css';
 
 export default function WorkSitesNewPage() {
@@ -99,7 +100,7 @@ export default function WorkSitesNewPage() {
     const removeManager = (idx) => setManagers(managers.filter((_, i) => i !== idx));
     const updateManager = (idx, field, value) => {
         const next = [...managers];
-        next[idx] = { ...next[idx], [field]: value };
+        next[idx] = { ...next[idx], [field]: field === 'phone' ? normalizeKoreanPhoneNumberInput(value) : value };
         setManagers(next);
     };
 
@@ -123,11 +124,14 @@ export default function WorkSitesNewPage() {
                 body: JSON.stringify({
                     site_name: siteName.trim(),
                     address: address.trim(),
-                    contact,
+                    contact: normalizeKoreanPhoneNumberInput(contact),
                     work_method: JSON.stringify(workMethodObj),
                     notes,
                     attachments: attachments,
-                    managers: managers.filter((m) => m.name && m.name.trim()),
+                    managers: managers.filter((m) => m.name && m.name.trim()).map((m) => ({
+                        ...m,
+                        phone: normalizeKoreanPhoneNumberInput(m.phone),
+                    })),
                 }),
             });
             if (res.ok) {
@@ -163,14 +167,14 @@ export default function WorkSitesNewPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>대표 연락처</label>
-                        <input className={styles.input} value={contact} onChange={(e) => setContact(e.target.value)} placeholder="연락처" />
+                        <input className={styles.input} value={contact} onChange={(e) => setContact(normalizeKoreanPhoneNumberInput(e.target.value))} placeholder="0212345678" inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>담당자 (다수)</label>
                         {managers.map((m, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                                 <input className={styles.input} value={m.name} onChange={(e) => updateManager(idx, 'name', e.target.value)} placeholder="이름" style={{ flex: 1 }} />
-                                <input className={styles.input} value={m.phone} onChange={(e) => updateManager(idx, 'phone', e.target.value)} placeholder="연락처" style={{ flex: 1 }} />
+                                <input className={styles.input} value={m.phone} onChange={(e) => updateManager(idx, 'phone', e.target.value)} placeholder="01012345678" inputMode="tel" style={{ flex: 1 }} />
                                 <input className={styles.input} value={m.role} onChange={(e) => updateManager(idx, 'role', e.target.value)} placeholder="역할" style={{ width: 80 }} />
                                 <button type="button" onClick={() => removeManager(idx)} className={styles.btnDelete} style={{ padding: '6px 12px' }}>삭제</button>
                             </div>

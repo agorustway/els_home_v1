@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../../intranet.module.css';
 
 export default function WorkSiteEditPage() {
@@ -38,7 +39,7 @@ export default function WorkSiteEditPage() {
                     if (data.item) {
                         setSiteName(data.item.site_name ?? '');
                         setAddress(data.item.address);
-                        setContact(data.item.contact ?? '');
+                        setContact(normalizeKoreanPhoneNumberInput(data.item.contact ?? ''));
                         
                         let wp = {};
                         try {
@@ -59,7 +60,7 @@ export default function WorkSiteEditPage() {
                         
                         setNotes(data.item.notes ?? '');
                         const m = data.item.managers || [];
-                        setManagers(m.length ? m.map((x) => ({ name: x.name || '', phone: x.phone || '', role: x.role || '' })) : [{ name: '', phone: '', role: '' }]);
+                        setManagers(m.length ? m.map((x) => ({ name: x.name || '', phone: normalizeKoreanPhoneNumberInput(x.phone || ''), role: x.role || '' })) : [{ name: '', phone: '', role: '' }]);
                     }
                 })
                 .finally(() => setLoading(false));
@@ -70,7 +71,7 @@ export default function WorkSiteEditPage() {
     const removeManager = (idx) => setManagers(managers.filter((_, i) => i !== idx));
     const updateManager = (idx, field, value) => {
         const next = [...managers];
-        next[idx] = { ...next[idx], [field]: value };
+        next[idx] = { ...next[idx], [field]: field === 'phone' ? normalizeKoreanPhoneNumberInput(value) : value };
         setManagers(next);
     };
 
@@ -94,10 +95,13 @@ export default function WorkSiteEditPage() {
                 body: JSON.stringify({
                     site_name: siteName.trim(),
                     address: address.trim(),
-                    contact,
+                    contact: normalizeKoreanPhoneNumberInput(contact),
                     work_method: JSON.stringify(workMethodObj),
                     notes,
-                    managers: managers.filter((m) => m.name?.trim()),
+                    managers: managers.filter((m) => m.name?.trim()).map((m) => ({
+                        ...m,
+                        phone: normalizeKoreanPhoneNumberInput(m.phone),
+                    })),
                 }),
             });
             if (res.ok) router.push('/employees/work-sites/' + id);
@@ -127,14 +131,14 @@ export default function WorkSiteEditPage() {
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>대표 연락처</label>
-                        <input className={styles.input} value={contact} onChange={(e) => setContact(e.target.value)} />
+                        <input className={styles.input} value={contact} onChange={(e) => setContact(normalizeKoreanPhoneNumberInput(e.target.value))} inputMode="tel" />
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.label}>담당자 (다수)</label>
                         {managers.map((m, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                                 <input className={styles.input} value={m.name} onChange={(e) => updateManager(idx, 'name', e.target.value)} placeholder="이름" style={{ flex: 1 }} />
-                                <input className={styles.input} value={m.phone} onChange={(e) => updateManager(idx, 'phone', e.target.value)} placeholder="연락처" style={{ flex: 1 }} />
+                                <input className={styles.input} value={m.phone} onChange={(e) => updateManager(idx, 'phone', e.target.value)} placeholder="연락처" inputMode="tel" style={{ flex: 1 }} />
                                 <input className={styles.input} value={m.role} onChange={(e) => updateManager(idx, 'role', e.target.value)} placeholder="역할" style={{ width: 80 }} />
                                 <button type="button" onClick={() => removeManager(idx)} className={styles.btnDelete} style={{ padding: '6px 12px' }}>삭제</button>
                             </div>

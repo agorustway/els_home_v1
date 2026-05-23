@@ -8,6 +8,7 @@ import ContactFilterBar from '@/components/ContactFilterBar';
 import IntranetDataTable, { InitialAvatar, PhoneLink } from '@/components/IntranetDataTable';
 import { useUserRole } from '@/hooks/useUserRole';
 import { formatPhoneNumber, joinDefined } from '@/utils/contactDisplay';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../intranet.module.css';
 
 export default function InternalContactsPage() {
@@ -37,11 +38,13 @@ export default function InternalContactsPage() {
     const filteredList = list.filter((item) => {
         if (!searchKeyword) return true;
         const q = searchKeyword.toLowerCase();
+        const phoneQ = normalizeKoreanPhoneNumberInput(searchKeyword);
+        const phoneMatches = phoneQ && normalizeKoreanPhoneNumberInput(item.phone).includes(phoneQ);
         return (
             item.name?.toLowerCase().includes(q) ||
             item.department?.toLowerCase().includes(q) ||
             item.position?.toLowerCase().includes(q) ||
-            item.phone?.toLowerCase().includes(q) ||
+            phoneMatches ||
             item.email?.toLowerCase().includes(q) ||
             item.memo?.toLowerCase().includes(q)
         );

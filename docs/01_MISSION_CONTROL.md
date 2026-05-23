@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.137 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.138 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 통합현황과 엑셀 다운로드에서 글로비스/모비스 `선적` 컬럼을 공통 위치로 표시합니다.
+> 최신 업데이트: 연락처 전화번호 입력은 하이픈 없이 저장하고, 사용자가 `-`, `/`, `.`를 넣어도 합쳐 인식한 뒤 화면 출력은 대한민국 번호 규칙대로 표시합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.137
+- **웹 버전**: v5.14.138
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -26,6 +26,7 @@
   - 완료 경로 패널과 웹 기록 화면은 평균속도 대신 운행거리를 표시하고, 엑셀 내보내기에도 운행거리를 포함한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
   - 연락처 전화번호 표기는 `010-0000-0000`, `02-000-0000`, `031-000-0000`, `1588-0000`, `0507-0000-0000` 규칙을 공통 적용하고 `~2`, `~4,6` 범위 suffix를 보존한다.
+  - 연락처 입력/저장/검색은 `-`, `/`, `.` 등 구분기호를 제거한 번호 기준으로 처리하며, 전기통신번호관리세칙의 지역/식별번호-국번호-가입자번호 구조를 기준으로 출력만 포맷한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -49,9 +50,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-137: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 표기 안정화, 통합 배차판 선적 컬럼 표시
+- [x] v5.14.64-138: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시
 
 ## RECENT CHANGES
+- **v5.14.138**: 연락처 예하 등록/수정/검색/API/엑셀 업로드 전화번호는 `-`, `/`, `.`를 제거한 저장 기준값으로 정규화하고, 목록/상세 출력은 기존 대한민국 번호 표기 포맷터를 사용한다.
 - **v5.14.137**: 아산 배차판 통합현황 고정 헤더에 `선적`을 추가하고, 글로비스/모비스 원본 `선적` 값을 통합 행과 엑셀 다운로드에 함께 표시한다. 2026-05-26부터 모비스에 추가된 `운송사-선적-작업지` 구조는 통합에서 `담당자-선적-작업지` 위치로 맞추며, 예전 날짜는 공란으로 유지한다.
 - **v5.14.136**: 운영 DB의 `055-540-5616~8`, `051-607-7871~4,6` 같은 연락처 범위 표기를 확인하고, suffix 숫자가 본번호로 합쳐져 `055-5405-6168`처럼 보이는 문제를 막았다.
 - **v5.14.135**: 연락처 전화번호 포맷터를 공통화해 휴대폰 11자리, 서울/지역 일반전화, 대표번호, 0507 가상번호를 대한민국 번호 규칙대로 표시한다.
@@ -71,7 +73,7 @@
 - **v5.14.121**: 아산 배차판 모바일 기간 선택 영역에서 데스크탑용 `flex: 0 0 240px`가 세로 높이로 적용되던 문제를 막아 셀렉트 위아래 빈 공간을 제거했다.
 
 ## VERIFICATION
-- `node --test web/tests/koreanPhoneNumber.test.mjs`: 7개 통과
+- `node --test web/tests/koreanPhoneNumber.test.mjs web/tests/contactPhoneNormalization.test.mjs`: 11개 통과
 - `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 34개 통과
 - `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과

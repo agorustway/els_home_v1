@@ -5,7 +5,10 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../../../intranet.module.css';
+
+const PHONE_FIELDS = new Set(['phone', 'manager_phone']);
 
 export default function PartnerContactsEditPage() {
     const { role, loading: authLoading } = useUserRole();
@@ -37,7 +40,15 @@ export default function PartnerContactsEditPage() {
                 .then(data => {
                     if (data.item) {
                         const { company_name, ceo_name, phone, address, manager_name, manager_phone, memo, attachments } = data.item;
-                        setFormData({ company_name, ceo_name, phone, address, manager_name, manager_phone, memo });
+                        setFormData({
+                            company_name,
+                            ceo_name,
+                            phone: normalizeKoreanPhoneNumberInput(phone),
+                            address,
+                            manager_name,
+                            manager_phone: normalizeKoreanPhoneNumberInput(manager_phone),
+                            memo,
+                        });
                         setAttachments(attachments || []);
                     }
                 })
@@ -47,7 +58,7 @@ export default function PartnerContactsEditPage() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: PHONE_FIELDS.has(name) ? normalizeKoreanPhoneNumberInput(value) : value }));
     };
 
     const handleFileUpload = async (e) => {
@@ -106,10 +117,10 @@ export default function PartnerContactsEditPage() {
                     <div className={styles.gridContainer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div className={styles.formGroup}><label className={styles.label}>회사명 *</label><input name="company_name" className={styles.input} value={formData.company_name} onChange={handleInputChange} required /></div>
                         <div className={styles.formGroup}><label className={styles.label}>대표자</label><input name="ceo_name" className={styles.input} value={formData.ceo_name} onChange={handleInputChange} /></div>
-                        <div className={styles.formGroup}><label className={styles.label}>회사 전화번호</label><input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>회사 전화번호</label><input name="phone" className={styles.input} value={formData.phone} onChange={handleInputChange} inputMode="tel" /></div>
                         <div className={styles.formGroup}><label className={styles.label}>주소</label><input name="address" className={styles.input} value={formData.address} onChange={handleInputChange} /></div>
                         <div className={styles.formGroup}><label className={styles.label}>담당자명</label><input name="manager_name" className={styles.input} value={formData.manager_name} onChange={handleInputChange} /></div>
-                        <div className={styles.formGroup}><label className={styles.label}>담당자 연락처</label><input name="manager_phone" className={styles.input} value={formData.manager_phone} onChange={handleInputChange} /></div>
+                        <div className={styles.formGroup}><label className={styles.label}>담당자 연락처</label><input name="manager_phone" className={styles.input} value={formData.manager_phone} onChange={handleInputChange} inputMode="tel" /></div>
                     </div>
                     <div className={styles.formGroup}><label className={styles.label}>비고</label><textarea name="memo" className={styles.textarea} value={formData.memo} onChange={handleInputChange} style={{ minHeight: 80 }} /></div>
                     <div className={styles.formGroup}>

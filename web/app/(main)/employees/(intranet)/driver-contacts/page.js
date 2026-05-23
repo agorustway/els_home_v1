@@ -9,6 +9,7 @@ import IntranetDataTable, { DataBadge, InitialAvatar, PhoneLink } from '@/compon
 import { useUserRole } from '@/hooks/useUserRole';
 import { cargoTypeLabel, contractTypeLabel, mapVisibilityLabel } from '@/utils/vehicleCargoOptions.mjs';
 import { formatDate, formatPhoneNumber, joinDefined } from '@/utils/contactDisplay';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 import styles from '../intranet.module.css';
 
 const contractTone = (value) => {
@@ -60,9 +61,11 @@ export default function DriverContactsPage() {
         if (contractFilter !== 'all' && (item.contract_type || 'uncontracted') !== contractFilter) return false;
         if (!searchKeyword) return true;
         const q = searchKeyword.toLowerCase();
+        const phoneQ = normalizeKoreanPhoneNumberInput(searchKeyword);
+        const phoneMatches = phoneQ && normalizeKoreanPhoneNumberInput(item.phone).includes(phoneQ);
         return (
             item.name?.toLowerCase().includes(q) ||
-            item.phone?.toLowerCase().includes(q) ||
+            phoneMatches ||
             item.vehicle_number?.toLowerCase().includes(q) ||
             item.vehicle_id?.toLowerCase().includes(q) ||
             item.branch?.toLowerCase().includes(q) ||

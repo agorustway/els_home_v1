@@ -39,6 +39,18 @@ function splitRangeSuffix(value) {
   };
 }
 
+export function normalizeKoreanPhoneNumberInput(value, options = {}) {
+  const emptyValue = getOption(options, 'emptyValue', '');
+
+  if (value === undefined || value === null || value === '') return emptyValue;
+
+  const { body, suffix } = splitRangeSuffix(value);
+  const digits = body.replace(/\D/g, '');
+
+  if (!digits) return emptyValue;
+  return `${digits}${suffix}`;
+}
+
 export function formatKoreanPhoneNumber(value, options = {}) {
   const emptyValue = getOption(options, 'emptyValue', '-');
   const noDigitsValue = getOption(options, 'noDigitsValue', emptyValue);

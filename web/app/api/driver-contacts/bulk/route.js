@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function PATCH(request) {
     const supabase = await createClient();
@@ -31,9 +32,14 @@ export async function PATCH(request) {
             return NextResponse.json({ error: '변경할 내용이 없습니다.' }, { status: 400 });
         }
 
+        const normalizedUpdates = {
+            ...updates,
+            ...(updates.phone !== undefined ? { phone: normalizeKoreanPhoneNumberInput(updates.phone) } : {}),
+        };
+
         const { data, error } = await supabase
             .from('driver_contacts')
-            .update(updates)
+            .update(normalizedUpdates)
             .in('id', ids)
             .select();
 
