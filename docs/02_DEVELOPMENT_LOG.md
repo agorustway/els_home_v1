@@ -1,3 +1,46 @@
+## [2026-05-23] 연락처 내선 범위 suffix 보존 보정 (v5.14.136)
+### 핵심
+- 운영 DB의 연락처 원본을 확인해 `055-540-5616~8`, `055-540-5601~2`, `051-607-7871~4,6`처럼 본번호 뒤에 번호 범위가 붙은 데이터가 있음을 확인했습니다.
+- 화면 포맷터가 suffix 숫자까지 본번호로 합치면서 `055-5405-6168`처럼 잘못 표시하던 문제를 막았습니다.
+- `~2`, `~4,6`, `~20` 표기는 본번호 포맷 후 뒤에 그대로 보존합니다.
+### 검증
+- Supabase `external_contacts`, `partner_contacts` 등 연락처 전화번호 컬럼에서 `~` 포함 데이터 12건 확인
+- `node --test web/tests/koreanPhoneNumber.test.mjs`: 7개 통과
+### 변경 파일
+- `web/utils/koreanPhoneNumber.mjs`
+- `web/tests/koreanPhoneNumber.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-23] 연락처 전화번호 대한민국 표기 규칙 정리 (v5.14.135)
+### 핵심
+- 연락처 대시보드와 상세 화면에서 쓰는 표시용 포맷터와 입력 폼 포맷터가 같은 대한민국 전화번호 규칙을 사용하도록 공통 유틸을 추가했습니다.
+- `010` 등 휴대폰 11자리는 `010-0000-0000`, 10자리 구형 휴대폰은 `011-000-0000`으로 표시합니다.
+- 일반전화는 `02-000-0000`/`02-0000-0000`, 3자리 지역번호는 `041-000-0000` 또는 `031-0000-0000`처럼 전체 자릿수에 따라 구분합니다.
+- 대표번호 8자리는 `1588-0000`, 0507 가상번호는 `0507-0000-0000`으로 표시합니다.
+### 검증
+- `node --test web/tests/koreanPhoneNumber.test.mjs`: 6개 통과
+### 변경 파일
+- `web/utils/koreanPhoneNumber.mjs`
+- `web/utils/contactDisplay.js`, `web/utils/format.js`
+- `web/tests/koreanPhoneNumber.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-23] 배차판 `.xlsm` 원본 수정 주의사항 기록
+### 핵심
+- 글로비스 배차판 원본 `.xlsm`에서 작업지명 문자열을 수정할 때 `openpyxl.load_workbook(..., keep_vba=True)` 후 `save()`로 재저장하면 파일 크기와 내부 패키지가 바뀌며 VBA 배열/매크로 오류가 발생할 수 있음을 확인했습니다.
+- 매크로 포함 배차판 원본은 앞으로 `openpyxl.save()` 방식으로 직접 저장하지 않습니다. 수정이 필요하면 정상 백업을 먼저 만들고 Excel COM 자동화 또는 OOXML ZIP 내부의 필요한 XML 엔트리만 패치합니다.
+- 문자열 치환처럼 셀 값만 바꾸는 작업은 `xl/sharedStrings.xml` 등 필요한 엔트리만 수정하고, `xl/vbaProject.bin` 해시가 백업본과 동일한지 확인해야 합니다.
+### 검증 기준
+- 수정 후 실제 Excel 앱으로 열기 검증을 수행합니다.
+- `.xlsm` 패키지에서 변경된 엔트리 목록을 확인하고, 의도하지 않은 VBA/수식 관련 파일 변경이 없어야 합니다.
+- NAS 원본 교체 전 정상 백업과 문제 발생본을 모두 남깁니다.
+### 변경 파일
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
 ## [2026-05-23] 아산 배차판 엑셀 숫자 소수점 표시 제거 (v5.14.134)
 ### 핵심
 - 다운로드 엑셀에서 `오더`, `배차` 숫자에 소수점이 보이지 않도록 숫자 표시 형식을 `#,##0`으로 고정했습니다.

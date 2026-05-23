@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.134 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.136 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 엑셀 다운로드의 오더/배차 계열 숫자는 소수점 없이 정수 형식으로 표시합니다.
+> 최신 업데이트: 연락처 전화번호 표기는 대한민국 번호 규칙에 맞춰 본번호를 포맷하고, `~2`, `~4,6` 같은 내선/범위 표기는 본번호 뒤에 보존합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.134
+- **웹 버전**: v5.14.136
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -24,6 +24,7 @@
   - 실시간 관제 마커는 원본 GPS를 보존하면서 표시 좌표만 네이버 Directions 15의 가까운 도로 경로로 스냅한다.
   - 완료 경로 패널과 웹 기록 화면은 평균속도 대신 운행거리를 표시하고, 엑셀 내보내기에도 운행거리를 포함한다.
   - 종합실적은 연간/월간 동기화 완료 상태를 감지하면 Supabase summary를 다시 읽으며, 화면 조회는 NAS가 끊겨도 저장된 DB 기준을 유지한다.
+  - 연락처 전화번호 표기는 `010-0000-0000`, `02-000-0000`, `031-000-0000`, `1588-0000`, `0507-0000-0000` 규칙을 공통 적용하고 `~2`, `~4,6` 범위 suffix를 보존한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -47,9 +48,11 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-134: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계 안정화
+- [x] v5.14.64-136: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 표기 안정화
 
 ## RECENT CHANGES
+- **v5.14.136**: 운영 DB의 `055-540-5616~8`, `051-607-7871~4,6` 같은 연락처 범위 표기를 확인하고, suffix 숫자가 본번호로 합쳐져 `055-5405-6168`처럼 보이는 문제를 막았다.
+- **v5.14.135**: 연락처 전화번호 포맷터를 공통화해 휴대폰 11자리, 서울/지역 일반전화, 대표번호, 0507 가상번호를 대한민국 번호 규칙대로 표시한다.
 - **v5.14.134**: 아산 배차판 엑셀 다운로드의 오더/배차 계열 숫자 표시 형식을 `#,##0`으로 고정해 소수점이 붙어 보이지 않게 했다.
 - **v5.14.133**: 아산 배차판 엑셀 다운로드에서 `오더(계)/오더/계/수량/배차` 컬럼을 문자열이 아닌 숫자 셀로 저장한다. 데이터 행은 빈 칸까지 `thin` 테두리를 적용해 다운로드 파일에서 바로 합계/계산과 표 식별이 가능하게 했다.
 - **v5.14.132**: 종합실적 구성·차량 비교 카드 제목을 `계약/차량 집중도`에서 `당사 / 협력사 비교`로 바꿔 좌우 비교 의도를 명확히 했다.
@@ -66,6 +69,7 @@
 - **v5.14.121**: 아산 배차판 모바일 기간 선택 영역에서 데스크탑용 `flex: 0 0 240px`가 세로 높이로 적용되던 문제를 막아 셀렉트 위아래 빈 공간을 제거했다.
 
 ## VERIFICATION
+- `node --test web/tests/koreanPhoneNumber.test.mjs`: 7개 통과
 - `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 34개 통과
 - `npm.cmd run lint -- app/api/vehicle-tracking/trips/route.js app/api/vehicle-tracking/export/excel/route.js 'app/(main)/employees/vehicle-tracking/page.js' utils/vehicleLocation.mjs tests/vehicleLocation.test.mjs tests/driverMapCamera.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
@@ -83,5 +87,6 @@
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.
 - Android 앱 수정은 `web/driver-src/`만 편집하고 APK는 `scripts/build_driver_apk.ps1`만 사용.
+- 매크로/배열수식 포함 배차판 `.xlsm` 원본 수정 시 `openpyxl.save()` 금지. VBA/배열 XML 손상 방지를 위해 백업 후 Excel COM 자동화 또는 ZIP 내부 `sharedStrings.xml` 등 필요한 OOXML 엔트리만 패치하고, Excel 열기 검증까지 수행.
 - Git push는 명시 요청 또는 자동승인 범위에서만 실행.
 - 코드 변경 시 `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md` 갱신 필수.
