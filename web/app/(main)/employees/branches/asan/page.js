@@ -10,6 +10,13 @@ import {
     normalizeDispatchWebCellFieldKey,
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
+import {
+    DISPATCH_DETAIL_HEADERS,
+    GLAPS_START_LOCATION_OPTIONS,
+    buildDispatchDetailLines,
+    detailLineToRow,
+    summarizeDispatchDetailLines,
+} from '@/utils/asanDispatchDetailLines.mjs';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
@@ -360,6 +367,17 @@ function makeWebCellClientKey(meta, fieldKey) {
     if (!meta?.rowSignature || !fieldKey) return '';
     return [meta.sourceType, meta.targetDate, meta.rowSignature, fieldKey].join('|');
 }
+function makeDispatchDetailLineKey(line) {
+    return [
+        line?.sourceRowIndex ?? '',
+        line?.sourceRegionColumn ?? '',
+        line?.sourceText ?? '',
+        line?.sourceUnitIndex ?? '',
+        line?.company ?? '',
+        line?.startSuffix ?? '',
+        line?.lineNo ?? '',
+    ].join('|');
+}
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
 }
@@ -449,7 +467,7 @@ function AsanDispatchContent() {
     const [browserPath, setBrowserPath] = useState('/아산지점/A_운송실무');
     const [browserLoading, setBrowserLoading] = useState(false);
     const [searchInput, setSearchInput] = useState('');
-    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid'
+    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail'
     const [searchTerm, setSearchTerm] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
     const [colorFilter, setColorFilter] = useState(null);
@@ -464,6 +482,7 @@ function AsanDispatchContent() {
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
+    const [detailStartOverrides, setDetailStartOverrides] = useState({});
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -497,6 +516,10 @@ function AsanDispatchContent() {
             clearTimeout(timer);
         };
     }, [mainView, activeTab]); // Recalculate if views change affecting headers
+
+    useEffect(() => {
+        setDetailStartOverrides({});
+    }, [viewType, activeTab, allTabMonth, allTabWeek]);
 
     // ===== 데이터 fetch =====
     const fetchSettings = useCallback(async () => {
@@ -890,6 +913,36 @@ function AsanDispatchContent() {
         return calcSummary(headers, rows, viewType);
     }, [headers, processedData, displayRows, viewType, hasActiveFilter]);
 
+    const detailLines = useMemo(() => buildDispatchDetailLines({
+        headers,
+        rows: processedData,
+        workDate: isAllTab ? '' : activeItem?.target_date || '',
+    }), [headers, processedData, isAllTab, activeItem?.target_date]);
+
+    const detailDisplayLines = useMemo(() => detailLines.map((line) => {
+        const lineKey = makeDispatchDetailLineKey(line);
+        if (!Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey)) return line;
+        const startLocation = detailStartOverrides[lineKey] || '';
+        return {
+            ...line,
+            startLocation,
+            needsStartLocationSelection: !startLocation,
+        };
+    }), [detailLines, detailStartOverrides]);
+
+    const filteredDetailLines = useMemo(() => {
+        const term = String(searchTerm || '').trim().toLowerCase();
+        if (!term) return detailDisplayLines;
+        return detailDisplayLines.filter((line) => (
+            detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term))
+        ));
+    }, [detailDisplayLines, searchTerm]);
+
+    const detailSummary = useMemo(() => ({
+        ...summarizeDispatchDetailLines(detailDisplayLines),
+        visible: filteredDetailLines.length,
+    }), [detailDisplayLines, filteredDetailLines.length]);
+
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
     const hasMore = displayRows.length > displayLimit;
@@ -1257,6 +1310,9 @@ function AsanDispatchContent() {
                             <button className={`${styles.funcBtn} ${mainView === 'grid' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('grid')}>
                                 📋 배차판
                             </button>
+                            <button className={`${styles.funcBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
+                                상세배차내역
+                            </button>
                         </div>
                         <div className={styles.viewDivider} />
                         <div className={styles.viewSwitch}>
@@ -1298,15 +1354,15 @@ function AsanDispatchContent() {
                     </div>
                 </div>
 
-                {mainView === 'grid' && (
+                {(mainView === 'grid' || mainView === 'detail') && (
                     <div className={styles.searchWrap} style={{ alignSelf: 'flex-start' }}>
-                        <input className={styles.searchInput} placeholder="업체명 검색 (예: 이지, 대신)" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+                        <input className={styles.searchInput} placeholder={mainView === 'detail' ? '상세배차 검색' : '업체명 검색 (예: 이지, 대신)'} value={searchInput} onChange={e => setSearchInput(e.target.value)} />
                         {searchInput && <button className={styles.searchClear} onClick={() => { setSearchInput(''); setSearchTerm(''); }}>✕</button>}
                     </div>
                 )}
             </div>
 
-            {mainView === 'grid' && dateControls}
+            {(mainView === 'grid' || mainView === 'detail') && dateControls}
 
             {loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
@@ -1325,6 +1381,74 @@ function AsanDispatchContent() {
                     onViewTypeChange={setViewType}
                     onIssueSelect={handleDashboardIssueSelect}
                 />
+            ) : mainView === 'detail' ? (
+                <>
+                    <div className={styles.summaryBar}>
+                        <div className={styles.summaryLeft}>
+                            <span className={styles.summaryItem}><b>상세배차수량</b> {detailSummary.total.toLocaleString()}건</span>
+                            {searchTerm && <span className={styles.summaryItem}><b>검색표시</b> {detailSummary.visible.toLocaleString()}건</span>}
+                            <span className={`${styles.summaryItem} ${detailSummary.manualStartLocationCount > 0 ? styles.summaryWarn : ''}`}>
+                                <b>상차지 선택필요</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
+                            </span>
+                        </div>
+                        <div className={styles.summaryRight}>
+                            <span className={styles.detailHint}>GLAPS 업로드 전 검수용 상세 라인</span>
+                        </div>
+                    </div>
+                    <div className={styles.tableWrap}>
+                        <div className={styles.tableScroll}>
+                            <table className={`${styles.table} ${styles.detailTable}`}>
+                                <thead>
+                                    <tr>
+                                        {DISPATCH_DETAIL_HEADERS.map((header) => <th key={header}>{header}</th>)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredDetailLines.slice(0, displayLimit).map((line) => {
+                                        const lineKey = makeDispatchDetailLineKey(line);
+                                        const rowValues = detailLineToRow(line);
+                                        return (
+                                            <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''}`}>
+                                                {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
+                                                    if (header === '상차지') {
+                                                        return (
+                                                            <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
+                                                                <select
+                                                                    className={styles.detailSelect}
+                                                                    value={line.startLocation || ''}
+                                                                    onChange={(event) => setDetailStartOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
+                                                                    title={`${line.startRegion || ''}${line.startSuffix ? ` / ${line.startSuffix}` : ''}`}
+                                                                >
+                                                                    {GLAPS_START_LOCATION_OPTIONS.map((option) => (
+                                                                        <option key={option || '__empty'} value={option}>{option || '선택'}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                        );
+                                                    }
+                                                    return <td key={header}>{rowValues[colIdx]}</td>;
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className={styles.tableFooter}>
+                            <span>
+                                {Math.min(filteredDetailLines.length, displayLimit).toLocaleString()}건 표시
+                                {searchTerm ? ` / 검색 ${filteredDetailLines.length.toLocaleString()}건` : ''}
+                                {' '} / 전체 {detailSummary.total.toLocaleString()}건
+                            </span>
+                            {filteredDetailLines.length > displayLimit && (
+                                <span className={styles.loadMoreWrap}>
+                                    <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(p => p + 100)}>+100건 더 보기</button>
+                                    <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(filteredDetailLines.length)}>전체 표시</button>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </>
             ) : (
                 <>
                     {/* 합계 바 */}

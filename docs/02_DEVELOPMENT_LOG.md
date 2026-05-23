@@ -1,3 +1,28 @@
+## [2026-05-23] GLAPS 상세배차내역 탭 1차 구현 (v5.14.139)
+### 배경
+- GLAPS는 상차-경유(작업)-하차 기준의 업로드 구조를 요구하지만, 현재 아산 배차판은 지역별 배차칸에 `민경3, 이지1`처럼 1차 접수 수량이 묶여 있습니다.
+- 3차 SCM/외부업체 테이블 수신까지 확장될 가능성이 있어, 우선 WEB 배차판에서 GLAPS 검수용 상세 라인을 안정적으로 뽑는 1차 단계를 구현했습니다.
+### 핵심
+- 아산 배차판에 `상세배차내역` 탭을 추가하고, 기존 배차 지역칸을 컨테이너 1건 단위 라인으로 분해합니다.
+- 출력 컬럼은 `작업일자, 구분, 화주, 상차지, 작업지, 하차지(선적), 고객사, 포트, 라인, 타입, 업체명, BKG1, BKG2, BKG3, TARGET VESSEL, 비고` 순서입니다.
+- `민경3, 이지1`은 같은 원본행에서 4행으로 풀리며 BKG/TARGET/비고 값은 반복 표시합니다.
+- 상차지 매핑은 부산/신항 기본 `부산신항`, 부산 `B`는 `부산북항`, 인천 기본 `인천신항`, 인천 `B`는 `인천항`, 인천 `K`는 형이 확인한 `인천항국제여객터미널`, 울산 기본 `울산신항`, 울산 `B`는 `울산구항`, 부곡은 `의왕ICD`로 처리합니다.
+- `기타/철송`, `기타`, `중부`는 상세배차 탭에서 선택 목록으로 수동 지정할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 37개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/asanDispatchDetailLines.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- 로컬 개발서버 `http://localhost:3000/employees/branches/asan`: HTTP 200 응답 확인
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] 연락처 입력값 무하이픈 저장·정규화 검색 (v5.14.138)
 ### 리서치
 - 국가법령정보센터 `전기통신번호관리세칙`의 번호 체계는 지역/식별번호 뒤에 국번호와 가입자번호가 붙는 구조입니다. 화면 표시는 마지막 가입자번호 4자리를 보존해 자릿수에 따라 `02-000-0000`, `031-000-0000`, `031-0000-0000`, `010-0000-0000`으로 나눕니다.
