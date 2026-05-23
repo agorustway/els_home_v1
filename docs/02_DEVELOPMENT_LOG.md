@@ -1,3 +1,29 @@
+## [2026-05-23] GLAPS 최종코드 도출·마스터 ELS 입력칸 보강 (v5.14.148)
+### 핵심
+- 상세배차내역의 최종 GLAPS 업로드용 코드 컬럼을 후미에 정리했습니다. 기존 비교용 `포트/라인/타입/운송경로` 코드는 앞쪽에 유지하고, 뒤쪽에는 앞에 없는 `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`만 추가했습니다.
+- 운송사코드는 GLAPS코드가 아니라 `운송사코드` 시트의 `BP` 컬럼을 사용하도록 파서를 수정했습니다. 기본 ELS는 `B000005273`으로 도출됩니다.
+- `컨샤이니` 시트를 항목매핑으로 파싱해 `KIN -> GA0196`, `HMMA -> UH03`을 상세배차에서 표시합니다.
+- `수출입코드` 원본시트에서 `수출 -> 20` 같은 오더구분코드를 읽고, 운송경로 원장의 `화주사/화주명/ELS화주명`으로 `글로비스KD외/모비스` 화주사코드를 도출합니다.
+- 상차지/운송사코드 입력칸에서 방향키로 인접 입력칸을 이동할 수 있게 했습니다.
+### 운영 데이터 반영
+- NAS `/아산지점/A_운송실무/GLAPS_마스터코드.xlsx`를 백업 후 ELS 입력칸을 보강했습니다.
+- 백업 파일: `/아산지점/A_운송실무/GLAPS_마스터코드_backup_20260523_190603.xlsx`
+- 보강 내용: 선사 `MAE/ONE/CMA/HMM/EMC/HLC`, 컨테이너 `40HC`, 컨샤이니 `KIN/HMMA`, 운송경로 `ELS화주명`, POD `SIKOP/USSAV/USMOB/MXLZC/MXESE/INKAT/INNSA/USLAX/USLGB`.
+- 활성 버전 `952c67b5-fefa-45cc-b97a-934f885e684b`: 8개 시트, 운송경로 540건, 항목매핑 2,923건, 원본행 1,177건.
+- 확인값: `ELS -> B000005273`, `CMA -> CMA`, `MAE -> MAE`, `INKAT -> INKAT`, `USMOB -> USMOB`, `40HC -> 4510`, `KIN -> GA0196`, `HMMA -> UH03`.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 45개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/glapsMasterData.mjs" "utils/asanDispatchDetailLines.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 후 원격 fetch `ECONNRESET` 로그는 있었지만 빌드 exit 0.
+- `http://127.0.0.1:3000/employees/branches/asan`: 인증 리다이렉트 후 로그인 페이지 HTTP 200 확인
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`, `web/utils/asanDispatchDetailLines.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] GLAPS ELS코드 별칭·상세배차 수정필요 필터 보강 (v5.14.147)
 ### 핵심
 - GLAPS 코드마스터 파서가 `ELS코드`, `ELS코드1~3` 컬럼을 GLAPS 기본 코드의 별칭으로 읽도록 보강했습니다. 선사 `CMA`, 컨테이너 `40HC`, 운송사 기본 `ELS`처럼 우리 배차판 값이 ELS코드 칸에 있으면 해당 행의 GLAPS 코드를 표시합니다.

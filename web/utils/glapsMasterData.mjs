@@ -78,6 +78,7 @@ const CODE_SHEET_ALIAS_TYPES = Object.freeze([
   ['선사', 'line'],
   ['운송사코드', 'carrier'],
   ['운송사', 'carrier'],
+  ['컨샤이니', 'consignee'],
   ['컨사이니', 'consignee'],
   ['CONSIGNEE', 'consignee'],
 ]);
@@ -520,6 +521,56 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
           glapsName: glapsName || glapsCode || elsCodes[0],
           glapsCode,
           extraNames: [...elsCodes, glapsName],
+          reviewNote: sheetName,
+        });
+      });
+      return;
+    }
+
+    if (aliasType === 'carrier') {
+      const carrierNameIdx = findColumn(['운송사', '운송사명', '명칭', 'NAME']);
+      const bpIdx = findColumn(['BP', 'BP코드']);
+      const glapsCodeIdx = findColumn(['GLAPS 코드', 'GLAPS CODE']);
+      const gloveCodeIdx = findColumn(['CODE(GLOVE)', 'GLOVE 코드']);
+      const kdIdx = findColumn(['KD']);
+
+      rows.slice(headerRowIndex + 1).forEach((row) => {
+        const carrierName = getRowValue(row, carrierNameIdx);
+        const bpCode = getRowValue(row, bpIdx);
+        const glapsCode = getRowValue(row, glapsCodeIdx);
+        const gloveCode = getRowValue(row, gloveCodeIdx);
+        const kdCode = getRowValue(row, kdIdx);
+        if (!carrierName && !bpCode && !glapsCode && !gloveCode && !kdCode) return;
+        const extraNames = [carrierName, glapsCode, gloveCode, kdCode];
+        if (normalizeGlapsKey(carrierName).includes('ELS')) extraNames.push('ELS');
+        addAlias({
+          aliasType,
+          sourceName: bpCode || carrierName || glapsCode,
+          glapsName: carrierName || bpCode || glapsCode,
+          glapsCode: bpCode,
+          extraNames,
+          reviewNote: sheetName,
+        });
+      });
+      return;
+    }
+
+    if (aliasType === 'consignee') {
+      const codeIdx = findColumn(['Location코드', 'LOCATION 코드', '컨샤이니코드', '컨사이니코드']);
+      const nameIdx = findColumn(['Location명', 'LOCATION명', '컨샤이니명', '컨사이니명']);
+      const elsNameIdx = findColumn(['ELS Location명', 'ELS LOCATION명', 'ELS명']);
+
+      rows.slice(headerRowIndex + 1).forEach((row) => {
+        const code = getRowValue(row, codeIdx);
+        const name = getRowValue(row, nameIdx);
+        const elsName = getRowValue(row, elsNameIdx);
+        if (!code && !name && !elsName) return;
+        addAlias({
+          aliasType,
+          sourceName: code || elsName || name,
+          glapsName: name || elsName || code,
+          glapsCode: code,
+          extraNames: [elsName, name],
           reviewNote: sheetName,
         });
       });

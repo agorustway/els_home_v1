@@ -1,5 +1,4 @@
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
-  '운송사코드',
   '작업일자',
   '구분',
   '화주',
@@ -21,6 +20,14 @@ export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   'BKG3',
   'TARGET VESSEL',
   '비고',
+  '오더구분코드',
+  '화주사코드',
+  '반출지(출발)코드',
+  '작업지(하차지)코드',
+  '반입지(도착)코드',
+  '운송서비스코드',
+  '운송사코드',
+  '컨샤이니',
 ]);
 
 export const GLAPS_START_LOCATION_OPTIONS = Object.freeze([
@@ -232,7 +239,6 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
 
 export function detailLineToRow(line = {}) {
   return [
-    line.carrierCode || 'ELS',
     line.workDate || '',
     line.direction || '',
     line.shipper || '',
@@ -254,6 +260,14 @@ export function detailLineToRow(line = {}) {
     line.bkg3 || '',
     line.targetVessel || '',
     line.note || '',
+    line.glapsOrderTypeCode || '',
+    line.glapsShipperCode || '',
+    line.glapsStartLocationCode || '',
+    line.glapsWorkplaceCode || '',
+    line.glapsDestinationCode || '',
+    line.glapsTransportServiceCode || '',
+    line.glapsCarrierBpCode || '',
+    line.glapsConsigneeCode || '',
   ];
 }
 
@@ -266,5 +280,9 @@ export function summarizeDispatchDetailLines(lines = []) {
     lineMissingCount: lines.filter((line) => line.needsLineCodeMapping).length,
     typeMissingCount: lines.filter((line) => line.needsTypeCodeMapping).length,
     carrierMissingCount: lines.filter((line) => line.needsCarrierCodeMapping).length,
+    orderTypeMissingCount: lines.filter((line) => line.needsOrderTypeCodeMapping).length,
+    shipperCodeMissingCount: lines.filter((line) => line.needsShipperCodeMapping).length,
+    routePartMissingCount: lines.filter((line) => line.needsRoutePartCodeMapping).length,
+    consigneeMissingCount: lines.filter((line) => line.needsConsigneeCodeMapping).length,
   };
 }

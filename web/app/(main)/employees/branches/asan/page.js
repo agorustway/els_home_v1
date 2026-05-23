@@ -144,10 +144,14 @@ const DETAIL_CARRIER_CODE_DATALIST_ID = 'asan-detail-carrier-code-options';
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount' },
+    { key: 'orderType', label: '오더구분 미도출', clearLabel: '오더구분 필터해제', countKey: 'orderTypeMissingCount' },
+    { key: 'shipper', label: '화주사코드 미도출', clearLabel: '화주사코드 필터해제', countKey: 'shipperCodeMissingCount' },
+    { key: 'routePart', label: '경로세부코드 미도출', clearLabel: '경로세부코드 필터해제', countKey: 'routePartMissingCount' },
     { key: 'port', label: '포트코드 미도출', clearLabel: '포트코드 필터해제', countKey: 'portMissingCount' },
     { key: 'line', label: '라인코드 미도출', clearLabel: '라인코드 필터해제', countKey: 'lineMissingCount' },
     { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount' },
     { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount' },
+    { key: 'consignee', label: '컨샤이니 미도출', clearLabel: '컨샤이니 필터해제', countKey: 'consigneeMissingCount' },
 ]);
 
 // ===== 헬퍼 =====
@@ -432,6 +436,10 @@ function buildGlapsCodeOptions(aliases = [], aliasType) {
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
 }
+function setGlapsCodeMapValue(map, source, code) {
+    const key = normalizeGlapsKey(source);
+    if (key && code && !map.has(key)) map.set(key, code);
+}
 function getGlapsSheetPayloadValues(payload = {}, tokens = []) {
     const normalizedTokens = tokens.map(normalizeGlapsKey).filter(Boolean);
     return Object.entries(payload)
@@ -441,6 +449,46 @@ function getGlapsSheetPayloadValues(payload = {}, tokens = []) {
         })
         .map(([, value]) => String(value || '').trim())
         .filter(Boolean);
+}
+function buildGlapsSheetCodeMap(sheetRows = [], sheetName, nameKey, codeKey) {
+    const map = new Map();
+    (sheetRows || [])
+        .filter(row => String(row?.sheet_name || row?.sheetName || '') === sheetName)
+        .forEach((row) => {
+            const payload = row.row_payload || row.rowPayload || {};
+            const code = String(payload[codeKey] || '').trim();
+            const name = String(payload[nameKey] || '').trim();
+            setGlapsCodeMapValue(map, name, code);
+            setGlapsCodeMapValue(map, code, code);
+        });
+    return map;
+}
+function getGlapsRoutePayload(route = {}, candidates = []) {
+    const payload = route?.raw_payload || route?.rawPayload || {};
+    for (const candidate of candidates) {
+        const direct = payload[candidate];
+        if (direct) return String(direct).trim();
+        const found = Object.entries(payload).find(([key]) => normalizeGlapsKey(key) === normalizeGlapsKey(candidate));
+        if (found?.[1]) return String(found[1]).trim();
+    }
+    return '';
+}
+function buildGlapsShipperCodeMap(routes = []) {
+    const map = new Map();
+    (routes || []).forEach((route) => {
+        const code = getGlapsRoutePayload(route, ['화주사', '화주사코드']);
+        const name = getGlapsRoutePayload(route, ['화주명']);
+        const elsName = getGlapsRoutePayload(route, ['ELS화주명']);
+        [name, elsName, code].forEach(value => setGlapsCodeMapValue(map, value, code));
+        const normalizedName = normalizeGlapsKey(name);
+        if (normalizedName.includes('현대글로비스')) {
+            ['글로비스', '글로비스KD외', '현대글로비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
+        }
+        if (normalizedName.includes('현대모비스')) {
+            ['모비스', '모비스AS', '현대모비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
+        }
+    });
+    return map;
 }
 function buildGlapsContainerIsoCodeMap(sheetRows = []) {
     const map = new Map();
@@ -464,11 +512,45 @@ function matchesDetailIssueFilter(line, filterKey) {
     if (!filterKey) return true;
     if (filterKey === 'start') return Boolean(line.needsStartLocationSelection);
     if (filterKey === 'route') return Boolean(line.needsRouteCodeMapping);
+    if (filterKey === 'orderType') return Boolean(line.needsOrderTypeCodeMapping);
+    if (filterKey === 'shipper') return Boolean(line.needsShipperCodeMapping);
+    if (filterKey === 'routePart') return Boolean(line.needsRoutePartCodeMapping);
     if (filterKey === 'port') return Boolean(line.needsPortCodeMapping);
     if (filterKey === 'line') return Boolean(line.needsLineCodeMapping);
     if (filterKey === 'type') return Boolean(line.needsTypeCodeMapping);
     if (filterKey === 'carrier') return Boolean(line.needsCarrierCodeMapping);
+    if (filterKey === 'consignee') return Boolean(line.needsConsigneeCodeMapping);
     return true;
+}
+function focusDetailGridInput(event) {
+    const key = event.key;
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+    const target = event.currentTarget;
+    const row = Number(target.dataset.detailRowIndex);
+    const col = Number(target.dataset.detailColIndex);
+    if (!Number.isFinite(row) || !Number.isFinite(col)) return;
+    const root = target.closest('table');
+    if (!root) return;
+    const findInput = (rowIndex, colIndex) => root.querySelector(
+        `[data-detail-row-index="${rowIndex}"][data-detail-col-index="${colIndex}"]`,
+    );
+    let next = null;
+    if (key === 'ArrowUp' || key === 'ArrowDown') {
+        const step = key === 'ArrowUp' ? -1 : 1;
+        for (let rowIndex = row + step; rowIndex >= 0; rowIndex += step) {
+            next = findInput(rowIndex, col);
+            if (next || rowIndex > root.rows.length) break;
+        }
+    } else {
+        const inputs = [...root.querySelectorAll(`[data-detail-row-index="${row}"]`)]
+            .sort((a, b) => Number(a.dataset.detailColIndex) - Number(b.dataset.detailColIndex));
+        const currentIdx = inputs.indexOf(target);
+        next = inputs[currentIdx + (key === 'ArrowLeft' ? -1 : 1)] || null;
+    }
+    if (!next) return;
+    event.preventDefault();
+    next.focus();
+    next.select?.();
 }
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
@@ -1059,7 +1141,14 @@ function AsanDispatchContent() {
         containerType: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'container_type'),
         containerIso: buildGlapsContainerIsoCodeMap(glapsDetailLookup.sheetRows || []),
         carrier: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'carrier'),
+        consignee: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'consignee'),
+        orderType: buildGlapsSheetCodeMap(glapsDetailLookup.sheetRows || [], '수출입코드', '수출입구분', '코드'),
     }), [glapsDetailLookup.aliases, glapsDetailLookup.sheetRows]);
+
+    const glapsShipperCodeMap = useMemo(
+        () => buildGlapsShipperCodeMap(glapsDetailLookup.routes || []),
+        [glapsDetailLookup.routes],
+    );
 
     const carrierCodeOptions = useMemo(() => {
         const options = buildGlapsCodeOptions(glapsDetailLookup.aliases || [], 'carrier');
@@ -1083,9 +1172,16 @@ function AsanDispatchContent() {
         const glapsLineCode = getGlapsAliasCode(glapsAliasMaps.line, line.line);
         const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
+        const glapsOrderTypeCode = getGlapsAliasCode(glapsAliasMaps.orderType, line.direction);
+        const glapsShipperCode = getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
+        const glapsStartLocationCode = glapsRoute?.start_location_name || '';
+        const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
+        const glapsDestinationCode = glapsRoute?.destination_name || '';
+        const glapsConsigneeCode = getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
         return {
             ...line,
-            carrierCode: carrierCode || 'ELS',
+            glapsCarrierBpCode: carrierCode || '',
+            carrierInput,
             startLocation,
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
@@ -1093,13 +1189,25 @@ function AsanDispatchContent() {
             glapsPortCode: glapsPortCode || line.port || '',
             glapsLineCode,
             glapsTypeCode,
+            glapsOrderTypeCode,
+            glapsShipperCode,
+            glapsStartLocationCode,
+            glapsWorkplaceCode,
+            glapsDestinationCode,
+            glapsTransportServiceCode: '',
+            glapsConsigneeCode,
             needsRouteCodeMapping: !glapsRoute?.route_code,
+            needsOrderTypeCodeMapping: Boolean(line.direction) && !glapsOrderTypeCode,
+            needsShipperCodeMapping: Boolean(line.shipper) && !glapsShipperCode,
+            needsRoutePartCodeMapping: Boolean(glapsRoute?.route_code)
+                && (!glapsStartLocationCode || !glapsWorkplaceCode || !glapsDestinationCode),
             needsPortCodeMapping: Boolean(line.port) && !glapsPortCode,
             needsLineCodeMapping: Boolean(line.line) && !glapsLineCode,
             needsTypeCodeMapping: Boolean(line.containerType) && !glapsTypeCode,
             needsCarrierCodeMapping: !getGlapsAliasCode(glapsAliasMaps.carrier, carrierInput || 'ELS'),
+            needsConsigneeCodeMapping: Boolean(line.customer) && !glapsConsigneeCode,
         };
-    }), [detailLines, detailCarrierOverrides, detailStartOverrides, glapsAliasMaps, glapsRouteMap]);
+    }), [detailLines, detailCarrierOverrides, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
 
     const filteredDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1609,7 +1717,7 @@ function AsanDispatchContent() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredDetailLines.slice(0, displayLimit).map((line) => {
+                                    {filteredDetailLines.slice(0, displayLimit).map((line, detailRowIdx) => {
                                         const lineKey = makeDispatchDetailLineKey(line);
                                         const rowValues = detailLineToRow(line);
                                         return (
@@ -1621,8 +1729,11 @@ function AsanDispatchContent() {
                                                                 <input
                                                                     className={styles.detailComboInput}
                                                                     list={DETAIL_CARRIER_CODE_DATALIST_ID}
-                                                                    value={line.carrierCode || 'ELS'}
+                                                                    data-detail-row-index={detailRowIdx}
+                                                                    data-detail-col-index={colIdx}
+                                                                    value={line.glapsCarrierBpCode || line.carrierInput || ''}
                                                                     onChange={(event) => setDetailCarrierOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
+                                                                    onKeyDown={focusDetailGridInput}
                                                                 />
                                                             </td>
                                                         );
@@ -1633,8 +1744,11 @@ function AsanDispatchContent() {
                                                                 <input
                                                                     className={styles.detailComboInput}
                                                                     list={DETAIL_START_LOCATION_DATALIST_ID}
+                                                                    data-detail-row-index={detailRowIdx}
+                                                                    data-detail-col-index={colIdx}
                                                                     value={line.startLocation || ''}
                                                                     onChange={(event) => setDetailStartOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
+                                                                    onKeyDown={focusDetailGridInput}
                                                                     placeholder="선택"
                                                                     title={`${line.startRegion || ''}${line.startSuffix ? ` / ${line.startSuffix}` : ''}`}
                                                                 />
