@@ -1,3 +1,23 @@
+## [2026-05-23] 아산 통합배차판 선적 컬럼 표시 (v5.14.137)
+### 핵심
+- 모비스 배차판에 2026-05-26부터 추가된 `선적` 컬럼을 글로비스의 `선적`과 같은 의미로 통합현황에 노출합니다.
+- 통합현황 고정 헤더를 `담당자 → 선적 → 작업지` 순서로 맞추고, 원본 날짜에 `선적` 헤더가 없으면 공란으로 표시합니다.
+- 통합현황 엑셀 다운로드도 같은 헤더/매핑을 사용합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 31개 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 46개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- 프로덕션 API `type=glovis/mobis/integrated` 2026-05-26 헤더에 `선적` 노출 확인
+- 프로덕션 엑셀 다운로드 통합현황 2026-05-26 헤더에 `선적` 노출 확인
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] 연락처 내선 범위 suffix 보존 보정 (v5.14.136)
 ### 핵심
 - 운영 DB의 연락처 원본을 확인해 `055-540-5616~8`, `055-540-5601~2`, `051-607-7871~4,6`처럼 본번호 뒤에 번호 범위가 붙은 데이터가 있음을 확인했습니다.
