@@ -94,6 +94,21 @@ const GLAPS_CODE_ALIAS_TYPES = new Set([
   'generic',
 ]);
 
+const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
+  ['부산신항', ['KRBNP']],
+  ['부산북항', ['KRBNX']],
+  ['인천항', ['KRINC']],
+  ['인천신항', ['KRINN']],
+  ['인천항국제여객터미널', ['KRINF']],
+  ['광양항', ['KRKAN']],
+  ['평택항', ['KRPTK']],
+  ['울산신항', ['KRUSN', 'KRUSN_NEW']],
+  ['울산구항', ['KRUSN_OLD']],
+  ['의왕ICD', ['KRUWN']],
+  ['군산항', ['KRKUV']],
+  ['온산항', ['KRONS']],
+]);
+
 export function cleanGlapsText(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
 }
@@ -104,6 +119,32 @@ export function normalizeGlapsKey(value) {
 
 function routePartKey(value) {
   return cleanGlapsText(value).replace(/\s+/g, '').toUpperCase();
+}
+
+export function getGlapsRouteLocationCodeCandidates(value = '') {
+  const cleaned = cleanGlapsText(value);
+  const normalized = normalizeGlapsKey(cleaned);
+  const candidates = [cleaned];
+  GLAPS_ROUTE_LOCATION_CODE_ALIASES.forEach(([name, codes]) => {
+    if (normalizeGlapsKey(name) === normalized) candidates.push(...codes);
+  });
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+export function buildGlapsDispatchRouteFingerprints({
+  startLocationName = '',
+  waypointElsName = '',
+  waypointName = '',
+  destinationName = '',
+} = {}) {
+  const starts = getGlapsRouteLocationCodeCandidates(startLocationName);
+  const destinations = getGlapsRouteLocationCodeCandidates(destinationName);
+  const waypoint = waypointElsName || waypointName;
+  return starts.flatMap(start => destinations.map(destination => buildGlapsRouteFingerprint({
+    startLocationName: start,
+    waypointElsName: waypoint,
+    destinationName: destination,
+  })));
 }
 
 function isElsHeader(value) {
@@ -351,6 +392,29 @@ export function buildGlapsAliasesFromRoutes(routes = []) {
 
 export function buildGlapsAliasesFromCodeSheets(sheets = []) {
   const aliases = new Map();
+  const addAlias = (alias) => {
+    const glapsCode = cleanGlapsText(alias.glapsCode);
+    const names = [
+      alias.sourceName,
+      alias.elsName,
+      alias.glapsName,
+      ...(Array.isArray(alias.extraNames) ? alias.extraNames : []),
+    ].map(cleanGlapsText).filter(Boolean);
+    [...new Set(names)].forEach((name) => {
+      const normalized = {
+        aliasType: alias.aliasType,
+        sourceName: name,
+        elsName: name,
+        glapsName: cleanGlapsText(alias.glapsName) || name,
+        glapsCode,
+        routeCode: '',
+        reviewStatus: name || glapsCode ? 'ready' : 'needs_mapping',
+        reviewNote: cleanGlapsText(alias.reviewNote),
+      };
+      aliases.set(aliasKey(normalized), normalized);
+    });
+  };
+
   sheets.forEach((sheet) => {
     const sheetName = cleanGlapsText(sheet.name);
     if (!sheetName || sheetName.includes('운송경로')) return;
@@ -360,29 +424,79 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
 
     const headers = (rows[headerRowIndex] || []).map(cleanGlapsText);
     const normalizedHeaders = headers.map(normalizeGlapsKey);
+    const aliasType = inferSheetAliasType(sheetName);
+    const findColumn = (candidates = []) => findGlapsHeaderIndex(headers, candidates);
+
+    if (aliasType === 'container_type') {
+      const isoIdx = findColumn(['ISO코드', 'ISO CODE']);
+      const customsIdx = findColumn(['세관코드', '규격', '컨테이너규격']);
+      const descriptionIdx = findColumn(['설명 (Description)', '설명', 'Description']);
+      const registerKeyIdx = findColumn(['GLAPS 등록 KEY', '등록 KEY']);
+
+      rows.slice(headerRowIndex + 1).forEach((row) => {
+        const isoCode = getRowValue(row, isoIdx);
+        const customsCode = getRowValue(row, customsIdx);
+        const description = getRowValue(row, descriptionIdx);
+        const registerKey = getRowValue(row, registerKeyIdx);
+        if (!isoCode && !customsCode && !description && !registerKey) return;
+        addAlias({
+          aliasType,
+          sourceName: customsCode || isoCode || description,
+          glapsName: description || customsCode || isoCode,
+          glapsCode: isoCode,
+          extraNames: [isoCode, registerKey],
+          reviewNote: sheetName,
+        });
+      });
+      return;
+    }
+
+    if (aliasType === 'port') {
+      const glapsPortIdx = findColumn(['GLAPS 포트', 'GLAPS PORT']);
+      const glapsCodeIdx = findColumn(['GLAPS 코드', 'GLAPS CODE']);
+      const kdValueIdx = findColumn(['KD보낼값', 'KD 보낼값']);
+      const gloveNameIdx = findColumn(['명칭(GLOVE)', '명칭', 'GLOVE명']);
+      const gloveTypeIdx = findColumn(['구분(GLOVE)', '구분']);
+      const locationIdx = findColumn(['LOCATION (GLOVE)', 'LOCATION']);
+
+      rows.slice(headerRowIndex + 1).forEach((row) => {
+        const glapsPort = getRowValue(row, glapsPortIdx);
+        const glapsCode = getRowValue(row, glapsCodeIdx);
+        const kdValue = getRowValue(row, kdValueIdx);
+        const gloveName = getRowValue(row, gloveNameIdx);
+        const gloveType = getRowValue(row, gloveTypeIdx);
+        const location = getRowValue(row, locationIdx);
+        if (!glapsPort && !glapsCode && !kdValue && !gloveName && !location) return;
+        addAlias({
+          aliasType,
+          sourceName: glapsPort || kdValue || gloveName || glapsCode,
+          glapsName: glapsPort || kdValue || gloveName || glapsCode,
+          glapsCode: glapsPort || glapsCode,
+          extraNames: [glapsCode, kdValue, gloveName, gloveType, location],
+          reviewNote: sheetName,
+        });
+      });
+      return;
+    }
+
     const codeIdx = normalizedHeaders.findIndex(header => header.includes('코드') || header.includes('CODE'));
     const nameIdx = normalizedHeaders.findIndex((header, idx) => (
       idx !== codeIdx
       && (header.includes('명') || header.includes('NAME') || header.includes('규격') || header.includes('선사') || header.includes('컨사이니') || header.includes('포트'))
     ));
     const fallbackNameIdx = nameIdx >= 0 ? nameIdx : rows[headerRowIndex].findIndex((_, idx) => idx !== codeIdx);
-    const aliasType = inferSheetAliasType(sheetName);
 
     rows.slice(headerRowIndex + 1).forEach((row) => {
       const glapsCode = getRowValue(row, codeIdx);
       const glapsName = getRowValue(row, fallbackNameIdx);
       if (!glapsCode && !glapsName) return;
-      const alias = {
+      addAlias({
         aliasType,
         sourceName: glapsName || glapsCode,
-        elsName: glapsName || glapsCode,
         glapsName: glapsName || glapsCode,
         glapsCode,
-        routeCode: '',
-        reviewStatus: glapsName || glapsCode ? 'ready' : 'needs_mapping',
         reviewNote: sheetName,
-      };
-      aliases.set(aliasKey(alias), alias);
+      });
     });
   });
   return [...aliases.values()];

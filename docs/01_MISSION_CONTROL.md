@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.144 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.145 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 전 시트 원장 SQL을 기존 운영 DB에도 적용되게 보강하고, NAS 마스터를 재반영해 7개 시트/1,165행을 확인했습니다.
+> 최신 업데이트: 상세배차 운송경로 도출 시 부산신항 등 한글 상차/하차지를 GLAPS 포트코드 후보로 변환하고, 40HC 타입은 ISO코드 4510으로 표시합니다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.144
+- **웹 버전**: v5.14.145
 - **동기화 정책**: 연간실적은 파일별 외부 Node importer `summary-only/snapshot import` 유지, 화면은 annual 현재 스냅샷 전체를 통합 조회. 월간실적은 `dataset_type=monthly` + `diff-current` 누적 원장으로 월별 파일을 순차 백그라운드 적재한다.
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
@@ -53,9 +53,10 @@
 - [x] v5.12: 아산지점 선적관리/종합상황판 개편
 - [x] v5.13: 아산 배차판/연간실적 분석 리포트 확장
 - [x] v5.14: NAS core 대용량 엑셀 파싱 메모리 보호
-- [x] v5.14.64-144: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차/마스터 원장 1.5단계, 배차판 원본 엑셀 WEB 컬럼 분리
+- [x] v5.14.64-145: 월간/연간/종합실적 분석, 행사일정/공휴일, 선적 job, 배차판 DB/WEB 셀, Android 오버레이/GPS/관제 통계, 연락처 입력/표기 안정화, 통합 배차판 선적 컬럼 표시, GLAPS 상세배차/마스터 원장 1.5단계, 배차판 원본 엑셀 WEB 컬럼 분리
 
 ## RECENT CHANGES
+- **v5.14.145**: 상세배차 운송경로 도출은 `부산신항 -> KRBNP` 같은 GLAPS 포트코드 후보를 함께 조회해 `GLC00017` 같은 기존 운송경로코드를 찾는다. 컨테이너 `40HC`는 컨테이너규격 원본시트의 `세관코드 -> ISO코드` 기준으로 `4510`을 표시하고, 화면 명칭은 `GLAPS코드`로 바꿨다.
 - **v5.14.144**: GLAPS SQL을 기존 운영 테이블에도 `sheet_row_count`, 확장 alias type, `glaps_master_sheet_rows`가 적용되도록 보강했다. 운영 Supabase에 적용 후 NAS `GLAPS_마스터코드.xlsx`를 재반영해 활성 버전 기준 7개 시트, 운송경로 540건, 항목매핑 2,052건, 원본행 1,165건을 확인했다.
 - **v5.14.143**: `GLAPS마스터`를 아산 상위 메뉴에서 제거하고 배차판 내부 보기로 이동했다. GLAPS 마스터는 운송경로뿐 아니라 전 시트 원본행을 `glaps_master_sheet_rows`에 보관하고, 상세배차내역에는 하차지와 고객사 사이 `운송경로/운송경로코드`, 포트·라인·타입 옆 기존 GLAPS 코드 컬럼을 표시한다. 수정양식 다운로드 헤더는 한국어 컬럼명으로 보정했다.
 - **v5.14.142**: 상세배차내역에서 `아산` 지역칸은 실제 아산 상차로 확정할 수 없는 값이므로 자동 `아산` 상차지 매핑을 제거하고, `기타/철송`, `기타`, `중부`와 함께 상차지 선택필요 상태로 표시한다.
@@ -73,7 +74,6 @@
 - **v5.14.130 / APK v5.11.29**: 완료 경로 통계는 좌표 진행 기반 신뢰 최고속도로 계산해 센서 speed 160km/h 튐을 배제하고, 평균속도 대신 운행거리를 앱/웹/엑셀에 표시한다. Android native 자이로/가속도는 1km/h 이상 저속 회전을 `GPS_TURN` 마커로 저장해 출발/도착/골목길의 꺾임 포인트를 더 촘촘히 남긴다.
 - **v5.14.129 / APK v5.11.28**: 운행 종료 후 앱 전경 복귀에도 오버레이가 남는 경합을 막기 위해 JS 종료 호출을 await하고 native `STOP_OVERLAY_SERVICE` latch/전경 복귀 정리를 추가했다. `trips?mode=active`는 최근 정상 좌표를 네이버 Directions 15 경로에 맞춰 표시 좌표만 도로로 스냅한다.
 - **v5.14.128 / APK v5.11.27**: 12가0140 실시간 테스트 중 저속/정차 구간에서 native 저장 간격이 139~141초까지 벌어지는 것을 확인해 Android 서비스의 6km/h 미만 전송 주기를 180초에서 90초로 낮췄다. JS heartbeat와 맞춰 관제 지도 끊김 체감을 줄인다.
-- **v5.14.127**: 2026-05-22 12가0140 실시간 운행에서 좌표 경로는 단방향 정상 진행이고 좌표 간 추정속도 max 92km/h였지만 `android_bg` 센서 speed가 156~160km/h로 저장되는 케이스를 확인했다. `/api/vehicle-tracking/location` 저장 단계에서 직전 좌표와 현재 좌표의 거리/시간 기반 추정속도와 센서속도를 비교해 과속 튐을 보정한다.
 ## VERIFICATION
 - `node --test web/tests/koreanPhoneNumber.test.mjs web/tests/contactPhoneNormalization.test.mjs`: 11개 통과
 - `node --test web/tests/driverMapCamera.test.mjs web/tests/vehicleLocation.test.mjs`: 34개 통과

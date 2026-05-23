@@ -18,6 +18,7 @@ import {
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
 import {
+    buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
     normalizeGlapsKey,
 } from '@/utils/glapsMasterData.mjs';
@@ -406,6 +407,23 @@ function buildGlapsAliasCodeMap(aliases = [], aliasType) {
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
 }
+function buildGlapsContainerIsoCodeMap(sheetRows = []) {
+    const map = new Map();
+    (sheetRows || [])
+        .filter(row => String(row?.sheet_name || row?.sheetName || '').includes('컨테이너규격'))
+        .forEach((row) => {
+            const payload = row.row_payload || row.rowPayload || {};
+            const values = row.row_values || row.rowValues || [];
+            const isoCode = payload['ISO코드'] || values[0] || '';
+            const customsCode = payload['세관코드'] || values[1] || '';
+            const description = payload['설명 (Description)'] || values[2] || '';
+            [customsCode, isoCode, description].forEach((value) => {
+                const key = normalizeGlapsKey(value);
+                if (key && isoCode && !map.has(key)) map.set(key, isoCode);
+            });
+        });
+    return map;
+}
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
 }
@@ -511,7 +529,7 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
-    const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [] });
+    const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -558,17 +576,18 @@ function AsanDispatchContent() {
                 const response = await fetch(`/api/branches/asan/glaps/master?t=${Date.now()}`, { cache: 'no-store' });
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok || payload.setupRequired) {
-                    if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [] });
+                    if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
                     return;
                 }
                 if (!cancelled) {
                     setGlapsDetailLookup({
                         routes: payload.routes || [],
                         aliases: payload.aliases || [],
+                        sheetRows: payload.sheetRows || [],
                     });
                 }
             } catch {
-                if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [] });
+                if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
             }
         };
         loadGlapsLookup();
@@ -990,18 +1009,19 @@ function AsanDispatchContent() {
         port: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'port'),
         line: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'line'),
         containerType: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'container_type'),
-    }), [glapsDetailLookup.aliases]);
+        containerIso: buildGlapsContainerIsoCodeMap(glapsDetailLookup.sheetRows || []),
+    }), [glapsDetailLookup.aliases, glapsDetailLookup.sheetRows]);
 
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
         const hasOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
         const startLocation = hasOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
-        const routeKey = buildGlapsRouteFingerprint({
+        const routeKeys = buildGlapsDispatchRouteFingerprints({
             startLocationName: startLocation,
             waypointElsName: line.workplace,
             destinationName: line.destination,
         });
-        const glapsRoute = glapsRouteMap.get(routeKey);
+        const glapsRoute = routeKeys.map(key => glapsRouteMap.get(key)).find(Boolean) || null;
         return {
             ...line,
             startLocation,
@@ -1010,7 +1030,8 @@ function AsanDispatchContent() {
             glapsRouteCode: glapsRoute?.route_code || '',
             glapsPortCode: getGlapsAliasCode(glapsAliasMaps.port, line.port),
             glapsLineCode: getGlapsAliasCode(glapsAliasMaps.line, line.line),
-            glapsTypeCode: getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType),
+            glapsTypeCode: getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
+                || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType),
         };
     }), [detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap]);
 
@@ -1398,7 +1419,7 @@ function AsanDispatchContent() {
                                 상세배차내역
                             </button>
                             <button className={`${styles.funcBtn} ${mainView === 'glaps-master' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('glaps-master')}>
-                                GLAPS마스터
+                                GLAPS코드
                             </button>
                         </div>
                         <div className={styles.viewDivider} />
@@ -1481,7 +1502,7 @@ function AsanDispatchContent() {
                             </span>
                         </div>
                         <div className={styles.summaryRight}>
-                            <span className={styles.detailHint}>GLAPS 마스터 기존 코드 도출 검수용 상세 라인</span>
+                            <span className={styles.detailHint}>GLAPS코드 기존 코드 도출 검수용 상세 라인</span>
                         </div>
                     </div>
                     <div className={styles.tableWrap}>

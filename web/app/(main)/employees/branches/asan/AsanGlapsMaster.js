@@ -126,7 +126,7 @@ export default function AsanGlapsMaster() {
         <div className={styles.shell}>
             <div className={styles.topPanel}>
                 <div className={styles.titleBlock}>
-                    <h2>GLAPS 마스터</h2>
+                    <h2>GLAPS 코드</h2>
                     <p>{version ? `${version.source_name} · ${formatDateTime(version.imported_at)}` : '활성 마스터 없음'}</p>
                 </div>
                 <div className={styles.actionBar}>

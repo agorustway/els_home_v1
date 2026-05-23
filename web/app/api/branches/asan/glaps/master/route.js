@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
-const PAGE_LIMIT = 2000;
+const PAGE_LIMIT = 5000;
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');

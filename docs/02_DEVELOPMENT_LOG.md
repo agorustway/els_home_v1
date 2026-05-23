@@ -1,3 +1,24 @@
+## [2026-05-23] GLAPS 운송경로·타입코드 도출 보강 (v5.14.145)
+### 핵심
+- 상세배차의 한글 상차/하차지(`부산신항`)를 GLAPS 운송경로의 포트코드 후보(`KRBNP`)로 변환해 `상차지 + 경유지(ELS) + 하차지` 매칭을 수행하도록 보강했습니다.
+- `부산신항 + 글로비스KD센터2포장장 + 부산신항`은 활성 GLAPS 원장에서 `KRBNP|글로비스KD센터2포장장|KRBNP`로 조회되어 `GLC00017`을 우선 도출합니다.
+- 컨테이너규격 시트는 `세관코드=40HC -> ISO코드=4510` 구조로 파싱하도록 고치고, 상세배차 `타입코드`는 원본시트/항목매핑에서 ISO코드를 표시합니다.
+- 화면 명칭은 `GLAPS마스터`에서 `GLAPS코드`로 변경했습니다.
+### 운영 데이터 보정
+- 활성 버전의 `container_type`, `port` 항목매핑을 원본시트 기준으로 재생성했습니다.
+- 확인값: `40HC -> 4510`, `KRBNP -> KRBNP`.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`, `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-23] GLAPS 전 시트 원장 운영 DB 적용 및 재반영 (v5.14.144)
 ### 핵심
 - 기존 운영 DB에는 `glaps_master_versions.sheet_row_count`와 `glaps_master_sheet_rows`가 아직 없어 화면의 `원본시트`가 0으로 보이던 원인을 확인했습니다.
