@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.155 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.156 / APK v5.11.29)
 
-> 최신 업데이트: 헤더 인트라넷 `직원 서비스` 하위 메뉴에 `AI 어시스턴트`를 추가했다.
+> 최신 업데이트: GLAPS 수정양식 작업 시트가 오른쪽 빈 열에서 열리는 문제를 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.155
+- **웹 버전**: v5.14.156
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -22,7 +22,7 @@
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 - GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
-- GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조로 열리며 A1에서 시작한다.
+- GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조이며, 좌측 A열부터 열리고 입력 시작 셀은 A4로 둔다.
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 
 ## ACTIVE SYSTEMS
@@ -35,6 +35,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 - **v5.14.155**: 전역 헤더 인트라넷 드롭다운의 `직원 서비스` 하위 메뉴 첫 항목에 `AI 어시스턴트` 링크(`/employees/ask`)를 추가해 사이드바 메뉴와 맞췄다.
 - **v5.14.154**: GLAPS 수정양식 운송경로/항목매핑 시트가 엑셀에서 빈 헤더처럼 보이지 않도록 1행 제목, 2행 설명, 3행 컬럼명으로 분리하고, 열릴 때 A1부터 보이도록 시트 뷰를 고정했다.
 - **v5.14.153**: GLAPS 마스터 코드시트 `ELS코드1~N` 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 셀에 여러 개 들어와도 각각 alias로 분리되게 했다. 수정양식 설명서에도 ELS 수기 컬럼 위치 무관/다중값 구분 규칙을 추가했다.
@@ -50,9 +51,9 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `npm.cmd run lint -- components/Header.js`: 통과, 기존 `<img>` 경고 3건 유지
-- `npm.cmd run build`: 첫 실행은 이전 `.next/export` ENOTEMPTY 산출물 정리 후 재실행 통과
-- `http://127.0.0.1:3002/employees/ask?debug=true`: 헤더 드롭다운 DOM에서 `AI 어시스턴트` 링크(`/employees/ask`) 확인 후 서버 종료
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 첫 실행은 기존 `.next` 추적 파일 누락으로 실패, `.next` 경로 검증 삭제 후 재실행 통과
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식 출력과 업로드 전 검증을 구현한다.

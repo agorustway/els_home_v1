@@ -53,28 +53,51 @@ async function fetchPagedGlapsRows(buildQuery) {
   return rows;
 }
 
+function applyRowCellStyle(sheet, rowNumber, lastColumnNumber, style) {
+  for (let col = 1; col <= lastColumnNumber; col += 1) {
+    const cell = sheet.getCell(rowNumber, col);
+    if (style.font) cell.font = style.font;
+    if (style.fill) cell.fill = style.fill;
+    if (style.alignment) cell.alignment = style.alignment;
+  }
+}
+
 function styleWorksheet(sheet, { headerRowNumber = 1, titleRowNumber = null, noteRowNumber = null } = {}) {
-  sheet.views = [{ state: 'frozen', ySplit: headerRowNumber, topLeftCell: `A${headerRowNumber + 1}`, activeCell: 'A1' }];
+  const lastColumnNumber = sheet.columnCount;
+  sheet.views = [{
+    state: 'frozen',
+    ySplit: headerRowNumber,
+    topLeftCell: `A${headerRowNumber + 1}`,
+    activeCell: `A${headerRowNumber + 1}`,
+    activePane: 'bottomLeft',
+  }];
   if (titleRowNumber) {
     const titleRow = sheet.getRow(titleRowNumber);
     titleRow.height = 24;
-    titleRow.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
-    titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
-    titleRow.alignment = { vertical: 'middle', horizontal: 'left' };
+    applyRowCellStyle(sheet, titleRowNumber, lastColumnNumber, {
+      font: { bold: true, size: 14, color: { argb: 'FFFFFFFF' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } },
+      alignment: { vertical: 'middle', horizontal: 'left' },
+    });
   }
   if (noteRowNumber) {
     const noteRow = sheet.getRow(noteRowNumber);
     noteRow.height = 22;
-    noteRow.font = { bold: true, color: { argb: 'FF334155' } };
-    noteRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-    noteRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    applyRowCellStyle(sheet, noteRowNumber, lastColumnNumber, {
+      font: { bold: true, color: { argb: 'FF334155' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } },
+      alignment: { vertical: 'middle', horizontal: 'left', wrapText: true },
+    });
   }
-  sheet.getRow(headerRowNumber).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(headerRowNumber).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5673' } };
-  sheet.getRow(headerRowNumber).alignment = { vertical: 'middle', horizontal: 'center' };
-  sheet.autoFilter = { from: `A${headerRowNumber}`, to: `${sheet.getColumn(sheet.columnCount).letter}${headerRowNumber}` };
+  applyRowCellStyle(sheet, headerRowNumber, lastColumnNumber, {
+    font: { bold: true, color: { argb: 'FFFFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5673' } },
+    alignment: { vertical: 'middle', horizontal: 'center' },
+  });
+  sheet.autoFilter = { from: `A${headerRowNumber}`, to: `${sheet.getColumn(lastColumnNumber).letter}${headerRowNumber}` };
   sheet.columns.forEach((column) => {
-    const maxLen = Math.max(10, ...column.values.map(value => String(value || '').length));
+    const values = (column.values || []).slice(headerRowNumber);
+    const maxLen = Math.max(10, ...values.map(value => String(value || '').length));
     column.width = Math.min(42, maxLen + 3);
   });
 }
@@ -111,10 +134,12 @@ function addGuideWorksheet(workbook) {
     ['항목매핑', '항목매핑_수정양식', 'GLAPS코드', 'GLAPS 업로드에 들어갈 기존 코드를 입력합니다.', '임의 생성 금지'],
     ['항목매핑', '항목매핑_수정양식', '운송경로코드', '특정 운송경로에만 적용할 때 입력합니다.', '일반 항목은 비워도 됨'],
   ].forEach(row => sheet.addRow(row));
-  sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A1' }];
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
-  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2', activePane: 'bottomLeft' }];
+  applyRowCellStyle(sheet, 1, 5, {
+    font: { bold: true, color: { argb: 'FFFFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } },
+    alignment: { vertical: 'middle', horizontal: 'center' },
+  });
   sheet.autoFilter = { from: 'A1', to: 'E1' };
   [12, 22, 18, 54, 34].forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;

@@ -1,3 +1,18 @@
+## [2026-05-24] GLAPS 수정양식 시트 시작 위치 보정 (v5.14.156)
+### 핵심
+- GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 행 전체가 아니라 실제 컬럼 범위에만 적용해 M열 이후 빈 영역이 헤더처럼 보이는 문제를 줄였습니다.
+- 운송경로/항목매핑 작업 시트는 고정행 아래 `A4`를 활성 셀로 지정하고, 설명서 시트는 `A2`를 활성 셀로 지정해 엑셀이 좌측 A열 기준으로 열리도록 보정했습니다.
+- 컬럼 폭 계산은 제목/설명 긴 문구를 제외하고 헤더와 데이터 기준으로 잡게 했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 첫 실행은 기존 `.next` 추적 파일 누락으로 실패, `.next` 경로 검증 삭제 후 재실행 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
 ## [2026-05-24] 헤더 인트라넷 AI 어시스턴트 메뉴 복구 (v5.14.155)
 ### 핵심
 - 전역 헤더의 인트라넷 드롭다운은 사이드바 메뉴와 별도 배열이라 `직원 서비스` 하위에 `AI 어시스턴트`가 빠져 있었습니다.
