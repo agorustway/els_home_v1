@@ -16,9 +16,6 @@ const REVIEW_STATUS_OPTIONS = [
 ];
 
 const ALIAS_TYPE_OPTIONS = [
-    ['start', '상차지'],
-    ['waypoint', '경유지'],
-    ['destination', '하차지'],
     ['port', '포트'],
     ['line', '선사'],
     ['container_type', '컨테이너규격'],
@@ -26,6 +23,8 @@ const ALIAS_TYPE_OPTIONS = [
     ['consignee', '컨샤이니'],
     ['generic', '기타'],
 ];
+
+const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 
 const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
@@ -39,7 +38,7 @@ const EMPTY_ROUTE_EDITOR = {
 };
 
 const EMPTY_ALIAS_EDITOR = {
-    aliasType: 'waypoint',
+    aliasType: 'port',
     sourceName: '',
     elsName: '',
     glapsName: '',
@@ -97,7 +96,7 @@ function routeToEditorValues(row = {}) {
 
 function aliasToEditorValues(row = {}) {
     return {
-        aliasType: row.alias_type || 'waypoint',
+        aliasType: row.alias_type || 'port',
         sourceName: row.source_name || '',
         elsName: row.els_name || '',
         glapsName: row.glaps_name || '',
@@ -152,7 +151,7 @@ export default function AsanGlapsMaster() {
     }, [activeTable]);
 
     const routes = data?.routes || [];
-    const aliases = data?.aliases || [];
+    const aliases = (data?.aliases || []).filter(row => !ROUTE_ALIAS_TYPES.has(String(row.alias_type || '').trim()));
     const sheetRows = data?.sheetRows || [];
     const sheetSummary = data?.sheetSummary || [];
     const summary = data?.summary || { total: 0, ready: 0, needsMapping: 0, missingRouteCode: 0 };
@@ -368,11 +367,11 @@ export default function AsanGlapsMaster() {
                 <form className={styles.editorPanel} onSubmit={submitEditor}>
                     {editor.mode === 'routes' ? (
                         <div className={styles.editorGrid}>
-                            <label className={styles.editorField}>
+                            <label className={`${styles.editorField} ${styles.protectedField}`}>
                                 <span>운송경로코드</span>
                                 <input value={editor.values.routeCode} onChange={(event) => updateEditorValue('routeCode', event.target.value)} autoFocus />
                             </label>
-                            <label className={styles.editorField}>
+                            <label className={`${styles.editorField} ${styles.protectedField}`}>
                                 <span>운송경로명</span>
                                 <input value={editor.values.routeName} onChange={(event) => updateEditorValue('routeName', event.target.value)} />
                             </label>
@@ -380,7 +379,7 @@ export default function AsanGlapsMaster() {
                                 <span>상차지</span>
                                 <input value={editor.values.startLocationName} onChange={(event) => updateEditorValue('startLocationName', event.target.value)} />
                             </label>
-                            <label className={styles.editorField}>
+                            <label className={`${styles.editorField} ${styles.protectedField}`}>
                                 <span>경유지</span>
                                 <input value={editor.values.waypointName} onChange={(event) => updateEditorValue('waypointName', event.target.value)} />
                             </label>
@@ -412,24 +411,20 @@ export default function AsanGlapsMaster() {
                                 </select>
                             </label>
                             <label className={styles.editorField}>
-                                <span>원본명</span>
+                                <span>배차판 매칭용</span>
                                 <input value={editor.values.sourceName} onChange={(event) => updateEditorValue('sourceName', event.target.value)} />
                             </label>
                             <label className={styles.editorField}>
                                 <span>ELS명</span>
                                 <input value={editor.values.elsName} onChange={(event) => updateEditorValue('elsName', event.target.value)} />
                             </label>
-                            <label className={styles.editorField}>
+                            <label className={`${styles.editorField} ${styles.protectedField}`}>
                                 <span>GLAPS명</span>
                                 <input value={editor.values.glapsName} onChange={(event) => updateEditorValue('glapsName', event.target.value)} />
                             </label>
-                            <label className={styles.editorField}>
+                            <label className={`${styles.editorField} ${styles.protectedField}`}>
                                 <span>GLAPS코드</span>
                                 <input value={editor.values.glapsCode} onChange={(event) => updateEditorValue('glapsCode', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>운송경로코드</span>
-                                <input value={editor.values.routeCode} onChange={(event) => updateEditorValue('routeCode', event.target.value)} />
                             </label>
                             <label className={styles.editorField}>
                                 <span>매칭상태</span>
@@ -473,8 +468,8 @@ export default function AsanGlapsMaster() {
                             {tableRows.map((row) => (
                                 <tr key={row.id}>
                                     <td><span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span></td>
-                                    <td>{row.route_code}</td>
-                                    <td>{row.route_name}</td>
+                                    <td className={styles.protectedCell}>{row.route_code}</td>
+                                    <td className={styles.protectedCell}>{row.route_name}</td>
                                     <td>{routeMatchKey(row)}</td>
                                     <td>{row.start_location_name}</td>
                                     <td>{row.waypoint_els_name || row.waypoint_name}</td>
@@ -497,11 +492,10 @@ export default function AsanGlapsMaster() {
                             <tr>
                                 <th>상태</th>
                                 <th>항목</th>
-                                <th>원본명</th>
+                                <th>배차판 매칭용</th>
                                 <th>ELS명</th>
                                 <th>GLAPS명</th>
                                 <th>코드</th>
-                                <th>운송경로코드</th>
                                 <th>조정안내</th>
                                 <th>수정출처</th>
                                 <th>관리</th>
@@ -514,9 +508,8 @@ export default function AsanGlapsMaster() {
                                     <td>{row.alias_type}</td>
                                     <td>{row.source_name}</td>
                                     <td>{row.els_name}</td>
-                                    <td>{row.glaps_name}</td>
-                                    <td>{row.glaps_code}</td>
-                                    <td>{row.route_code}</td>
+                                    <td className={styles.protectedCell}>{row.glaps_name}</td>
+                                    <td className={styles.protectedCell}>{row.glaps_code}</td>
                                     <td>{row.review_note}</td>
                                     <td><span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span></td>
                                     <td>

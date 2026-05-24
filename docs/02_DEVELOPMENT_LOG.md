@@ -1,3 +1,24 @@
+## [2026-05-24] GLAPS 보호값 음영과 배차판 매칭용 라벨 정리 (v5.14.162)
+### 핵심
+- GLAPS 수정양식 설명서에 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이며 일반 보정 대상이 아니라는 규칙을 추가했습니다.
+- 운송경로/항목매핑 수정양식에서 GLAPS 원장 기준값을 회색 음영으로 표시하고, 웹 GLAPS 코드 화면도 같은 보호값을 회색으로 표시합니다.
+- 항목매핑의 `원본명` 라벨을 실제 의미에 맞게 `배차판 매칭용`으로 바꾸고, 기존 `원본명` 헤더도 업로드 시 계속 인식하게 했습니다.
+- 항목매핑 웹 목록에서도 `start/waypoint/destination` 경로 파생 alias를 제외해 경로 수정 위치를 운송경로 화면/시트로 통일했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/utils/glapsMasterData.mjs`
+- `web/tests/glapsMasterData.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 항목매핑 양식 경로 중복 제거 (v5.14.160)
 ### 핵심
 - `운송경로_수정양식`과 `항목매핑_수정양식`에 같은 경로 정보가 중복 노출되어 보이는 혼란을 줄였습니다.

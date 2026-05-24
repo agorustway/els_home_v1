@@ -18,7 +18,7 @@ export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
 export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
   'ID',
   '항목',
-  '원본명',
+  '배차판 매칭용',
   'ELS명',
   'GLAPS명',
   'GLAPS코드',
@@ -61,7 +61,7 @@ const ROUTE_TEMPLATE_ALIASES = Object.freeze({
 const ALIAS_TEMPLATE_ALIASES = Object.freeze({
   id: ['id', 'ID'],
   aliasType: ['alias_type', '항목', '구분'],
-  sourceName: ['source_name', '원본명', '배차판명'],
+  sourceName: ['source_name', '배차판 매칭용', '배차판매칭용', '원본명', '배차판명'],
   elsName: ['els_name', 'ELS명', 'ELS'],
   glapsName: ['glaps_name', 'GLAPS명', '마스터명'],
   glapsCode: ['glaps_code', 'GLAPS코드', '코드'],

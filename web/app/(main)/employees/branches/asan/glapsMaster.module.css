@@ -226,6 +226,17 @@
     padding: 0 9px;
 }
 
+.protectedField span {
+    color: #334155;
+}
+
+.protectedField input,
+.protectedField select {
+    background: #e5e7eb;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
 .editorActions,
 .rowActions {
     display: inline-flex;
@@ -314,6 +325,12 @@
     color: #334155;
     font-size: 0.75rem;
     white-space: nowrap;
+}
+
+.table td.protectedCell {
+    background: #e5e7eb !important;
+    color: #475569;
+    font-weight: 800;
 }
 
 .table tbody tr:nth-child(odd) {
