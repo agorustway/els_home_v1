@@ -1,3 +1,20 @@
+## [2026-05-24] 상세배차 BKG확정 클릭 선택 방식 전환 (v5.14.166)
+### 핵심
+- `BKG확정`의 BKG1/2/3 선택 드롭다운을 제거하고, 옆의 BKG1/2/3 셀 값을 클릭하면 해당 값이 확정되도록 바꿨습니다.
+- 선택된 BKG 셀은 초록색으로 표시해 어떤 BKG가 확정값인지 바로 보이게 했습니다.
+- 방향키 포커스 이동이나 단순 blur만으로 `수기` 출처가 자동 저장되는 문제를 막았습니다. 실제 입력값이 바뀐 경우에만 수기 상태로 전환합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 모바일 운행 상세현황 갤럭시24 레이아웃 재구성 (v5.14.165)
 ### 핵심
 - 모바일에서 차량관제 운행 상세현황이 데스크탑 우측 패널과 표 구조 그대로 눌려 보이던 문제를 수정했습니다.

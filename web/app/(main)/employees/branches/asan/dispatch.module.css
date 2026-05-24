@@ -793,17 +793,17 @@
 }
 
 .detailBkgConfirmCell {
-    min-width: 210px;
+    min-width: 180px;
 }
 
 .detailBkgConfirmControl {
     display: grid;
-    grid-template-columns: 72px minmax(120px, 1fr);
+    grid-template-columns: 44px minmax(120px, 1fr);
     gap: 4px;
     align-items: center;
 }
 
-.detailBkgConfirmControl select,
+.detailBkgSourceBadge,
 .detailBkgConfirmInput {
     height: 26px;
     min-width: 0;
@@ -816,12 +816,62 @@
     padding: 0 6px;
 }
 
-.detailBkgConfirmControl select:disabled,
+.detailBkgSourceBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #075985;
+}
+
+.detailBkgSourceManual {
+    background: #fff7ed;
+    border-color: #fdba74;
+    color: #9a3412;
+}
+
 .detailBkgConfirmInput:disabled,
 .detailComboInput:disabled {
     background: #e5e7eb;
     color: #64748b;
     cursor: default;
+}
+
+.detailBkgPickButton {
+    width: 100%;
+    min-height: 26px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: #334155;
+    font: inherit;
+    font-size: 0.75rem;
+    text-align: left;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
+.detailBkgPickButton:hover:not(:disabled),
+.detailBkgPickButton:focus-visible {
+    border-color: #38bdf8;
+    background: #ecfeff;
+    outline: none;
+}
+
+.detailBkgPickButton:disabled {
+    cursor: default;
+}
+
+.detailBkgSelectedCell {
+    background: #dcfce7 !important;
+}
+
+.detailBkgPickButtonActive {
+    border-color: #22c55e;
+    background: #bbf7d0;
+    color: #14532d;
+    font-weight: 800;
 }
 
 .detailChangePanel {

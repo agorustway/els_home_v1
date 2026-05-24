@@ -661,6 +661,11 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /!overrideResponse\.ok/);
   assert.match(source, /changeDetailConfirmation/);
   assert.match(source, /saveDetailBkgOverride/);
+  assert.match(source, /saveDetailBkgManualInput/);
+  assert.match(source, /detailBkgSourceBadge/);
+  assert.match(source, /detailBkgPickButton/);
+  assert.match(source, /detailBkgSelectedCell/);
+  assert.doesNotMatch(source, /<select[\s\S]*BKG_CONFIRM_SOURCE_OPTIONS\.map/);
   assert.match(source, /routeShipperCode \|\| getGlapsAliasCode\(glapsShipperCodeMap, line\.shipper\)/);
   assert.doesNotMatch(source, /detailCarrierOverrides/);
   assert.match(source, /detailIssueFilter/);
@@ -708,6 +713,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /routePartMissingCount/);
   assert.match(css, /\.detailTable th\s*{[\s\S]*background: #1f5673;/);
   assert.match(css, /\.detailBkgConfirmControl/);
+  assert.match(css, /\.detailBkgSourceBadge/);
+  assert.match(css, /\.detailBkgPickButtonActive/);
+  assert.match(css, /\.detailBkgSelectedCell/);
   assert.match(css, /\.detailConfirmButton/);
   assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailIssueButtonActive\s*{[\s\S]*background: #fff7ed;/);

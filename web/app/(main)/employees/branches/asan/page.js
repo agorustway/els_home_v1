@@ -1473,6 +1473,11 @@ function AsanDispatchContent() {
         saveDetailBkgOverride(line, source, getDetailBkgValue(line, source));
     }, [saveDetailBkgOverride]);
 
+    const saveDetailBkgManualInput = useCallback((line, value) => {
+        if (line.confirmedBkgSource !== 'manual') return;
+        saveDetailBkgOverride(line, 'manual', value);
+    }, [saveDetailBkgOverride]);
+
     const changeDetailConfirmation = useCallback(async (action) => {
         if (!detailScope || detailConfirmationSaving) return;
         if (action === 'cancel' && !window.confirm('배차확정을 취소할까요? 해당일자 상세배차 수정 잠금이 해제됩니다.')) return;
@@ -1927,25 +1932,21 @@ function AsanDispatchContent() {
                                                         );
                                                     }
                                                     if (header === 'BKG확정') {
+                                                        const isManualBkg = line.confirmedBkgSource === 'manual';
                                                         return (
                                                             <td key={header} className={styles.detailBkgConfirmCell}>
                                                                 <div className={styles.detailBkgConfirmControl}>
-                                                                    <select
-                                                                        value={line.confirmedBkgSource || 'BKG1'}
-                                                                        onChange={(event) => changeDetailBkgSource(line, event.target.value)}
-                                                                        disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
-                                                                        title="BKG1/2/3 중 확정값 선택"
-                                                                    >
-                                                                        {BKG_CONFIRM_SOURCE_OPTIONS.map((source) => (
-                                                                            <option key={source} value={source}>{source}</option>
-                                                                        ))}
-                                                                        <option value="manual">수기</option>
-                                                                    </select>
+                                                                    <span className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''}`}>
+                                                                        {isManualBkg ? '수기' : line.confirmedBkgSource || 'BKG1'}
+                                                                    </span>
                                                                     <input
                                                                         className={styles.detailBkgConfirmInput}
                                                                         value={line.confirmedBkg || ''}
-                                                                        onChange={(event) => updateDetailBkgDraft(line, event.target.value, 'manual')}
-                                                                        onBlur={(event) => saveDetailBkgOverride(line, 'manual', event.target.value)}
+                                                                        onChange={(event) => {
+                                                                            if (event.target.value === line.confirmedBkg) return;
+                                                                            updateDetailBkgDraft(line, event.target.value, 'manual');
+                                                                        }}
+                                                                        onBlur={(event) => saveDetailBkgManualInput(line, event.target.value)}
                                                                         onKeyDown={focusDetailGridInput}
                                                                         data-detail-row-index={detailRowIdx}
                                                                         data-detail-col-index={colIdx}
@@ -1953,6 +1954,29 @@ function AsanDispatchContent() {
                                                                         title={line.confirmedBkgSource && line.confirmedBkgSource !== 'manual' ? `${line.confirmedBkgSource} 선택값` : '수기 입력값'}
                                                                     />
                                                                 </div>
+                                                            </td>
+                                                        );
+                                                    }
+                                                    if (BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
+                                                        const bkgValue = getDetailBkgValue(line, header);
+                                                        const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
+                                                        const isDisabledBkg = detailConfirmationLocked || detailOverrideSetupRequired || !detailScope || !bkgValue;
+                                                        return (
+                                                            <td key={header} className={isSelectedBkg ? styles.detailBkgSelectedCell : ''}>
+                                                                {bkgValue ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className={`${styles.detailBkgPickButton} ${isSelectedBkg ? styles.detailBkgPickButtonActive : ''}`}
+                                                                        onClick={() => changeDetailBkgSource(line, header)}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        data-detail-row-index={detailRowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        disabled={isDisabledBkg}
+                                                                        title={`${header} 값을 BKG확정으로 적용`}
+                                                                    >
+                                                                        {bkgValue}
+                                                                    </button>
+                                                                ) : null}
                                                             </td>
                                                         );
                                                     }
