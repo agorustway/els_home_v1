@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.151 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.152 / APK v5.11.29)
 
-> 최신 업데이트: 전역/인트라넷 메뉴의 데스크톱·모바일 높이와 여백을 보정해 같은 폰트 크기에서도 화면 밀도를 높였다.
+> 최신 업데이트: GLAPS 수정양식을 단일 버튼/단일 엑셀로 정리하고, 엑셀 첫 시트에 컬럼 설명서를 추가했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.151
+- **웹 버전**: v5.14.152
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -21,7 +21,7 @@
 - 상세배차 수정필요 필터는 상차지, 운송경로, 오더구분, 화주사, 경로세부코드, 포트, 라인, 타입, 운송사, 컨샤이니 항목별로 토글한다.
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 - GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
-- GLAPS 수정양식은 `전체 수정양식` 기준으로 운송경로/항목매핑 시트를 함께 내려받아야 `항목` 컬럼 누락 혼란이 없다.
+- GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -33,6 +33,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.152**: GLAPS 코드 화면의 `현재/전체 수정양식` 구분을 제거하고 `수정양식 내보내기/업로드` 단일 흐름으로 정리했다. 다운로드 파일명은 `GLAPS_수정양식.xlsx`이며, 첫 시트 `설명서`에 컬럼별 입력방법과 삭제/수정출처 주의사항을 넣었다.
 - **v5.14.151**: 전역 헤더를 64px, 모바일 헤더를 56px 기준으로 낮추고 티커·임직원 헤더·사이드바 sticky 오프셋을 변수 기준으로 동기화했다. 인트라넷 사이드바는 데스크톱 244px, 모바일 244px 상한으로 줄이고 항목 높이/패딩을 낮춰 메뉴 밀도를 높였다.
 - **v5.14.150**: GLAPS 코드 화면에 웹 직접 추가/수정/삭제 폼과 `수정출처` 컬럼을 추가했다. 전체 수정양식 내보내기/업로드는 운송경로와 항목매핑을 한 파일에서 처리하며, 저장 전 DB 입력값은 양끝 공백을 trim한다.
 - **v5.14.149**: GLAPS 마스터 API를 1000건 단위 페이지 조회로 바꿔 라인/포트 alias가 잘리지 않게 했다. 상세배차 `포트코드`는 마스터에 ELS/GLAPS 매핑이 있을 때만 표시하고, 함부르크처럼 미등록 값은 공란으로 둔다. 운송사코드는 입력 목록 UI를 제거하고 기본 ELS BP 코드를 일반 코드 셀로 표시한다.
@@ -44,10 +45,10 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `npm.cmd run lint -- components/Header.js components/SiteLayout.js components/SubNav.js`: 통과, 기존 `<img>` 경고 3건 유지
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
-- `http://127.0.0.1:3001/employees/ask?debug=true`: 데스크톱 1280x720에서 헤더 64px, 티커 40px, 임직원 헤더 57px, 사이드바 244px 확인
-- 같은 URL 모바일 390x844에서 헤더 56px, 임직원 헤더 40px, 사이드바 244px, 메뉴 항목 36px 확인 후 서버 종료.
+- `http://127.0.0.1:3001/employees/branches/asan`: GLAPS 코드 탭에서 `수정양식 내보내기/업로드` 단일 버튼 확인 후 서버 종료.
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식 출력과 업로드 전 검증을 구현한다.

@@ -1,3 +1,22 @@
+## [2026-05-24] GLAPS 수정양식 단일화와 설명서 시트 추가 (v5.14.152)
+### 핵심
+- GLAPS 코드 화면에서 `현재 수정양식/전체 수정양식` 구분을 제거하고 `수정양식 내보내기`, `수정양식 업로드` 두 버튼만 남겼습니다.
+- 수정양식 다운로드는 항상 `GLAPS_수정양식.xlsx` 하나로 내려가며, 내부 시트는 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식`으로 구성됩니다.
+- `설명서` 시트에는 ID, 매칭상태, 삭제(Y), 수정출처, 운송경로/항목매핑 컬럼별 입력방법과 주의사항을 넣었습니다.
+- 업로드도 항상 전체 양식 기준 `mode=all`로 처리해 운송경로/항목매핑 시트가 같이 반영됩니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `http://127.0.0.1:3001/employees/branches/asan`: GLAPS 코드 탭에서 `수정양식 내보내기/업로드` 단일 버튼 확인 후 검증용 서버 종료.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 메뉴 밀도와 모바일 공간 활용 보정 (v5.14.151)
 ### 핵심
 - 전역 헤더 높이를 70px에서 64px로 낮추고, 모바일 헤더는 56px 기준으로 분리했습니다.

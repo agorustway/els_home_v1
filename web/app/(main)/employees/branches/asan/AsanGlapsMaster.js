@@ -108,8 +108,8 @@ function aliasToEditorValues(row = {}) {
     };
 }
 
-function downloadTemplate(kind) {
-    window.location.href = `/api/branches/asan/glaps/master/template?kind=${kind}`;
+function downloadTemplate() {
+    window.location.href = '/api/branches/asan/glaps/master/template';
 }
 
 export default function AsanGlapsMaster() {
@@ -123,7 +123,6 @@ export default function AsanGlapsMaster() {
     const [editor, setEditor] = useState(null);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
-    const templateUploadModeRef = useRef('routes');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -211,11 +210,10 @@ export default function AsanGlapsMaster() {
         const file = event.target.files?.[0];
         event.target.value = '';
         if (!file) return;
-        postWorkbook({ mode: templateUploadModeRef.current || activeTable, file });
+        postWorkbook({ mode: 'all', file });
     };
 
-    const openTemplateUpload = (mode) => {
-        templateUploadModeRef.current = mode;
+    const openTemplateUpload = () => {
         templateFileRef.current?.click();
     };
 
@@ -304,10 +302,8 @@ export default function AsanGlapsMaster() {
                     <input ref={templateFileRef} type="file" accept=".xlsx" hidden onChange={handleTemplateFileChange} />
                     <button type="button" onClick={() => postWorkbook({ mode: 'master', source: 'nas' })} disabled={saving}>NAS 마스터 반영</button>
                     <button type="button" onClick={() => masterFileRef.current?.click()} disabled={saving}>마스터 업로드</button>
-                    <button type="button" onClick={() => downloadTemplate(activeTable)} disabled={saving || activeTable === 'sheets'}>현재 수정양식</button>
-                    <button type="button" onClick={() => downloadTemplate('all')} disabled={saving}>전체 수정양식</button>
-                    <button type="button" onClick={() => openTemplateUpload(activeTable)} disabled={saving || activeTable === 'sheets'}>현재양식 업로드</button>
-                    <button type="button" onClick={() => openTemplateUpload('all')} disabled={saving}>전체양식 업로드</button>
+                    <button type="button" onClick={downloadTemplate} disabled={saving}>수정양식 내보내기</button>
+                    <button type="button" onClick={openTemplateUpload} disabled={saving}>수정양식 업로드</button>
                 </div>
             </div>
 

@@ -64,6 +64,42 @@ function styleWorksheet(sheet) {
   });
 }
 
+function addGuideWorksheet(workbook) {
+  const sheet = workbook.addWorksheet('설명서');
+  sheet.addRow(['구분', '시트', '컬럼명', '입력방법', '비고']);
+  [
+    ['공통', '전체', 'ID', '기존 행은 그대로 둡니다. 새 행 추가 시 비워둡니다.', 'ID가 있으면 기존 행 수정, 비어 있으면 신규 추가'],
+    ['공통', '전체', '매칭상태', 'ready / needs_mapping / missing_route_code 중 하나를 입력합니다.', '한글 확정 / 조정필요 / 코드없음도 인식'],
+    ['공통', '전체', '조정안내', '검수 메모를 자유 입력합니다.', '업로드 시 DB에 반영'],
+    ['공통', '전체', '수정출처', '참고용입니다. 수정하지 않아도 됩니다.', '웹수정 / 업로드수정 / 마스터반영 표시'],
+    ['공통', '전체', '수정일시', '참고용입니다. 수정하지 않아도 됩니다.', '업로드 반영 기준 아님'],
+    ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다.', 'Y 외 값은 삭제로 보지 않음'],
+    ['운송경로', '운송경로_수정양식', '운송경로코드', 'GLAPS 기존 운송경로코드를 입력합니다.', '새 코드를 만들지 말고 원장 코드를 사용'],
+    ['운송경로', '운송경로_수정양식', '운송경로명', 'GLAPS 운송경로명을 입력합니다.', '참고/검색용'],
+    ['운송경로', '운송경로_수정양식', '상차지', '배차 상세의 상차지와 매칭될 값을 입력합니다.', '예: 부산신항, 의왕ICD'],
+    ['운송경로', '운송경로_수정양식', '경유지', 'GLAPS 원장 작업지명을 입력합니다.', '원본명 보존용'],
+    ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
+    ['운송경로', '운송경로_수정양식', '하차지(선적)', '배차 상세의 하차지/선적과 매칭될 값을 입력합니다.', '예: 부산신항, 광양항'],
+    ['항목매핑', '항목매핑_수정양식', '항목', 'start / waypoint / destination / port / line / container_type / carrier / consignee / generic 중 하나를 입력합니다.', '코드 도출 구분'],
+    ['항목매핑', '항목매핑_수정양식', '원본명', '배차판에서 들어오는 값을 입력합니다.', '예: 40HC, CMA, INKAT'],
+    ['항목매핑', '항목매핑_수정양식', 'ELS명', '우리 기준 이름 또는 별칭을 입력합니다.', '검색/매칭 보조'],
+    ['항목매핑', '항목매핑_수정양식', 'GLAPS명', 'GLAPS 원장 명칭을 입력합니다.', '참고/검색용'],
+    ['항목매핑', '항목매핑_수정양식', 'GLAPS코드', 'GLAPS 업로드에 들어갈 기존 코드를 입력합니다.', '임의 생성 금지'],
+    ['항목매핑', '항목매핑_수정양식', '운송경로코드', '특정 운송경로에만 적용할 때 입력합니다.', '일반 항목은 비워도 됨'],
+  ].forEach(row => sheet.addRow(row));
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
+  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.autoFilter = { from: 'A1', to: 'E1' };
+  [12, 22, 18, 54, 34].forEach((width, index) => {
+    sheet.getColumn(index + 1).width = width;
+  });
+  sheet.eachRow((row) => {
+    row.alignment = { vertical: 'middle', wrapText: true };
+  });
+}
+
 function editSourceLabel(updatedBy = '') {
   const source = String(updatedBy || '').split(':')[0];
   if (source === 'web') return '웹수정';
@@ -111,7 +147,7 @@ export async function GET(request) {
   if (access.error) return access.error;
 
   const { searchParams } = new URL(request.url);
-  const requestedKind = searchParams.get('kind') || 'routes';
+  const requestedKind = searchParams.get('kind') || 'all';
   const kind = ['routes', 'aliases', 'all'].includes(requestedKind) ? requestedKind : 'routes';
   const branchId = searchParams.get('branchId') || DEFAULT_GLAPS_BRANCH_ID;
 
@@ -120,6 +156,7 @@ export async function GET(request) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'ELS Solution';
     workbook.created = new Date();
+    addGuideWorksheet(workbook);
 
     if (kind === 'routes' || kind === 'all') {
       const sheet = workbook.addWorksheet('운송경로_수정양식');
@@ -154,7 +191,7 @@ export async function GET(request) {
 
     const buffer = await workbook.xlsx.writeBuffer();
     const suffix = kind === 'all' ? '전체' : (kind === 'aliases' ? '항목매핑' : '운송경로');
-    const encodedName = encodeURIComponent(`GLAPS_${suffix}_수정양식.xlsx`);
+    const encodedName = encodeURIComponent(kind === 'all' ? 'GLAPS_수정양식.xlsx' : `GLAPS_${suffix}_수정양식.xlsx`);
 
     return new Response(buffer, {
       status: 200,
