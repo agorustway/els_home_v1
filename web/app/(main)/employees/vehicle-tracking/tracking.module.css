@@ -1421,6 +1421,57 @@
     margin-top: 6px;
 }
 
+.detailWideField,
+.detailTotalTimeBox {
+    grid-column: span 2;
+}
+
+.detailSplitInputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.detailTotalTimeBox {
+    background: #f0f9ff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+}
+
+.detailActionRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detailMiniMapWrap {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    margin-bottom: 12px;
+}
+
+.detailMiniMap {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    background: #f1f5f9;
+}
+
+.mobileLocationTimeline,
+.mobileLogList {
+    display: none;
+}
+
+.mobileEmptyState {
+    padding: 18px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
 .infoLabel {
     font-size: 0.75rem;
     color: #94a3b8;
@@ -1720,8 +1771,285 @@
     }
 
     .detailOverlay {
-        height: 92dvh;
-        max-height: 92dvh;
+        inset: 0;
+        width: 100vw !important;
+        min-width: 0;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
         z-index: 3000;
+        animation: slideUpPanel 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .detailHeader {
+        padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+        border-radius: 0;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        min-height: 58px;
+    }
+
+    .detailHeader::before {
+        display: none;
+    }
+
+    .detailHeader h3 {
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .detailHeader > div:first-child {
+        min-width: 0;
+        flex: 1;
+        gap: 8px !important;
+    }
+
+    .detailHeader .trackingBtn {
+        flex: 0 0 auto;
+        width: auto;
+        max-width: 134px;
+        height: 32px !important;
+        padding: 0 10px !important;
+        font-size: 0.72rem !important;
+        white-space: nowrap;
+    }
+
+    .closeBtn {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .detailContent {
+        padding: 10px 10px calc(env(safe-area-inset-bottom) + 16px);
+        gap: 10px;
+        background: #eef2f7;
+    }
+
+    .detailHero {
+        padding: 13px;
+        gap: 10px;
+        border-radius: 10px;
+    }
+
+    .detailKicker {
+        font-size: 0.68rem;
+    }
+
+    .detailHeroTitle {
+        font-size: 1rem;
+        line-height: 1.25;
+        word-break: keep-all;
+    }
+
+    .detailHeroMeta {
+        font-size: 0.76rem;
+        line-height: 1.45;
+        word-break: keep-all;
+    }
+
+    .detailMetricStrip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .detailMetricStrip div {
+        padding: 8px;
+        min-width: 0;
+    }
+
+    .detailMetricStrip strong {
+        font-size: 0.8rem;
+        white-space: normal;
+        word-break: keep-all;
+    }
+
+    .detailSection {
+        padding: 12px;
+        border-radius: 10px;
+        overflow: visible;
+    }
+
+    .sectionTitle {
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 0.84rem;
+        line-height: 1.25;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+
+    .detailActionRow {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+
+    .detailActionRow button {
+        width: 100% !important;
+        height: 34px !important;
+        padding: 0 8px !important;
+        font-size: 0.74rem !important;
+    }
+
+    .detailInfoGrid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .detailInfoGrid > *,
+    .detailWideField,
+    .detailTotalTimeBox {
+        grid-column: auto !important;
+    }
+
+    .detailSplitInputs {
+        grid-template-columns: 1fr;
+        gap: 7px;
+    }
+
+    .detailInfoGrid input,
+    .detailInfoGrid select {
+        min-height: 42px;
+        height: 42px;
+        font-size: 0.95rem !important;
+    }
+
+    .infoLabel {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+    }
+
+    .infoValue {
+        min-height: 0;
+        font-size: 0.88rem;
+        line-height: 1.35;
+        word-break: keep-all;
+    }
+
+    .detailMiniMapWrap {
+        height: 220px;
+        margin-bottom: 10px;
+    }
+
+    .detailMiniMap {
+        border-radius: 10px;
+    }
+
+    .detailSection .locationList {
+        max-height: none !important;
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+    }
+
+    .desktopLocationTable,
+    .desktopLogTable {
+        display: none !important;
+    }
+
+    .mobileLocationTimeline,
+    .mobileLogList {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mobileLocationCard,
+    .mobileLogCard {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #fff;
+        padding: 10px 11px;
+        text-align: left;
+        box-shadow: 0 2px 7px rgba(15, 23, 42, 0.05);
+        box-sizing: border-box;
+    }
+
+    .mobileLocationCard {
+        display: grid;
+        gap: 6px;
+        cursor: pointer;
+    }
+
+    .mobileLocationHead,
+    .mobileLogTop {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .mobileLocationHead strong,
+    .mobileLogTop strong {
+        color: #0f172a;
+        font-size: 0.82rem;
+        line-height: 1.25;
+    }
+
+    .mobileLocationHead em {
+        flex: 0 0 auto;
+        padding: 3px 7px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-style: normal;
+        font-size: 0.74rem;
+        font-weight: 900;
+    }
+
+    .mobileLocationAddr {
+        color: #334155;
+        font-size: 0.84rem;
+        font-weight: 800;
+        line-height: 1.35;
+        word-break: keep-all;
+    }
+
+    .mobileLocationMeta,
+    .mobileLogBy {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .mobileAddressBtn {
+        justify-self: flex-start;
+        padding: 6px 9px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #2563eb;
+        font-size: 0.76rem;
+        font-weight: 900;
+    }
+
+    .mobileLogTop span {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .mobileLogChange {
+        margin-top: 7px;
+        padding: 8px;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .photoGallery {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
     }
 }

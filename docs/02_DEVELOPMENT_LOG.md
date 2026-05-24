@@ -1,3 +1,20 @@
+## [2026-05-24] 모바일 운행 상세현황 갤럭시24 레이아웃 재구성 (v5.14.165)
+### 핵심
+- 모바일에서 차량관제 운행 상세현황이 데스크탑 우측 패널과 표 구조 그대로 눌려 보이던 문제를 수정했습니다.
+- 갤럭시24 기준으로 상세 패널을 100dvh 전체화면으로 바꾸고, 헤더/히어로/운행 지표/기본정보 입력을 1열 중심으로 재배치했습니다.
+- 위치 이력과 운행 기록은 모바일에서 데스크탑 표를 숨기고 카드형 타임라인으로 별도 렌더링해 시간, 속도, 주소, 좌표를 바로 읽을 수 있게 했습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 2개 통과
+- `npm.cmd run lint -- 'app/(main)/employees/vehicle-tracking/page.js' tests/vehicleTrackingMobileDetail.test.mjs`: 통과(기존 hook/img 경고만)
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 상세배차 확정 API 클라이언트 세션 인증 보정 (v5.14.164)
 ### 핵심
 - 운영 디버그 점검에서 신규 `BKG확정`/배차확정 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했습니다.

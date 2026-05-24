@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.164 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.165 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차 `BKG확정`/배차확정 API가 클라이언트 Supabase 세션 Bearer 인증을 인식하게 보정했다.
+> 최신 업데이트: 모바일 차량관제 운행 상세현황을 갤럭시24 기준 전체화면 카드형 상세로 재구성했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.164
+- **웹 버전**: v5.14.165
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -41,6 +41,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.165**: 모바일 운행 상세현황을 데스크탑 우측 패널/표 기반에서 갤럭시24 기준 전체화면 상세로 재구성했다. 위치 이력과 운행 기록은 모바일에서 카드형 타임라인으로 표시하고, 기본 정보 입력·미니맵·액션 버튼은 손가락 조작 가능한 높이와 1열 레이아웃으로 보정했다.
 - **v5.14.164**: 운영 디버그 점검 중 `BKG확정`/배차확정 신규 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했다. 상세배차 화면에서 Supabase access token을 Authorization 헤더로 전달하고, API는 Bearer token 인증도 허용하게 보정했다.
 - **v5.14.163**: 상세배차 `업체명` 뒤에 `BKG확정` 컬럼을 추가했다. `BKG1~3` 선택 흔적과 수기 입력값은 상세라인 보정 테이블로 분리 저장하며, 배차확정/확정취소 API와 이력 테이블, `배차변동내역` 탭 기반을 추가했다. 화주사코드는 매칭된 운송경로 원장 payload의 값을 우선 사용한다.
 - **v5.14.162**: GLAPS 수정양식 설명서를 다시 점검해 회색 음영 칸 의미를 명시했다. 운송경로/항목매핑의 GLAPS 원장 기준값은 엑셀과 웹에서 회색으로 표시하고, 항목매핑 `원본명` 라벨은 `배차판 매칭용`으로 바꿨다. 항목매핑 웹 목록에서도 운송경로 파생 alias는 제외했다.
@@ -65,8 +66,8 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 2개 통과
+- `npm.cmd run lint -- 'app/(main)/employees/vehicle-tracking/page.js' tests/vehicleTrackingMobileDetail.test.mjs`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS

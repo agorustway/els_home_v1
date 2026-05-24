@@ -1623,6 +1623,7 @@ export default function VehicleTrackingPage() {
                             <div className={styles.detailMetricStrip}>
                                 <div><span>상태</span><strong>{TRIP_STATUS_LABELS[selectedTrip.status] || '-'}</strong></div>
                                 <div><span>운행시간</span><strong>{getElapsedTimeString(selectedTrip.started_at, selectedTrip.completed_at)}</strong></div>
+                                <div><span>운행거리</span><strong>{getTripDistance(selectedTrip) || '-'}</strong></div>
                                 <div><span>경로점</span><strong>{selectedTripLocations.length.toLocaleString('ko-KR')}</strong></div>
                             </div>
                         </div>
@@ -1633,9 +1634,9 @@ export default function VehicleTrackingPage() {
                                 <div><div className={styles.infoLabel}>차량번호</div><div className={styles.infoValue}>{selectedTrip.vehicle_number}</div></div>
                                 <div><div className={styles.infoLabel}>업무유형</div><div className={styles.infoValue} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}><span>{cargoTypeLabel(selectedTrip.cargo_type || 'container')} · {contractTypeLabel(selectedTrip.driver_contract_type || selectedTrip.contract_type || 'uncontracted')}</span></div></div>
                                 
-                                <div style={{ gridColumn: 'span 2' }}>
+                                <div className={styles.detailWideField}>
                                     <div className={styles.infoLabel}>{(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 / 씰 넘버'}</div>
-                                    <div className={styles.infoValue} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className={`${styles.infoValue} ${styles.detailSplitInputs}`}>
                                         <input defaultValue={(selectedTrip.cargo_type || 'container') === 'general' ? (selectedTrip.cargo_item || selectedTrip.container_number || '') : (selectedTrip.container_number || '')} placeholder={(selectedTrip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너 번호'} onBlur={(e) => saveTripField(selectedTrip, (selectedTrip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px', fontSize: '0.9rem' }} />
                                         {(selectedTrip.cargo_type || 'container') !== 'general' && (
                                             <input defaultValue={selectedTrip.seal_number || ''} placeholder="씰 넘버" onBlur={(e) => saveTripField(selectedTrip, 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px', fontSize: '0.9rem' }} />
@@ -1667,7 +1668,7 @@ export default function VehicleTrackingPage() {
                                 <div><div className={styles.infoLabel}>청구금액</div><div className={styles.infoValue}><input defaultValue={selectedTrip.billing_amount ? Number(selectedTrip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onBlur={(e) => saveTripField(selectedTrip, 'billing_amount', e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>작업지</div><div className={styles.infoValue}><input defaultValue={selectedTrip.work_site || ''} placeholder="작업지" onBlur={(e) => saveTripField(selectedTrip, 'work_site', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 8px', fontSize: '0.85rem' }} /></div></div>
                                 <div><div className={styles.infoLabel}>마감여부</div><div className={styles.infoValue} style={{ color: selectedTrip.is_closed ? '#ef4444' : '#10b981' }}>{selectedTrip.is_closed ? '마감완료' : '미마감'}</div></div>
-                                <div style={{ gridColumn: 'span 2', background: '#f0f9ff', padding: '8px 12px', borderRadius: 8, border: '1px solid #bae6fd' }}>
+                                <div className={styles.detailTotalTimeBox}>
                                     <div className={styles.infoLabel} style={{ color: '#0369a1' }}>총 소요 운행 시간</div>
                                     <div className={styles.infoValue} style={{ color: '#0284c7', fontSize: '1.1rem', fontWeight: 800 }}>{getElapsedTimeString(selectedTrip.started_at, selectedTrip.completed_at)}</div>
                                 </div>
@@ -1690,7 +1691,7 @@ export default function VehicleTrackingPage() {
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>
                                 <span>이동 경로 ({selectedTripLocations.length})</span>
-                                <div style={{ display: 'flex', gap: 8 }}>
+                                <div className={styles.detailActionRow}>
                                     <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>엑셀 다운로드</button>
                                     <button className={styles.resetZoomBtn} onClick={() => {
                                         const bounds = new window.naver.maps.LatLngBounds();
@@ -1700,8 +1701,8 @@ export default function VehicleTrackingPage() {
                                 </div>
                             </div>
 
-                            <div style={{ position: 'relative', width: '100%', height: '240px', marginBottom: '12px' }}>
-                                <div ref={miniMapRef} style={{ width: '100%', height: '100%', borderRadius: '8px', background: '#f1f5f9' }} />
+                            <div className={styles.detailMiniMapWrap}>
+                                <div ref={miniMapRef} className={styles.detailMiniMap} />
                                 {selectedTripLocations.length === 0 && (
                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem', fontWeight: 600, background: 'rgba(241,245,249,0.7)', borderRadius: '8px', zIndex: 10 }}>
                                         해당 운행건의 위치 기록이 존재하지 않습니다.
@@ -1710,7 +1711,7 @@ export default function VehicleTrackingPage() {
                             </div>
 
                             <div className={styles.locationList} style={{ maxHeight: '250px', overflowX: 'auto', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#fff', width: '100%', boxSizing: 'border-box' }}>
-                                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', textAlign: 'center' }}>
+                                <table className={styles.desktopLocationTable} style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse', textAlign: 'center' }}>
                                     <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }}>
                                         <tr>
                                             <th style={{ padding: '6px 4px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>기록시간</th>
@@ -1749,12 +1750,65 @@ export default function VehicleTrackingPage() {
                                         )}
                                     </tbody>
                                 </table>
+                                <div className={styles.mobileLocationTimeline}>
+                                    {selectedTripLocations.length === 0 ? (
+                                        <div className={styles.mobileEmptyState}>위치 기록 데이터가 없습니다.</div>
+                                    ) : (
+                                        selectedTripLocations.slice().reverse().map((loc, i) => {
+                                            const realIndex = selectedTripLocations.length - 1 - i;
+                                            const hasAddr = loc.address && loc.address !== '주소 정보 없음';
+                                            const d = new Date(loc.timestamp || loc.recorded_at);
+                                            const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+                                            return (
+                                                <div
+                                                    key={`mobile-loc-${i}`}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    className={styles.mobileLocationCard}
+                                                    onClick={() => {
+                                                        const mInstance = miniMapInstanceRef.current || mapInstanceRef.current;
+                                                        if (mInstance) {
+                                                            mInstance.setCenter(new window.naver.maps.LatLng(loc.lat, loc.lng));
+                                                            mInstance.setZoom(16);
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            const mInstance = miniMapInstanceRef.current || mapInstanceRef.current;
+                                                            if (mInstance) {
+                                                                mInstance.setCenter(new window.naver.maps.LatLng(loc.lat, loc.lng));
+                                                                mInstance.setZoom(16);
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className={styles.mobileLocationHead}>
+                                                        <strong>{dateStr}</strong>
+                                                        <em>{displaySpeedKmh(loc.speed)} km/h</em>
+                                                    </span>
+                                                    <span className={styles.mobileLocationAddr}>{loc.address || '주소 확인 필요'}</span>
+                                                    <span className={styles.mobileLocationMeta}>{Number(loc.lat).toFixed(5)}, {Number(loc.lng).toFixed(5)}</span>
+                                                    {!hasAddr && (
+                                                        <button
+                                                            type="button"
+                                                            className={styles.mobileAddressBtn}
+                                                            onClick={(e) => { e.stopPropagation(); fetchMissingAddress(loc, realIndex); }}
+                                                        >
+                                                            주소 확인
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>운행 기록 ({tripLogs.length})</div>
                             <div className={styles.locationList} style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff' }}>
-                                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                <table className={styles.desktopLogTable} style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                                     <thead style={{ background: '#f8fafc' }}>
                                         <tr><th style={{ padding: 6 }}>시간</th><th style={{ padding: 6 }}>항목</th><th style={{ padding: 6 }}>내용</th><th style={{ padding: 6 }}>처리자</th></tr>
                                     </thead>
@@ -1771,6 +1825,20 @@ export default function VehicleTrackingPage() {
                                         ))}
                                     </tbody>
                                 </table>
+                                <div className={styles.mobileLogList}>
+                                    {tripLogs.filter(log => log.field_name !== 'safety_education').length === 0 ? (
+                                        <div className={styles.mobileEmptyState}>기록이 없습니다.</div>
+                                    ) : tripLogs.filter(log => log.field_name !== 'safety_education').map((log, i) => (
+                                        <div key={`mobile-log-${log.id || i}`} className={styles.mobileLogCard}>
+                                            <div className={styles.mobileLogTop}>
+                                                <strong>{log.field_name}</strong>
+                                                <span>{new Date(log.created_at).toLocaleString('ko-KR')}</span>
+                                            </div>
+                                            <div className={styles.mobileLogChange}>{`${log.old_value || '-'} → ${log.new_value || '-'}`}</div>
+                                            <div className={styles.mobileLogBy}>{log.modified_by ? log.modified_by.replace('|admin', '') : '-'}</div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
