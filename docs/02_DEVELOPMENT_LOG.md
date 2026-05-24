@@ -1,3 +1,21 @@
+## [2026-05-25] 아산 배차변동내역 상세배차 구조 정렬 (v5.14.183)
+### 핵심
+- 배차변동내역 행을 상세배차 line 객체로 다시 구성해 GLAPS 코드 계산을 동일하게 적용합니다.
+- 변동행에서 상차지, BKG확정/BKG1~3, 기본 입력 컬럼을 수정하면 운송경로, 포트/라인/타입, 오더/화주/운송사/컨샤이니 코드가 다시 계산됩니다.
+- 변동행 저장 시 화면에 계산된 `rowValues`와 갱신된 `rowContext`를 함께 저장해, 빈 계산값이 확정된 값처럼 남지 않게 했습니다.
+- 상세배차 화면에서는 active 변동건을 목록 하단으로 보내고 마지막 `수정일시` 칸에 `변경건` 배지를 표시합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 아산 배차확정 직후 변동 이벤트 흔들림 보정 (v5.14.182)
 ### 핵심
 - 2026-05-25 배차확정 테스트 중 변동 이벤트가 잠깐 생성됐다가 사라지는 현상을 DB 이력으로 확인했습니다.

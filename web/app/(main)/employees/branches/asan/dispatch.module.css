@@ -839,6 +839,29 @@
     color: #64748b;
 }
 
+.detailChangedRow td {
+    background: #fff7ed !important;
+}
+
+.detailChangeMarker {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #fed7aa;
+    color: #9a3412;
+    font-size: 0.66rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.detailChangeMarkerText {
+    margin-left: 6px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
 .detailBkgConfirmCell {
     min-width: 180px;
 }

@@ -732,7 +732,13 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /downloadCurrentScreenWorkbook/);
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
   assert.match(source, /mainView === 'detail' \? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS/);
+  assert.match(source, /detailRowsForDisplay\.map\(\(\{ line \}\) => detailLineToRow\(line\)\)/);
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
+  assert.match(source, /detailLineFromChangeValues/);
+  assert.match(source, /buildDetailChangeDisplayValues/);
+  assert.match(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
+  assert.match(source, /detailChangedRow/);
+  assert.match(source, /변경건/);
   assert.match(source, /변동 없음/);
   assert.match(source, /확정 이후 추가\/삭제\/변경 이벤트가 감지되면 발생 순서대로 표시합니다/);
   assert.match(source, /visibleCols\.map\(ci => headers\[ci\]\)/);
