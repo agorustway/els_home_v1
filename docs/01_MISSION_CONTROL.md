@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.167 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.168 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차 목록 끝에 `수정일시`를 추가하고 모바일에서 GLAPS 상세 버튼 3종을 숨겼다.
+> 최신 업데이트: 차량위치관제의 통계 카드/필터/목록 UI를 정리하고 모바일 운행기록·교육이수 검색 결과 표시를 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.167
+- **웹 버전**: v5.14.168
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -41,6 +41,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.168**: 차량위치관제 통계 카드를 실행 버튼처럼 떠오르지 않는 정보 카드로 정리했다. 운행기록/교육이수 필터와 요약 카드를 단정하게 맞추고, 모바일에서 검색 후 결과 목록이 bottom sheet로 바로 열리도록 보정했다. 기간 날짜 입력은 갤럭시24 폭에서 잘리지 않게 높이와 최소폭을 늘렸다.
 - **v5.14.167**: 상세배차 목록 마지막에 `수정일시` 컬럼을 추가하고, 검색/`수정건` 필터로 보정값이 있는 라인을 찾을 수 있게 했다. 모바일에서는 상단 버튼 과밀을 줄이기 위해 `상세배차내역`, `배차변동내역`, `GLAPS코드` 버튼을 숨겼다.
 - **v5.14.166**: 상세배차 `BKG확정`의 BKG1/2/3 드롭다운을 제거하고 옆의 BKG1/2/3 값 셀을 클릭하면 해당 값이 확정되도록 바꿨다. 선택된 BKG 셀은 색으로 표시하며, 방향키 포커스 이동/단순 blur가 `수기`로 자동 저장되는 문제를 막았다.
 - **v5.14.165**: 모바일 운행 상세현황을 데스크탑 우측 패널/표 기반에서 갤럭시24 기준 전체화면 상세로 재구성했다. 위치 이력과 운행 기록은 모바일에서 카드형 타임라인으로 표시하고, 기본 정보 입력·미니맵·액션 버튼은 손가락 조작 가능한 높이와 1열 레이아웃으로 보정했다.
@@ -68,8 +69,8 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 4개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS

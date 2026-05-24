@@ -144,7 +144,7 @@
     background: #f8fafc;
 }
 
-/* ═══ 통합 대시보드 (Premium Glassmorphism) ═══ */
+/* ═══ 통합 대시보드 ═══ */
 .missionDashboard {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -153,27 +153,31 @@
 }
 
 .statCard {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
+    background: #fff;
     padding: 1.5rem;
-    border-radius: 1.25rem;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    border: 1px solid #dbe3ef;
+    transition: border-color 0.15s ease, background 0.15s ease;
     position: relative;
     overflow: hidden;
+    cursor: default;
 }
 
 .statCard::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 4px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #dbeafe;
 }
 
 .statCard:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: none;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
 .statLabel {
@@ -249,6 +253,12 @@
 /* 운행 목록 테이블 */
 .tableSection {
     margin-top: 4px;
+    background: #fff;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 12px;
+    overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .tableSectionMobileBtn {
@@ -273,14 +283,17 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.82rem;
+    background: #fff;
 }
 
 .tripTable th,
 .tripTable td {
-    padding: 6px 10px;
+    padding: 9px 10px;
     text-align: left;
     border-bottom: 1px solid #f1f5f9;
     white-space: nowrap;
+    line-height: 1.35;
+    vertical-align: middle;
 }
 
 .containerSpecCell {
@@ -304,17 +317,54 @@
 }
 
 .tripTable th {
-    background: #f8fafc;
+    background: #f1f5f9;
     color: #64748b;
-    font-weight: 600;
+    font-weight: 800;
     font-size: 0.78rem;
-    text-transform: uppercase;
+    letter-spacing: 0;
     position: sticky;
     top: 0;
 }
 
 .tripTable tr:hover {
-    background: #f0f9ff;
+    background: #f8fbff;
+}
+
+.summaryGrid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 12px;
+}
+
+.summaryCard {
+    background: #fff;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.summaryLabel {
+    font-size: 0.74rem;
+    color: #64748b;
+    font-weight: 800;
+    margin-bottom: 5px;
+}
+
+.summaryValue {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.15;
+}
+
+.summaryValueBlue {
+    color: #2563eb;
+}
+
+.summaryValueGreen {
+    color: #059669;
 }
 
 /* 상태 뱃지 */
@@ -574,28 +624,31 @@
     .filterBar {
         gap: 6px;
         padding: 8px 10px;
+        align-items: stretch;
     }
 
     /* ── 기록탭 필터 그룹 ── */
     .filterGroup {
         width: 100%;
         height: auto;
-        min-height: 36px;
-        padding: 4px 10px;
+        min-height: 44px;
+        padding: 6px 10px;
         flex-wrap: wrap;
+        align-items: center;
     }
 
     .filterGroup select,
     .filterGroup input[type="date"] {
         flex: 1;
-        min-width: 90px;
-        height: 28px;
-        font-size: 0.8rem;
+        min-width: 126px;
+        height: 38px;
+        font-size: 0.82rem;
+        line-height: 38px;
     }
 
     .filterInput {
         width: 100%;
-        height: 36px;
+        height: 40px;
         font-size: 0.85rem;
     }
 
@@ -618,6 +671,26 @@
     }
 
     .bulkDeleteBtn { height: 36px; font-size: 0.78rem; }
+
+    .summaryGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .summaryCard {
+        padding: 10px 8px;
+        border-radius: 8px;
+    }
+
+    .summaryLabel {
+        font-size: 0.66rem;
+        margin-bottom: 4px;
+    }
+
+    .summaryValue {
+        font-size: 1rem;
+        word-break: keep-all;
+    }
 
     /* 테이블 헤더 영역 */
     .tableHeaderInfo {
@@ -675,6 +748,29 @@
         justify-content: space-between;
         align-items: center;
         min-height: 26px;
+    }
+
+    .tripTable td[data-label] {
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 10px;
+        max-width: 100% !important;
+    }
+
+    .tripTable td[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 68px;
+        color: #94a3b8;
+        font-size: 0.68rem;
+        font-weight: 900;
+        line-height: 1.5;
+    }
+
+    .tripTable td[data-label] > div,
+    .tripTable td[data-label] > span,
+    .tripTable td[data-label] > strong {
+        min-width: 0;
+        max-width: 100%;
     }
 
     /* 체크박스 — 우측 상단 고정 */
@@ -955,14 +1051,15 @@
     gap: 8px;
     align-items: center;
     margin-bottom: 12px;
-    padding: 10px 12px;
-    background: #f8fafc;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .filterInput {
-    height: 32px;
+    height: 36px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 0 10px;
@@ -977,7 +1074,7 @@
 }
 
 .filterSelect {
-    height: 32px;
+    height: 36px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 0 8px;
@@ -988,16 +1085,17 @@
 }
 
 .filterDateInput {
-    height: 32px;
+    height: 36px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 0 8px;
     font-size: 0.82rem;
     font-family: inherit;
+    min-width: 132px;
 }
 
 .filterSearchBtn {
-    height: 32px;
+    height: 36px;
     padding: 0 14px;
     border: 1px solid #2563eb;
     border-radius: 6px;
@@ -1014,7 +1112,7 @@
 }
 
 .filterResetBtn {
-    height: 32px;
+    height: 36px;
     padding: 0 10px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
@@ -1085,7 +1183,7 @@
     gap: 6px;
     background: #fff;
     padding: 0 10px;
-    height: 32px;
+    min-height: 38px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
 }
@@ -2051,5 +2149,92 @@
     .photoGallery {
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .filterBar {
+        gap: 7px;
+        padding: 9px;
+        align-items: stretch;
+    }
+
+    .filterGroup {
+        width: 100%;
+        min-height: 44px;
+        height: auto;
+        padding: 6px 9px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+
+    .filterLabel {
+        min-width: 38px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .filterGroup select,
+    .filterGroup input[type="date"] {
+        flex: 1 1 126px;
+        min-width: 126px;
+        height: 38px;
+        line-height: 38px;
+        font-size: 0.82rem;
+    }
+
+    .filterDateInput {
+        min-width: 126px;
+    }
+
+    .summaryGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .summaryCard {
+        padding: 10px 8px;
+        border-radius: 8px;
+    }
+
+    .summaryLabel {
+        font-size: 0.66rem;
+        line-height: 1.2;
+    }
+
+    .summaryValue {
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    .tableSection.showOnMobile {
+        border-radius: 18px 18px 0 0;
+        padding: 14px;
+        background: #f8fafc;
+        overflow-x: hidden;
+    }
+
+    .tripTable td[data-label] {
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 10px;
+        max-width: 100% !important;
+    }
+
+    .tripTable td[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 68px;
+        color: #94a3b8;
+        font-size: 0.68rem;
+        font-weight: 900;
+        line-height: 1.5;
+    }
+
+    .tripTable td[data-label] > div,
+    .tripTable td[data-label] > span,
+    .tripTable td[data-label] > strong {
+        min-width: 0;
+        max-width: 100%;
     }
 }

@@ -15,11 +15,28 @@ test('모바일 운행 상세현황은 데스크탑 표 대신 카드형 위치/
 });
 
 test('갤럭시24 폭에서는 상세 패널이 전체 화면 모바일 레이아웃을 사용한다', () => {
-  const mobileBlockStart = cssSource.lastIndexOf('@media (max-width: 768px)');
-  const mobileBlock = cssSource.slice(mobileBlockStart);
+  assert.ok(cssSource.includes('height: 100dvh'), 'detail overlay should occupy full dynamic viewport height');
+  assert.ok(cssSource.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'), 'metrics should wrap to two columns');
+  assert.ok(cssSource.includes('grid-template-columns: 1fr'), 'detail form should become single column');
+  assert.ok(cssSource.includes('min-height: 42px'), 'mobile form controls should be finger-friendly');
+});
 
-  assert.ok(mobileBlock.includes('height: 100dvh'), 'detail overlay should occupy full dynamic viewport height');
-  assert.ok(mobileBlock.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'), 'metrics should wrap to two columns');
-  assert.ok(mobileBlock.includes('grid-template-columns: 1fr'), 'detail form should become single column');
-  assert.ok(mobileBlock.includes('min-height: 42px'), 'mobile form controls should be finger-friendly');
+test('기록/교육 검색 후 모바일 결과 목록을 바로 열 수 있게 한다', () => {
+  assert.match(
+    pageSource,
+    /const handleSearch = async \(\) => \{\s*await fetchRecords\(\);\s*setIsMobileListOpen\(true\);/s,
+    'search should open the mobile result sheet after fetching records',
+  );
+  assert.ok(pageSource.includes('운행 기록 목록'), 'records tab should expose a mobile result button');
+  assert.ok(pageSource.includes('교육 이수 목록'), 'education tab should expose a mobile result button');
+  assert.ok(pageSource.includes('data-label="최종위치"'), 'mobile record cards should have readable labels');
+  assert.ok(pageSource.includes('data-label="교육"'), 'mobile education cards should have readable labels');
+});
+
+test('관제 통계 카드는 실행 버튼처럼 떠오르지 않는다', () => {
+  const hoverBlock = cssSource.match(/\.statCard:hover\s*\{[^}]*\}/)?.[0] || '';
+  assert.ok(hoverBlock.includes('transform: none;'), 'stat cards should not move on hover');
+  assert.ok(!hoverBlock.includes('translateY'), 'stat hover should not use translateY');
+  assert.ok(cssSource.includes('.summaryGrid'), 'records summary should use stable summary cards');
+  assert.ok(cssSource.includes('min-width: 126px'), 'mobile date inputs should keep enough width for full dates');
 });

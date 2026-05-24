@@ -107,6 +107,10 @@ export default function VehicleTrackingPage() {
         return () => window.removeEventListener('resize', syncViewport);
     }, []);
 
+    useEffect(() => {
+        setIsMobileListOpen(false);
+    }, [activeTab]);
+
     // 운행 기록 (검색/필터)
     const [records, setRecords] = useState([]);
     const [recordsLoading, setRecordsLoading] = useState(false);
@@ -874,7 +878,10 @@ export default function VehicleTrackingPage() {
     useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
 
-    const handleSearch = () => fetchRecords();
+    const handleSearch = async () => {
+        await fetchRecords();
+        setIsMobileListOpen(true);
+    };
     const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
 
     const handleDeleteRecord = async (id) => {
@@ -1445,12 +1452,18 @@ export default function VehicleTrackingPage() {
                         </button>
                     )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, margin: '0 0 12px' }}>
-                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>조회 운행건수</div><div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{recordSummary.count.toLocaleString('ko-KR')}건</div></div>
-                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>조회 차량수</div><div style={{ fontSize: 22, fontWeight: 900, color: '#2563eb' }}>{recordSummary.vehicles.toLocaleString('ko-KR')}대</div></div>
-                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12 }}><div style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>청구금액 합계</div><div style={{ fontSize: 22, fontWeight: 900, color: '#059669' }}>{recordSummary.amount.toLocaleString('ko-KR')}원</div></div>
+                <div className={styles.summaryGrid}>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 운행건수</div><div className={styles.summaryValue}>{recordSummary.count.toLocaleString('ko-KR')}건</div></div>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 차량수</div><div className={`${styles.summaryValue} ${styles.summaryValueBlue}`}>{recordSummary.vehicles.toLocaleString('ko-KR')}대</div></div>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>청구금액 합계</div><div className={`${styles.summaryValue} ${styles.summaryValueGreen}`}>{recordSummary.amount.toLocaleString('ko-KR')}원</div></div>
                 </div>
-                <div className={styles.tableSection}>
+                <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
+                    {activeTab === 'records'
+                        ? `운행 기록 목록 (${filteredRecords.length.toLocaleString('ko-KR')}건)`
+                        : `교육 이수 목록 (${educationRows.length.toLocaleString('ko-KR')}건)`}
+                </button>
+                <div className={`${styles.mobilePopupOverlay} ${isMobileListOpen ? styles.showOnMobile : ''}`} onClick={() => setIsMobileListOpen(false)}></div>
+                <div className={`${styles.tableSection} ${isMobileListOpen ? styles.showOnMobile : ''}`}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h3 style={{ display: 'inline-block', marginRight: 15 }}>{activeTab === 'records' ? '운행 기록' : '교육 이수'} ({activeTab === 'records' ? recordsTotal : educationRows.length}건)</h3>
@@ -1465,6 +1478,7 @@ export default function VehicleTrackingPage() {
                             }}>선택건 ZIP</button>
                         </div>
                         )}
+                        <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     {activeTab === 'records' ? (
                     <table className={styles.tripTable}>
@@ -1489,20 +1503,20 @@ export default function VehicleTrackingPage() {
                                 <Fragment key={`trip-row-${trip.id}`}>
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
-                                    <td><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
-                                    <td style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }} onClick={(e) => e.stopPropagation()}>
+                                    <td data-label="상태"><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
+                                    <td data-label="구분" style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }} onClick={(e) => e.stopPropagation()}>
                                         {cargoTypeLabel(trip.cargo_type || 'container')}<br />{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}
                                     </td>
-                                    <td>
+                                    <td data-label="기사/차량">
                                         <div><strong>{trip.driver_name}</strong></div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div>
                                         <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: 2 }}>{trip.branch || trip.partner_company || '-'} · {contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</div>
                                     </td>
-                                    <td onClick={(e) => e.stopPropagation()}>
+                                    <td data-label="화물" onClick={(e) => e.stopPropagation()}>
                                         <div><input defaultValue={(trip.cargo_type || 'container') === 'general' ? (trip.cargo_item || trip.container_number || '') : (trip.container_number || '')} placeholder={(trip.cargo_type || 'container') === 'general' ? '화물명' : '컨테이너'} onBlur={(e) => saveTripField(trip, (trip.cargo_type || 'container') === 'general' ? 'cargo_item' : 'container_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontWeight: 600, color: (trip.admin_edited_fields || []).includes('container_number') ? '#2563eb' : '#1e293b' }} /></div>
                                         <div style={{ marginTop: 2 }}><input defaultValue={(trip.cargo_type || 'container') === 'general' ? (trip.cargo_order_number || trip.seal_number || '') : (trip.seal_number || '')} placeholder={(trip.cargo_type || 'container') === 'general' ? '오더번호' : '씰넘버'} onBlur={(e) => saveTripField(trip, (trip.cargo_type || 'container') === 'general' ? 'cargo_order_number' : 'seal_number', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 4px', fontSize: '0.7rem', color: (trip.admin_edited_fields || []).includes('seal_number') ? '#2563eb' : '#64748b' }} /></div>
                                     </td>
-                                    <td className={styles.containerSpecCell} onClick={(e) => e.stopPropagation()}>
+                                    <td data-label="규격" className={styles.containerSpecCell} onClick={(e) => e.stopPropagation()}>
                                         {(trip.cargo_type || 'container') === 'general' ? (
                                             <div style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
                                                 <div>{trip.general_vehicle_type || '-'}</div>
@@ -1517,23 +1531,23 @@ export default function VehicleTrackingPage() {
                                         </select>
                                         </>)}
                                     </td>
-                                    <td className={styles.checkCell}>
+                                    <td data-label="점검" className={styles.checkCell}>
                                         <span title="브레이크" style={{ marginRight: 2 }}>{trip.chk_brake ? '✅' : '❌'}</span>
                                         <span title="타이어" style={{ marginRight: 2 }}>{trip.chk_tire ? '✅' : '❌'}</span>
                                         <span title="경광등/램프" style={{ marginRight: 2 }}>{trip.chk_lamp ? '✅' : '❌'}</span>
                                         <span title="적재물" style={{ marginRight: 2 }}>{trip.chk_cargo ? '✅' : '❌'}</span>
                                         <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
                                     </td>
-                                    <td style={{ fontSize: '0.75rem', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`} onClick={(e) => e.stopPropagation()}>
+                                    <td data-label="일보/메모" style={{ fontSize: '0.75rem', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`} onClick={(e) => e.stopPropagation()}>
                                         <div>{trip.transport_type || '왕복'} · <input defaultValue={trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onBlur={(e) => saveBillingAmount(trip, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 86, border: '1px solid #dbeafe', borderRadius: 4, padding: '2px 4px', color: (trip.admin_edited_fields || []).includes('billing_amount') ? '#2563eb' : '#1e293b', fontWeight: (trip.admin_edited_fields || []).includes('billing_amount') ? 800 : 600, textAlign: 'right' }} />원</div>
                                         <div style={{ color: '#64748b' }}>{trip.work_site || trip.special_notes || '-'}</div>
                                     </td>
-                                    <td style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>
-                                    <td style={{ fontSize: '0.8rem' }}>
+                                    <td data-label="사진" style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>
+                                    <td data-label="날짜" style={{ fontSize: '0.8rem' }}>
                                         <div style={{ color: '#1e293b' }}>{formatDateTime(trip.started_at)}</div>
                                         <div style={{ color: '#64748b' }}>{formatDateTime(trip.completed_at)}</div>
                                     </td>
-                                    <td title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
+                                    <td data-label="최종위치" title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
                                         <div>{trip.last_location_address || '-'}</div>
                                         {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
                                         {trip.status === 'completed' && getTripDistance(trip) && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>운행거리: {getTripDistance(trip)}</div>}
@@ -1571,16 +1585,16 @@ export default function VehicleTrackingPage() {
                                 educationRows.map(({ trip, log }) => (
                                     <tr key={`edu-${log.id}`} style={{ background: '#f0fdf4' }}>
                                         <td></td>
-                                        <td><span className={styles.statusBadge} style={{ color: '#047857', borderColor: '#86efac', background: '#dcfce7' }}>교육 이수</span></td>
-                                        <td><strong>{trip.driver_name}</strong><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div></td>
-                                        <td colSpan={3} style={{ color: '#047857', fontWeight: 800 }}>
+                                        <td data-label="상태"><span className={styles.statusBadge} style={{ color: '#047857', borderColor: '#86efac', background: '#dcfce7' }}>교육 이수</span></td>
+                                        <td data-label="기사/차량"><strong>{trip.driver_name}</strong><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{trip.vehicle_number}</div></td>
+                                        <td data-label="교육" colSpan={3} style={{ color: '#047857', fontWeight: 800 }}>
                                             <div>{parseEducationLogTitle(log.new_value)}</div>
                                             <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>공지/교육 내용 이수 기록</div>
                                         </td>
-                                        <td style={{ color: '#047857', fontWeight: 800 }}>수료완료</td>
+                                        <td data-label="상태" style={{ color: '#047857', fontWeight: 800 }}>수료완료</td>
                                         <td>-</td>
-                                        <td><div>{new Date(log.created_at).toLocaleString('ko-KR')}</div><div style={{ color: '#64748b' }}>수강/수료</div></td>
-                                        <td>처리자: {log.modified_by || '-'}</td>
+                                        <td data-label="날짜"><div>{new Date(log.created_at).toLocaleString('ko-KR')}</div><div style={{ color: '#64748b' }}>수강/수료</div></td>
+                                        <td data-label="처리자">처리자: {log.modified_by || '-'}</td>
                                         <td><button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>연결 운행</button></td>
                                     </tr>
                                 ))

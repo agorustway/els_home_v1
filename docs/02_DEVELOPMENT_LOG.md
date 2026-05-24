@@ -17,6 +17,23 @@
 
 ---
 
+## [2026-05-24] 차량위치관제 조회 화면 UI 정리 (v5.14.168)
+### 핵심
+- 실시간 관제 통계 카드의 hover 이동과 과한 유리효과를 제거해 실행 버튼처럼 보이지 않게 정리했습니다.
+- 운행기록/교육이수 필터와 조회 요약 카드를 정보 위계 중심으로 다듬고, 기간 날짜 입력이 모바일에서 잘리지 않도록 높이와 최소폭을 보정했습니다.
+- 모바일에서 검색 후 목록이 숨어 있던 문제를 수정해 운행기록/교육이수 검색 결과가 bottom sheet로 바로 열리게 했고, 카드형 목록에 필드 라벨을 추가했습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 4개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 상세배차 BKG확정 클릭 선택 방식 전환 (v5.14.166)
 ### 핵심
 - `BKG확정`의 BKG1/2/3 선택 드롭다운을 제거하고, 옆의 BKG1/2/3 셀 값을 클릭하면 해당 값이 확정되도록 바꿨습니다.
