@@ -1034,6 +1034,8 @@ function AsanDispatchContent() {
                 ]);
                 const confirmationPayload = await confirmationResponse.json().catch(() => ({}));
                 const overridePayload = await overrideResponse.json().catch(() => ({}));
+                if (!confirmationResponse.ok) throw new Error(confirmationPayload.error || '배차확정 상태 조회 실패');
+                if (!overrideResponse.ok) throw new Error(overridePayload.error || 'BKG확정 상태 조회 실패');
                 if (cancelled) return;
                 setDetailConfirmation(confirmationPayload.data || null);
                 setDetailConfirmationSetupRequired(Boolean(confirmationPayload.setupRequired));

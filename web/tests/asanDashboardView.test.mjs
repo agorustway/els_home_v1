@@ -657,6 +657,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /createBrowserSupabaseClient/);
   assert.match(source, /getDetailAuthHeaders/);
   assert.match(source, /Authorization: `Bearer \$\{session\.access_token\}`/);
+  assert.match(source, /!confirmationResponse\.ok/);
+  assert.match(source, /!overrideResponse\.ok/);
   assert.match(source, /changeDetailConfirmation/);
   assert.match(source, /saveDetailBkgOverride/);
   assert.match(source, /routeShipperCode \|\| getGlapsAliasCode\(glapsShipperCodeMap, line\.shipper\)/);
