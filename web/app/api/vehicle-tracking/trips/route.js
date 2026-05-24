@@ -221,6 +221,11 @@ export async function GET(request) {
     const keyword = searchParams.get('keyword');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(10, Number.parseInt(searchParams.get('page_size') || searchParams.get('limit') || '20', 10) || 20));
+    const rangeFrom = (page - 1) * pageSize;
+    const rangeTo = rangeFrom + pageSize - 1;
+    const educationOnly = searchParams.get('education_only') === '1' || searchParams.get('educationOnly') === 'true';
 
     try {
         // ─── mode=active: 관제맵용 (조회 기준 24시간 이내의 모든 driving/paused/completed 건) ───
@@ -295,11 +300,18 @@ export async function GET(request) {
 
         // ─── mode=all: 관제 기록관리 (검색/필터) ───
         if (mode === 'all') {
+            const selectColumns = educationOnly
+                ? '*, vehicle_trip_logs!inner(id)'
+                : '*';
             let query = supabase
                 .from('vehicle_trips')
-                .select('*')
+                .select(selectColumns, { count: 'exact' })
                 .order('started_at', { ascending: false })
-                .limit(200);
+                .range(rangeFrom, rangeTo);
+
+            if (educationOnly) {
+                query = query.eq('vehicle_trip_logs.field_name', 'safety_education');
+            }
 
             // 상태 필터
             if (status && status !== 'all') {
@@ -324,11 +336,13 @@ export async function GET(request) {
                 query = query.or(`driver_name.ilike.%${keyword}%,vehicle_number.ilike.%${keyword}%,container_number.ilike.%${keyword}%`);
             }
 
-            const { data, error } = await query;
+            const { data, error, count } = await query;
             if (error) throw error;
+            const pageTrips = data || [];
+            pageTrips.forEach(t => { delete t.vehicle_trip_logs; });
 
             // 각 트립의 마지막 위치 주소 가져오기
-            const tripIds = data.map(t => t.id);
+            const tripIds = pageTrips.map(t => t.id);
             if (tripIds.length > 0) {
                 // RPC 대신 일반 쿼리로 최신 데이터 가져오기 (메모리에서 최신값 추출)
                 const { data: locData, error: locError } = await supabase
@@ -339,7 +353,7 @@ export async function GET(request) {
                 
                 if (!locError && locData) {
                     const grouped = groupLocationsByTrip(locData);
-                    applyTripLocationStats(data, grouped, { includeLastLocation: true });
+                    applyTripLocationStats(pageTrips, grouped, { includeLastLocation: true });
                 }
             }
 
@@ -366,15 +380,20 @@ export async function GET(request) {
                             eduLogsMap[log.trip_id].push(log);
                         }
                     });
-                    data.forEach(t => {
+                    pageTrips.forEach(t => {
                         t.admin_edited_fields = adminFieldsMap[t.id] ? [...adminFieldsMap[t.id]] : [];
                         t.education_logs = eduLogsMap[t.id] || [];
                     });
                 }
             }
 
-            const enriched = await attachDriverMeta(supabase, data);
-            return NextResponse.json({ trips: enriched, total: enriched.length });
+            const enriched = await attachDriverMeta(supabase, pageTrips);
+            return NextResponse.json({
+                trips: enriched,
+                total: count ?? enriched.length,
+                page,
+                pageSize,
+            });
         }
 
         // ─── mode=my: 본인 기록 ───

@@ -18,6 +18,8 @@ const supabase = createClient();
 const ADDRESS_CACHE = new Map(); // [신규] 중복 조회 방지용 캐시 (토큰 절약)
 const LIVE_DEFAULT_ZOOM = 13;
 const LIVE_FOCUS_ZOOM = 15;
+const RECORDS_PAGE_SIZE_OPTIONS = [20, 50, 100];
+const DEFAULT_RECORDS_PAGE_SIZE = 20;
 
 function animateMarker(marker, fromLat, fromLng, toLat, toLng, duration = 650) {
     const start = performance.now();
@@ -119,6 +121,8 @@ export default function VehicleTrackingPage() {
     const [filterFrom, setFilterFrom] = useState('');
     const [filterTo, setFilterTo] = useState('');
     const [recordsTotal, setRecordsTotal] = useState(0);
+    const [recordsPage, setRecordsPage] = useState(1);
+    const [recordsPageSize, setRecordsPageSize] = useState(DEFAULT_RECORDS_PAGE_SIZE);
     const [selectedIds, setSelectedIds] = useState([]); // 일괄 삭제용
     const [sortConfig, setSortConfig] = useState({ key: 'started_at', direction: 'desc' }); // 정렬 상태
 
@@ -855,10 +859,13 @@ export default function VehicleTrackingPage() {
     }, [liveTrips, mapReady, activeTab, cargoGroupFilter, contractGroupFilter, partnerCompanyFilter, liveSearchKeyword, realtimeTarget]);
 
     // 운행 기록 검색
-    const fetchRecords = useCallback(async () => {
+    const fetchRecords = useCallback(async (pageOverride = recordsPage) => {
         setRecordsLoading(true);
         try {
             const params = new URLSearchParams({ mode: 'all' });
+            params.set('page', String(pageOverride));
+            params.set('page_size', String(recordsPageSize));
+            if (activeTab === 'education') params.set('education_only', '1');
             if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus);
             if (filterKeyword) params.set('keyword', filterKeyword);
             if (filterFrom) params.set('from', filterFrom);
@@ -873,15 +880,29 @@ export default function VehicleTrackingPage() {
             }
         } catch (e) { console.error('기록 조회 실패:', e); }
         finally { setRecordsLoading(false); }
-    }, [filterStatus, filterKeyword, filterFrom, filterTo]);
+    }, [activeTab, filterStatus, filterKeyword, filterFrom, filterTo, recordsPage, recordsPageSize]);
+
+    useEffect(() => {
+        setRecordsPage(1);
+    }, [activeTab]);
 
     useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
 
     const handleSearch = async () => {
-        await fetchRecords();
+        if (recordsPage !== 1) {
+            setRecordsPage(1);
+            return;
+        }
+        await fetchRecords(1);
     };
-    const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
+    const handleReset = () => {
+        setFilterStatus('all');
+        setFilterKeyword('');
+        setFilterFrom('');
+        setFilterTo('');
+        setRecordsPage(1);
+    };
 
     const handleDeleteRecord = async (id) => {
         if (!confirm('이 운행 기록을 삭제하시겠습니까?')) return;
@@ -889,6 +910,7 @@ export default function VehicleTrackingPage() {
             const res = await fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('삭제 실패');
             setRecords(prev => prev.filter(t => t.id !== id));
+            setRecordsTotal(prev => Math.max(0, prev - 1));
             setSelectedIds(prev => prev.filter(sid => sid !== id));
         } catch (e) { alert('삭제 실패: ' + e.message); }
     };
@@ -902,6 +924,7 @@ export default function VehicleTrackingPage() {
             const deletePromises = selectedIds.map(id => fetch(`/api/vehicle-tracking/trips/${id}`, { method: 'DELETE' }));
             await Promise.all(deletePromises);
             setRecords(prev => prev.filter(t => !selectedIds.includes(t.id)));
+            setRecordsTotal(prev => Math.max(0, prev - selectedIds.length));
             setSelectedIds([]);
             alert('삭제되었습니다.');
         } catch (e) {
@@ -925,10 +948,12 @@ export default function VehicleTrackingPage() {
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.length === records.length) {
+        if (filteredRecordIds.length === 0) return;
+        const allVisibleSelected = filteredRecordIds.every(id => selectedIds.includes(id));
+        if (allVisibleSelected) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(records.map(r => r.id));
+            setSelectedIds(filteredRecordIds);
         }
     };
 
@@ -1043,8 +1068,8 @@ export default function VehicleTrackingPage() {
     const recordSummary = useMemo(() => {
         const amount = records.reduce((sum, trip) => sum + (Number(trip.billing_amount) || 0), 0);
         const vehicleSet = new Set(records.map(t => t.vehicle_number).filter(Boolean));
-        return { count: records.length, amount, vehicles: vehicleSet.size };
-    }, [records]);
+        return { count: recordsTotal, pageCount: records.length, amount, vehicles: vehicleSet.size };
+    }, [records, recordsTotal]);
 
     const toggleTripClosed = async (trip) => {
         const nextClosed = !trip.is_closed;
@@ -1132,6 +1157,21 @@ export default function VehicleTrackingPage() {
         )
     );
     const filteredRecords = records.filter(matchesGroup);
+    const filteredRecordIds = filteredRecords.map(r => r.id);
+    const recordsTotalPages = Math.max(1, Math.ceil(recordsTotal / recordsPageSize));
+    const recordsPageStart = recordsTotal === 0 ? 0 : ((recordsPage - 1) * recordsPageSize) + 1;
+    const recordsPageEnd = Math.min(recordsPage * recordsPageSize, recordsTotal);
+    const recordsPageLabel = recordsTotal === 0
+        ? '0건'
+        : `${recordsPageStart.toLocaleString('ko-KR')}-${recordsPageEnd.toLocaleString('ko-KR')} / ${recordsTotal.toLocaleString('ko-KR')}건`;
+    const currentPageRowCount = activeTab === 'education' ? educationRows.length : filteredRecords.length;
+    const goRecordsPage = (nextPage) => {
+        const safePage = Math.min(recordsTotalPages, Math.max(1, nextPage));
+        if (safePage !== recordsPage) setRecordsPage(safePage);
+    };
+    useEffect(() => {
+        if (recordsPage > recordsTotalPages) setRecordsPage(recordsTotalPages);
+    }, [recordsPage, recordsTotalPages]);
     const partnerCompanyOptions = Array.from(new Set([...(liveTrips || []), ...(records || [])].map(t => t.partner_company).filter(Boolean))).sort();
     const now = new Date();
     const currentMonthRecords = records.filter(t => {
@@ -1157,6 +1197,46 @@ export default function VehicleTrackingPage() {
         >
             {children}
         </button>
+    );
+
+    const RecordsPagination = () => (
+        <div className={styles.paginationBar}>
+            <div className={styles.paginationInfo}>
+                {recordsLoading ? '목록 불러오는 중' : `${recordsPageLabel} · 현재 페이지 ${currentPageRowCount.toLocaleString('ko-KR')}건`}
+            </div>
+            <div className={styles.paginationControls}>
+                <select
+                    className={styles.pageSizeSelect}
+                    value={recordsPageSize}
+                    onChange={(e) => {
+                        setRecordsPage(1);
+                        setRecordsPageSize(Number(e.target.value));
+                    }}
+                    aria-label="페이지당 표시 건수"
+                >
+                    {RECORDS_PAGE_SIZE_OPTIONS.map(size => (
+                        <option key={size} value={size}>{size}개씩</option>
+                    ))}
+                </select>
+                <button
+                    type="button"
+                    className={styles.pageButton}
+                    onClick={() => goRecordsPage(recordsPage - 1)}
+                    disabled={recordsLoading || recordsPage <= 1}
+                >
+                    이전
+                </button>
+                <span className={styles.pageIndicator}>{recordsPage} / {recordsTotalPages}</span>
+                <button
+                    type="button"
+                    className={styles.pageButton}
+                    onClick={() => goRecordsPage(recordsPage + 1)}
+                    disabled={recordsLoading || recordsPage >= recordsTotalPages}
+                >
+                    다음
+                </button>
+            </div>
+        </div>
     );
 
     // [v4.5.31] 안전한 페이징 연산 (undefined 방지)
@@ -1458,15 +1538,15 @@ export default function VehicleTrackingPage() {
                     )}
                 </div>
                 <div className={styles.summaryGrid}>
-                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 운행건수</div><div className={styles.summaryValue}>{recordSummary.count.toLocaleString('ko-KR')}건</div></div>
-                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 차량수</div><div className={`${styles.summaryValue} ${styles.summaryValueBlue}`}>{recordSummary.vehicles.toLocaleString('ko-KR')}대</div></div>
-                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>청구금액 합계</div><div className={`${styles.summaryValue} ${styles.summaryValueGreen}`}>{recordSummary.amount.toLocaleString('ko-KR')}원</div></div>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 결과</div><div className={styles.summaryValue}>{recordSummary.count.toLocaleString('ko-KR')}건</div></div>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>현재 페이지</div><div className={`${styles.summaryValue} ${styles.summaryValueBlue}`}>{currentPageRowCount.toLocaleString('ko-KR')}건</div></div>
+                    <div className={styles.summaryCard}><div className={styles.summaryLabel}>{activeTab === 'records' ? '페이지 청구금액' : '페이지 차량수'}</div><div className={`${styles.summaryValue} ${styles.summaryValueGreen}`}>{activeTab === 'records' ? `${recordSummary.amount.toLocaleString('ko-KR')}원` : `${recordSummary.vehicles.toLocaleString('ko-KR')}대`}</div></div>
                 </div>
                 <div className={`${styles.tableSection} ${styles.recordsTableSection}`}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>{activeTab === 'records' ? '운행 기록' : '교육 이수'} ({activeTab === 'records' ? recordsTotal : educationRows.length}건)</h3>
-                            <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
+                            <h3 style={{ display: 'inline-block', marginRight: 15 }}>{activeTab === 'records' ? '운행 기록' : '교육 이수'} ({recordsTotal.toLocaleString('ko-KR')}건)</h3>
+                            <span className={styles.tableLegend}>* 첫 화면은 {recordsPageSize}건씩 로딩 · 클릭 시 정렬 가능 (현재 페이지)</span>
                         </div>
                         {activeTab === 'records' && (
                         <div className={styles.tableActions} style={{ display: 'flex', gap: 8 }}>
@@ -1478,11 +1558,12 @@ export default function VehicleTrackingPage() {
                         </div>
                         )}
                     </div>
+                    <RecordsPagination />
                     {activeTab === 'records' ? (
                     <table className={styles.tripTable}>
                         <thead>
                             <tr>
-                                <th><input type="checkbox" checked={records.length > 0 && selectedIds.length === records.length} onChange={toggleSelectAll} /></th>
+                                <th><input type="checkbox" checked={filteredRecordIds.length > 0 && filteredRecordIds.every(id => selectedIds.includes(id))} onChange={toggleSelectAll} /></th>
                                 <th>상태</th>
                                 <th>구분</th>
                                 <th onClick={() => handleSort('driver_name')} className={styles.sortable}>기사명/차량 {sortConfig.key === 'driver_name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
@@ -1499,7 +1580,11 @@ export default function VehicleTrackingPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredRecords.map(trip => (
+                            {recordsLoading ? (
+                                <tr><td colSpan="14" style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontWeight: 800 }}>운행 기록을 불러오는 중입니다.</td></tr>
+                            ) : filteredRecords.length === 0 ? (
+                                <tr><td colSpan="14" style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontWeight: 800 }}>조회된 운행 기록이 없습니다.</td></tr>
+                            ) : filteredRecords.map(trip => (
                                 <Fragment key={`trip-row-${trip.id}`}>
                                 <tr key={trip.id} className={selectedIds.includes(trip.id) ? styles.selectedRow : ''} onClick={(e) => { if (selectedTrip) handleSelectTrip(trip); }} style={{ cursor: selectedTrip ? 'pointer' : 'default' }}>
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
@@ -1583,7 +1668,9 @@ export default function VehicleTrackingPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {educationRows.length === 0 ? (
+                            {recordsLoading ? (
+                                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '20px' }}>교육 이수 기록을 불러오는 중입니다.</td></tr>
+                            ) : educationRows.length === 0 ? (
                                 <tr><td colSpan="11" style={{ textAlign: 'center', padding: '20px' }}>조회된 교육 이수 기록이 없습니다.</td></tr>
                             ) : (
                                 educationRows.map(({ trip, log }) => (
@@ -1606,6 +1693,7 @@ export default function VehicleTrackingPage() {
                         </tbody>
                     </table>
                     ) : null}
+                    <RecordsPagination />
                 </div>
             </div>
 
