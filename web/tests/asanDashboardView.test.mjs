@@ -669,6 +669,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /routeShipperCode \|\| getGlapsAliasCode\(glapsShipperCodeMap, line\.shipper\)/);
   assert.doesNotMatch(source, /detailCarrierOverrides/);
   assert.match(source, /detailIssueFilter/);
+  assert.match(source, /searchedDetailLines/);
   assert.match(source, /glapsDetailLookup/);
   assert.match(source, /buildGlapsRouteFingerprint/);
   assert.match(source, /buildGlapsAliasCodeMap/);
@@ -697,6 +698,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /운송사코드 확인/);
   assert.match(source, /컨샤이니 미도출/);
   assert.match(source, /수정건/);
+  assert.match(source, /downloadCurrentScreenWorkbook/);
+  assert.match(source, /\/api\/branches\/asan\/export\/view/);
+  assert.match(source, /mainView === 'detail' \? filteredDetailLines : searchedDetailLines/);
+  assert.match(source, /배차수정후/);
+  assert.match(source, /visibleCols\.map\(ci => headers\[ci\]\)/);
+  assert.match(source, /displayRows\.map\(\(\{ row \}\) => visibleCols\.map/);
   assert.match(source, /GLAPS코드 기존 코드 도출 검수용 상세 라인/);
   assert.match(util, /'BKG확정'/);
   assert.match(util, /'오더구분코드'/);
@@ -1015,6 +1022,10 @@ test('아산 배차 엑셀 다운로드는 오더와 배차를 숫자 셀로 쓰
     path.join(webRoot, 'app/api/branches/asan/export/route.js'),
     'utf8',
   );
+  const viewExportRoute = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/export/view/route.js'),
+    'utf8',
+  );
 
   assert.match(exportRoute, /NUMERIC_DISPATCH_EXPORT_HEADERS/);
   assert.match(exportRoute, /\['오더\(계\)', '오더', '계', '수량', '배차'\]/);
@@ -1025,6 +1036,11 @@ test('아산 배차 엑셀 다운로드는 오더와 배차를 숫자 셀로 쓰
   assert.match(exportRoute, /r\.getCell\(colIdx\)/);
   assert.match(exportRoute, /style: 'thin'/);
   assert.match(exportRoute, /hRow\.eachCell\(\{ includeEmpty: true \}/);
+  assert.match(viewExportRoute, /export async function POST\(request\)/);
+  assert.match(viewExportRoute, /MAX_EXPORT_ROWS = 50000/);
+  assert.match(viewExportRoute, /safeSheetName/);
+  assert.match(viewExportRoute, /X-ELS-Export-Rows/);
+  assert.match(viewExportRoute, /sheet\.autoFilter/);
 });
 
 test('아산 배차 WEB 입력은 저장값 길이에 맞춰 컬럼 폭을 자동 확장한다', () => {

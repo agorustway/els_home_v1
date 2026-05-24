@@ -267,6 +267,34 @@ function fmtShortTs(dt) {
     if (Number.isNaN(t.getTime())) return '';
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
+function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
+    if (!isAllTab) return activeItem?.target_date || '';
+    if (allTabWeek?.start && allTabWeek?.end) return `${allTabWeek.start}_${allTabWeek.end}`;
+    if (allTabMonth) return `${Number(allTabMonth)}월`;
+    return '전체';
+}
+function getDownloadFileName(response, fallback) {
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+        try {
+            return decodeURIComponent(encodedMatch[1]);
+        } catch {
+            return fallback;
+        }
+    }
+    return fallback;
+}
+function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
 function calcSummary(headers, data, viewType) {
     if (!headers || !data || data.length === 0) return null;
@@ -1116,19 +1144,74 @@ function AsanDispatchContent() {
         return () => clearInterval(iv);
     }, [activeItem?.file_modified_at, isAllTab, data]);
 
+    const downloadCurrentScreenWorkbook = async ({ title, sheetName, fileName, headers: exportHeaders, rows }) => {
+        if (!exportHeaders?.length) return;
+        const response = await fetch('/api/branches/asan/export/view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title,
+                sheetName,
+                fileName,
+                headers: exportHeaders,
+                rows,
+                generatedAt: `다운로드 ${fmtShortTs(new Date().toISOString())} / ${rows.length.toLocaleString()}건`,
+            }),
+        });
+        if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            throw new Error(payload.error || '현재 화면 다운로드 실패');
+        }
+        const blob = await response.blob();
+        triggerBlobDownload(blob, getDownloadFileName(response, fileName));
+    };
+
     // 엑셀 다운로드
-    const handleDownload = () => {
+    const handleDownload = async () => {
         const dateParam = isAllTab ? 'all' : activeItem?.target_date;
         if (!dateParam) return;
-        const monthParam = isAllTab && allTabMonth ? `&month=${allTabMonth}` : '';
-        const weekParam = isAllTab && allTabWeek ? `&weekStart=${allTabWeek.start}&weekEnd=${allTabWeek.end}` : '';
-        
-        const url = `/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}${weekParam}`;
-        const a = document.createElement('a');
-        a.href = url;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const datePart = makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek });
+        const baseName = viewType === 'integrated' ? '통합현황' : viewType === 'glovis' ? '글로비스KD' : '모비스AS';
+
+        try {
+            if (mainView === 'detail' || mainView === 'detail-change') {
+                const detailModeName = mainView === 'detail' ? '상세배차내역' : '배차수정후';
+                const exportLines = mainView === 'detail' ? filteredDetailLines : searchedDetailLines;
+                await downloadCurrentScreenWorkbook({
+                    title: `아산 ${baseName} ${detailModeName} ${datePart}`,
+                    sheetName: detailModeName,
+                    fileName: `아산_${baseName}_${detailModeName}_${datePart}.xlsx`,
+                    headers: DISPATCH_DETAIL_HEADERS,
+                    rows: exportLines.map(detailLineToRow),
+                });
+                return;
+            }
+
+            if (mainView === 'grid') {
+                const exportHeaders = visibleCols.map(ci => headers[ci]);
+                const exportRows = displayRows.map(({ row }) => visibleCols.map(ci => row[ci] ?? ''));
+                await downloadCurrentScreenWorkbook({
+                    title: `아산 ${baseName} 배차판 ${datePart}`,
+                    sheetName: '배차판',
+                    fileName: `아산_${baseName}_배차판_${datePart}.xlsx`,
+                    headers: exportHeaders,
+                    rows: exportRows,
+                });
+                return;
+            }
+
+            const monthParam = isAllTab && allTabMonth ? `&month=${allTabMonth}` : '';
+            const weekParam = isAllTab && allTabWeek ? `&weekStart=${allTabWeek.start}&weekEnd=${allTabWeek.end}` : '';
+            const url = `/api/branches/asan/export?type=${viewType}&date=${dateParam}${monthParam}${weekParam}`;
+            const a = document.createElement('a');
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            setSyncStatus({ message: '다운로드 실패: ' + error.message, isError: true });
+            setTimeout(() => setSyncStatus(null), 5000);
+        }
     };
 
     const centerCols = useMemo(() => { const s = new Set(); headers.forEach((h, i) => { if (CENTER_HEADERS.has(h.trim())) s.add(i); }); return s; }, [headers]);
@@ -1321,14 +1404,15 @@ function AsanDispatchContent() {
         };
     }), [detailBkgOverrides, detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
 
-    const filteredDetailLines = useMemo(() => {
+    const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
-        return detailDisplayLines.filter((line) => {
-            if (!matchesDetailIssueFilter(line, detailIssueFilter)) return false;
-            if (!term) return true;
-            return detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term));
-        });
-    }, [detailDisplayLines, detailIssueFilter, searchTerm]);
+        if (!term) return detailDisplayLines;
+        return detailDisplayLines.filter(line => detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term)));
+    }, [detailDisplayLines, searchTerm]);
+
+    const filteredDetailLines = useMemo(() => {
+        return searchedDetailLines.filter((line) => matchesDetailIssueFilter(line, detailIssueFilter));
+    }, [searchedDetailLines, detailIssueFilter]);
 
     const detailSummary = useMemo(() => ({
         ...summarizeDispatchDetailLines(detailDisplayLines),

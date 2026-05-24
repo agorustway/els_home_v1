@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.170 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.171 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 전 보기에서 F5 대신 현재 보기/날짜를 유지하는 `새로고침` 버튼을 추가하고, 상세배차 수정필요 필터를 그룹화해 좁은 폭 깨짐을 줄였다.
+> 최신 업데이트: 아산 배차판 `엑셀` 버튼을 현재 화면 기준 다운로드로 확장해 배차판/상세배차/배차수정후 데이터를 보이는 기준대로 내려받게 했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.170
+- **웹 버전**: v5.14.171
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -31,6 +31,7 @@
 - GLAPS 수정양식/웹에서 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이므로 일반 보정 대상이 아니다. 항목매핑의 배차판 입력값 컬럼명은 `배차판 매칭용`으로 쓴다.
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, BKG1/2/3 셀 클릭 또는 수기 입력을 WEB 보정값으로 저장한다. 선택된 BKG 셀은 색으로 표시하고, 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
 - 상세배차 `BKG확정`/배차확정 API는 서버 쿠키와 클라이언트 Supabase 세션 Bearer 토큰을 모두 인증 경로로 인정한다.
+- 아산 배차판 `엑셀` 버튼은 배차판 보기에서는 현재 필터/숨김 컬럼 기준, 상세배차에서는 상세라인 기준, 배차변동내역에서는 WEB 보정 적용 후 `배차수정후` 기준으로 내려받는다. GLAPS 업로드 전용 컬럼 순서 출력은 별도 단계로 둔다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -42,6 +43,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.171**: 아산 배차판 현재 화면 다운로드 API(`/api/branches/asan/export/view`)를 추가했다. 일반 배차판은 현재 필터와 숨김 컬럼을 반영한 행/열을 내려받고, 상세배차는 `DISPATCH_DETAIL_HEADERS` 순서의 상세라인을, 배차변동내역은 현재 WEB 보정이 적용된 `배차수정후` 상세라인을 엑셀로 내려받는다. GLAPS 업로드 순서는 아직 적용하지 않았다.
 - **v5.14.170**: 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가했다. 현황판/배차판/상세배차/배차변동/GLAPS코드 보기에서 현재 보기와 날짜를 유지한 채 자료를 다시 읽고, GLAPS코드 화면은 refresh token으로 내부 원장 조회를 재실행한다. 상세배차 수정필요 필터는 `입력/미도출/확인/수정` 그룹으로 묶고 버튼 밀도를 낮춰 좁은 화면에서 줄바꿈되도록 했다.
 - **v5.14.169**: 차량위치관제 `실시간 로그` 버튼이 `/api/debug/view`를 열 때 NAS core에 라우트가 없어 404가 날 수 있던 문제를 수정했다. `els-core`에 `/api/debug/log` 수신과 `/api/debug/view` 텍스트 조회 라우트를 추가해 안드로이드 앱/오버레이 디버그 로그 흐름을 복구했다.
 - **v5.14.168**: 차량위치관제 통계 카드를 실행 버튼처럼 떠오르지 않는 정보 카드로 정리했다. 운행기록/교육이수 필터와 요약 카드를 단정하게 맞추고, 모바일에서 검색 후 결과 목록이 bottom sheet로 바로 열리도록 보정했다. 기간 날짜 입력은 갤럭시24 폭에서 잘리지 않게 높이와 최소폭을 늘렸다.
@@ -73,8 +75,9 @@
 
 ## VERIFICATION
 - `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/view/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
+- `POST http://localhost:3001/api/branches/asan/export/view`: 200, xlsx 응답 확인
 - `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/deploy-core.sh"`: NAS core 배포 완료
 - `GET/POST http://192.168.0.4:2929/api/debug/*`: debug view/log 200 확인
 

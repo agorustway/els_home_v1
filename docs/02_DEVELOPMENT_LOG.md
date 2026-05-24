@@ -1,3 +1,22 @@
+## [2026-05-24] 아산 배차판 현재 화면 다운로드 추가 (v5.14.171)
+### 핵심
+- 기존 `엑셀` 버튼을 현재 화면 기준 다운로드로 확장했습니다.
+- 일반 배차판은 현재 필터와 숨김 컬럼을 반영한 행/열을 내려받고, 상세배차는 상세라인 화면 컬럼 순서 그대로 내려받습니다.
+- 배차변동내역에서는 아직 GLAPS 업로드 순서를 적용하지 않고, 현재 WEB 보정값이 반영된 `배차수정후` 상세라인을 내려받게 했습니다.
+- 화면에서 계산된 헤더/행을 `/api/branches/asan/export/view`로 보내 xlsx를 생성하는 별도 API를 추가했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/view/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `POST http://localhost:3001/api/branches/asan/export/view`: 200, xlsx 응답 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/export/view/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 아산 배차판 새로고침과 상세필터 압축 (v5.14.170)
 ### 핵심
 - 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가해 F5 없이 현재 보기와 선택 날짜를 유지한 채 자료를 다시 읽게 했습니다.
