@@ -20,7 +20,24 @@ export const DISPATCH_CHANGE_HEADERS = Object.freeze([
   '관리',
 ]);
 
-const SIGNIFICANT_HEADERS = DISPATCH_DETAIL_HEADERS.filter(header => header !== '수정일시');
+const DERIVED_GLAPS_HEADERS = new Set([
+  '운송경로',
+  '운송경로코드',
+  '포트코드',
+  '라인코드',
+  '타입코드',
+  '오더구분코드',
+  '화주사코드',
+  '반출지(출발)코드',
+  '작업지(하차지)코드',
+  '반입지(도착)코드',
+  '운송서비스코드',
+  '운송사코드',
+  '컨샤이니',
+]);
+const SIGNIFICANT_HEADERS = DISPATCH_DETAIL_HEADERS.filter(
+  header => header !== '수정일시' && !DERIVED_GLAPS_HEADERS.has(header),
+);
 const IDENTITY_FALLBACK_HEADERS = Object.freeze([
   '작업일자',
   '구분',
@@ -147,7 +164,7 @@ export function normalizeDispatchChangeLineRecord(input = {}) {
     || [];
   const rowValues = normalizeValues(rawValues);
   const headerMap = valuesByHeader(rowValues);
-  const rowFingerprint = cleanText(input.rowFingerprint || input.row_fingerprint) || makeRowFingerprint(headerMap);
+  const rowFingerprint = makeRowFingerprint(headerMap) || cleanText(input.rowFingerprint || input.row_fingerprint);
   const detailLineKey = cleanText(input.detailLineKey || input.detail_line_key);
   const rowContext = input.rowContext || input.row_context || {};
   const identityKey = cleanText(input.identityKey || input.identity_key) || makeIdentityKey({ ...rowContext, detailLineKey }, headerMap);

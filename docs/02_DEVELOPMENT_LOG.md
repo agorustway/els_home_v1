@@ -1,3 +1,26 @@
+## [2026-05-25] 아산 배차변동내역 확정 후 작업판 재정렬 (v5.14.185)
+### 핵심
+- 배차변동내역은 확정 후 상세현황의 연장선이므로, `상차지` 선택과 `BKG확정`/BKG1~3 클릭 선택을 상세배차와 같은 방식으로 다시 제공했습니다.
+- 변동행 저장은 화면에 재계산된 상세배차 rowValues를 저장해, 추가/삭제/변경 후 GLAPS 코드와 BKG 확정값을 후처리할 수 있게 했습니다.
+- 배차변동 fingerprint에서 `운송경로코드`, 포트/라인/타입코드, 오더/화주/운송사/컨샤이니 등 GLAPS 파생코드를 제외했습니다. 코드 보강이나 lookup 중간상태만으로는 변경 이벤트를 만들지 않습니다.
+- 확정 전에 저장된 BKG확정 보정시간은 확정 후 `수정건`으로 표시하지 않게 해, 배차확정 자체가 사후 수정처럼 보이던 혼선을 줄였습니다.
+- `GLAPS코드` 웹수정/삭제, 수정양식 업로드, NAS 마스터 반영 후 상세배차/배차변동내역 lookup refresh token을 올려 코드 부족분 수정이 즉시 계산에 반영되게 했습니다.
+### 분석
+- 2026-05-25 상세 상단 2건의 수정 표시는 2026-05-24 23:26 KST에 확정 전 저장된 BKG확정 WEB 보정값이 마지막 수정일시로 표시된 것이었습니다.
+- 같은 날 23:38 KST에는 GLAPS 코드 조회가 빈 중간상태였던 순간 변경 이벤트 5건이 생성됐다가, 코드가 다시 채워지며 inactive 처리된 이력이 있었습니다. 원인은 변동 fingerprint가 GLAPS 파생코드까지 비교하던 구조였습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 42개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 중 NAS/WebDAV fetch `ECONNRESET` 경고가 있었지만 빌드는 성공.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차변동내역 직접입력 제한 (v5.14.184)
 ### 핵심
 - 배차변동내역에서 상차지/BKG/기본 컬럼을 직접 수정하던 입력칸을 제거했습니다.

@@ -284,6 +284,12 @@ function fmtShortTs(dt) {
     if (Number.isNaN(t.getTime())) return '';
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
+function isTimestampAfter(value, baseline) {
+    if (!value || !baseline) return false;
+    const valueTime = new Date(value).getTime();
+    const baselineTime = new Date(baseline).getTime();
+    return Number.isFinite(valueTime) && Number.isFinite(baselineTime) && valueTime > baselineTime;
+}
 function actorDisplayName(value = '', fallback = '') {
     const text = String(value || fallback || '').trim();
     if (!text) return '';
@@ -481,6 +487,12 @@ function getDetailBkgValue(line, source) {
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
     return idx >= 0 ? String(values[idx] ?? '').trim() : '';
+}
+function setDetailRowValue(values = [], header, value) {
+    const idx = DETAIL_HEADER_INDEX[header];
+    const next = DISPATCH_DETAIL_HEADERS.map((_, valueIdx) => String(values[valueIdx] ?? '').trim());
+    if (idx >= 0) next[idx] = String(value ?? '').trim();
+    return next;
 }
 function inferBkgSourceFromDetailValues(values = []) {
     const confirmed = getDetailRowValue(values, 'BKG확정');
@@ -954,6 +966,10 @@ function AsanDispatchContent() {
             setTimeout(() => setSyncStatus(null), 3000);
         }
     };
+    const handleGlapsMasterChanged = useCallback(() => {
+        detailChangeSyncRef.current = '';
+        setGlapsMasterRefreshToken(token => token + 1);
+    }, []);
     const handleSync = async () => {
         setSyncing(true);
         setSyncStatus({ message: 'NAS 동기화 요청 중...', isError: false });
@@ -1504,16 +1520,19 @@ function AsanDispatchContent() {
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsConsigneeCode = getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
         const confirmedBkg = bkgOverride ? bkgOverride.value : line.confirmedBkg || line.bkg1 || '';
+        const bkgUpdatedAt = bkgOverride?.updatedAt || '';
+        const confirmedAt = options.confirmedAt || '';
+        const shouldMarkBkgUpdated = Boolean(bkgUpdatedAt && (!confirmedAt || isTimestampAfter(bkgUpdatedAt, confirmedAt)));
         return {
             ...line,
             glapsCarrierBpCode: carrierCode || '',
             startLocation,
             confirmedBkg,
             confirmedBkgSource: bkgOverride?.source || line.confirmedBkgSource || (confirmedBkg ? inferBkgSourceFromDetailValues(detailLineToRow({ ...line, confirmedBkg })) : 'BKG1'),
-            confirmedBkgUpdatedAt: bkgOverride?.updatedAt || '',
-            confirmedBkgUpdatedBy: bkgOverride?.updatedBy || '',
-            detailUpdatedAt: line.detailUpdatedAt || fmtShortTs(bkgOverride?.updatedAt || ''),
-            detailUpdatedBy: bkgOverride?.updatedBy || '',
+            confirmedBkgUpdatedAt: shouldMarkBkgUpdated ? bkgUpdatedAt : '',
+            confirmedBkgUpdatedBy: shouldMarkBkgUpdated ? bkgOverride?.updatedBy || '' : '',
+            detailUpdatedAt: line.detailUpdatedAt || (shouldMarkBkgUpdated ? fmtShortTs(bkgUpdatedAt) : ''),
+            detailUpdatedBy: shouldMarkBkgUpdated ? bkgOverride?.updatedBy || '' : '',
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
@@ -1547,8 +1566,9 @@ function AsanDispatchContent() {
         return enrichDetailLine(line, {
             startLocation: hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '',
             bkgOverride,
+            confirmedAt: detailConfirmation?.confirmed_at || '',
         });
-    }), [detailBkgOverrides, detailLines, detailStartOverrides, enrichDetailLine]);
+    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailLines, detailStartOverrides, enrichDetailLine]);
 
     const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1624,8 +1644,9 @@ function AsanDispatchContent() {
             .filter(event => !detailChangeStatusFilter || event.event_status === detailChangeStatusFilter)
             .map((event) => {
                 const storedValues = changeEventToEditableValues(event);
-                const rawValues = detailChangeDrafts[event.id] || changeEventToEditableValues(event);
-                const editableValues = buildDetailChangeDisplayValues(event, rawValues);
+                const rawValues = detailChangeDrafts[event.id] || storedValues;
+                const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event));
+                const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const values = [
                     ...editableValues,
@@ -1635,10 +1656,10 @@ function AsanDispatchContent() {
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
-                return { event, hasCalculatedDiff, values };
+                return { event, hasCalculatedDiff, line, rawValues, values };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
-    }, [buildDetailChangeDisplayValues, detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, searchTerm]);
+    }, [detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
 
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
@@ -1912,6 +1933,18 @@ function AsanDispatchContent() {
         }
     }, [detailConfirmationSaving, detailScope, detailSnapshotLines, getDetailAuthHeaders]);
 
+    const updateDetailChangeDraft = useCallback((event, updater) => {
+        if (!event?.id) return;
+        setDetailChangeDrafts(prev => {
+            const baseValues = prev[event.id] || changeEventToEditableValues(event);
+            const nextValues = typeof updater === 'function' ? updater([...baseValues]) : updater;
+            return {
+                ...prev,
+                [event.id]: DISPATCH_DETAIL_HEADERS.map((_, valueIdx) => String(nextValues?.[valueIdx] ?? '').trim()),
+            };
+        });
+    }, []);
+
     const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null) => {
         if (!detailScope || !event?.id || detailChangeSaving) return;
         const rowValues = rowValuesOverride || detailChangeDrafts[event.id] || changeEventToEditableValues(event);
@@ -1956,6 +1989,11 @@ function AsanDispatchContent() {
             setDetailChangeSaving(false);
         }
     }, [detailChangeDrafts, detailChangeSaving, detailScope, getDetailAuthHeaders]);
+
+    const saveDetailChangeValues = useCallback((event, rawValues) => {
+        const calculatedValues = buildDetailChangeDisplayValues(event, rawValues);
+        saveDetailChangeEvent(event, calculatedValues);
+    }, [buildDetailChangeDisplayValues, saveDetailChangeEvent]);
 
     const confirmDetailChangeEvents = useCallback(async (eventIds = [], { bulk = false } = {}) => {
         if (!detailScope || detailChangeSaving) return;
@@ -2295,7 +2333,7 @@ function AsanDispatchContent() {
             {(mainView === 'grid' || mainView === 'detail' || mainView === 'detail-change') && dateControls}
 
             {mainView === 'glaps-master' ? (
-                <AsanGlapsMaster refreshToken={glapsMasterRefreshToken} />
+                <AsanGlapsMaster refreshToken={glapsMasterRefreshToken} onMasterChanged={handleGlapsMasterChanged} />
             ) : loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : !currentView ? (
@@ -2591,6 +2629,11 @@ function AsanDispatchContent() {
                     {detailChangeRows.length > 0 ? (
                         <div className={styles.tableWrap}>
                             <div className={styles.tableScroll}>
+                                <datalist id={DETAIL_START_LOCATION_DATALIST_ID}>
+                                    {GLAPS_START_LOCATION_OPTIONS.filter(Boolean).map((option) => (
+                                        <option key={option} value={option} />
+                                    ))}
+                                </datalist>
                                 <table className={`${styles.table} ${styles.detailTable}`}>
                                     <thead>
                                         <tr>
@@ -2598,14 +2641,83 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, values }, rowIdx) => {
-                                            const hasDraft = Boolean(detailChangeDrafts[event.id]) || hasCalculatedDiff;
+                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
+                                            const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
+                                            const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             return (
                                                 <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
+                                                        if (isDetailValue && header === '상차지') {
+                                                            return (
+                                                                <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
+                                                                    <input
+                                                                        className={styles.detailComboInput}
+                                                                        list={DETAIL_START_LOCATION_DATALIST_ID}
+                                                                        data-detail-row-index={rowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        value={getDetailRowValue(rawValues, '상차지')}
+                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, '상차지', inputEvent.target.value))}
+                                                                        onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, '상차지', inputEvent.target.value))}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        disabled={detailChangeSaving}
+                                                                        placeholder="선택"
+                                                                    />
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (isDetailValue && header === 'BKG확정') {
+                                                            const isManualBkg = line.confirmedBkgSource === 'manual';
+                                                            return (
+                                                                <td key={header} className={styles.detailBkgConfirmCell}>
+                                                                    <div className={styles.detailBkgConfirmControl}>
+                                                                        <span className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''}`}>
+                                                                            {isManualBkg ? '수기' : line.confirmedBkgSource || 'BKG1'}
+                                                                        </span>
+                                                                        <input
+                                                                            className={styles.detailBkgConfirmInput}
+                                                                            value={getDetailRowValue(rawValues, 'BKG확정') || line.confirmedBkg || ''}
+                                                                            onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, 'BKG확정', inputEvent.target.value))}
+                                                                            onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, 'BKG확정', inputEvent.target.value))}
+                                                                            onKeyDown={focusDetailGridInput}
+                                                                            data-detail-row-index={rowIdx}
+                                                                            data-detail-col-index={colIdx}
+                                                                            disabled={detailChangeSaving}
+                                                                            title={isManualBkg ? '수기 입력값' : `${line.confirmedBkgSource || 'BKG1'} 선택값`}
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (isDetailValue && BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
+                                                            const bkgValue = getDetailBkgValue(line, header);
+                                                            const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
+                                                            const isDisabledBkg = detailChangeSaving || !bkgValue;
+                                                            return (
+                                                                <td key={header} className={isSelectedBkg ? styles.detailBkgSelectedCell : ''}>
+                                                                    {bkgValue ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            className={`${styles.detailBkgPickButton} ${isSelectedBkg ? styles.detailBkgPickButtonActive : ''}`}
+                                                                            onClick={() => {
+                                                                                const nextValues = setDetailRowValue(rawValues, 'BKG확정', bkgValue);
+                                                                                updateDetailChangeDraft(event, nextValues);
+                                                                                saveDetailChangeValues(event, nextValues);
+                                                                            }}
+                                                                            onKeyDown={focusDetailGridInput}
+                                                                            data-detail-row-index={rowIdx}
+                                                                            data-detail-col-index={colIdx}
+                                                                            disabled={isDisabledBkg}
+                                                                            title={`${header} 값을 BKG확정으로 적용`}
+                                                                        >
+                                                                            {bkgValue}
+                                                                        </button>
+                                                                    ) : null}
+                                                                </td>
+                                                            );
+                                                        }
                                                         return (
                                                             <td
                                                                 key={header}
@@ -2619,10 +2731,10 @@ function AsanDispatchContent() {
                                                                             <button
                                                                                 type="button"
                                                                                 className={styles.detailChangeActionButton}
-                                                                                onClick={() => saveDetailChangeEvent(event, values.slice(0, DISPATCH_DETAIL_HEADERS.length))}
+                                                                                onClick={() => saveDetailChangeValues(event, rawValues)}
                                                                                 disabled={detailChangeSaving}
                                                                             >
-                                                                                계산값반영
+                                                                                {hasManualDraft ? '저장' : '계산값반영'}
                                                                             </button>
                                                                         )}
                                                                         {event.event_status !== 'confirmed' ? (

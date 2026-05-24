@@ -663,6 +663,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
     path.join(webRoot, 'supabase_sql/20260524_asan_dispatch_change_events.sql'),
     'utf8',
   );
+  const glapsMasterSource = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/AsanGlapsMaster.js'),
+    'utf8',
+  );
 
   assert.match(source, /buildDispatchDetailLines/);
   assert.match(source, /DISPATCH_DETAIL_HEADERS\.map/);
@@ -736,10 +740,18 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
   assert.match(source, /detailLineFromChangeValues/);
   assert.match(source, /buildDetailChangeDisplayValues/);
+  assert.match(source, /updateDetailChangeDraft/);
+  assert.match(source, /saveDetailChangeValues/);
+  assert.match(source, /setDetailRowValue\(draft, '상차지'/);
+  assert.match(source, /setDetailRowValue\(draft, 'BKG확정'/);
+  assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS\.includes\(header\)/);
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
   assert.match(source, /계산값반영/);
   assert.match(source, /detailChangedRow/);
   assert.match(source, /변경건/);
+  assert.match(source, /onMasterChanged=\{handleGlapsMasterChanged\}/);
+  assert.match(glapsMasterSource, /onMasterChanged = null/);
+  assert.match(glapsMasterSource, /onMasterChanged\?\.\(\)/);
   assert.match(source, /변동 없음/);
   assert.match(source, /확정 이후 추가\/삭제\/변경 이벤트가 감지되면 발생 순서대로 표시합니다/);
   assert.match(source, /visibleCols\.map\(ci => headers\[ci\]\)/);
@@ -764,6 +776,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /carrierMissingCount/);
   assert.match(util, /consigneeMissingCount/);
   assert.match(util, /routePartMissingCount/);
+  assert.match(changeUtil, /DERIVED_GLAPS_HEADERS/);
+  assert.match(changeUtil, /!DERIVED_GLAPS_HEADERS\.has\(header\)/);
+  assert.match(changeUtil, /const rowFingerprint = makeRowFingerprint\(headerMap\) \|\| cleanText\(input\.rowFingerprint/);
   assert.match(css, /\.detailTable th\s*{[\s\S]*background: #1f5673;/);
   assert.match(css, /\.detailBkgConfirmControl/);
   assert.match(css, /\.detailBkgSourceBadge/);

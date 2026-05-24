@@ -150,7 +150,7 @@ function uploadProtectionText(payload = {}) {
     return parts.length ? ` / ${parts.join(' / ')}` : '';
 }
 
-export default function AsanGlapsMaster({ refreshToken = 0 }) {
+export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = null }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [data, setData] = useState(null);
@@ -232,6 +232,7 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
                     : `수정 ${payload.updated || 0}건 / 삭제 ${payload.deleted || 0}건`);
             setMessage({ type: 'success', text: `${suffix}${uploadProtectionText(payload)} 반영 완료` });
             await fetchData();
+            onMasterChanged?.();
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -297,6 +298,7 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
             setMessage({ type: 'success', text: '웹수정 1건 반영 완료' });
             setEditor(null);
             await fetchData();
+            onMasterChanged?.();
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -323,12 +325,13 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
             setMessage({ type: 'success', text: '웹삭제 1건 반영 완료' });
             if (editor?.id === row.id) setEditor(null);
             await fetchData();
+            onMasterChanged?.();
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
             setSaving(false);
         }
-    }, [activeTable, editor?.id, fetchData]);
+    }, [activeTable, editor?.id, fetchData, onMasterChanged]);
 
     const updateTableFilter = (key, value) => {
         setTableFilters(prev => {
