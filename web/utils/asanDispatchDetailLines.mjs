@@ -29,6 +29,7 @@ export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '운송서비스코드',
   '운송사코드',
   '컨샤이니',
+  '수정일시',
 ]);
 
 export const GLAPS_START_LOCATION_OPTIONS = Object.freeze([
@@ -270,6 +271,7 @@ export function detailLineToRow(line = {}) {
     line.glapsTransportServiceCode || '',
     line.glapsCarrierBpCode || '',
     line.glapsConsigneeCode || '',
+    line.detailUpdatedAt || line.confirmedBkgUpdatedAt || '',
   ];
 }
 
@@ -286,5 +288,6 @@ export function summarizeDispatchDetailLines(lines = []) {
     shipperCodeMissingCount: lines.filter((line) => line.needsShipperCodeMapping).length,
     routePartMissingCount: lines.filter((line) => line.needsRoutePartCodeMapping).length,
     consigneeMissingCount: lines.filter((line) => line.needsConsigneeCodeMapping).length,
+    modifiedCount: lines.filter((line) => Boolean(line.detailUpdatedAt || line.confirmedBkgUpdatedAt)).length,
   };
 }

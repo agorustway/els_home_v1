@@ -687,12 +687,14 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /mainView === 'detail-change'/);
   assert.match(source, /상세배차내역/);
   assert.match(source, /배차변동내역/);
+  assert.match(source, /mobileHiddenFuncBtn/);
   assert.match(source, /배차확정/);
   assert.match(source, /배차확정취소/);
   assert.match(source, /상세배차수량/);
   assert.match(source, /상차지 선택필요/);
   assert.match(source, /운송사코드 확인/);
   assert.match(source, /컨샤이니 미도출/);
+  assert.match(source, /수정건/);
   assert.match(source, /GLAPS코드 기존 코드 도출 검수용 상세 라인/);
   assert.match(util, /'BKG확정'/);
   assert.match(util, /'오더구분코드'/);
@@ -703,6 +705,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /'운송서비스코드'/);
   assert.match(util, /'운송사코드'/);
   assert.match(util, /'컨샤이니'/);
+  assert.match(util, /'수정일시'/);
+  assert.match(util, /modifiedCount/);
   assert.match(util, /'운송경로'/);
   assert.match(util, /'운송경로코드'/);
   assert.match(util, /'포트코드'/);
@@ -716,6 +720,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailBkgSourceBadge/);
   assert.match(css, /\.detailBkgPickButtonActive/);
   assert.match(css, /\.detailBkgSelectedCell/);
+  assert.match(css, /\.mobileHiddenFuncBtn\s*{[\s\S]*display: none;/);
   assert.match(css, /\.detailConfirmButton/);
   assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailIssueButtonActive\s*{[\s\S]*background: #fff7ed;/);

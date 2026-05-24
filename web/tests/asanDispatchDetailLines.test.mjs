@@ -148,6 +148,7 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
     '운송서비스코드',
     '운송사코드',
     '컨샤이니',
+    '수정일시',
   ]);
   assert.deepEqual(parseDispatchAssignmentCell('민경3, 이지1').map((item) => [item.companyToken, item.count]), [
     ['민경', 3],
@@ -184,6 +185,7 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
     glapsTransportServiceCode: '',
     glapsCarrierBpCode: 'B000005273',
     glapsConsigneeCode: 'GA0196',
+    detailUpdatedAt: '2026-05-24 13:20',
   }), [
     '26/5/23',
     '수출',
@@ -215,5 +217,6 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
     '',
     'B000005273',
     'GA0196',
+    '2026-05-24 13:20',
   ]);
 });

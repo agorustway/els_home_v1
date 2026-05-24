@@ -153,6 +153,7 @@ const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount' },
     { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount' },
     { key: 'consignee', label: '컨샤이니 미도출', clearLabel: '컨샤이니 필터해제', countKey: 'consigneeMissingCount' },
+    { key: 'modified', label: '수정건', clearLabel: '수정건 필터해제', countKey: 'modifiedCount' },
 ]);
 
 // ===== 헬퍼 =====
@@ -530,6 +531,7 @@ function matchesDetailIssueFilter(line, filterKey) {
     if (filterKey === 'type') return Boolean(line.needsTypeCodeMapping);
     if (filterKey === 'carrier') return Boolean(line.needsCarrierCodeMapping);
     if (filterKey === 'consignee') return Boolean(line.needsConsigneeCodeMapping);
+    if (filterKey === 'modified') return Boolean(line.detailUpdatedAt || line.confirmedBkgUpdatedAt);
     return true;
 }
 function focusDetailGridInput(event) {
@@ -1261,6 +1263,8 @@ function AsanDispatchContent() {
             confirmedBkgSource: bkgOverride?.source || 'BKG1',
             confirmedBkgUpdatedAt: bkgOverride?.updatedAt || '',
             confirmedBkgUpdatedBy: bkgOverride?.updatedBy || '',
+            detailUpdatedAt: fmtShortTs(bkgOverride?.updatedAt || ''),
+            detailUpdatedBy: bkgOverride?.updatedBy || '',
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
@@ -1754,13 +1758,13 @@ function AsanDispatchContent() {
                             <button className={`${styles.funcBtn} ${mainView === 'grid' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('grid')}>
                                 📋 배차판
                             </button>
-                            <button className={`${styles.funcBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
+                            <button className={`${styles.funcBtn} ${styles.mobileHiddenFuncBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
                                 상세배차내역
                             </button>
-                            <button className={`${styles.funcBtn} ${mainView === 'detail-change' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail-change')}>
+                            <button className={`${styles.funcBtn} ${styles.mobileHiddenFuncBtn} ${mainView === 'detail-change' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail-change')}>
                                 배차변동내역
                             </button>
-                            <button className={`${styles.funcBtn} ${mainView === 'glaps-master' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('glaps-master')}>
+                            <button className={`${styles.funcBtn} ${styles.mobileHiddenFuncBtn} ${mainView === 'glaps-master' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('glaps-master')}>
                                 GLAPS코드
                             </button>
                         </div>

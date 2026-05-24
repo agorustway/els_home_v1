@@ -1884,6 +1884,10 @@
         white-space: nowrap;
     }
 
+    .mobileHiddenFuncBtn {
+        display: none;
+    }
+
     .periodPickerBar {
         flex-direction: column;
         align-items: stretch;

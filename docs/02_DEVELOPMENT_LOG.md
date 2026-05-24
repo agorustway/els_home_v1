@@ -1,3 +1,22 @@
+## [2026-05-24] 상세배차 수정일시와 모바일 버튼 정리 (v5.14.167)
+### 핵심
+- 상세배차 목록 마지막에 `수정일시` 컬럼을 추가해 BKG확정 등 WEB 보정값이 있는 행의 수정 시각을 바로 볼 수 있게 했습니다.
+- 상세배차 검색 대상과 `수정건` 필터에 `수정일시`를 포함했습니다.
+- 모바일에서는 상단 버튼 과밀을 줄이기 위해 `상세배차내역`, `배차변동내역`, `GLAPS코드` 버튼을 숨겼습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "utils/asanDispatchDetailLines.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 상세배차 BKG확정 클릭 선택 방식 전환 (v5.14.166)
 ### 핵심
 - `BKG확정`의 BKG1/2/3 선택 드롭다운을 제거하고, 옆의 BKG1/2/3 셀 값을 클릭하면 해당 값이 확정되도록 바꿨습니다.
