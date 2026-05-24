@@ -740,8 +740,10 @@ function AsanDispatchContent() {
     const [detailChangeSetupRequired, setDetailChangeSetupRequired] = useState(false);
     const [detailChangeSaving, setDetailChangeSaving] = useState(false);
     const [detailStateRefreshToken, setDetailStateRefreshToken] = useState(0);
+    const [detailStateLoading, setDetailStateLoading] = useState(false);
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const [glapsMasterRefreshToken, setGlapsMasterRefreshToken] = useState(0);
+    const [glapsLookupLoading, setGlapsLookupLoading] = useState(false);
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -783,8 +785,12 @@ function AsanDispatchContent() {
     }, [viewType, activeTab, allTabMonth, allTabWeek]);
 
     useEffect(() => {
-        if (!['detail', 'detail-change'].includes(mainView)) return undefined;
+        if (!['detail', 'detail-change'].includes(mainView)) {
+            setGlapsLookupLoading(false);
+            return undefined;
+        }
         let cancelled = false;
+        setGlapsLookupLoading(true);
         const loadGlapsLookup = async () => {
             try {
                 const response = await fetch(`/api/branches/asan/glaps/master?t=${Date.now()}`, { cache: 'no-store' });
@@ -802,6 +808,8 @@ function AsanDispatchContent() {
                 }
             } catch {
                 if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
+            } finally {
+                if (!cancelled) setGlapsLookupLoading(false);
             }
         };
         loadGlapsLookup();
@@ -1109,6 +1117,7 @@ function AsanDispatchContent() {
 
     useEffect(() => {
         if (!['detail', 'detail-change'].includes(mainView) || !detailScope) {
+            setDetailStateLoading(false);
             setDetailConfirmation(null);
             setDetailConfirmationSetupRequired(false);
             setDetailOverrideSetupRequired(false);
@@ -1120,6 +1129,7 @@ function AsanDispatchContent() {
         }
 
         let cancelled = false;
+        setDetailStateLoading(true);
         const params = new URLSearchParams({
             dispatchType: detailScope.dispatchType,
             targetDate: detailScope.targetDate,
@@ -1163,6 +1173,8 @@ function AsanDispatchContent() {
                     setDetailChangeEvents([]);
                     setSyncStatus({ message: error.message || '상세배차 상태 조회 실패', isError: true });
                 }
+            } finally {
+                if (!cancelled) setDetailStateLoading(false);
             }
         };
         loadDetailState();
@@ -1509,12 +1521,14 @@ function AsanDispatchContent() {
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
         if (detailChangeSetupRequired || detailConfirmationSetupRequired || detailSnapshotLines.length === 0) return undefined;
+        if (loading || refreshing || detailStateLoading || glapsLookupLoading) return undefined;
         const signature = `${detailConfirmation.id}:${detailSnapshotSignature}`;
         if (!detailSnapshotSignature || detailChangeSyncRef.current === signature) return undefined;
-        detailChangeSyncRef.current = signature;
 
         let cancelled = false;
         const syncChanges = async () => {
+            if (cancelled || detailChangeSyncRef.current === signature) return;
+            detailChangeSyncRef.current = signature;
             try {
                 const response = await fetch('/api/branches/asan/dispatch/change-events', {
                     method: 'POST',
@@ -1535,11 +1549,17 @@ function AsanDispatchContent() {
                     setDetailChangeSetupRequired(false);
                 }
             } catch (error) {
-                if (!cancelled) setSyncStatus({ message: error.message || '배차변동내역 동기화 실패', isError: true });
+                if (!cancelled) {
+                    detailChangeSyncRef.current = '';
+                    setSyncStatus({ message: error.message || '배차변동내역 동기화 실패', isError: true });
+                }
             }
         };
-        syncChanges();
-        return () => { cancelled = true; };
+        const timer = setTimeout(syncChanges, 500);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [
         detailChangeSetupRequired,
         detailConfirmation?.active,
@@ -1548,7 +1568,11 @@ function AsanDispatchContent() {
         detailScope,
         detailSnapshotLines,
         detailSnapshotSignature,
+        detailStateLoading,
         getDetailAuthHeaders,
+        glapsLookupLoading,
+        loading,
+        refreshing,
     ]);
 
     // 표시 제한 (성능 최적화)
@@ -1751,6 +1775,9 @@ function AsanDispatchContent() {
             } else {
                 setDetailConfirmation(payload.data || null);
                 setDetailConfirmationSetupRequired(false);
+                detailChangeSyncRef.current = '';
+                setDetailChangeDrafts({});
+                setDetailStateRefreshToken(token => token + 1);
                 setSyncStatus({
                     message: action === 'confirm' ? '배차확정 완료' : '배차확정 취소 완료',
                     isError: false,

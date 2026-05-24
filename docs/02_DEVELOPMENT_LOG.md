@@ -1,3 +1,20 @@
+## [2026-05-24] 아산 배차확정 직후 변동 이벤트 흔들림 보정 (v5.14.182)
+### 핵심
+- 2026-05-25 배차확정 테스트 중 변동 이벤트가 잠깐 생성됐다가 사라지는 현상을 DB 이력으로 확인했습니다.
+- 원인은 상세 상태/BKG 보정/GLAPS 코드 조회가 각각 비동기로 끝나기 전에 자동 변동 동기화가 먼저 실행되어, 코드 컬럼이 빈 중간상태로 비교되던 타이밍 문제였습니다.
+- 상세배차/배차변동내역의 자동 변동 동기화는 상세 상태와 GLAPS 조회가 모두 끝난 뒤 500ms 안정화된 스냅샷으로만 실행하도록 보정했습니다.
+- 배차확정/확정취소 직후에는 상세 상태 refresh token을 올려 서버 상태를 다시 읽고, draft와 동기화 서명을 초기화합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 아산 배차판 새로고침 상세상태 재조회 보정 (v5.14.181)
 ### 핵심
 - 2026-05-25 테스트 데이터는 배차확정/확정이력/스냅샷/변동이벤트/변동이력/BKG보정/보정이력을 모두 삭제해, 한 번도 확정하지 않은 상태로 리셋했습니다.
