@@ -111,7 +111,7 @@ function downloadTemplate() {
     window.location.href = '/api/branches/asan/glaps/master/template';
 }
 
-export default function AsanGlapsMaster() {
+export default function AsanGlapsMaster({ refreshToken = 0 }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [data, setData] = useState(null);
@@ -144,7 +144,7 @@ export default function AsanGlapsMaster() {
     useEffect(() => {
         const timer = setTimeout(fetchData, 250);
         return () => clearTimeout(timer);
-    }, [fetchData]);
+    }, [fetchData, refreshToken]);
 
     useEffect(() => {
         setEditor(null);

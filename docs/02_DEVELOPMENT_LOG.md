@@ -1,3 +1,21 @@
+## [2026-05-24] 아산 배차판 새로고침과 상세필터 압축 (v5.14.170)
+### 핵심
+- 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가해 F5 없이 현재 보기와 선택 날짜를 유지한 채 자료를 다시 읽게 했습니다.
+- `GLAPS코드` 화면은 부모 refresh token을 받아 내부 원장 조회를 다시 실행하도록 연결했습니다.
+- 상세배차 수정필요 버튼을 `입력/미도출/확인/수정` 그룹으로 묶고 버튼 높이·간격을 줄여 좁은 폭에서 깨지지 않고 줄바꿈되게 보정했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 상세배차 수정일시와 모바일 버튼 정리 (v5.14.167)
 ### 핵심
 - 상세배차 목록 마지막에 `수정일시` 컬럼을 추가해 BKG확정 등 WEB 보정값이 있는 행의 수정 시각을 바로 볼 수 있게 했습니다.

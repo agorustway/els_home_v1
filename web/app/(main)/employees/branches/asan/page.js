@@ -143,17 +143,23 @@ const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
 const DETAIL_ISSUE_FILTERS = Object.freeze([
-    { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount' },
-    { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount' },
-    { key: 'orderType', label: '오더구분 미도출', clearLabel: '오더구분 필터해제', countKey: 'orderTypeMissingCount' },
-    { key: 'shipper', label: '화주사코드 미도출', clearLabel: '화주사코드 필터해제', countKey: 'shipperCodeMissingCount' },
-    { key: 'routePart', label: '경로세부코드 미도출', clearLabel: '경로세부코드 필터해제', countKey: 'routePartMissingCount' },
-    { key: 'port', label: '포트코드 미도출', clearLabel: '포트코드 필터해제', countKey: 'portMissingCount' },
-    { key: 'line', label: '라인코드 미도출', clearLabel: '라인코드 필터해제', countKey: 'lineMissingCount' },
-    { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount' },
-    { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount' },
-    { key: 'consignee', label: '컨샤이니 미도출', clearLabel: '컨샤이니 필터해제', countKey: 'consigneeMissingCount' },
-    { key: 'modified', label: '수정건', clearLabel: '수정건 필터해제', countKey: 'modifiedCount' },
+    { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount', group: 'manual' },
+    { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount', group: 'missing' },
+    { key: 'orderType', label: '오더구분 미도출', clearLabel: '오더구분 필터해제', countKey: 'orderTypeMissingCount', group: 'missing' },
+    { key: 'shipper', label: '화주사코드 미도출', clearLabel: '화주사코드 필터해제', countKey: 'shipperCodeMissingCount', group: 'missing' },
+    { key: 'routePart', label: '경로세부코드 미도출', clearLabel: '경로세부코드 필터해제', countKey: 'routePartMissingCount', group: 'missing' },
+    { key: 'port', label: '포트코드 미도출', clearLabel: '포트코드 필터해제', countKey: 'portMissingCount', group: 'missing' },
+    { key: 'line', label: '라인코드 미도출', clearLabel: '라인코드 필터해제', countKey: 'lineMissingCount', group: 'missing' },
+    { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount', group: 'missing' },
+    { key: 'consignee', label: '컨샤이니 미도출', clearLabel: '컨샤이니 필터해제', countKey: 'consigneeMissingCount', group: 'missing' },
+    { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount', group: 'check' },
+    { key: 'modified', label: '수정건', clearLabel: '수정건 필터해제', countKey: 'modifiedCount', group: 'modified' },
+]);
+const DETAIL_ISSUE_GROUPS = Object.freeze([
+    { key: 'manual', label: '입력', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'manual') },
+    { key: 'missing', label: '미도출', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'missing') },
+    { key: 'check', label: '확인', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'check') },
+    { key: 'modified', label: '수정', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'modified') },
 ]);
 
 // ===== 헬퍼 =====
@@ -645,6 +651,7 @@ function AsanDispatchContent() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState(-1);
     const [showSettings, setShowSettings] = useState(false);
     const [settings, setSettings] = useState({ glovis_path: '', mobis_path: '' });
@@ -677,6 +684,7 @@ function AsanDispatchContent() {
     const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
     const [detailIssueFilter, setDetailIssueFilter] = useState('');
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
+    const [glapsMasterRefreshToken, setGlapsMasterRefreshToken] = useState(0);
     const tabsRef = useRef(null);
     const containerRef = useRef(null);
     const topBarRef = useRef(null);
@@ -762,6 +770,7 @@ function AsanDispatchContent() {
         try {
             const r = await fetch(`/api/branches/asan/dispatch?type=${type}&t=${Date.now()}`, { cache: 'no-store' }); 
             const j = await r.json();
+            if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
             const items = j.data || []; setData(items);
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -773,12 +782,32 @@ function AsanDispatchContent() {
             } else {
                 setActiveTab(findDefaultValidTabIndex(items, type, today));
             }
+            return true;
         } catch {
             if (!silent) setData([]);
+            return false;
         } finally {
             if (!silent) setLoading(false);
         }
     }, []);
+    const handleRefreshData = async () => {
+        if (refreshing || syncing) return;
+        setRefreshing(true);
+        setSyncStatus({ message: '현재 화면 새로고침 중...', isError: false });
+        try {
+            const refreshed = await fetchData(viewType, { silent: true, preserveActiveDate: true });
+            if (mainView === 'glaps-master') {
+                setGlapsMasterRefreshToken(token => token + 1);
+            }
+            setSyncStatus({
+                message: refreshed ? '현재 보기와 날짜를 유지한 채 새로고침했습니다.' : '배차판 자료 새로고침에 실패했습니다.',
+                isError: !refreshed,
+            });
+        } finally {
+            setRefreshing(false);
+            setTimeout(() => setSyncStatus(null), 3000);
+        }
+    };
     const handleSync = async () => {
         setSyncing(true);
         setSyncStatus({ message: 'NAS 동기화 요청 중...', isError: false });
@@ -809,7 +838,8 @@ function AsanDispatchContent() {
                 const fail = results.find(result => result.success === false);
                 throw new Error(fail?.message || finalStatus?.message || 'NAS 동기화 실패');
             }
-            await fetchData(viewType, { preserveActiveDate: true });
+            const refreshed = await fetchData(viewType, { preserveActiveDate: true });
+            if (!refreshed) throw new Error('동기화 후 화면 갱신 실패');
             const detail = results.length
                 ? results.map(result => `${result.type === 'glovis' ? '글로비스' : '모비스'} ${result.sheets || 0}시트`).join(' / ')
                 : '완료';
@@ -1799,6 +1829,9 @@ function AsanDispatchContent() {
                             )}
                         </div>
                         <div className={styles.headerButtons}>
+                            <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing || syncing}>
+                                {refreshing ? '⏳ 새로고침' : '🔄 새로고침'}
+                            </button>
                             <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
                             <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
                             <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncing}>
@@ -1819,7 +1852,7 @@ function AsanDispatchContent() {
             {(mainView === 'grid' || mainView === 'detail' || mainView === 'detail-change') && dateControls}
 
             {mainView === 'glaps-master' ? (
-                <AsanGlapsMaster />
+                <AsanGlapsMaster refreshToken={glapsMasterRefreshToken} />
             ) : loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : !currentView ? (
@@ -1878,21 +1911,26 @@ function AsanDispatchContent() {
                                 )}
                             </div>
                             <div className={styles.detailIssueFilters}>
-                                {DETAIL_ISSUE_FILTERS.map((filter) => {
-                                    const count = detailSummary[filter.countKey] || 0;
-                                    const active = detailIssueFilter === filter.key;
-                                    return (
-                                        <button
-                                            key={filter.key}
-                                            type="button"
-                                            className={`${styles.detailIssueButton} ${active ? styles.detailIssueButtonActive : ''}`}
-                                            onClick={() => setDetailIssueFilter(active ? '' : filter.key)}
-                                            disabled={count === 0 && !active}
-                                        >
-                                            {active ? filter.clearLabel : filter.label} {count.toLocaleString()}
-                                        </button>
-                                    );
-                                })}
+                                {DETAIL_ISSUE_GROUPS.map(group => (
+                                    <div key={group.key} className={styles.detailIssueGroup}>
+                                        <span className={styles.detailIssueGroupLabel}>{group.label}</span>
+                                        {group.filters.map((filter) => {
+                                            const count = detailSummary[filter.countKey] || 0;
+                                            const active = detailIssueFilter === filter.key;
+                                            return (
+                                                <button
+                                                    key={filter.key}
+                                                    type="button"
+                                                    className={`${styles.detailIssueButton} ${active ? styles.detailIssueButtonActive : ''}`}
+                                                    onClick={() => setDetailIssueFilter(active ? '' : filter.key)}
+                                                    disabled={count === 0 && !active}
+                                                >
+                                                    {active ? filter.clearLabel : filter.label} {count.toLocaleString()}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
                             </div>
                             <span className={styles.detailHint}>GLAPS코드 기존 코드 도출 검수용 상세 라인</span>
                         </div>

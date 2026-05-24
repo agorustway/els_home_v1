@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.169 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.170 / APK v5.11.29)
 
-> 최신 업데이트: 차량위치관제 `실시간 로그` 버튼이 여는 `/api/debug/view`를 NAS core 백엔드에서도 제공하도록 복구했다.
+> 최신 업데이트: 아산 배차판 전 보기에서 F5 대신 현재 보기/날짜를 유지하는 `새로고침` 버튼을 추가하고, 상세배차 수정필요 필터를 그룹화해 좁은 폭 깨짐을 줄였다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.169
+- **웹 버전**: v5.14.170
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -19,6 +19,7 @@
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
 - 상세배차 수정필요 필터는 상차지, 운송경로, 오더구분, 화주사, 경로세부코드, 포트, 라인, 타입, 운송사, 컨샤이니, 수정건 항목별로 토글한다.
+- 아산 배차판 작업 중 자료 갱신은 브라우저 F5 대신 상단 `새로고침` 버튼을 사용한다. 현재 보기와 선택 날짜를 유지하고 GLAPS코드 화면도 내부 조회를 다시 실행한다.
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 - GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
@@ -41,6 +42,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.170**: 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가했다. 현황판/배차판/상세배차/배차변동/GLAPS코드 보기에서 현재 보기와 날짜를 유지한 채 자료를 다시 읽고, GLAPS코드 화면은 refresh token으로 내부 원장 조회를 재실행한다. 상세배차 수정필요 필터는 `입력/미도출/확인/수정` 그룹으로 묶고 버튼 밀도를 낮춰 좁은 화면에서 줄바꿈되도록 했다.
 - **v5.14.169**: 차량위치관제 `실시간 로그` 버튼이 `/api/debug/view`를 열 때 NAS core에 라우트가 없어 404가 날 수 있던 문제를 수정했다. `els-core`에 `/api/debug/log` 수신과 `/api/debug/view` 텍스트 조회 라우트를 추가해 안드로이드 앱/오버레이 디버그 로그 흐름을 복구했다.
 - **v5.14.168**: 차량위치관제 통계 카드를 실행 버튼처럼 떠오르지 않는 정보 카드로 정리했다. 운행기록/교육이수 필터와 요약 카드를 단정하게 맞추고, 모바일에서 검색 후 결과 목록이 bottom sheet로 바로 열리도록 보정했다. 기간 날짜 입력은 갤럭시24 폭에서 잘리지 않게 높이와 최소폭을 늘렸다.
 - **v5.14.167**: 상세배차 목록 마지막에 `수정일시` 컬럼을 추가하고, 검색/`수정건` 필터로 보정값이 있는 라인을 찾을 수 있게 했다. 모바일에서는 상단 버튼 과밀을 줄이기 위해 `상세배차내역`, `배차변동내역`, `GLAPS코드` 버튼을 숨겼다.
@@ -70,9 +72,9 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/vehicleDebugLogRoute.test.mjs`: 2개 통과
-- `npm.cmd run lint -- "tests/vehicleDebugLogRoute.test.mjs"`: 통과
-- `python ast.parse docker/els-backend/app_core.py`: 통과
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
 - `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/deploy-core.sh"`: NAS core 배포 완료
 - `GET/POST http://192.168.0.4:2929/api/debug/*`: debug view/log 200 확인
 

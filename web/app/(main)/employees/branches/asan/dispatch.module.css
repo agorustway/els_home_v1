@@ -14,6 +14,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
     background: #fff;
     padding: 8px 12px;
     border-radius: 6px;
@@ -61,6 +63,10 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    justify-content: flex-end;
+    flex: 1 1 520px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
 .statusInfo {
@@ -115,6 +121,8 @@
 .headerButtons {
     display: flex;
     gap: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .headerBtn {
@@ -132,6 +140,11 @@
 .headerBtn:hover {
     background: #f1f5f9;
     border-color: #cbd5e1;
+}
+
+.headerBtn:disabled {
+    opacity: 0.58;
+    cursor: default;
 }
 
 .headerBtnPoint {
@@ -593,6 +606,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     padding: 7px 12px;
     margin-bottom: 10px;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
@@ -605,31 +619,61 @@
     gap: 16px;
     align-items: center;
     flex-wrap: wrap;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .summaryRight {
     display: flex;
     gap: 4px;
     align-items: center;
-    flex-shrink: 0;
+    justify-content: flex-end;
+    flex: 1 1 480px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
 .detailIssueFilters {
     display: flex;
-    gap: 4px;
+    gap: 5px;
     align-items: center;
     flex-wrap: wrap;
     justify-content: flex-end;
+    flex: 1 1 560px;
+    min-width: 0;
+}
+
+.detailIssueGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.detailIssueGroupLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid #bae6fd;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.66rem;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .detailIssueButton {
-    height: 24px;
-    padding: 0 8px;
+    height: 22px;
+    padding: 0 6px;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    border-radius: 999px;
     background: #fff;
     color: #475569;
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 800;
     cursor: pointer;
     white-space: nowrap;
@@ -718,6 +762,9 @@
     border-radius: 6px;
     padding: 4px 8px;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .detailConfirmPanel {
@@ -1837,7 +1884,7 @@
 
     .headerButtons {
         display: grid;
-        grid-template-columns: 1fr 1fr 1.2fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 4px;
         order: 1;
     }
@@ -2005,6 +2052,23 @@
 
     .detailIssueFilters {
         justify-content: flex-start;
+        flex-basis: 100%;
+    }
+
+    .detailIssueGroup {
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    .detailIssueGroupLabel {
+        height: 20px;
+        font-size: 0.62rem;
+    }
+
+    .detailIssueButton {
+        height: 20px;
+        padding: 0 5px;
+        font-size: 0.62rem;
     }
 
     .detailSelect,
