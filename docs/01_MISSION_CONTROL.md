@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.158 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.159 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 수정양식 매칭상태를 한글로 내려받고 삭제 규칙을 명확히 했다.
+> 최신 업데이트: GLAPS 수정양식 업로드가 실제 변경된 행만 DB에 반영하게 했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.158
+- **웹 버전**: v5.14.159
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -24,6 +24,7 @@
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
 - GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조이며, 좌측 A열부터 열리고 입력 시작 셀은 A4로 둔다.
 - GLAPS 수정양식 삭제는 행 삭제가 아니라 `삭제(Y)` 칸에 `Y` 입력으로만 처리한다. 매칭상태는 `확정 / 조정필요 / 코드없음` 한글 표기를 기본으로 쓴다.
+- GLAPS 수정양식 업로드는 ID가 있는 기존 행의 실제 값이 달라진 경우만 update한다. 누락된 행은 보존하고, ID 없는 행은 신규로 본다.
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 
 ## ACTIVE SYSTEMS
@@ -36,6 +37,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.159**: GLAPS 수정양식 업로드 시 기존 ID 행은 DB 값과 비교해 실제 변경이 있는 행만 update하고, 값이 같은 행은 `업로드수정` 이력 오염 없이 건너뛰도록 했다.
 - **v5.14.158**: GLAPS 수정양식의 운송경로/항목매핑 `매칭상태` 다운로드 값을 `확정 / 조정필요 / 코드없음`으로 바꾸고, 설명서에 행 삭제는 삭제로 처리하지 않고 `삭제(Y)` 값만 삭제로 본다는 규칙을 명시했다.
 - **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
@@ -55,7 +57,7 @@
 
 ## VERIFICATION
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
-- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS

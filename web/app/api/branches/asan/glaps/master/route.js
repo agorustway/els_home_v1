@@ -284,15 +284,74 @@ function withTemplateRoutePayload(row = {}, editSource = 'template_upload') {
   return { ...row, rawPayload };
 }
 
+async function fetchRowsByIds(adminSupabase, tableName, versionId, ids = []) {
+  const uniqueIds = [...new Set(ids.map(cleanText).filter(Boolean))];
+  const rows = [];
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const chunk = uniqueIds.slice(i, i + 100);
+    const { data, error } = await adminSupabase
+      .from(tableName)
+      .select('*')
+      .eq('version_id', versionId)
+      .in('id', chunk);
+    if (error) throw error;
+    rows.push(...(data || []));
+  }
+  return new Map(rows.map(row => [cleanText(row.id), row]));
+}
+
+function hasDbValueChanged(existing = {}, next = {}, fields = []) {
+  return fields.some(([dbKey, nextKey = dbKey]) => cleanText(existing[dbKey]) !== cleanText(next[nextKey]));
+}
+
+function isRouteTemplateRowChanged(existing = {}, next = {}) {
+  if (!existing?.id || existing.active === false) return true;
+  return hasDbValueChanged(existing, next, [
+    ['route_code'],
+    ['route_name'],
+    ['start_location_name'],
+    ['waypoint_name'],
+    ['waypoint_els_name'],
+    ['destination_name'],
+    ['route_fingerprint'],
+    ['review_status'],
+    ['review_note'],
+  ]);
+}
+
+function isAliasTemplateRowChanged(existing = {}, next = {}) {
+  if (!existing?.id || existing.active === false) return true;
+  return hasDbValueChanged(existing, next, [
+    ['alias_type'],
+    ['source_name'],
+    ['els_name'],
+    ['glaps_name'],
+    ['glaps_code'],
+    ['route_code'],
+    ['review_status'],
+    ['review_note'],
+  ]);
+}
+
 async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
   const actor = buildEditActor(editSource, userEmail);
   const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => cleanText(row.id)).filter(Boolean);
-  const upsertRows = rows
+  const candidateRows = rows
     .filter(row => !row.deleteFlag && (row.id || row.routeCode || row.routeName))
     .map((row) => {
       const dbRow = toRouteDbRow(withTemplateRoutePayload(row, editSource), { branchId, versionId, userEmail: actor });
       return row.id ? { id: cleanText(row.id), ...dbRow } : dbRow;
     });
+  const existingById = await fetchRowsByIds(
+    adminSupabase,
+    'glaps_transport_routes',
+    versionId,
+    candidateRows.map(row => row.id),
+  );
+  const upsertRows = candidateRows.filter((row) => {
+    if (!row.id) return true;
+    return isRouteTemplateRowChanged(existingById.get(cleanText(row.id)), row);
+  });
 
   if (deleteIds.length > 0) {
     const { error } = await adminSupabase
@@ -311,12 +370,22 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
 async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
   const actor = buildEditActor(editSource, userEmail);
   const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => cleanText(row.id)).filter(Boolean);
-  const upsertRows = rows
+  const candidateRows = rows
     .filter(row => !row.deleteFlag && (row.id || row.sourceName || row.elsName || row.glapsName))
     .map((row) => {
       const dbRow = toAliasDbRow(row, { branchId, versionId, userEmail: actor });
       return row.id ? { id: cleanText(row.id), ...dbRow } : dbRow;
     });
+  const existingById = await fetchRowsByIds(
+    adminSupabase,
+    'glaps_master_aliases',
+    versionId,
+    candidateRows.map(row => row.id),
+  );
+  const upsertRows = candidateRows.filter((row) => {
+    if (!row.id) return true;
+    return isAliasTemplateRowChanged(existingById.get(cleanText(row.id)), row);
+  });
 
   if (deleteIds.length > 0) {
     const { error } = await adminSupabase

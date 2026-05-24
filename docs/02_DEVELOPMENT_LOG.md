@@ -1,3 +1,18 @@
+## [2026-05-24] GLAPS 수정양식 변경 행만 반영 (v5.14.159)
+### 핵심
+- GLAPS 수정양식 업로드 시 ID가 있는 기존 행은 DB의 현재 값과 비교해 실제 값이 달라진 행만 update합니다.
+- 값이 같은 행은 `업로드수정` 이력과 `updated_at`이 불필요하게 바뀌지 않도록 건너뜁니다.
+- 엑셀에서 빠진 행은 기존처럼 보존하고, ID 없는 행은 신규 추가로 처리합니다. 삭제는 계속 `삭제(Y)=Y`만 인정합니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 수정양식 매칭상태 한글 표기 (v5.14.158)
 ### 핵심
 - GLAPS 수정양식 다운로드 시 운송경로/항목매핑 `매칭상태` 값을 내부 코드 대신 `확정 / 조정필요 / 코드없음` 한글로 표시합니다.
