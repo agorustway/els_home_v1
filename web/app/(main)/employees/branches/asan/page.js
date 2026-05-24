@@ -142,6 +142,7 @@ const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
+const DISPATCH_CHANGE_HEADERS = Object.freeze([...DISPATCH_DETAIL_HEADERS, '변동구분', '수정일시']);
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount', group: 'manual' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount', group: 'missing' },
@@ -266,6 +267,15 @@ function fmtShortTs(dt) {
     const t = new Date(dt);
     if (Number.isNaN(t.getTime())) return '';
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+}
+function actorDisplayName(value = '', fallback = '') {
+    const text = String(value || fallback || '').trim();
+    if (!text) return '';
+    if (text.includes('@')) return text.split('@')[0] || text;
+    return text;
+}
+function confirmationActorName(confirmation = {}, field = 'confirmed_by') {
+    return actorDisplayName(confirmation?.[`${field}_name`], confirmation?.[field]);
 }
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
@@ -753,7 +763,7 @@ function AsanDispatchContent() {
     }, [viewType, activeTab, allTabMonth, allTabWeek]);
 
     useEffect(() => {
-        if (mainView !== 'detail') return undefined;
+        if (!['detail', 'detail-change'].includes(mainView)) return undefined;
         let cancelled = false;
         const loadGlapsLookup = async () => {
             try {
@@ -1107,7 +1117,7 @@ function AsanDispatchContent() {
                         nextOverrides[row.detail_line_key] = {
                             value: row.value || '',
                             source: row.source || 'manual',
-                            updatedBy: row.updated_by || row.created_by || '',
+                            updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
                             updatedAt: row.updated_at || row.created_at || '',
                         };
                     });
@@ -1176,13 +1186,16 @@ function AsanDispatchContent() {
         try {
             if (mainView === 'detail' || mainView === 'detail-change') {
                 const detailModeName = mainView === 'detail' ? '상세배차내역' : '배차수정후';
-                const exportLines = mainView === 'detail' ? filteredDetailLines : searchedDetailLines;
+                const exportHeaders = mainView === 'detail' ? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS;
+                const exportRows = mainView === 'detail'
+                    ? filteredDetailLines.map(detailLineToRow)
+                    : detailChangeRows.map(({ values }) => values);
                 await downloadCurrentScreenWorkbook({
                     title: `아산 ${baseName} ${detailModeName} ${datePart}`,
                     sheetName: detailModeName,
                     fileName: `아산_${baseName}_${detailModeName}_${datePart}.xlsx`,
-                    headers: DISPATCH_DETAIL_HEADERS,
-                    rows: exportLines.map(detailLineToRow),
+                    headers: exportHeaders,
+                    rows: exportRows,
                 });
                 return;
             }
@@ -1418,6 +1431,20 @@ function AsanDispatchContent() {
         ...summarizeDispatchDetailLines(detailDisplayLines),
         visible: filteredDetailLines.length,
     }), [detailDisplayLines, filteredDetailLines.length]);
+
+    const detailChangeRows = useMemo(() => {
+        return searchedDetailLines.map((line) => {
+            const changedAt = line.detailUpdatedAt || fmtShortTs(line.confirmedBkgUpdatedAt || '');
+            return {
+                line,
+                values: [
+                    ...detailLineToRow(line),
+                    changedAt ? '수정' : '확정기준',
+                    changedAt,
+                ],
+            };
+        });
+    }, [searchedDetailLines]);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -1970,7 +1997,7 @@ function AsanDispatchContent() {
                                 {detailConfirmationLocked ? (
                                     <span className={styles.detailConfirmBadge}>
                                         배차확정 {fmtShortTs(detailConfirmation.confirmed_at)}
-                                        {detailConfirmation.confirmed_by ? ` · ${detailConfirmation.confirmed_by}` : ''}
+                                        {confirmationActorName(detailConfirmation) ? ` · ${confirmationActorName(detailConfirmation)}` : ''}
                                     </span>
                                 ) : (
                                     <span className={styles.detailConfirmReady}>
@@ -2137,7 +2164,7 @@ function AsanDispatchContent() {
                             {detailConfirmationLocked ? (
                                 <span className={styles.summaryItem}>
                                     <b>확정기준</b> {fmtShortTs(detailConfirmation.confirmed_at)}
-                                    {detailConfirmation.confirmed_by ? ` · ${detailConfirmation.confirmed_by}` : ''}
+                                    {confirmationActorName(detailConfirmation) ? ` · ${confirmationActorName(detailConfirmation)}` : ''}
                                 </span>
                             ) : (
                                 <span className={`${styles.summaryItem} ${styles.summaryWarn}`}><b>대기</b> 배차확정 후 변동 입력</span>
@@ -2156,10 +2183,51 @@ function AsanDispatchContent() {
                             )}
                         </div>
                     </div>
-                    <div className={styles.detailChangePanel}>
-                        <strong>변동 입력 대기</strong>
-                        <span>확정 이후 추가/삭제 라인은 이 탭에서 `추가` / `삭제`와 수정일시를 남기도록 이어서 구현합니다.</span>
-                    </div>
+                    {detailConfirmationLocked ? (
+                        <div className={styles.tableWrap}>
+                            <div className={styles.tableScroll}>
+                                <table className={`${styles.table} ${styles.detailTable}`}>
+                                    <thead>
+                                        <tr>
+                                            {DISPATCH_CHANGE_HEADERS.map((header) => <th key={header}>{header}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detailChangeRows.slice(0, displayLimit).map(({ line, values }) => {
+                                            const lineKey = makeDispatchDetailLineKey(line);
+                                            return (
+                                                <tr key={`change-${lineKey}`} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
+                                                    {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => (
+                                                        <td key={header} className={header === '변동구분' && values[colIdx] === '수정' ? styles.detailChangeTypeCell : ''}>
+                                                            {values[colIdx]}
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className={styles.tableFooter}>
+                                <span>
+                                    {Math.min(detailChangeRows.length, displayLimit).toLocaleString()}건 표시
+                                    {searchTerm ? ` / 검색 ${detailChangeRows.length.toLocaleString()}건` : ''}
+                                    {' '} / 전체 {detailChangeRows.length.toLocaleString()}건
+                                </span>
+                                {detailChangeRows.length > displayLimit && (
+                                    <span className={styles.loadMoreWrap}>
+                                        <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(p => p + 100)}>+100건 더 보기</button>
+                                        <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(detailChangeRows.length)}>전체 표시</button>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={styles.detailChangePanel}>
+                            <strong>변동 입력 대기</strong>
+                            <span>배차확정 후 현재 상세라인을 `배차수정후` 기준으로 표시합니다.</span>
+                        </div>
+                    )}
                 </>
             ) : (
                 <>

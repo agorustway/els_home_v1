@@ -643,6 +643,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
     path.join(webRoot, 'app/api/branches/asan/dispatch/detail-override/route.js'),
     'utf8',
   );
+  const actorNameApi = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/actorName.js'),
+    'utf8',
+  );
   const confirmationSql = fs.readFileSync(
     path.join(webRoot, 'supabase_sql/20260524_asan_dispatch_confirmations.sql'),
     'utf8',
@@ -688,6 +692,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.doesNotMatch(source, /DETAIL_CARRIER_CODE_DATALIST_ID/);
   assert.match(source, /mainView === 'detail'/);
   assert.match(source, /mainView === 'detail-change'/);
+  assert.match(source, /DISPATCH_CHANGE_HEADERS/);
+  assert.match(source, /detailChangeRows/);
+  assert.match(source, /confirmationActorName/);
   assert.match(source, /상세배차내역/);
   assert.match(source, /배차변동내역/);
   assert.match(source, /mobileHiddenFuncBtn/);
@@ -700,7 +707,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /수정건/);
   assert.match(source, /downloadCurrentScreenWorkbook/);
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
-  assert.match(source, /mainView === 'detail' \? filteredDetailLines : searchedDetailLines/);
+  assert.match(source, /mainView === 'detail' \? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS/);
+  assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
   assert.match(source, /배차수정후/);
   assert.match(source, /visibleCols\.map\(ci => headers\[ci\]\)/);
   assert.match(source, /displayRows\.map\(\(\{ row \}\) => visibleCols\.map/);
@@ -732,6 +740,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.mobileHiddenFuncBtn\s*{[\s\S]*display: none;/);
   assert.match(css, /\.detailConfirmButton/);
   assert.match(css, /\.detailChangePanel/);
+  assert.match(css, /\.detailChangeTypeCell/);
   assert.match(css, /\.detailIssueGroup\s*{/);
   assert.match(css, /\.detailIssueGroupLabel\s*{/);
   assert.match(css, /\.detailIssueButtonActive\s*{[\s\S]*background: #fff7ed;/);
@@ -740,12 +749,18 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /if \(normalizedRegion === '부곡'\) return '의왕ICD';/);
   assert.match(confirmationApi, /branch_dispatch_confirmations/);
   assert.match(confirmationApi, /branch_dispatch_confirmation_history/);
+  assert.match(confirmationApi, /getCurrentUserActorName/);
+  assert.match(confirmationApi, /decorateConfirmation/);
   assert.match(confirmationApi, /bearerToken/);
   assert.match(confirmationApi, /getUser\(bearerToken\)/);
   assert.match(detailOverrideApi, /branch_dispatch_detail_overrides/);
+  assert.match(detailOverrideApi, /decorateActorFields\(access\.adminSupabase, row, \['created_by', 'updated_by'\]\)/);
   assert.match(detailOverrideApi, /confirmed_bkg/);
   assert.match(detailOverrideApi, /bearerToken/);
   assert.match(detailOverrideApi, /getUser\(bearerToken\)/);
+  assert.match(actorNameApi, /profiles/);
+  assert.match(actorNameApi, /user_roles/);
+  assert.match(actorNameApi, /fallbackActorName/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_confirmations/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_detail_overrides/);
 });

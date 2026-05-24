@@ -14,6 +14,26 @@
 
 ---
 
+## [2026-05-24] 배차확정자 이름 표시와 변동내역 리스트 복구 (v5.14.176)
+### 핵심
+- 배차확정자와 상세 보정 수정자를 표시할 때 `profiles.full_name` / `user_roles.name`을 우선 사용하고, 이메일 전체가 화면에 노출되지 않게 했습니다.
+- `배차변동내역` 탭에서 빈 대기 패널만 보이던 상태를 수정해, 확정 후 `배차수정후` 상세라인 리스트를 바로 표시합니다.
+- 변동내역 표와 현재 화면 다운로드에 `변동구분`, `수정일시`를 포함했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/dispatch/actorName.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/actorName.js`
+- `web/app/api/branches/asan/dispatch/confirmation/route.js`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS코드 테이블 필터 목록화 (v5.14.174)
 ### 핵심
 - GLAPS코드 운송경로/항목매핑/원본시트 테이블 필터를 텍스트 입력에서 목록 선택으로 바꿨습니다.

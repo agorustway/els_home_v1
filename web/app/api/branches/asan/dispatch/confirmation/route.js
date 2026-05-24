@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
+import { decorateActorFields, getCurrentUserActorName } from '../actorName';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,6 +52,10 @@ async function fetchConfirmation(adminSupabase, payload) {
     return data || null;
 }
 
+async function decorateConfirmation(adminSupabase, row) {
+    return decorateActorFields(adminSupabase, row, ['confirmed_by', 'canceled_by', 'created_by', 'updated_by']);
+}
+
 export async function GET(request) {
     const access = await requireUser(request);
     if (access.error) return access.error;
@@ -65,7 +70,7 @@ export async function GET(request) {
 
     try {
         const data = await fetchConfirmation(access.adminSupabase, payload);
-        return NextResponse.json({ data });
+        return NextResponse.json({ data: await decorateConfirmation(access.adminSupabase, data) });
     } catch (error) {
         if (isMissingConfirmationTableError(error)) {
             return NextResponse.json({
@@ -90,7 +95,7 @@ export async function POST(request) {
             return NextResponse.json({ error: '확정 또는 확정취소 작업이 필요합니다.' }, { status: 400 });
         }
 
-        const actor = access.user.email || access.user.id || 'unknown';
+        const actor = await getCurrentUserActorName(access.adminSupabase, access.user);
         const now = new Date().toISOString();
         const existing = await fetchConfirmation(access.adminSupabase, payload);
         const baseMatch = {
@@ -150,7 +155,7 @@ export async function POST(request) {
             });
         if (historyError) throw historyError;
 
-        return NextResponse.json({ success: true, data: result.data });
+        return NextResponse.json({ success: true, data: await decorateConfirmation(access.adminSupabase, result.data) });
     } catch (error) {
         if (isMissingConfirmationTableError(error)) {
             return NextResponse.json({

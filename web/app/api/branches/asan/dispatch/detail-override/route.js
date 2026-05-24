@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
+import { decorateActorFields, getCurrentUserActorName } from '../actorName';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -73,7 +74,11 @@ export async function GET(request) {
             .eq('target_date', payload.targetDate)
             .eq('active', true);
         if (error) throw error;
-        return NextResponse.json({ data: data || [] });
+        const decorated = [];
+        for (const row of data || []) {
+            decorated.push(await decorateActorFields(access.adminSupabase, row, ['created_by', 'updated_by']));
+        }
+        return NextResponse.json({ data: decorated });
     } catch (error) {
         if (isMissingOverrideTableError(error)) {
             return NextResponse.json({
@@ -95,7 +100,7 @@ export async function POST(request) {
         const validationError = validateScope(payload, { requireLine: true });
         if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
-        const actor = access.user.email || access.user.id || 'unknown';
+        const actor = await getCurrentUserActorName(access.adminSupabase, access.user);
         const now = new Date().toISOString();
         const baseMatch = {
             branch_id: BRANCH_ID,
