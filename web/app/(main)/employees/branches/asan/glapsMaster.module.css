@@ -177,6 +177,17 @@
     min-width: 160px;
 }
 
+.tableMeta {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 8px;
+    color: #475569;
+    font-size: 0.74rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
 .primaryButton {
     background: #0f766e !important;
     border-color: #0f766e !important;
@@ -310,13 +321,73 @@
 .table th {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
     padding: 8px 9px;
     background: #1f5673;
     color: #fff;
     font-size: 0.74rem;
     text-align: left;
     white-space: nowrap;
+}
+
+.filterRow th {
+    top: 34px;
+    z-index: 2;
+    padding: 4px 6px;
+    background: #eef6ff;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.sortButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.sortButton b {
+    color: #bae6fd;
+    font-size: 0.7rem;
+}
+
+.sortButtonActive b {
+    color: #fef08a;
+}
+
+.filterRow input {
+    width: 100%;
+    min-width: 72px;
+    height: 24px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0 6px;
+}
+
+.filterRow input:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.14);
+}
+
+.filterSkip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    color: #94a3b8;
+    font-size: 0.72rem;
 }
 
 .table td {

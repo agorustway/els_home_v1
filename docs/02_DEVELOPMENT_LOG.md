@@ -1,3 +1,20 @@
+## [2026-05-24] GLAPS코드 테이블 필터와 정렬 추가 (v5.14.172)
+### 핵심
+- GLAPS코드 운송경로/항목매핑/원본시트 테이블에 컬럼별 필터 입력줄을 추가했습니다.
+- 컬럼 헤더 클릭으로 오름차순/내림차순/해제 정렬을 순환하도록 했습니다.
+- 현재 표시 건수/전체 건수를 함께 보여주고, 필터 적용 시 `테이블 필터해제` 버튼으로 한 번에 초기화할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 아산 배차판 현재 화면 다운로드 추가 (v5.14.171)
 ### 핵심
 - 기존 `엑셀` 버튼을 현재 화면 기준 다운로드로 확장했습니다.

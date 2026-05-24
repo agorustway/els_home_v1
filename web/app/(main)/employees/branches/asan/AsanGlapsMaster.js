@@ -25,6 +25,7 @@ const ALIAS_TYPE_OPTIONS = [
 ];
 
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
+const TABLE_COLLATOR = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
 
 const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
@@ -81,6 +82,20 @@ function routeMatchKey(row) {
         .join(' → ');
 }
 
+function tableText(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+function normalizeTableFilter(value) {
+    return tableText(value).normalize('NFKC').toLowerCase().trim();
+}
+
+function compareTableValues(a, b) {
+    return TABLE_COLLATOR.compare(tableText(a), tableText(b));
+}
+
 function routeToEditorValues(row = {}) {
     return {
         routeCode: row.route_code || '',
@@ -120,6 +135,8 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
     const [searchInput, setSearchInput] = useState('');
     const [message, setMessage] = useState(null);
     const [editor, setEditor] = useState(null);
+    const [tableFilters, setTableFilters] = useState({});
+    const [tableSort, setTableSort] = useState({ table: 'routes', key: '', direction: 'asc' });
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
 
@@ -224,13 +241,13 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
         }
     };
 
-    const beginEditRow = (row) => {
+    const beginEditRow = useCallback((row) => {
         if (activeTable === 'routes') {
             setEditor({ mode: 'routes', id: row.id, values: routeToEditorValues(row) });
         } else if (activeTable === 'aliases') {
             setEditor({ mode: 'aliases', id: row.id, values: aliasToEditorValues(row) });
         }
-    };
+    }, [activeTable]);
 
     const updateEditorValue = (field, value) => {
         setEditor(prev => (prev ? { ...prev, values: { ...prev.values, [field]: value } } : prev));
@@ -263,7 +280,7 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
         }
     };
 
-    const deleteRow = async (row) => {
+    const deleteRow = useCallback(async (row) => {
         if (!row?.id) return;
         if (!window.confirm('선택 행을 삭제할까요?')) return;
         setSaving(true);
@@ -287,7 +304,108 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
         } finally {
             setSaving(false);
         }
+    }, [activeTable, editor?.id, fetchData]);
+
+    const updateTableFilter = (key, value) => {
+        setTableFilters(prev => ({
+            ...prev,
+            [activeTable]: {
+                ...(prev[activeTable] || {}),
+                [key]: value,
+            },
+        }));
     };
+
+    const clearTableFilters = () => {
+        setTableFilters(prev => ({ ...prev, [activeTable]: {} }));
+    };
+
+    const toggleTableSort = (key) => {
+        setTableSort(prev => {
+            if (prev.table !== activeTable || prev.key !== key) {
+                return { table: activeTable, key, direction: 'asc' };
+            }
+            if (prev.direction === 'asc') return { table: activeTable, key, direction: 'desc' };
+            return { table: activeTable, key: '', direction: 'asc' };
+        });
+    };
+
+    const tableColumns = useMemo(() => {
+        if (activeTable === 'routes') {
+            return [
+                { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
+                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.protectedCell },
+                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
+                { key: 'route_key', label: '연결키', value: routeMatchKey },
+                { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
+                { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
+                { key: 'destination_name', label: '하차지', value: row => row.destination_name },
+                { key: 'review_note', label: '조정안내', value: row => row.review_note },
+                { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
+                {
+                    key: 'actions',
+                    label: '관리',
+                    filterable: false,
+                    sortable: false,
+                    render: row => (
+                        <div className={styles.rowActions}>
+                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
+                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
+                        </div>
+                    ),
+                },
+            ];
+        }
+        if (activeTable === 'aliases') {
+            return [
+                { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
+                { key: 'alias_type', label: '항목', value: row => row.alias_type },
+                { key: 'source_name', label: '배차판 매칭용', value: row => row.source_name },
+                { key: 'els_name', label: 'ELS명', value: row => row.els_name },
+                { key: 'glaps_name', label: 'GLAPS명', value: row => row.glaps_name, className: styles.protectedCell },
+                { key: 'glaps_code', label: '코드', value: row => row.glaps_code, className: styles.protectedCell },
+                { key: 'review_note', label: '조정안내', value: row => row.review_note },
+                { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
+                {
+                    key: 'actions',
+                    label: '관리',
+                    filterable: false,
+                    sortable: false,
+                    render: row => (
+                        <div className={styles.rowActions}>
+                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
+                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
+                        </div>
+                    ),
+                },
+            ];
+        }
+        return [
+            { key: 'sheet_name', label: '시트', value: row => row.sheet_name },
+            { key: 'row_number', label: '행', value: row => row.row_number },
+            { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : '') },
+            { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {} },
+        ];
+    }, [activeTable, beginEditRow, deleteRow, saving]);
+
+    const activeTableFilters = useMemo(() => tableFilters[activeTable] || {}, [activeTable, tableFilters]);
+    const hasTableFilters = Object.values(activeTableFilters).some(value => normalizeTableFilter(value));
+    const activeSort = tableSort.table === activeTable ? tableSort : { table: activeTable, key: '', direction: 'asc' };
+    const visibleTableRows = useMemo(() => {
+        const filterableColumns = tableColumns.filter(column => column.filterable !== false);
+        const filteredRows = tableRows.filter(row => filterableColumns.every(column => {
+            const filterValue = normalizeTableFilter(activeTableFilters[column.key]);
+            if (!filterValue) return true;
+            return normalizeTableFilter(column.value?.(row)).includes(filterValue);
+        }));
+        if (!activeSort.key) return filteredRows;
+        const sortColumn = tableColumns.find(column => column.key === activeSort.key && column.sortable !== false);
+        if (!sortColumn) return filteredRows;
+        return [...filteredRows].sort((a, b) => {
+            const direction = activeSort.direction === 'desc' ? -1 : 1;
+            return compareTableValues(sortColumn.value?.(a), sortColumn.value?.(b)) * direction;
+        });
+    }, [activeSort.direction, activeSort.key, activeTableFilters, tableColumns, tableRows]);
 
     return (
         <div className={styles.shell}>
@@ -360,6 +478,10 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
                 <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="코드, 작업지, 상차지 검색" />
                 {(activeTable === 'routes' || activeTable === 'aliases') && (
                     <button type="button" className={styles.primaryButton} onClick={beginNewRow} disabled={saving}>추가</button>
+                )}
+                <span className={styles.tableMeta}>표시 {visibleTableRows.length.toLocaleString()} / 전체 {tableRows.length.toLocaleString()}</span>
+                {hasTableFilters && (
+                    <button type="button" onClick={clearTableFilters}>테이블 필터해제</button>
                 )}
             </div>
 
@@ -448,103 +570,63 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
             <div className={styles.tableWrap}>
                 {loading ? (
                     <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
-                ) : activeTable === 'routes' ? (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>상태</th>
-                                <th>운송경로코드</th>
-                                <th>운송경로명</th>
-                                <th>연결키</th>
-                                <th>상차지</th>
-                                <th>경유지(ELS)</th>
-                                <th>하차지</th>
-                                <th>조정안내</th>
-                                <th>수정출처</th>
-                                <th>관리</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableRows.map((row) => (
-                                <tr key={row.id}>
-                                    <td><span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span></td>
-                                    <td className={styles.protectedCell}>{row.route_code}</td>
-                                    <td className={styles.protectedCell}>{row.route_name}</td>
-                                    <td>{routeMatchKey(row)}</td>
-                                    <td>{row.start_location_name}</td>
-                                    <td>{row.waypoint_els_name || row.waypoint_name}</td>
-                                    <td>{row.destination_name}</td>
-                                    <td>{row.review_note}</td>
-                                    <td><span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span></td>
-                                    <td>
-                                        <div className={styles.rowActions}>
-                                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
-                                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                ) : activeTable === 'aliases' ? (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>상태</th>
-                                <th>항목</th>
-                                <th>배차판 매칭용</th>
-                                <th>ELS명</th>
-                                <th>GLAPS명</th>
-                                <th>코드</th>
-                                <th>조정안내</th>
-                                <th>수정출처</th>
-                                <th>관리</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableRows.map((row) => (
-                                <tr key={row.id}>
-                                    <td><span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span></td>
-                                    <td>{row.alias_type}</td>
-                                    <td>{row.source_name}</td>
-                                    <td>{row.els_name}</td>
-                                    <td className={styles.protectedCell}>{row.glaps_name}</td>
-                                    <td className={styles.protectedCell}>{row.glaps_code}</td>
-                                    <td>{row.review_note}</td>
-                                    <td><span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span></td>
-                                    <td>
-                                        <div className={styles.rowActions}>
-                                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
-                                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 ) : (
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                <th>시트</th>
-                                <th>행</th>
-                                <th>헤더</th>
-                                <th>원본값</th>
+                                {tableColumns.map(column => {
+                                    const sorted = activeSort.key === column.key;
+                                    const sortLabel = sorted ? (activeSort.direction === 'desc' ? '↓' : '↑') : '↕';
+                                    return (
+                                        <th key={column.key}>
+                                            {column.sortable === false ? (
+                                                <span>{column.label}</span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.sortButton} ${sorted ? styles.sortButtonActive : ''}`}
+                                                    onClick={() => toggleTableSort(column.key)}
+                                                    title={`${column.label} 정렬`}
+                                                >
+                                                    <span>{column.label}</span>
+                                                    <b>{sortLabel}</b>
+                                                </button>
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
+                            <tr className={styles.filterRow}>
+                                {tableColumns.map(column => (
+                                    <th key={column.key}>
+                                        {column.filterable === false ? (
+                                            <span className={styles.filterSkip}>-</span>
+                                        ) : (
+                                            <input
+                                                value={activeTableFilters[column.key] || ''}
+                                                onChange={(event) => updateTableFilter(column.key, event.target.value)}
+                                                placeholder="필터"
+                                                aria-label={`${column.label} 필터`}
+                                            />
+                                        )}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {tableRows.map((row) => (
-                                <tr key={row.id}>
-                                    <td>{row.sheet_name}</td>
-                                    <td>{row.row_number}</td>
-                                    <td>{row.header_row ? '헤더' : ''}</td>
-                                    <td>{JSON.stringify(row.row_payload || row.row_values || {})}</td>
+                            {visibleTableRows.map((row, rowIndex) => (
+                                <tr key={row.id || `${activeTable}-${rowIndex}`}>
+                                    {tableColumns.map(column => (
+                                        <td key={column.key} className={column.className || ''}>
+                                            {column.render ? column.render(row) : tableText(column.value?.(row))}
+                                        </td>
+                                    ))}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 )}
-                {!loading && tableRows.length === 0 && <div className={styles.emptyState}>표시할 데이터가 없습니다.</div>}
+                {!loading && visibleTableRows.length === 0 && <div className={styles.emptyState}>표시할 데이터가 없습니다.</div>}
             </div>
         </div>
     );
