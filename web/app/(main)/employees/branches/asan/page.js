@@ -159,25 +159,6 @@ const DETAIL_CHANGE_BKG_COL = DISPATCH_DETAIL_HEADERS.indexOf('BKG확정');
 const DETAIL_HEADER_INDEX = Object.freeze(
     DISPATCH_DETAIL_HEADERS.reduce((acc, header, idx) => ({ ...acc, [header]: idx }), {}),
 );
-const DETAIL_CHANGE_EDITABLE_HEADERS = new Set([
-    '작업일자',
-    '구분',
-    '화주',
-    '상차지',
-    '작업지',
-    '하차지(선적)',
-    '고객사',
-    '포트',
-    '라인',
-    '타입',
-    '업체명',
-    'BKG확정',
-    'BKG1',
-    'BKG2',
-    'BKG3',
-    'TARGET VESSEL',
-    '비고',
-]);
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount', group: 'manual' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount', group: 'missing' },
@@ -500,12 +481,6 @@ function getDetailBkgValue(line, source) {
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
     return idx >= 0 ? String(values[idx] ?? '').trim() : '';
-}
-function setDetailRowValue(values = [], headerOrIdx, value) {
-    const idx = typeof headerOrIdx === 'number' ? headerOrIdx : DETAIL_HEADER_INDEX[headerOrIdx];
-    const next = DISPATCH_DETAIL_HEADERS.map((_, valueIdx) => String(values[valueIdx] ?? '').trim());
-    if (idx >= 0 && idx < next.length) next[idx] = String(value ?? '').trim();
-    return next;
 }
 function inferBkgSourceFromDetailValues(values = []) {
     const confirmed = getDetailRowValue(values, 'BKG확정');
@@ -1651,7 +1626,6 @@ function AsanDispatchContent() {
                 const storedValues = changeEventToEditableValues(event);
                 const rawValues = detailChangeDrafts[event.id] || changeEventToEditableValues(event);
                 const editableValues = buildDetailChangeDisplayValues(event, rawValues);
-                const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event));
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const values = [
                     ...editableValues,
@@ -1661,10 +1635,10 @@ function AsanDispatchContent() {
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
-                return { event, rawValues, editableValues, hasCalculatedDiff, line, values };
+                return { event, hasCalculatedDiff, values };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
-    }, [buildDetailChangeDisplayValues, detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
+    }, [buildDetailChangeDisplayValues, detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, searchTerm]);
 
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
@@ -1937,16 +1911,6 @@ function AsanDispatchContent() {
             setDetailConfirmationSaving(false);
         }
     }, [detailConfirmationSaving, detailScope, detailSnapshotLines, getDetailAuthHeaders]);
-
-    const updateDetailChangeDraft = useCallback((event, colIdx, value) => {
-        if (!event?.id || colIdx < 0 || colIdx >= DISPATCH_DETAIL_HEADERS.length) return;
-        setDetailChangeDrafts(prev => {
-            const baseValues = prev[event.id] || changeEventToEditableValues(event);
-            const nextValues = [...baseValues];
-            nextValues[colIdx] = value;
-            return { ...prev, [event.id]: nextValues };
-        });
-    }, []);
 
     const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null) => {
         if (!detailScope || !event?.id || detailChangeSaving) return;
@@ -2627,11 +2591,6 @@ function AsanDispatchContent() {
                     {detailChangeRows.length > 0 ? (
                         <div className={styles.tableWrap}>
                             <div className={styles.tableScroll}>
-                                <datalist id={DETAIL_START_LOCATION_DATALIST_ID}>
-                                    {GLAPS_START_LOCATION_OPTIONS.filter(Boolean).map((option) => (
-                                        <option key={option} value={option} />
-                                    ))}
-                                </datalist>
                                 <table className={`${styles.table} ${styles.detailTable}`}>
                                     <thead>
                                         <tr>
@@ -2639,100 +2598,20 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ event, rawValues, hasCalculatedDiff, line, values }, rowIdx) => {
+                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, values }, rowIdx) => {
                                             const hasDraft = Boolean(detailChangeDrafts[event.id]) || hasCalculatedDiff;
-                                            const saveRawValues = (nextRawValues) => {
-                                                const nextDisplayValues = buildDetailChangeDisplayValues(event, nextRawValues);
-                                                const storedValues = changeEventToEditableValues(event);
-                                                const hasChange = nextDisplayValues.some((value, idx) => value !== (storedValues[idx] || ''));
-                                                if (!hasChange) return;
-                                                saveDetailChangeEvent(event, nextDisplayValues);
-                                            };
                                             return (
                                                 <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
-                                                        const isEditableDetailInput = isDetailValue && DETAIL_CHANGE_EDITABLE_HEADERS.has(header);
                                                         return (
                                                             <td
                                                                 key={header}
                                                                 className={isChangeType ? styles.detailChangeTypeCell : ''}
                                                             >
-                                                                {header === '상차지' ? (
-                                                                    <input
-                                                                        className={styles.detailComboInput}
-                                                                        list={DETAIL_START_LOCATION_DATALIST_ID}
-                                                                        value={rawValues[colIdx] || ''}
-                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, colIdx, inputEvent.target.value)}
-                                                                        onBlur={(inputEvent) => {
-                                                                            const nextRawValues = setDetailRowValue(rawValues, colIdx, inputEvent.target.value);
-                                                                            saveRawValues(nextRawValues);
-                                                                        }}
-                                                                        onKeyDown={focusDetailGridInput}
-                                                                        data-detail-row-index={rowIdx}
-                                                                        data-detail-col-index={colIdx}
-                                                                        placeholder="선택"
-                                                                    />
-                                                                ) : header === 'BKG확정' ? (
-                                                                    <div className={styles.detailBkgConfirmControl}>
-                                                                        <span className={`${styles.detailBkgSourceBadge} ${line.confirmedBkgSource === 'manual' ? styles.detailBkgSourceManual : ''}`}>
-                                                                            {line.confirmedBkgSource === 'manual' ? '수기' : line.confirmedBkgSource || 'BKG1'}
-                                                                        </span>
-                                                                        <input
-                                                                            className={styles.detailBkgConfirmInput}
-                                                                            value={line.confirmedBkg || ''}
-                                                                            onChange={(inputEvent) => updateDetailChangeDraft(event, colIdx, inputEvent.target.value)}
-                                                                            onBlur={(inputEvent) => {
-                                                                                const nextRawValues = setDetailRowValue(rawValues, colIdx, inputEvent.target.value);
-                                                                                saveRawValues(nextRawValues);
-                                                                            }}
-                                                                            onKeyDown={focusDetailGridInput}
-                                                                            data-detail-row-index={rowIdx}
-                                                                            data-detail-col-index={colIdx}
-                                                                        />
-                                                                    </div>
-                                                                ) : BKG_CONFIRM_SOURCE_OPTIONS.includes(header) ? (
-                                                                    (() => {
-                                                                        const bkgValue = getDetailBkgValue(line, header);
-                                                                        const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
-                                                                        return bkgValue ? (
-                                                                            <button
-                                                                                type="button"
-                                                                                className={`${styles.detailBkgPickButton} ${isSelectedBkg ? styles.detailBkgPickButtonActive : ''}`}
-                                                                                onClick={() => {
-                                                                                    const nextRawValues = setDetailRowValue(rawValues, 'BKG확정', bkgValue);
-                                                                                    setDetailChangeDrafts(prev => ({ ...prev, [event.id]: nextRawValues }));
-                                                                                    saveRawValues(nextRawValues);
-                                                                                }}
-                                                                                onKeyDown={focusDetailGridInput}
-                                                                                data-detail-row-index={rowIdx}
-                                                                                data-detail-col-index={colIdx}
-                                                                                title={`${header} 값을 BKG확정으로 적용`}
-                                                                            >
-                                                                                {bkgValue}
-                                                                            </button>
-                                                                        ) : null;
-                                                                    })()
-                                                                ) : isEditableDetailInput ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        className={styles.detailChangeInput}
-                                                                        value={rawValues[colIdx] || ''}
-                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, colIdx, inputEvent.target.value)}
-                                                                        onBlur={(inputEvent) => {
-                                                                            const nextRawValues = setDetailRowValue(rawValues, colIdx, inputEvent.target.value);
-                                                                            saveRawValues(nextRawValues);
-                                                                        }}
-                                                                        onKeyDown={(keyEvent) => {
-                                                                            if (keyEvent.key === 'Enter') keyEvent.currentTarget.blur();
-                                                                            else focusDetailGridInput(keyEvent);
-                                                                        }}
-                                                                        data-detail-row-index={rowIdx}
-                                                                        data-detail-col-index={colIdx}
-                                                                    />
-                                                                ) : isDetailValue ? (
+                                                                {isDetailValue ? (
                                                                     values[colIdx] || ''
                                                                 ) : isManage ? (
                                                                     <span className={styles.detailChangeActions}>
@@ -2743,7 +2622,7 @@ function AsanDispatchContent() {
                                                                                 onClick={() => saveDetailChangeEvent(event, values.slice(0, DISPATCH_DETAIL_HEADERS.length))}
                                                                                 disabled={detailChangeSaving}
                                                                             >
-                                                                                저장
+                                                                                계산값반영
                                                                             </button>
                                                                         )}
                                                                         {event.event_status !== 'confirmed' ? (

@@ -1,3 +1,20 @@
+## [2026-05-25] 아산 배차변동내역 직접입력 제한 (v5.14.184)
+### 핵심
+- 배차변동내역에서 상차지/BKG/기본 컬럼을 직접 수정하던 입력칸을 제거했습니다.
+- 변동내역은 상세배차와 같은 GLAPS 계산 결과를 표시하되, 원천 수정은 WEB 부킹/비고 또는 엑셀 배차 원본 수정으로 처리하는 흐름으로 되돌렸습니다.
+- 저장된 변동 row와 현재 계산값이 다를 때만 `계산값반영` 버튼을 제공해 파생 코드 저장만 제한적으로 허용합니다.
+- 상세배차 하단 `변경건` 표시와 GLAPS 재계산 표시는 유지합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차변동내역 상세배차 구조 정렬 (v5.14.183)
 ### 핵심
 - 배차변동내역 행을 상세배차 line 객체로 다시 구성해 GLAPS 코드 계산을 동일하게 적용합니다.

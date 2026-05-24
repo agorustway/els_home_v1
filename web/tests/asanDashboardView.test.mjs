@@ -736,7 +736,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
   assert.match(source, /detailLineFromChangeValues/);
   assert.match(source, /buildDetailChangeDisplayValues/);
-  assert.match(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
+  assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
+  assert.match(source, /계산값반영/);
   assert.match(source, /detailChangedRow/);
   assert.match(source, /변경건/);
   assert.match(source, /변동 없음/);
