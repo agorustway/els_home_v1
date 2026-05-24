@@ -1,3 +1,26 @@
+## [2026-05-24] GLAPS 웹 직접편집과 전체 수정양식 분리 (v5.14.150)
+### 핵심
+- GLAPS 코드 화면에서 운송경로/항목매핑을 직접 추가·수정·삭제할 수 있게 했습니다.
+- 수정 출처를 `web:<email>`, `template_upload:<email>`, `master:<email>`로 나눠 화면 `수정출처` 컬럼과 수정양식 `수정출처/수정일시` 컬럼에 드러나게 했습니다.
+- `전체 수정양식`은 운송경로와 항목매핑 시트를 함께 내보내고, `전체양식 업로드`로 두 항목을 한 파일에서 반영합니다.
+- 운송경로/항목매핑을 한 파일로 업로드해도 각 파서가 자기 시트만 읽도록 필수 헤더 조건을 강화했습니다.
+- DB 저장 전 텍스트는 양끝 공백만 trim하고, 중간 띄어쓰기는 보존합니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "utils/glapsMasterData.mjs" "tests/asanDashboardView.test.mjs" "tests/glapsMasterData.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- `http://127.0.0.1:3001/employees/branches/asan`: GLAPS 코드 탭, 전체 수정양식 버튼, 직접 추가 폼, 수정출처 컬럼 렌더링 확인 후 검증용 서버 종료.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/utils/glapsMasterData.mjs`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/glapsMasterData.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 라인/포트코드 조회 보정과 운송사코드 표시 정리 (v5.14.149)
 ### 핵심
 - 라인코드가 마스터에 있는데도 상세배차에서 비던 원인은 `glaps_master_aliases` 조회가 Supabase 1000건 응답 cap에 잘려 `line/port` alias까지 내려오지 못했기 때문이었습니다.

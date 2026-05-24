@@ -9,6 +9,46 @@ const STATUS_LABELS = {
     missing_route_code: '코드없음',
 };
 
+const REVIEW_STATUS_OPTIONS = [
+    ['ready', '확정'],
+    ['needs_mapping', '조정필요'],
+    ['missing_route_code', '코드없음'],
+];
+
+const ALIAS_TYPE_OPTIONS = [
+    ['start', '상차지'],
+    ['waypoint', '경유지'],
+    ['destination', '하차지'],
+    ['port', '포트'],
+    ['line', '선사'],
+    ['container_type', '컨테이너규격'],
+    ['carrier', '운송사'],
+    ['consignee', '컨샤이니'],
+    ['generic', '기타'],
+];
+
+const EMPTY_ROUTE_EDITOR = {
+    routeCode: '',
+    routeName: '',
+    startLocationName: '',
+    waypointName: '',
+    waypointElsName: '',
+    destinationName: '',
+    reviewStatus: 'needs_mapping',
+    reviewNote: '',
+};
+
+const EMPTY_ALIAS_EDITOR = {
+    aliasType: 'waypoint',
+    sourceName: '',
+    elsName: '',
+    glapsName: '',
+    glapsCode: '',
+    routeCode: '',
+    reviewStatus: 'needs_mapping',
+    reviewNote: '',
+};
+
 function formatDateTime(value) {
     if (!value) return '-';
     const date = new Date(value);
@@ -20,10 +60,52 @@ function statusLabel(status) {
     return STATUS_LABELS[status] || status || '-';
 }
 
+function sourceLabel(updatedBy = '') {
+    const source = String(updatedBy || '').split(':')[0];
+    if (source === 'web') return '웹수정';
+    if (source === 'template_upload') return '업로드수정';
+    if (source === 'master') return '마스터반영';
+    return updatedBy ? '기존수정' : '-';
+}
+
+function sourceClass(updatedBy = '') {
+    const source = String(updatedBy || '').split(':')[0];
+    if (source === 'web') return styles.sourceWeb;
+    if (source === 'template_upload') return styles.sourceUpload;
+    if (source === 'master') return styles.sourceMaster;
+    return '';
+}
+
 function routeMatchKey(row) {
     return [row.start_location_name, row.waypoint_els_name || row.waypoint_name, row.destination_name]
         .filter(Boolean)
         .join(' → ');
+}
+
+function routeToEditorValues(row = {}) {
+    return {
+        routeCode: row.route_code || '',
+        routeName: row.route_name || '',
+        startLocationName: row.start_location_name || '',
+        waypointName: row.waypoint_name || '',
+        waypointElsName: row.waypoint_els_name || '',
+        destinationName: row.destination_name || '',
+        reviewStatus: row.review_status || 'needs_mapping',
+        reviewNote: row.review_note || '',
+    };
+}
+
+function aliasToEditorValues(row = {}) {
+    return {
+        aliasType: row.alias_type || 'waypoint',
+        sourceName: row.source_name || '',
+        elsName: row.els_name || '',
+        glapsName: row.glaps_name || '',
+        glapsCode: row.glaps_code || '',
+        routeCode: row.route_code || '',
+        reviewStatus: row.review_status || 'needs_mapping',
+        reviewNote: row.review_note || '',
+    };
 }
 
 function downloadTemplate(kind) {
@@ -38,8 +120,10 @@ export default function AsanGlapsMaster() {
     const [statusFilter, setStatusFilter] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [message, setMessage] = useState(null);
+    const [editor, setEditor] = useState(null);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
+    const templateUploadModeRef = useRef('routes');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -63,6 +147,10 @@ export default function AsanGlapsMaster() {
         const timer = setTimeout(fetchData, 250);
         return () => clearTimeout(timer);
     }, [fetchData]);
+
+    useEffect(() => {
+        setEditor(null);
+    }, [activeTable]);
 
     const routes = data?.routes || [];
     const aliases = data?.aliases || [];
@@ -98,7 +186,11 @@ export default function AsanGlapsMaster() {
             const response = await fetch('/api/branches/asan/glaps/master', { method: 'POST', body: formData });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.error || 'GLAPS 마스터 반영 실패');
-            const suffix = payload.summary ? `운송경로 ${payload.summary.total}건` : `수정 ${payload.updated || 0}건 / 삭제 ${payload.deleted || 0}건`;
+            const suffix = payload.summary
+                ? `운송경로 ${payload.summary.total}건`
+                : (payload.mode === 'all'
+                    ? `운송경로 수정 ${payload.routes?.updated || 0}건 / 항목 수정 ${payload.aliases?.updated || 0}건`
+                    : `수정 ${payload.updated || 0}건 / 삭제 ${payload.deleted || 0}건`);
             setMessage({ type: 'success', text: `${suffix} 반영 완료` });
             await fetchData();
         } catch (error) {
@@ -119,7 +211,85 @@ export default function AsanGlapsMaster() {
         const file = event.target.files?.[0];
         event.target.value = '';
         if (!file) return;
-        postWorkbook({ mode: activeTable, file });
+        postWorkbook({ mode: templateUploadModeRef.current || activeTable, file });
+    };
+
+    const openTemplateUpload = (mode) => {
+        templateUploadModeRef.current = mode;
+        templateFileRef.current?.click();
+    };
+
+    const beginNewRow = () => {
+        if (activeTable === 'routes') {
+            setEditor({ mode: 'routes', id: null, values: { ...EMPTY_ROUTE_EDITOR } });
+        } else if (activeTable === 'aliases') {
+            setEditor({ mode: 'aliases', id: null, values: { ...EMPTY_ALIAS_EDITOR } });
+        }
+    };
+
+    const beginEditRow = (row) => {
+        if (activeTable === 'routes') {
+            setEditor({ mode: 'routes', id: row.id, values: routeToEditorValues(row) });
+        } else if (activeTable === 'aliases') {
+            setEditor({ mode: 'aliases', id: row.id, values: aliasToEditorValues(row) });
+        }
+    };
+
+    const updateEditorValue = (field, value) => {
+        setEditor(prev => (prev ? { ...prev, values: { ...prev.values, [field]: value } } : prev));
+    };
+
+    const submitEditor = async (event) => {
+        event.preventDefault();
+        if (!editor) return;
+        setSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/glaps/master', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: editor.mode,
+                    action: 'upsert',
+                    id: editor.id,
+                    row: editor.values,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'GLAPS 웹수정 실패');
+            setMessage({ type: 'success', text: '웹수정 1건 반영 완료' });
+            setEditor(null);
+            await fetchData();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deleteRow = async (row) => {
+        if (!row?.id) return;
+        if (!window.confirm('선택 행을 삭제할까요?')) return;
+        setSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/glaps/master', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: activeTable,
+                    action: 'delete',
+                    id: row.id,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'GLAPS 웹삭제 실패');
+            setMessage({ type: 'success', text: '웹삭제 1건 반영 완료' });
+            if (editor?.id === row.id) setEditor(null);
+            await fetchData();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -134,8 +304,10 @@ export default function AsanGlapsMaster() {
                     <input ref={templateFileRef} type="file" accept=".xlsx" hidden onChange={handleTemplateFileChange} />
                     <button type="button" onClick={() => postWorkbook({ mode: 'master', source: 'nas' })} disabled={saving}>NAS 마스터 반영</button>
                     <button type="button" onClick={() => masterFileRef.current?.click()} disabled={saving}>마스터 업로드</button>
-                    <button type="button" onClick={() => downloadTemplate(activeTable)} disabled={saving || activeTable === 'sheets'}>수정양식 내보내기</button>
-                    <button type="button" onClick={() => templateFileRef.current?.click()} disabled={saving || activeTable === 'sheets'}>수정양식 업로드</button>
+                    <button type="button" onClick={() => downloadTemplate(activeTable)} disabled={saving || activeTable === 'sheets'}>현재 수정양식</button>
+                    <button type="button" onClick={() => downloadTemplate('all')} disabled={saving}>전체 수정양식</button>
+                    <button type="button" onClick={() => openTemplateUpload(activeTable)} disabled={saving || activeTable === 'sheets'}>현재양식 업로드</button>
+                    <button type="button" onClick={() => openTemplateUpload('all')} disabled={saving}>전체양식 업로드</button>
                 </div>
             </div>
 
@@ -191,7 +363,96 @@ export default function AsanGlapsMaster() {
                     <option value="missing_route_code">코드없음</option>
                 </select>
                 <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="코드, 작업지, 상차지 검색" />
+                {(activeTable === 'routes' || activeTable === 'aliases') && (
+                    <button type="button" className={styles.primaryButton} onClick={beginNewRow} disabled={saving}>추가</button>
+                )}
             </div>
+
+            {editor && (
+                <form className={styles.editorPanel} onSubmit={submitEditor}>
+                    {editor.mode === 'routes' ? (
+                        <div className={styles.editorGrid}>
+                            <label className={styles.editorField}>
+                                <span>운송경로코드</span>
+                                <input value={editor.values.routeCode} onChange={(event) => updateEditorValue('routeCode', event.target.value)} autoFocus />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>운송경로명</span>
+                                <input value={editor.values.routeName} onChange={(event) => updateEditorValue('routeName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>상차지</span>
+                                <input value={editor.values.startLocationName} onChange={(event) => updateEditorValue('startLocationName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>경유지</span>
+                                <input value={editor.values.waypointName} onChange={(event) => updateEditorValue('waypointName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>경유지(ELS)</span>
+                                <input value={editor.values.waypointElsName} onChange={(event) => updateEditorValue('waypointElsName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>하차지(선적)</span>
+                                <input value={editor.values.destinationName} onChange={(event) => updateEditorValue('destinationName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>매칭상태</span>
+                                <select value={editor.values.reviewStatus} onChange={(event) => updateEditorValue('reviewStatus', event.target.value)}>
+                                    {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </select>
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>조정안내</span>
+                                <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
+                            </label>
+                        </div>
+                    ) : (
+                        <div className={styles.editorGrid}>
+                            <label className={styles.editorField}>
+                                <span>항목</span>
+                                <select value={editor.values.aliasType} onChange={(event) => updateEditorValue('aliasType', event.target.value)} autoFocus>
+                                    {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </select>
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>원본명</span>
+                                <input value={editor.values.sourceName} onChange={(event) => updateEditorValue('sourceName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>ELS명</span>
+                                <input value={editor.values.elsName} onChange={(event) => updateEditorValue('elsName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>GLAPS명</span>
+                                <input value={editor.values.glapsName} onChange={(event) => updateEditorValue('glapsName', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>GLAPS코드</span>
+                                <input value={editor.values.glapsCode} onChange={(event) => updateEditorValue('glapsCode', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>운송경로코드</span>
+                                <input value={editor.values.routeCode} onChange={(event) => updateEditorValue('routeCode', event.target.value)} />
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>매칭상태</span>
+                                <select value={editor.values.reviewStatus} onChange={(event) => updateEditorValue('reviewStatus', event.target.value)}>
+                                    {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                                </select>
+                            </label>
+                            <label className={styles.editorField}>
+                                <span>조정안내</span>
+                                <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
+                            </label>
+                        </div>
+                    )}
+                    <div className={styles.editorActions}>
+                        <button type="submit" disabled={saving}>저장</button>
+                        <button type="button" onClick={() => setEditor(null)} disabled={saving}>취소</button>
+                    </div>
+                </form>
+            )}
 
             <div className={styles.tableWrap}>
                 {loading ? (
@@ -208,6 +469,8 @@ export default function AsanGlapsMaster() {
                                 <th>경유지(ELS)</th>
                                 <th>하차지</th>
                                 <th>조정안내</th>
+                                <th>수정출처</th>
+                                <th>관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -221,6 +484,13 @@ export default function AsanGlapsMaster() {
                                     <td>{row.waypoint_els_name || row.waypoint_name}</td>
                                     <td>{row.destination_name}</td>
                                     <td>{row.review_note}</td>
+                                    <td><span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span></td>
+                                    <td>
+                                        <div className={styles.rowActions}>
+                                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
+                                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -237,6 +507,8 @@ export default function AsanGlapsMaster() {
                                 <th>코드</th>
                                 <th>운송경로코드</th>
                                 <th>조정안내</th>
+                                <th>수정출처</th>
+                                <th>관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -250,6 +522,13 @@ export default function AsanGlapsMaster() {
                                     <td>{row.glaps_code}</td>
                                     <td>{row.route_code}</td>
                                     <td>{row.review_note}</td>
+                                    <td><span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span></td>
+                                    <td>
+                                        <div className={styles.rowActions}>
+                                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
+                                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

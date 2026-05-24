@@ -10,6 +10,8 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const PAGE_SIZE = 1000;
+
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
   return message.includes('glaps_master_versions')
@@ -39,6 +41,17 @@ async function getActiveVersion(adminSupabase, branchId) {
   return data || null;
 }
 
+async function fetchPagedGlapsRows(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 function styleWorksheet(sheet) {
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -49,6 +62,14 @@ function styleWorksheet(sheet) {
     const maxLen = Math.max(10, ...column.values.map(value => String(value || '').length));
     column.width = Math.min(42, maxLen + 3);
   });
+}
+
+function editSourceLabel(updatedBy = '') {
+  const source = String(updatedBy || '').split(':')[0];
+  if (source === 'web') return '웹수정';
+  if (source === 'template_upload') return '업로드수정';
+  if (source === 'master') return '마스터반영';
+  return updatedBy ? '기존수정' : '';
 }
 
 function routeToTemplateRow(row = {}) {
@@ -62,6 +83,8 @@ function routeToTemplateRow(row = {}) {
     row.destination_name || '',
     row.review_status || '',
     row.review_note || '',
+    editSourceLabel(row.updated_by),
+    row.updated_at || '',
     '',
   ];
 }
@@ -77,6 +100,8 @@ function aliasToTemplateRow(row = {}) {
     row.route_code || '',
     row.review_status || '',
     row.review_note || '',
+    editSourceLabel(row.updated_by),
+    row.updated_at || '',
     '',
   ];
 }
@@ -86,7 +111,8 @@ export async function GET(request) {
   if (access.error) return access.error;
 
   const { searchParams } = new URL(request.url);
-  const kind = searchParams.get('kind') === 'aliases' ? 'aliases' : 'routes';
+  const requestedKind = searchParams.get('kind') || 'routes';
+  const kind = ['routes', 'aliases', 'all'].includes(requestedKind) ? requestedKind : 'routes';
   const branchId = searchParams.get('branchId') || DEFAULT_GLAPS_BRANCH_ID;
 
   try {
@@ -95,37 +121,39 @@ export async function GET(request) {
     workbook.creator = 'ELS Solution';
     workbook.created = new Date();
 
-    const sheetName = kind === 'aliases' ? '항목매핑_수정양식' : '운송경로_수정양식';
-    const sheet = workbook.addWorksheet(sheetName);
-    const headers = kind === 'aliases' ? GLAPS_ALIAS_TEMPLATE_HEADERS : GLAPS_ROUTE_TEMPLATE_HEADERS;
-    sheet.addRow(headers);
+    if (kind === 'routes' || kind === 'all') {
+      const sheet = workbook.addWorksheet('운송경로_수정양식');
+      sheet.addRow(GLAPS_ROUTE_TEMPLATE_HEADERS);
+      if (version) {
+        const data = await fetchPagedGlapsRows(() => access.adminSupabase
+          .from('glaps_transport_routes')
+          .select('*')
+          .eq('version_id', version.id)
+          .eq('active', true)
+          .order('route_code', { ascending: true }));
+        data.forEach(row => sheet.addRow(routeToTemplateRow(row)));
+      }
+      styleWorksheet(sheet);
+    }
 
-    if (version) {
-      if (kind === 'aliases') {
-        const { data, error } = await access.adminSupabase
+    if (kind === 'aliases' || kind === 'all') {
+      const sheet = workbook.addWorksheet('항목매핑_수정양식');
+      sheet.addRow(GLAPS_ALIAS_TEMPLATE_HEADERS);
+      if (version) {
+        const data = await fetchPagedGlapsRows(() => access.adminSupabase
           .from('glaps_master_aliases')
           .select('*')
           .eq('version_id', version.id)
           .eq('active', true)
           .order('alias_type', { ascending: true })
-          .order('source_name', { ascending: true });
-        if (error) throw error;
-        (data || []).forEach(row => sheet.addRow(aliasToTemplateRow(row)));
-      } else {
-        const { data, error } = await access.adminSupabase
-          .from('glaps_transport_routes')
-          .select('*')
-          .eq('version_id', version.id)
-          .eq('active', true)
-          .order('route_code', { ascending: true });
-        if (error) throw error;
-        (data || []).forEach(row => sheet.addRow(routeToTemplateRow(row)));
+          .order('source_name', { ascending: true }));
+        data.forEach(row => sheet.addRow(aliasToTemplateRow(row)));
       }
+      styleWorksheet(sheet);
     }
 
-    styleWorksheet(sheet);
     const buffer = await workbook.xlsx.writeBuffer();
-    const suffix = kind === 'aliases' ? '항목매핑' : '운송경로';
+    const suffix = kind === 'all' ? '전체' : (kind === 'aliases' ? '항목매핑' : '운송경로');
     const encodedName = encodeURIComponent(`GLAPS_${suffix}_수정양식.xlsx`);
 
     return new Response(buffer, {

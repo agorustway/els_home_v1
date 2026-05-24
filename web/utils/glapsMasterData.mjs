@@ -10,6 +10,8 @@ export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
   '하차지(선적)',
   '매칭상태',
   '조정안내',
+  '수정출처',
+  '수정일시',
   '삭제(Y)',
 ]);
 
@@ -23,6 +25,8 @@ export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
   '운송경로코드',
   '매칭상태',
   '조정안내',
+  '수정출처',
+  '수정일시',
   '삭제(Y)',
 ]);
 
@@ -111,7 +115,7 @@ const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
 ]);
 
 export function cleanGlapsText(value) {
-  return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+  return String(value ?? '').normalize('NFKC').trim();
 }
 
 export function normalizeGlapsKey(value) {
@@ -217,7 +221,7 @@ function getRowValues(row, indexes = []) {
 export function inferGlapsRouteParts(routeName = '') {
   const text = cleanGlapsText(routeName);
   if (!text) return { startLocationName: '', waypointName: '', destinationName: '' };
-  const parts = text.split(' ').filter(Boolean);
+  const parts = text.split(/\s+/).filter(Boolean);
   if (parts.length < 3) {
     return { startLocationName: '', waypointName: text, destinationName: '' };
   }
@@ -257,7 +261,7 @@ export function getGlapsRouteReviewStatus(route = {}) {
 }
 
 function normalizeReviewStatus(value, fallback = 'needs_mapping') {
-  const normalized = cleanGlapsText(value).toLowerCase();
+  const normalized = cleanGlapsText(value).replace(/\s+/g, ' ').toLowerCase();
   if (['ready', '확정', '정상'].includes(normalized)) return 'ready';
   if (['missing_route_code', '코드없음', '코드 없음'].includes(normalized)) return 'missing_route_code';
   if (['needs_mapping', '조정필요', '조정 필요', '확인필요', '확인 필요'].includes(normalized)) return 'needs_mapping';
@@ -659,19 +663,22 @@ function buildTemplateColumns(headers = [], aliases = {}) {
   ]));
 }
 
-function templateRowsFromSheet(sheet = {}, aliases = {}) {
+function templateRowsFromSheet(sheet = {}, aliases = {}, options = {}) {
   const rows = Array.isArray(sheet.rows) ? sheet.rows : [];
   const headerRowIndex = findTemplateHeaderRowIndex(rows, aliases);
   if (headerRowIndex < 0) return [];
   const headers = rows[headerRowIndex].map(cleanGlapsText);
   const cols = buildTemplateColumns(headers, aliases);
+  if (Array.isArray(options.requiredKeys) && options.requiredKeys.some(key => cols[key] < 0)) return [];
   return rows.slice(headerRowIndex + 1)
     .map((row, offset) => ({ row, cols, sourceRowNumber: headerRowIndex + offset + 2 }))
     .filter(({ row }) => row.some(cell => cleanGlapsText(cell)));
 }
 
 export function parseGlapsRouteTemplateSheets(sheets = []) {
-  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ROUTE_TEMPLATE_ALIASES).map(({ row, cols, sourceRowNumber }) => {
+  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ROUTE_TEMPLATE_ALIASES, {
+    requiredKeys: ['routeCode', 'startLocationName', 'waypointElsName', 'destinationName'],
+  }).map(({ row, cols, sourceRowNumber }) => {
     const route = {
       id: getRowValue(row, cols.id),
       routeCode: getRowValue(row, cols.routeCode),
@@ -692,7 +699,9 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
 }
 
 export function parseGlapsAliasTemplateSheets(sheets = []) {
-  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ALIAS_TEMPLATE_ALIASES).map(({ row, cols, sourceRowNumber }) => ({
+  return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ALIAS_TEMPLATE_ALIASES, {
+    requiredKeys: ['aliasType', 'sourceName'],
+  }).map(({ row, cols, sourceRowNumber }) => ({
     id: getRowValue(row, cols.id),
     aliasType: GLAPS_CODE_ALIAS_TYPES.has(getRowValue(row, cols.aliasType)) ? getRowValue(row, cols.aliasType) : 'waypoint',
     sourceName: getRowValue(row, cols.sourceName),

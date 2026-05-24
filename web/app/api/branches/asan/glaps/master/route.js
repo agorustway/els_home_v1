@@ -5,6 +5,8 @@ import { getNasClient } from '@/lib/nas';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
 import {
   DEFAULT_GLAPS_BRANCH_ID,
+  buildGlapsRouteFingerprint,
+  getGlapsRouteReviewStatus,
   getGlapsRouteMatchQuery,
   parseGlapsAliasTemplateSheets,
   parseGlapsMasterSheets,
@@ -17,6 +19,8 @@ export const revalidate = 0;
 
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
 const PAGE_SIZE = 1000;
+const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic']);
+const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -30,6 +34,61 @@ function isMissingGlapsTableError(error) {
 
 function jsonError(message, status = 500, extra = {}) {
   return NextResponse.json({ error: message, ...extra }, { status });
+}
+
+function cleanText(value) {
+  return String(value ?? '').normalize('NFKC').trim();
+}
+
+function normalizeReviewStatus(value, fallback = 'needs_mapping') {
+  const text = cleanText(value).replace(/\s+/g, ' ').toLowerCase();
+  if (GLAPS_REVIEW_STATUSES.has(text)) return text;
+  if (['확정', '정상'].includes(text)) return 'ready';
+  if (['코드없음', '코드 없음'].includes(text)) return 'missing_route_code';
+  if (['조정필요', '조정 필요', '확인필요', '확인 필요'].includes(text)) return 'needs_mapping';
+  return fallback;
+}
+
+function buildEditActor(editSource, userEmail) {
+  return `${editSource || 'unknown'}:${userEmail || 'system'}`;
+}
+
+function directRouteFromPayload(row = {}) {
+  const route = {
+    id: cleanText(row.id),
+    routeCode: cleanText(row.routeCode ?? row.route_code),
+    routeName: cleanText(row.routeName ?? row.route_name),
+    startLocationName: cleanText(row.startLocationName ?? row.start_location_name),
+    waypointName: cleanText(row.waypointName ?? row.waypoint_name),
+    waypointElsName: cleanText(row.waypointElsName ?? row.waypoint_els_name),
+    destinationName: cleanText(row.destinationName ?? row.destination_name),
+    reviewNote: cleanText(row.reviewNote ?? row.review_note),
+    sourceSheet: cleanText(row.sourceSheet ?? row.source_sheet) || 'WEB',
+    sourceRowNumber: Number(row.sourceRowNumber ?? row.source_row_number) || null,
+    rawPayload: {
+      ...(row.rawPayload || row.raw_payload || {}),
+      edit_source: 'web',
+    },
+  };
+  route.routeFingerprint = buildGlapsRouteFingerprint(route);
+  route.reviewStatus = normalizeReviewStatus(row.reviewStatus ?? row.review_status, getGlapsRouteReviewStatus(route));
+  return route;
+}
+
+function directAliasFromPayload(row = {}) {
+  const aliasType = cleanText(row.aliasType ?? row.alias_type);
+  const alias = {
+    id: cleanText(row.id),
+    aliasType: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'waypoint',
+    sourceName: cleanText(row.sourceName ?? row.source_name),
+    elsName: cleanText(row.elsName ?? row.els_name),
+    glapsName: cleanText(row.glapsName ?? row.glaps_name),
+    glapsCode: cleanText(row.glapsCode ?? row.glaps_code),
+    routeCode: cleanText(row.routeCode ?? row.route_code),
+    reviewNote: cleanText(row.reviewNote ?? row.review_note),
+  };
+  alias.reviewStatus = normalizeReviewStatus(row.reviewStatus ?? row.review_status, alias.elsName || alias.glapsCode ? 'ready' : 'needs_mapping');
+  return alias;
 }
 
 async function requireGlapsUser({ write = false } = {}) {
@@ -118,16 +177,16 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
   return {
     branch_id: branchId,
     version_id: versionId,
-    route_code: route.routeCode || '',
-    route_name: route.routeName || '',
-    start_location_name: route.startLocationName || '',
-    waypoint_name: route.waypointName || '',
-    waypoint_els_name: route.waypointElsName || '',
-    destination_name: route.destinationName || '',
-    route_fingerprint: route.routeFingerprint || '',
-    review_status: route.reviewStatus || 'needs_mapping',
-    review_note: route.reviewNote || '',
-    source_sheet: route.sourceSheet || '',
+    route_code: cleanText(route.routeCode),
+    route_name: cleanText(route.routeName),
+    start_location_name: cleanText(route.startLocationName),
+    waypoint_name: cleanText(route.waypointName),
+    waypoint_els_name: cleanText(route.waypointElsName),
+    destination_name: cleanText(route.destinationName),
+    route_fingerprint: cleanText(route.routeFingerprint),
+    review_status: normalizeReviewStatus(route.reviewStatus, 'needs_mapping'),
+    review_note: cleanText(route.reviewNote),
+    source_sheet: cleanText(route.sourceSheet),
     source_row_number: route.sourceRowNumber || null,
     raw_payload: route.rawPayload || {},
     active: true,
@@ -136,17 +195,18 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
 }
 
 function toAliasDbRow(alias, { branchId, versionId, userEmail }) {
+  const aliasType = cleanText(alias.aliasType);
   return {
     branch_id: branchId,
     version_id: versionId,
-    alias_type: alias.aliasType || 'waypoint',
-    source_name: alias.sourceName || '',
-    els_name: alias.elsName || '',
-    glaps_name: alias.glapsName || '',
-    glaps_code: alias.glapsCode || '',
-    route_code: alias.routeCode || '',
-    review_status: alias.reviewStatus || 'needs_mapping',
-    review_note: alias.reviewNote || '',
+    alias_type: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'waypoint',
+    source_name: cleanText(alias.sourceName),
+    els_name: cleanText(alias.elsName),
+    glaps_name: cleanText(alias.glapsName),
+    glaps_code: cleanText(alias.glapsCode),
+    route_code: cleanText(alias.routeCode),
+    review_status: normalizeReviewStatus(alias.reviewStatus, 'needs_mapping'),
+    review_note: cleanText(alias.reviewNote),
     active: true,
     updated_by: userEmail,
   };
@@ -212,6 +272,104 @@ function buildSheetSummary(rows = []) {
     if (row.header_row) item.headerRows += 1;
   });
   return [...summaryMap.values()];
+}
+
+function withTemplateRoutePayload(row = {}, editSource = 'template_upload') {
+  const rawPayload = {
+    ...(row.rawPayload || {}),
+    edit_source: editSource,
+  };
+  if (row.sourceSheet) rawPayload.template_sheet = row.sourceSheet;
+  if (row.sourceRowNumber) rawPayload.template_row_number = row.sourceRowNumber;
+  return { ...row, rawPayload };
+}
+
+async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
+  const actor = buildEditActor(editSource, userEmail);
+  const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => cleanText(row.id)).filter(Boolean);
+  const upsertRows = rows
+    .filter(row => !row.deleteFlag && (row.id || row.routeCode || row.routeName))
+    .map((row) => {
+      const dbRow = toRouteDbRow(withTemplateRoutePayload(row, editSource), { branchId, versionId, userEmail: actor });
+      return row.id ? { id: cleanText(row.id), ...dbRow } : dbRow;
+    });
+
+  if (deleteIds.length > 0) {
+    const { error } = await adminSupabase
+      .from('glaps_transport_routes')
+      .update({ active: false, updated_by: actor })
+      .in('id', deleteIds);
+    if (error) throw error;
+  }
+  if (upsertRows.length > 0) {
+    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows, { onConflict: 'id' });
+    if (error) throw error;
+  }
+  return { updated: upsertRows.length, deleted: deleteIds.length };
+}
+
+async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
+  const actor = buildEditActor(editSource, userEmail);
+  const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => cleanText(row.id)).filter(Boolean);
+  const upsertRows = rows
+    .filter(row => !row.deleteFlag && (row.id || row.sourceName || row.elsName || row.glapsName))
+    .map((row) => {
+      const dbRow = toAliasDbRow(row, { branchId, versionId, userEmail: actor });
+      return row.id ? { id: cleanText(row.id), ...dbRow } : dbRow;
+    });
+
+  if (deleteIds.length > 0) {
+    const { error } = await adminSupabase
+      .from('glaps_master_aliases')
+      .update({ active: false, updated_by: actor })
+      .in('id', deleteIds);
+    if (error) throw error;
+  }
+  if (upsertRows.length > 0) {
+    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows, { onConflict: 'id' });
+    if (error) throw error;
+  }
+  return { updated: upsertRows.length, deleted: deleteIds.length };
+}
+
+async function handleDirectMutation({ adminSupabase, payload, version, branchId, userEmail }) {
+  const mode = cleanText(payload.mode);
+  const action = cleanText(payload.action || 'upsert');
+  const target = mode === 'route' || mode === 'routes' ? 'routes' : (mode === 'alias' || mode === 'aliases' ? 'aliases' : '');
+  if (!target) return { error: jsonError('지원하지 않는 직접수정 대상입니다.', 400) };
+  if (!['upsert', 'delete'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
+
+  const actor = buildEditActor('web', userEmail);
+  const row = payload.row || {};
+  const id = cleanText(payload.id || row.id);
+  if (action === 'delete') {
+    if (!id) return { error: jsonError('삭제할 ID가 없습니다.', 400) };
+    const table = target === 'routes' ? 'glaps_transport_routes' : 'glaps_master_aliases';
+    const { error } = await adminSupabase.from(table).update({ active: false, updated_by: actor }).eq('id', id).eq('version_id', version.id);
+    if (error) throw error;
+    await refreshVersionCounts(adminSupabase, version.id);
+    return { result: { success: true, mode: target, action, updated: 0, deleted: 1 } };
+  }
+
+  if (target === 'routes') {
+    const route = directRouteFromPayload(row);
+    const dbRow = toRouteDbRow(route, { branchId, versionId: version.id, userEmail: actor });
+    const { data, error } = id
+      ? await adminSupabase.from('glaps_transport_routes').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
+      : await adminSupabase.from('glaps_transport_routes').insert(dbRow).select('*').single();
+    if (error) throw error;
+    await refreshVersionCounts(adminSupabase, version.id);
+    return { result: { success: true, mode: target, action, updated: 1, deleted: 0, row: data } };
+  }
+
+  const alias = directAliasFromPayload(row);
+  const dbRow = toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: actor });
+  const { data, error } = id
+    ? await adminSupabase.from('glaps_master_aliases').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
+    : await adminSupabase.from('glaps_master_aliases').insert(dbRow).select('*').single();
+  if (error) throw error;
+  await refreshVersionCounts(adminSupabase, version.id);
+  return { result: { success: true, mode: target, action, updated: 1, deleted: 0, row: data } };
 }
 
 export async function GET(request) {
@@ -316,6 +474,22 @@ export async function POST(request) {
   const branchId = DEFAULT_GLAPS_BRANCH_ID;
 
   try {
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const payload = await request.json().catch(() => ({}));
+      const version = await getActiveVersion(access.adminSupabase, branchId);
+      if (!version) return jsonError('활성 GLAPS 마스터 버전이 없습니다. 먼저 마스터 엑셀을 반영하세요.', 400);
+      const mutation = await handleDirectMutation({
+        adminSupabase: access.adminSupabase,
+        payload,
+        version,
+        branchId,
+        userEmail: access.user.email,
+      });
+      if (mutation.error) return mutation.error;
+      return NextResponse.json(mutation.result);
+    }
+
     const formData = await request.formData();
     const mode = String(formData.get('mode') || 'master');
     const { sourceName, sourceHash, sheets } = await loadPlainSheetsFromForm(formData);
@@ -352,8 +526,9 @@ export async function POST(request) {
         .single();
       if (versionError) throw versionError;
 
-      const routeRows = parsed.routes.map(route => toRouteDbRow(route, { branchId, versionId: version.id, userEmail: access.user.email }));
-      const aliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: access.user.email }));
+      const masterActor = buildEditActor('master', access.user.email);
+      const routeRows = parsed.routes.map(route => toRouteDbRow(withTemplateRoutePayload(route, 'master'), { branchId, versionId: version.id, userEmail: masterActor }));
+      const aliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: masterActor }));
       const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
@@ -383,40 +558,55 @@ export async function POST(request) {
 
     if (mode === 'routes') {
       const rows = parseGlapsRouteTemplateSheets(sheets);
-      const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => row.id);
-      const upsertRows = rows
-        .filter(row => !row.deleteFlag && (row.id || row.routeCode || row.routeName))
-        .map(row => ({ id: row.id || undefined, ...toRouteDbRow(row, { branchId, versionId: version.id, userEmail: access.user.email }) }));
-
-      if (deleteIds.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_transport_routes').update({ active: false }).in('id', deleteIds);
-        if (error) throw error;
-      }
-      if (upsertRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_transport_routes').upsert(upsertRows, { onConflict: 'id' });
-        if (error) throw error;
-      }
+      const result = await applyRouteTemplateRows(access.adminSupabase, rows, {
+        branchId,
+        versionId: version.id,
+        userEmail: access.user.email,
+        editSource: 'template_upload',
+      });
       await refreshVersionCounts(access.adminSupabase, version.id);
-      return NextResponse.json({ success: true, mode, updated: upsertRows.length, deleted: deleteIds.length });
+      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result });
     }
 
     if (mode === 'aliases') {
       const rows = parseGlapsAliasTemplateSheets(sheets);
-      const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => row.id);
-      const upsertRows = rows
-        .filter(row => !row.deleteFlag && (row.id || row.sourceName || row.elsName || row.glapsName))
-        .map(row => ({ id: row.id || undefined, ...toAliasDbRow(row, { branchId, versionId: version.id, userEmail: access.user.email }) }));
-
-      if (deleteIds.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_aliases').update({ active: false }).in('id', deleteIds);
-        if (error) throw error;
-      }
-      if (upsertRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_aliases').upsert(upsertRows, { onConflict: 'id' });
-        if (error) throw error;
-      }
+      const result = await applyAliasTemplateRows(access.adminSupabase, rows, {
+        branchId,
+        versionId: version.id,
+        userEmail: access.user.email,
+        editSource: 'template_upload',
+      });
       await refreshVersionCounts(access.adminSupabase, version.id);
-      return NextResponse.json({ success: true, mode, updated: upsertRows.length, deleted: deleteIds.length });
+      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result });
+    }
+
+    if (mode === 'all') {
+      const routeRows = parseGlapsRouteTemplateSheets(sheets);
+      const aliasRows = parseGlapsAliasTemplateSheets(sheets);
+      const [routeResult, aliasResult] = await Promise.all([
+        applyRouteTemplateRows(access.adminSupabase, routeRows, {
+          branchId,
+          versionId: version.id,
+          userEmail: access.user.email,
+          editSource: 'template_upload',
+        }),
+        applyAliasTemplateRows(access.adminSupabase, aliasRows, {
+          branchId,
+          versionId: version.id,
+          userEmail: access.user.email,
+          editSource: 'template_upload',
+        }),
+      ]);
+      await refreshVersionCounts(access.adminSupabase, version.id);
+      return NextResponse.json({
+        success: true,
+        mode,
+        editSource: 'template_upload',
+        updated: routeResult.updated + aliasResult.updated,
+        deleted: routeResult.deleted + aliasResult.deleted,
+        routes: routeResult,
+        aliases: aliasResult,
+      });
     }
 
     return jsonError('지원하지 않는 업로드 모드입니다.', 400);

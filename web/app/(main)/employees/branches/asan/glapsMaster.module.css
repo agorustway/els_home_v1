@@ -177,6 +177,109 @@
     min-width: 160px;
 }
 
+.primaryButton {
+    background: #0f766e !important;
+    border-color: #0f766e !important;
+    color: #fff !important;
+}
+
+.editorPanel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #cfe2f3;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+.editorGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 8px;
+}
+
+.editorField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.editorField span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.editorField input,
+.editorField select {
+    height: 32px;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0 9px;
+}
+
+.editorActions,
+.rowActions {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.editorActions button,
+.rowActions button {
+    height: 30px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.74rem;
+    font-weight: 900;
+    padding: 0 9px;
+    white-space: nowrap;
+}
+
+.editorActions button:first-child {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+}
+
+.sourceBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 68px;
+    height: 23px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.sourceWeb {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.sourceUpload {
+    background: #fef3c7;
+    color: #a16207;
+}
+
+.sourceMaster {
+    background: #dcfce7;
+    color: #047857;
+}
+
 .tableWrap {
     position: relative;
     min-height: 300px;
@@ -281,6 +384,18 @@
     .toolbar {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .editorPanel {
+        grid-template-columns: 1fr;
+    }
+
+    .editorGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .editorActions {
+        justify-content: flex-end;
     }
 
     .segmented,
