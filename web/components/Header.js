@@ -422,7 +422,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
             <div className={`${styles.mobileNav} ${menuOpen ? styles.mobileNavOpen : ''}`}>
                 <div className={styles.mobileNavHeader}>
                     <div className={styles.mobileLogo}>
-                        <img src="/images/logo.png" alt="ELS SOLUTION" style={{ height: '24px' }} />
+                        <img src="/images/logo.png" alt="ELS SOLUTION" style={{ height: '20px' }} />
                     </div>
                     {!loading && (profile ?
                         <>

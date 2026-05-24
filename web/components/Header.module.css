@@ -390,15 +390,15 @@
     position: fixed;
     top: 0;
     right: 0;
-    width: 75%;
-    max-width: 300px;
+    width: clamp(210px, 60vw, 236px);
+    max-width: none;
     height: 100vh;
     background: #fff;
     z-index: 9999;
     /* 최상위로 조정 */
     transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     flex-direction: column;
-    box-shadow: -10px 0 50px rgba(0, 0, 0, 0.1);
+    box-shadow: -8px 0 28px rgba(15, 23, 42, 0.18);
     overflow-y: auto;
     transform: translateX(100%);
 }
@@ -458,51 +458,51 @@
 
 /* Mobile Menu Internal Styles */
 .mobileNavHeader {
-    padding: 18px 18px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #eee;
+    padding: 14px 14px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
 }
 
 .mobileLogo {
     display: flex;
     align-items: center;
-    padding-bottom: 10px;
-    border-bottom: 1px dashed #ddd;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #dbe3ef;
 }
 
 .welcomeMsg {
-    font-size: 1rem;
+    font-size: 0.86rem;
     color: #333;
-    line-height: 1.4;
-    margin-bottom: 10px;
+    line-height: 1.35;
+    margin-bottom: 6px;
 }
 
 .mobileAuthBtn {
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     background: var(--primary-blue);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    border-radius: 7px;
+    font-size: 0.84rem;
     font-weight: 600;
     cursor: pointer;
 }
 
 .mobileNavLinks {
-    padding: 8px 0;
+    padding: 6px 0;
 }
 
 .mobileLink {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 11px 18px;
-    min-height: 40px;
-    font-size: 0.98rem;
+    padding: 8px 14px;
+    min-height: 34px;
+    font-size: 0.86rem;
     font-weight: 600;
     color: #333;
     text-decoration: none;
@@ -520,23 +520,23 @@
     max-height: none;
     overflow: visible;
     border-bottom: 1px solid #eee;
-    padding-bottom: 4px;
+    padding-bottom: 3px;
 }
 
 .mobileSubItem {
     display: flex;
     align-items: center;
-    padding: 9px 18px 9px 28px;
-    min-height: 36px;
-    font-size: 0.88rem;
+    padding: 7px 14px 7px 22px;
+    min-height: 32px;
+    font-size: 0.8rem;
     color: #666;
     text-decoration: none;
     border-left: 3px solid transparent;
 }
 
 .mobileSubItemNested {
-    padding-left: 40px;
-    font-size: 0.84rem;
+    padding-left: 32px;
+    font-size: 0.78rem;
 }
 
 .mobileSubItem:hover,
@@ -547,8 +547,8 @@
 }
 
 .mobileSubLabel {
-    padding: 12px 18px 4px;
-    font-size: 0.8rem;
+    padding: 10px 14px 3px;
+    font-size: 0.72rem;
     font-weight: 700;
     color: #999;
     text-transform: uppercase;
@@ -558,16 +558,16 @@
 .mobileSubDivider {
     height: 1px;
     background: #eee;
-    margin: 6px 18px;
+    margin: 5px 14px;
 }
 
 .mobileSubToggle {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 9px 18px 9px 28px;
-    min-height: 36px;
-    font-size: 0.88rem;
+    padding: 7px 14px 7px 22px;
+    min-height: 32px;
+    font-size: 0.8rem;
     color: #666;
     text-decoration: none;
     cursor: pointer;
