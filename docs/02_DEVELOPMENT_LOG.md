@@ -1,3 +1,19 @@
+## [2026-05-24] GLAPS 수정양식 제목/컬럼명 가시성 보정 (v5.14.154)
+### 핵심
+- GLAPS 수정양식의 `운송경로_수정양식`, `항목매핑_수정양식` 시트에 1행 제목, 2행 설명, 3행 컬럼명 구조를 적용했습니다.
+- 엑셀을 열 때 A1부터 보이도록 시트 뷰의 `activeCell`, `topLeftCell`, 고정 행을 조정했습니다.
+- 기존 파서는 첫 8행 안에서 헤더를 찾으므로 3행 컬럼명 구조도 그대로 업로드 인식됩니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS ELS코드 다중 별칭 분리 인식 (v5.14.153)
 ### 핵심
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 셀 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 칸에 여러 개 들어와도 각각 별칭으로 등록되게 했습니다.

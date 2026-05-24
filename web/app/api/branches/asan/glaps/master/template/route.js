@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const PAGE_SIZE = 1000;
+const TEMPLATE_HEADER_ROW_NUMBER = 3;
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -52,16 +53,38 @@ async function fetchPagedGlapsRows(buildQuery) {
   return rows;
 }
 
-function styleWorksheet(sheet) {
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
-  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5673' } };
-  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-  sheet.autoFilter = { from: 'A1', to: `${sheet.getColumn(sheet.columnCount).letter}1` };
+function styleWorksheet(sheet, { headerRowNumber = 1, titleRowNumber = null, noteRowNumber = null } = {}) {
+  sheet.views = [{ state: 'frozen', ySplit: headerRowNumber, topLeftCell: `A${headerRowNumber + 1}`, activeCell: 'A1' }];
+  if (titleRowNumber) {
+    const titleRow = sheet.getRow(titleRowNumber);
+    titleRow.height = 24;
+    titleRow.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+    titleRow.alignment = { vertical: 'middle', horizontal: 'left' };
+  }
+  if (noteRowNumber) {
+    const noteRow = sheet.getRow(noteRowNumber);
+    noteRow.height = 22;
+    noteRow.font = { bold: true, color: { argb: 'FF334155' } };
+    noteRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+    noteRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  }
+  sheet.getRow(headerRowNumber).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(headerRowNumber).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F5673' } };
+  sheet.getRow(headerRowNumber).alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.autoFilter = { from: `A${headerRowNumber}`, to: `${sheet.getColumn(sheet.columnCount).letter}${headerRowNumber}` };
   sheet.columns.forEach((column) => {
     const maxLen = Math.max(10, ...column.values.map(value => String(value || '').length));
     column.width = Math.min(42, maxLen + 3);
   });
+}
+
+function addTemplateHeader(sheet, { title, note, headers }) {
+  sheet.addRow([title]);
+  sheet.mergeCells(1, 1, 1, headers.length);
+  sheet.addRow([note]);
+  sheet.mergeCells(2, 1, 2, headers.length);
+  sheet.addRow(headers);
 }
 
 function addGuideWorksheet(workbook) {
@@ -88,7 +111,7 @@ function addGuideWorksheet(workbook) {
     ['항목매핑', '항목매핑_수정양식', 'GLAPS코드', 'GLAPS 업로드에 들어갈 기존 코드를 입력합니다.', '임의 생성 금지'],
     ['항목매핑', '항목매핑_수정양식', '운송경로코드', '특정 운송경로에만 적용할 때 입력합니다.', '일반 항목은 비워도 됨'],
   ].forEach(row => sheet.addRow(row));
-  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A1' }];
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
   sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
@@ -157,11 +180,16 @@ export async function GET(request) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'ELS Solution';
     workbook.created = new Date();
+    workbook.views = [{ activeTab: 0, firstSheet: 0, visibility: 'visible' }];
     addGuideWorksheet(workbook);
 
     if (kind === 'routes' || kind === 'all') {
       const sheet = workbook.addWorksheet('운송경로_수정양식');
-      sheet.addRow(GLAPS_ROUTE_TEMPLATE_HEADERS);
+      addTemplateHeader(sheet, {
+        title: 'GLAPS 운송경로 수정양식',
+        note: '상세배차 매칭 기준: 상차지 + 경유지(ELS) + 하차지(선적). 기존 GLAPS 운송경로코드를 도출하기 위한 원장 보정용입니다.',
+        headers: GLAPS_ROUTE_TEMPLATE_HEADERS,
+      });
       if (version) {
         const data = await fetchPagedGlapsRows(() => access.adminSupabase
           .from('glaps_transport_routes')
@@ -171,12 +199,20 @@ export async function GET(request) {
           .order('route_code', { ascending: true }));
         data.forEach(row => sheet.addRow(routeToTemplateRow(row)));
       }
-      styleWorksheet(sheet);
+      styleWorksheet(sheet, {
+        headerRowNumber: TEMPLATE_HEADER_ROW_NUMBER,
+        titleRowNumber: 1,
+        noteRowNumber: 2,
+      });
     }
 
     if (kind === 'aliases' || kind === 'all') {
       const sheet = workbook.addWorksheet('항목매핑_수정양식');
-      sheet.addRow(GLAPS_ALIAS_TEMPLATE_HEADERS);
+      addTemplateHeader(sheet, {
+        title: 'GLAPS 항목매핑 수정양식',
+        note: '포트/선사/컨테이너/운송사/컨샤이니 등 상세배차 값과 GLAPS 기존 코드를 연결하는 보정용입니다.',
+        headers: GLAPS_ALIAS_TEMPLATE_HEADERS,
+      });
       if (version) {
         const data = await fetchPagedGlapsRows(() => access.adminSupabase
           .from('glaps_master_aliases')
@@ -187,7 +223,11 @@ export async function GET(request) {
           .order('source_name', { ascending: true }));
         data.forEach(row => sheet.addRow(aliasToTemplateRow(row)));
       }
-      styleWorksheet(sheet);
+      styleWorksheet(sheet, {
+        headerRowNumber: TEMPLATE_HEADER_ROW_NUMBER,
+        titleRowNumber: 1,
+        noteRowNumber: 2,
+      });
     }
 
     const buffer = await workbook.xlsx.writeBuffer();

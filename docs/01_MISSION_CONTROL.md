@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.153 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.154 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 코드시트의 `ELS코드1~N` 셀에서 쉼표/줄바꿈으로 나열한 다중 별칭을 각각 인식하게 했다.
+> 최신 업데이트: GLAPS 수정양식 엑셀이 열릴 때 A1 제목부터 보이도록 운송경로/항목매핑 시트에 제목·설명·컬럼명 행을 분리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.153
+- **웹 버전**: v5.14.154
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -22,6 +22,7 @@
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 - GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
+- GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조로 열리며 A1에서 시작한다.
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 
 ## ACTIVE SYSTEMS
@@ -34,6 +35,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.154**: GLAPS 수정양식 운송경로/항목매핑 시트가 엑셀에서 빈 헤더처럼 보이지 않도록 1행 제목, 2행 설명, 3행 컬럼명으로 분리하고, 열릴 때 A1부터 보이도록 시트 뷰를 고정했다.
 - **v5.14.153**: GLAPS 마스터 코드시트 `ELS코드1~N` 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 셀에 여러 개 들어와도 각각 alias로 분리되게 했다. 수정양식 설명서에도 ELS 수기 컬럼 위치 무관/다중값 구분 규칙을 추가했다.
 - **v5.14.152**: GLAPS 코드 화면의 `현재/전체 수정양식` 구분을 제거하고 `수정양식 내보내기/업로드` 단일 흐름으로 정리했다. 다운로드 파일명은 `GLAPS_수정양식.xlsx`이며, 첫 시트 `설명서`에 컬럼별 입력방법과 삭제/수정출처 주의사항을 넣었다.
 - **v5.14.151**: 전역 헤더를 64px, 모바일 헤더를 56px 기준으로 낮추고 티커·임직원 헤더·사이드바 sticky 오프셋을 변수 기준으로 동기화했다. 인트라넷 사이드바는 데스크톱 244px, 모바일 244px 상한으로 줄이고 항목 높이/패딩을 낮춰 메뉴 밀도를 높였다.
@@ -48,7 +50,7 @@
 
 ## VERIFICATION
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
-- `npm.cmd run lint -- "utils/glapsMasterData.mjs" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS
