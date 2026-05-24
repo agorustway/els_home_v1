@@ -1,3 +1,18 @@
+## [2026-05-24] 배차변동내역 이벤트 장부 기준 재정리 (v5.14.179)
+### 핵심
+- `배차변동내역` 탭이 확정 후 현재 상세라인 전체를 `배차수정후` 목록처럼 보여주던 동작을 되돌렸습니다.
+- 변동이 없으면 `변동 없음` 안내만 표시하고, 이후 확정 스냅샷 대비 추가/삭제/변경 이벤트가 감지될 때만 발생 순서대로 노출하는 구조로 정리했습니다.
+- 다음 구현 기준은 확정 스냅샷 저장, 이벤트 중복 방지 키, 확인/미확인 필터, 변동 테이블 SORT 금지입니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 차량관제 운행기록/교육이수 페이지 조회 적용 (v5.14.178)
 ### 핵심
 - 운행기록/교육이수 목록을 한 번에 200건 로딩하던 구조에서 서버 페이지 단위 조회로 바꿨습니다.

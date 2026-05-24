@@ -1185,7 +1185,7 @@ function AsanDispatchContent() {
 
         try {
             if (mainView === 'detail' || mainView === 'detail-change') {
-                const detailModeName = mainView === 'detail' ? '상세배차내역' : '배차수정후';
+                const detailModeName = mainView === 'detail' ? '상세배차내역' : '배차변동내역';
                 const exportHeaders = mainView === 'detail' ? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS;
                 const exportRows = mainView === 'detail'
                     ? filteredDetailLines.map(detailLineToRow)
@@ -1433,18 +1433,9 @@ function AsanDispatchContent() {
     }), [detailDisplayLines, filteredDetailLines.length]);
 
     const detailChangeRows = useMemo(() => {
-        return searchedDetailLines.map((line) => {
-            const changedAt = line.detailUpdatedAt || fmtShortTs(line.confirmedBkgUpdatedAt || '');
-            return {
-                line,
-                values: [
-                    ...detailLineToRow(line),
-                    changedAt ? '수정' : '확정기준',
-                    changedAt,
-                ],
-            };
-        });
-    }, [searchedDetailLines]);
+        // 확정 이후 추가/삭제/변경 이벤트 원장이 붙기 전까지 현재 상세라인 전체를 변동으로 노출하지 않는다.
+        return [];
+    }, []);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -2183,7 +2174,7 @@ function AsanDispatchContent() {
                             )}
                         </div>
                     </div>
-                    {detailConfirmationLocked ? (
+                    {detailConfirmationLocked && detailChangeRows.length > 0 ? (
                         <div className={styles.tableWrap}>
                             <div className={styles.tableScroll}>
                                 <table className={`${styles.table} ${styles.detailTable}`}>
@@ -2224,8 +2215,12 @@ function AsanDispatchContent() {
                         </div>
                     ) : (
                         <div className={styles.detailChangePanel}>
-                            <strong>변동 입력 대기</strong>
-                            <span>배차확정 후 현재 상세라인을 `배차수정후` 기준으로 표시합니다.</span>
+                            <strong>{detailConfirmationLocked ? '변동 없음' : '변동 입력 대기'}</strong>
+                            <span>
+                                {detailConfirmationLocked
+                                    ? '확정 이후 추가/삭제/변경 이벤트가 감지되면 발생 순서대로 표시합니다.'
+                                    : '배차확정 후 추가/삭제/변경 이벤트를 기록합니다.'}
+                            </span>
                         </div>
                     )}
                 </>
