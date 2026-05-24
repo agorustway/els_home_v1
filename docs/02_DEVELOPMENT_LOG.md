@@ -1,3 +1,21 @@
+## [2026-05-24] GLAPS 항목매핑 양식 경로 중복 제거 (v5.14.160)
+### 핵심
+- `운송경로_수정양식`과 `항목매핑_수정양식`에 같은 경로 정보가 중복 노출되어 보이는 혼란을 줄였습니다.
+- 항목매핑 수정양식에서는 운송경로 원장에서 자동 생성된 `start/waypoint/destination` 보조 alias를 제외합니다.
+- 항목매핑 수정양식의 `운송경로코드` 컬럼도 숨겨, 경로 수정은 운송경로 시트 한 곳에서만 하도록 정리했습니다. 기존 양식에 해당 컬럼이 있어도 업로드 파서는 계속 인식합니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/utils/glapsMasterData.mjs`
+- `web/tests/glapsMasterData.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 수정양식 변경 행만 반영 (v5.14.159)
 ### 핵심
 - GLAPS 수정양식 업로드 시 ID가 있는 기존 행은 DB의 현재 값과 비교해 실제 값이 달라진 행만 update합니다.

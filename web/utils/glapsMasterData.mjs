@@ -22,7 +22,6 @@ export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
   'ELS명',
   'GLAPS명',
   'GLAPS코드',
-  '운송경로코드',
   '매칭상태',
   '조정안내',
   '수정출처',

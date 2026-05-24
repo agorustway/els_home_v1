@@ -13,6 +13,7 @@ export const revalidate = 0;
 
 const PAGE_SIZE = 1000;
 const TEMPLATE_HEADER_ROW_NUMBER = 3;
+const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -52,6 +53,10 @@ async function fetchPagedGlapsRows(buildQuery) {
     if (!data || data.length < PAGE_SIZE) break;
   }
   return rows;
+}
+
+function isTemplateVisibleAlias(row = {}) {
+  return !ROUTE_ALIAS_TYPES.has(String(row.alias_type || '').trim());
 }
 
 function applyRowCellStyle(sheet, rowNumber, lastColumnNumber, style) {
@@ -128,12 +133,11 @@ function addGuideWorksheet(workbook) {
     ['운송경로', '운송경로_수정양식', '경유지', 'GLAPS 원장 작업지명을 입력합니다.', '원본명 보존용'],
     ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
     ['운송경로', '운송경로_수정양식', '하차지(선적)', '배차 상세의 하차지/선적과 매칭될 값을 입력합니다.', '예: 부산신항, 광양항'],
-    ['항목매핑', '항목매핑_수정양식', '항목', 'start / waypoint / destination / port / line / container_type / carrier / consignee / generic 중 하나를 입력합니다.', '코드 도출 구분'],
+    ['항목매핑', '항목매핑_수정양식', '항목', 'port / line / container_type / carrier / consignee / generic 중 하나를 입력합니다.', '운송경로의 상차지/경유지/하차지는 운송경로 시트에서 수정'],
     ['항목매핑', '항목매핑_수정양식', '원본명', '배차판에서 들어오는 값을 입력합니다.', '예: 40HC, CMA, INKAT'],
     ['항목매핑', '항목매핑_수정양식', 'ELS명', '우리 기준 이름 또는 별칭을 입력합니다.', '검색/매칭 보조'],
     ['항목매핑', '항목매핑_수정양식', 'GLAPS명', 'GLAPS 원장 명칭을 입력합니다.', '참고/검색용'],
     ['항목매핑', '항목매핑_수정양식', 'GLAPS코드', 'GLAPS 업로드에 들어갈 기존 코드를 입력합니다.', '임의 생성 금지'],
-    ['항목매핑', '항목매핑_수정양식', '운송경로코드', '특정 운송경로에만 적용할 때 입력합니다.', '일반 항목은 비워도 됨'],
   ].forEach(row => sheet.addRow(row));
   sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2', activePane: 'bottomLeft' }];
   applyRowCellStyle(sheet, 1, 5, {
@@ -187,7 +191,6 @@ function aliasToTemplateRow(row = {}) {
     row.els_name || '',
     row.glaps_name || '',
     row.glaps_code || '',
-    row.route_code || '',
     reviewStatusLabel(row.review_status),
     row.review_note || '',
     editSourceLabel(row.updated_by),
@@ -251,7 +254,7 @@ export async function GET(request) {
           .eq('active', true)
           .order('alias_type', { ascending: true })
           .order('source_name', { ascending: true }));
-        data.forEach(row => sheet.addRow(aliasToTemplateRow(row)));
+        data.filter(isTemplateVisibleAlias).forEach(row => sheet.addRow(aliasToTemplateRow(row)));
       }
       styleWorksheet(sheet, {
         headerRowNumber: TEMPLATE_HEADER_ROW_NUMBER,
