@@ -40,19 +40,41 @@ function groupLocationsByTrip(locations = []) {
     return grouped;
 }
 
+function pickPositiveMetric(...values) {
+    for (const value of values) {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    }
+    return 0;
+}
+
 function applyTripLocationStats(trips = [], groupedLocations = {}, options = {}) {
     trips.forEach((trip) => {
         const list = groupedLocations[trip.id] || [];
-        const stats = computeReliableRouteStats(list, trip);
-        trip.distance_km = stats.distanceKm;
-        trip.route_distance_km = stats.distanceKm;
-        trip.max_speed = stats.maxSpeed;
-        trip.avg_speed = stats.avgSpeed;
+        const stats = list.length > 0 ? computeReliableRouteStats(list, trip) : null;
+        const distanceKm = stats?.distanceKm > 0
+            ? stats.distanceKm
+            : pickPositiveMetric(trip.distance_km, trip.route_distance_km);
+        const maxSpeed = stats?.maxSpeed > 0
+            ? stats.maxSpeed
+            : pickPositiveMetric(trip.max_speed, trip.maxSpeed);
+        const avgSpeed = stats?.avgSpeed > 0
+            ? stats.avgSpeed
+            : pickPositiveMetric(trip.avg_speed, trip.avgSpeed);
+
+        trip.distance_km = distanceKm || trip.distance_km || trip.route_distance_km || null;
+        trip.route_distance_km = distanceKm || trip.route_distance_km || trip.distance_km || null;
+        trip.max_speed = maxSpeed || trip.max_speed || trip.maxSpeed || null;
+        trip.avg_speed = avgSpeed || trip.avg_speed || trip.avgSpeed || null;
 
         if (options.includeLastLocation) {
-            const displayLocation = pickLatestDisplayLocation(list) || stats.points[stats.points.length - 1] || null;
-            trip.lastLocation = displayLocation;
-            trip.last_location_address = displayLocation?.address || null;
+            const displayLocation = list.length > 0
+                ? pickLatestDisplayLocation(list) || stats?.points?.[stats.points.length - 1] || null
+                : null;
+            if (displayLocation) {
+                trip.lastLocation = displayLocation;
+                trip.last_location_address = displayLocation.address || trip.last_location_address || null;
+            }
         }
     });
     return trips;

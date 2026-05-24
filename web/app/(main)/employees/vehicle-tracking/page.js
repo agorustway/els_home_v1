@@ -1492,7 +1492,9 @@ export default function VehicleTrackingPage() {
                                 <th style={{ maxWidth: '160px' }}>일보/메모</th>
                                 <th style={{ width: '60px' }}>사진</th>
                                 <th onClick={() => handleSort('started_at')} className={styles.sortable} style={{ width: '130px' }}>날짜 {sortConfig.key === 'started_at' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</th>
-                                <th style={{ width: '240px' }}>최종위치(속도)</th>
+                                <th style={{ width: '90px' }}>운행거리</th>
+                                <th style={{ width: '90px' }}>최고속도</th>
+                                <th style={{ width: '180px' }}>최종위치</th>
                                 <th style={{ width: '100px' }}>관리</th>
                             </tr>
                         </thead>
@@ -1545,10 +1547,14 @@ export default function VehicleTrackingPage() {
                                         <div style={{ color: '#1e293b' }}>{formatDateTime(trip.started_at)}</div>
                                         <div style={{ color: '#64748b' }}>{formatDateTime(trip.completed_at)}</div>
                                     </td>
-                                    <td data-label="최종위치" title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
+                                    <td data-label="운행거리" style={{ fontSize: '0.78rem', fontWeight: 800, color: '#2563eb', whiteSpace: 'nowrap' }}>
+                                        {getTripDistance(trip) || '-'}
+                                    </td>
+                                    <td data-label="최고속도" style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ef4444', whiteSpace: 'nowrap' }}>
+                                        {getTripMaxSpeed(trip)}
+                                    </td>
+                                    <td data-label="최종위치" title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '180px' }}>
                                         <div>{trip.last_location_address || '-'}</div>
-                                        {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
-                                        {getTripDistance(trip) && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>운행거리: {getTripDistance(trip)}</div>}
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>

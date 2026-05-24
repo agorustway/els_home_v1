@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const pageSource = readFileSync(new URL('../app/(main)/employees/vehicle-tracking/page.js', import.meta.url), 'utf8');
 const cssSource = readFileSync(new URL('../app/(main)/employees/vehicle-tracking/tracking.module.css', import.meta.url), 'utf8');
+const tripsRouteSource = readFileSync(new URL('../app/api/vehicle-tracking/trips/route.js', import.meta.url), 'utf8');
 
 test('모바일 운행 상세현황은 데스크탑 표 대신 카드형 위치/로그 목록을 제공한다', () => {
   assert.ok(pageSource.includes('mobileLocationTimeline'), 'mobile location timeline should be rendered');
@@ -47,6 +48,18 @@ test('관제 통계 카드는 실행 버튼처럼 떠오르지 않는다', () =>
 test('상세/기록 화면은 운행거리와 최고속도 중심으로 표시한다', () => {
   assert.ok(pageSource.includes('const getTripMaxSpeed'), 'trip max speed helper should exist');
   assert.ok(pageSource.includes('<span>최고속도</span>'), 'detail metrics should show max speed');
-  assert.ok(pageSource.includes('운행거리: {getTripDistance(trip)}'), 'record rows should show trip distance');
+  assert.ok(pageSource.includes('<th style={{ width: \'90px\' }}>운행거리</th>'), 'record table should expose distance as its own column');
+  assert.ok(pageSource.includes('<th style={{ width: \'90px\' }}>최고속도</th>'), 'record table should expose max speed as its own column');
+  assert.ok(pageSource.includes('data-label="운행거리"'), 'mobile record cards should show distance label');
+  assert.ok(pageSource.includes('data-label="최고속도"'), 'mobile record cards should show max speed label');
+  assert.ok(pageSource.includes('{getTripMaxSpeed(trip)}'), 'record rows should use max speed fallback helper');
+  assert.ok(!pageSource.includes('최종위치(속도)'), 'final location should not hide distance and speed in one column');
   assert.ok(!pageSource.includes('평균속도'), 'average speed should not be displayed');
+});
+
+test('운행기록 API는 위치 포인트가 부족해도 기존 거리/최고속도 저장값을 0으로 덮지 않는다', () => {
+  assert.ok(tripsRouteSource.includes('function pickPositiveMetric'), 'API should have a positive metric fallback helper');
+  assert.ok(tripsRouteSource.includes('const stats = list.length > 0 ? computeReliableRouteStats(list, trip) : null'), 'API should skip zero stats when there are no location points');
+  assert.match(tripsRouteSource, /pickPositiveMetric\(trip\.distance_km, trip\.route_distance_km\)/, 'distance should fall back to stored trip values');
+  assert.match(tripsRouteSource, /pickPositiveMetric\(trip\.max_speed, trip\.maxSpeed\)/, 'max speed should fall back to stored trip values');
 });

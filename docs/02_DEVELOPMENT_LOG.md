@@ -1,3 +1,19 @@
+## [2026-05-24] 차량관제 운행거리/최고속도 기록 노출 보정 (v5.14.175)
+### 핵심
+- 운행기록 표의 `최종위치(속도)` 묶음 컬럼을 `운행거리`, `최고속도`, `최종위치` 독립 컬럼으로 분리했습니다.
+- 기록 행과 모바일 카드가 같은 기준으로 운행거리/최고속도를 표시하도록 `getTripDistance`, `getTripMaxSpeed` 헬퍼를 사용하게 했습니다.
+- `/api/vehicle-tracking/trips`는 위치 포인트가 없거나 일부 운행만 조회된 경우 기존 `distance_km`/`route_distance_km`/`max_speed` 저장값을 0/null로 덮어쓰지 않게 했습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 6개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "app/api/vehicle-tracking/trips/route.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/api/vehicle-tracking/trips/route.js`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS코드 테이블 필터 목록화 (v5.14.174)
 ### 핵심
 - GLAPS코드 운송경로/항목매핑/원본시트 테이블 필터를 텍스트 입력에서 목록 선택으로 바꿨습니다.
