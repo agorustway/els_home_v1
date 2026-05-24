@@ -1,3 +1,21 @@
+## [2026-05-24] AI 어시스턴트 안내/웹 RAG 설명 정합성 보정 (v5.14.157)
+### 핵심
+- AI 어시스턴트 화면의 버전, 소개 문구, 빠른 질문, 가이드 섹션을 `web/utils/aiAssistantMeta.mjs` 함수로 통합했습니다.
+- 오래된 `v5.11.0`, 이미지 요약, NAS 원본 파일 직접 파싱 예시는 제거하고 현재 실제 연결 범위인 Supabase DB, 아산 `branch_dispatch`, 웹 첨부문서 색인, 안전운임/차량/컨테이너/외부 API 중심으로 설명을 맞췄습니다.
+- 채팅 API의 문서 검색 라벨을 `사내 웹 첨부문서`로 바꾸고, `web_attachment` 색인 기준 출처와 최근 웹자료 조회, 요청별 KST 기준시각 주입을 보강했습니다.
+### 검증
+- `node --test web/tests/chatMemory.test.mjs web/tests/asanDispatchRag.test.mjs web/tests/aiAssistantMeta.test.mjs web/tests/asanDashboardView.test.mjs`: 52개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/aiAssistantMeta.mjs`
+- `web/app/(main)/employees/(intranet)/ask/page.js`
+- `web/app/api/chat/route.js`
+- `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 수정양식 시트 시작 위치 보정 (v5.14.156)
 ### 핵심
 - GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 행 전체가 아니라 실제 컬럼 범위에만 적용해 M열 이후 빈 영역이 헤더처럼 보이는 문제를 줄였습니다.
@@ -13,6 +31,7 @@
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
+
 ## [2026-05-24] 헤더 인트라넷 AI 어시스턴트 메뉴 복구 (v5.14.155)
 ### 핵심
 - 전역 헤더의 인트라넷 드롭다운은 사이드바 메뉴와 별도 배열이라 `직원 서비스` 하위에 `AI 어시스턴트`가 빠져 있었습니다.

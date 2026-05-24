@@ -4,16 +4,20 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUserRole } from '@/hooks/useUserRole';
+import {
+    getAiAssistantGuideSections,
+    getAiAssistantIntroMessage,
+    getAiAssistantSubtitle,
+    getAiAssistantVersion,
+    getAiQuickPrompts,
+} from '@/utils/aiAssistantMeta.mjs';
 import { hasUserConversation, optimizeSessionsForStorage, shouldUsePersistedSessions } from '@/utils/chatMemory.mjs';
 import styles from './ask.module.css';
 
-const QUICK_PROMPTS = [
-    { label: 'TCLU4255167 이력 조회', icon: null },
-    { label: '아산지점 24년_운임표.xlsx 내용 요약', icon: null },
-    { label: '[본사] 명함 신청서(이미지) 요약', icon: null },
-    { label: '내일 아산 차량관리 주의사항', icon: null },
-    { label: '부산 신항 40ft 안전운임', icon: null },
-];
+const AI_VERSION = getAiAssistantVersion();
+const AI_SUBTITLE = getAiAssistantSubtitle();
+const QUICK_PROMPTS = getAiQuickPrompts();
+const GUIDE_SECTIONS = getAiAssistantGuideSections();
 
 const LS_KEY = 'els_ai_sessions';
 const LS_CLEAR_KEY = 'els_ai_sessions_cleared_at';
@@ -217,7 +221,7 @@ export default function AskPage() {
 
     const DEFAULT_INIT_MSG = {
         role: 'assistant',
-        content: '안녕하세요! **더 똑똑해진 ELS AI 엘스(v5.11.0)**입니다.\n\n이제 사외 데이터(실시간 날씨, 미세먼지, 유가, K-Law 법령)와 사내 데이터(사내 웹 문서, 이트랜스 이력, 차량 관제)를 통합하여 답변해 드립니다.\n\n사내 지식이나 실시간 현황에 대해 무엇이든 물어보세요!',
+        content: getAiAssistantIntroMessage(),
         timestamp: new Date().toISOString()
     };
 
@@ -772,41 +776,20 @@ export default function AskPage() {
 
     const GuideContent = () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 (v5.11.0)</h2>
-            
-            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>배차 및 마감자료 분석</span>
-                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    아산 배차판과 실적 데이터를 정밀 분석합니다.
-                    <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;오늘 모비스 배차 총 몇 대야?&quot;</li>
-                        <li>&quot;1145 차량 4월 13일 작업지 어디야?&quot;</li>
-                        <li>&quot;8163 수출리스트보고 3월 내역 찾아줘&quot;</li>
-                    </ul>
+            <h2 className={styles.guideTitle} style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '8px' }}>ELS AI 가이드 ({AI_VERSION})</h2>
+            {GUIDE_SECTIONS.map((section) => (
+                <div key={section.title} className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                    <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>{section.title}</span>
+                    <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                        {section.description}
+                        <ul style={{ paddingLeft: '20px', margin: '4px 0 0 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {section.examples.map((example) => (
+                                <li key={example}>&quot;{example}&quot;</li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
-            </div>
-
-            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>안전운임 및 물류 관제</span>
-                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    <ul style={{ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li>&quot;아산 부산 40ft 안전운임 얼마야?&quot;</li>
-                        <li>&quot;TCLU1234567 컨테이너 위치 어디야?&quot;</li>
-                        <li>&quot;의왕 반납 시 할증 포함 총 운임은?&quot;</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div className={styles.guideBox} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                <span className={styles.guideHighlight} style={{ fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '4px' }}>멀티 도메인 연결 (Omni-RAG)</span>
-                <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
-                    <ul style={{ paddingLeft: '20px', margin: '0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <li><b>기상-운송</b>: 결빙주의보 시 안전 가이드</li>
-                        <li><b>유가-운임</b>: 실시간 경유가 및 운임 대응</li>
-                        <li><b>법령-행정</b>: 과태료 감경 규정 실무 연계</li>
-                    </ul>
-                </div>
-            </div>
+            ))}
             
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 'auto', textAlign: 'center', paddingTop: '16px' }}>
                 <Link href="/employees/random-game" style={{ color: 'inherit', textDecoration: 'none', cursor: 'default' }}>
@@ -914,8 +897,8 @@ export default function AskPage() {
                             </div>
                         </button>
                         <div>
-                            <h1 className={styles.headerTitle}>ELS AI 엘스 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>v5.11.0</span></h1>
-                            <p className={styles.headerSub}>Omni-Agent Infrastructure · Knowledge Link System</p>
+                            <h1 className={styles.headerTitle}>ELS AI 엘스 <span style={{fontSize: '0.7rem', color: '#2563eb', background: '#dbeafe', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>{AI_VERSION}</span></h1>
+                            <p className={styles.headerSub}>{AI_SUBTITLE}</p>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, minWidth: 0 }}>

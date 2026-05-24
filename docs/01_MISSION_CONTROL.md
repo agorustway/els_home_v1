@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.156 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.157 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 수정양식 작업 시트가 오른쪽 빈 열에서 열리는 문제를 보정했다.
+> 최신 업데이트: AI 어시스턴트 안내 문구와 웹 RAG 설명을 실제 연결 범위(DB/웹 첨부문서/외부 API) 기준으로 정리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.156
+- **웹 버전**: v5.14.157
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -35,6 +35,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 - **v5.14.155**: 전역 헤더 인트라넷 드롭다운의 `직원 서비스` 하위 메뉴 첫 항목에 `AI 어시스턴트` 링크(`/employees/ask`)를 추가해 사이드바 메뉴와 맞췄다.
 - **v5.14.154**: GLAPS 수정양식 운송경로/항목매핑 시트가 엑셀에서 빈 헤더처럼 보이지 않도록 1행 제목, 2행 설명, 3행 컬럼명으로 분리하고, 열릴 때 A1부터 보이도록 시트 뷰를 고정했다.
@@ -51,9 +52,9 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
-- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
-- `npm.cmd run build`: 첫 실행은 기존 `.next` 추적 파일 누락으로 실패, `.next` 경로 검증 삭제 후 재실행 통과
+- `node --test web/tests/chatMemory.test.mjs web/tests/asanDispatchRag.test.mjs web/tests/aiAssistantMeta.test.mjs web/tests/asanDashboardView.test.mjs`: 52개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식 출력과 업로드 전 검증을 구현한다.
