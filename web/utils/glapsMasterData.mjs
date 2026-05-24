@@ -214,8 +214,17 @@ function findElsCodeIndexes(headers = []) {
     .map(item => item.idx);
 }
 
+function splitMultiValueCell(value) {
+  const text = cleanGlapsText(value);
+  if (!text) return [];
+  return text
+    .split(/[,，、;\r\n]+/)
+    .map(cleanGlapsText)
+    .filter(Boolean);
+}
+
 function getRowValues(row, indexes = []) {
-  return indexes.map(idx => getRowValue(row, idx)).filter(Boolean);
+  return indexes.flatMap(idx => splitMultiValueCell(getRowValue(row, idx)));
 }
 
 export function inferGlapsRouteParts(routeName = '') {

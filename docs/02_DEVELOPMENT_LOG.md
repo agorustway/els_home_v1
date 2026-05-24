@@ -1,3 +1,21 @@
+## [2026-05-24] GLAPS ELS코드 다중 별칭 분리 인식 (v5.14.153)
+### 핵심
+- GLAPS 마스터 코드시트의 `ELS코드1~N` 셀 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 칸에 여러 개 들어와도 각각 별칭으로 등록되게 했습니다.
+- 분리 기준은 쉼표, 한글/전각 쉼표류, 세미콜론, 줄바꿈입니다.
+- 컬럼 위치는 계속 헤더명 기준으로 읽으므로 수기 ELS 컬럼을 뒤쪽으로 옮겨도 인식됩니다.
+- 수정양식 `설명서` 시트에 마스터 코드시트 ELS 수기 컬럼 운영 규칙을 추가했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "utils/glapsMasterData.mjs" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 수정양식 단일화와 설명서 시트 추가 (v5.14.152)
 ### 핵심
 - GLAPS 코드 화면에서 `현재 수정양식/전체 수정양식` 구분을 제거하고 `수정양식 내보내기`, `수정양식 업로드` 두 버튼만 남겼습니다.
