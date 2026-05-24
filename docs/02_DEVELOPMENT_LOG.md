@@ -71,6 +71,23 @@
 
 ---
 
+## [2026-05-24] 차량관제 운행기록 모바일 본문형 목록 전환 (v5.14.173)
+### 핵심
+- 운행기록/교육이수 모바일 결과를 팝업 bottom sheet가 아니라 본문 아래 컴팩트 목록으로 바로 보이게 바꿨습니다.
+- 차량위치관제 모바일 화면의 제목, 탭, 통계 카드, 필터, 기록 목록 여백과 폰트 크기를 줄여 다른 인트라넷 페이지와 톤을 맞췄습니다.
+- 상세 지표는 운행거리와 최고속도 중심으로 정리하고, 기록 행에서도 운행거리 km 표기를 완료 여부와 무관하게 값이 있으면 표시하게 했습니다. 평균속도 표기는 추가하지 않았습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 5개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 차량관제 실시간 로그 라우트 복구 (v5.14.169)
 ### 핵심
 - 차량위치관제 상단 `실시간 로그` 버튼이 여는 `/api/debug/view`가 NAS `els-core`에 없어 페이지 없음이 날 수 있던 문제를 수정했습니다.

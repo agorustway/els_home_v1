@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.172 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.173 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 `GLAPS코드` 화면의 운송경로/항목매핑/원본시트 테이블에 컬럼별 필터와 헤더 정렬을 추가했다.
+> 최신 업데이트: 차량위치관제 운행기록/교육이수 모바일 목록을 팝업이 아닌 본문형 컴팩트 목록으로 바꿨다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.172
+- **웹 버전**: v5.14.173
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -44,6 +44,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.173**: 차량위치관제 운행기록/교육이수 모바일 결과를 bottom sheet 팝업 대신 본문 아래 컴팩트 목록으로 표시한다. 전체 관제 페이지의 모바일 폰트/여백/통계 카드 밀도를 낮추고, 상세 지표는 평균속도 없이 운행거리와 최고속도 중심으로 정리했다.
 - **v5.14.172**: GLAPS코드 운송경로/항목매핑/원본시트 테이블에 컬럼별 필터 입력줄과 헤더 클릭 정렬을 추가했다. 정렬은 오름차순/내림차순/해제 순환이며, 필터 적용 건수와 테이블 필터해제 버튼을 함께 표시한다.
 - **v5.14.171**: 아산 배차판 현재 화면 다운로드 API(`/api/branches/asan/export/view`)를 추가했다. 일반 배차판은 현재 필터와 숨김 컬럼을 반영한 행/열을 내려받고, 상세배차는 `DISPATCH_DETAIL_HEADERS` 순서의 상세라인을, 배차변동내역은 현재 WEB 보정이 적용된 `배차수정후` 상세라인을 엑셀로 내려받는다. GLAPS 업로드 순서는 아직 적용하지 않았다.
 - **v5.14.170**: 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가했다. 현황판/배차판/상세배차/배차변동/GLAPS코드 보기에서 현재 보기와 날짜를 유지한 채 자료를 다시 읽고, GLAPS코드 화면은 refresh token으로 내부 원장 조회를 재실행한다. 상세배차 수정필요 필터는 `입력/미도출/확인/수정` 그룹으로 묶고 버튼 밀도를 낮춰 좁은 화면에서 줄바꿈되도록 했다.
@@ -76,8 +77,8 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 5개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS

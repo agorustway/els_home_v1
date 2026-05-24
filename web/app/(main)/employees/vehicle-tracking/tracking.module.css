@@ -2153,17 +2153,84 @@
 }
 
 @media (max-width: 768px) {
-    .filterBar {
+    .trackingPage {
+        padding: 4px;
+        font-size: 13px;
+    }
+
+    .titleBar {
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+    }
+
+    .titleBar h2 {
+        font-size: 1rem;
+    }
+
+    .titleBtns {
+        gap: 4px;
+    }
+
+    .titleBtns button {
+        height: 30px !important;
+        padding: 0 8px !important;
+        font-size: 0.7rem !important;
+    }
+
+    .tabNav {
+        margin-bottom: 7px;
+    }
+
+    .tab {
+        padding: 8px 6px;
+        font-size: 0.78rem;
+    }
+
+    .missionDashboard {
+        gap: 5px;
+        margin-bottom: 8px !important;
+    }
+
+    .statCard {
+        padding: 8px 6px !important;
+        border-radius: 8px;
+    }
+
+    .statLabel {
+        font-size: 0.62rem;
+        margin-bottom: 3px;
+    }
+
+    .statValue {
+        font-size: 1.34rem !important;
+    }
+
+    .statUnit {
+        font-size: 0.72rem;
+    }
+
+    .liveGrid {
         gap: 7px;
-        padding: 9px;
+        margin-bottom: 8px;
+    }
+
+    .liveGridRight {
+        height: 200px;
+    }
+
+    .filterBar {
+        gap: 5px;
+        padding: 7px;
+        margin-bottom: 8px;
         align-items: stretch;
     }
 
     .filterGroup {
         width: 100%;
-        min-height: 44px;
+        min-height: 38px;
         height: auto;
-        padding: 6px 9px;
+        padding: 4px 7px;
         flex-wrap: wrap;
         box-sizing: border-box;
     }
@@ -2176,25 +2243,37 @@
 
     .filterGroup select,
     .filterGroup input[type="date"] {
-        flex: 1 1 126px;
-        min-width: 126px;
-        height: 38px;
-        line-height: 38px;
-        font-size: 0.82rem;
+        flex: 1 1 118px;
+        min-width: 118px;
+        height: 34px;
+        line-height: 34px;
+        font-size: 0.78rem;
     }
 
     .filterDateInput {
-        min-width: 126px;
+        min-width: 118px;
+    }
+
+    .filterInput,
+    .filterSelect {
+        height: 34px;
+        font-size: 0.78rem;
+    }
+
+    .filterSearchBtn,
+    .filterResetBtn {
+        height: 36px;
+        font-size: 0.8rem;
     }
 
     .summaryGrid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-        margin-bottom: 10px;
+        gap: 5px;
+        margin-bottom: 8px;
     }
 
     .summaryCard {
-        padding: 10px 8px;
+        padding: 8px 7px;
         border-radius: 8px;
     }
 
@@ -2204,8 +2283,110 @@
     }
 
     .summaryValue {
-        font-size: 1rem;
+        font-size: 0.95rem;
         line-height: 1.2;
+    }
+
+    .recordsTableSection {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: auto !important;
+        margin-top: 6px !important;
+        padding: 8px !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        animation: none !important;
+    }
+
+    .recordsTableSection .tableHeaderInfo {
+        margin-bottom: 6px;
+        gap: 5px;
+    }
+
+    .recordsTableSection .tableHeaderInfo h3 {
+        font-size: 0.86rem;
+        margin-bottom: 0;
+    }
+
+    .recordsTableSection .tableLegend {
+        display: none;
+    }
+
+    .recordsTableSection .tableHeaderInfo > div:first-child {
+        display: block !important;
+        width: auto;
+    }
+
+    .recordsTableSection .tableActions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        width: 100%;
+    }
+
+    .recordsTableSection .tableActions button {
+        height: 32px !important;
+        font-size: 0.74rem !important;
+        padding: 0 8px !important;
+        border-radius: 6px !important;
+    }
+
+    .recordsTableSection .tripTable {
+        margin-top: 4px;
+    }
+
+    .recordsTableSection .tripTable tr {
+        margin-bottom: 6px;
+        padding: 8px 9px;
+        border-radius: 8px;
+        box-shadow: none;
+    }
+
+    .recordsTableSection .tripTable td {
+        min-height: 21px;
+        padding: 1px 0;
+        font-size: 0.76rem;
+        line-height: 1.25;
+    }
+
+    .recordsTableSection .tripTable td[data-label] {
+        gap: 7px;
+    }
+
+    .recordsTableSection .tripTable td[data-label]::before {
+        flex-basis: 58px;
+        font-size: 0.64rem;
+        line-height: 1.35;
+    }
+
+    .recordsTableSection .tripTable td:nth-child(2) {
+        margin-bottom: 2px;
+        padding-right: 24px;
+    }
+
+    .recordsTableSection .tripTable td:nth-child(4) {
+        font-size: 0.86rem;
+    }
+
+    .recordsTableSection .tripTable td:nth-child(10) {
+        margin-top: 3px;
+        padding-top: 5px;
+    }
+
+    .recordsTableSection .tripTable td:last-child {
+        margin-top: 6px;
+        padding-top: 6px;
+        gap: 5px;
+    }
+
+    .recordsTableSection .viewIconBtn,
+    .recordsTableSection .deleteIconBtn {
+        height: 32px;
+        font-size: 0.72rem;
     }
 
     .tableSection.showOnMobile {

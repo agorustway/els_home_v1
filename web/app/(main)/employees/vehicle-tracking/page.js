@@ -880,7 +880,6 @@ export default function VehicleTrackingPage() {
 
     const handleSearch = async () => {
         await fetchRecords();
-        setIsMobileListOpen(true);
     };
     const handleReset = () => { setFilterStatus('all'); setFilterKeyword(''); setFilterFrom(''); setFilterTo(''); };
 
@@ -1029,6 +1028,12 @@ export default function VehicleTrackingPage() {
         const value = Number(trip.distance_km ?? trip.route_distance_km);
         if (!Number.isFinite(value) || value <= 0) return '';
         return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} km`;
+    };
+
+    const getTripMaxSpeed = (trip) => {
+        const value = Number(trip?.max_speed ?? trip?.maxSpeed);
+        if (!Number.isFinite(value) || value <= 0) return '-';
+        return `${Math.round(value)} km/h`;
     };
 
     const educationRows = useMemo(() => {
@@ -1457,20 +1462,14 @@ export default function VehicleTrackingPage() {
                     <div className={styles.summaryCard}><div className={styles.summaryLabel}>조회 차량수</div><div className={`${styles.summaryValue} ${styles.summaryValueBlue}`}>{recordSummary.vehicles.toLocaleString('ko-KR')}대</div></div>
                     <div className={styles.summaryCard}><div className={styles.summaryLabel}>청구금액 합계</div><div className={`${styles.summaryValue} ${styles.summaryValueGreen}`}>{recordSummary.amount.toLocaleString('ko-KR')}원</div></div>
                 </div>
-                <button className={styles.tableSectionMobileBtn} onClick={() => setIsMobileListOpen(true)}>
-                    {activeTab === 'records'
-                        ? `운행 기록 목록 (${filteredRecords.length.toLocaleString('ko-KR')}건)`
-                        : `교육 이수 목록 (${educationRows.length.toLocaleString('ko-KR')}건)`}
-                </button>
-                <div className={`${styles.mobilePopupOverlay} ${isMobileListOpen ? styles.showOnMobile : ''}`} onClick={() => setIsMobileListOpen(false)}></div>
-                <div className={`${styles.tableSection} ${isMobileListOpen ? styles.showOnMobile : ''}`}>
+                <div className={`${styles.tableSection} ${styles.recordsTableSection}`}>
                     <div className={styles.tableHeaderInfo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <h3 style={{ display: 'inline-block', marginRight: 15 }}>{activeTab === 'records' ? '운행 기록' : '교육 이수'} ({activeTab === 'records' ? recordsTotal : educationRows.length}건)</h3>
                             <span className={styles.tableLegend}>* 클릭 시 정렬 가능 (시작/종료)</span>
                         </div>
                         {activeTab === 'records' && (
-                        <div style={{ display: 'flex', gap: 8 }}>
+                        <div className={styles.tableActions} style={{ display: 'flex', gap: 8 }}>
                             <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => window.location.href = `/api/vehicle-tracking/export/excel?from=${filterFrom}&to=${filterTo}&keyword=${filterKeyword}&status=${filterStatus}`}>엑셀 다운로드</button>
                             <button className={styles.filterSearchBtn} style={{ background: '#3b82f6', borderColor: '#3b82f6', height: '36px', fontSize: '0.78rem', padding: '0 14px' }} onClick={() => {
                                 if (selectedIds.length === 0) alert('다운로드할 기록을 선택해주세요.');
@@ -1478,7 +1477,6 @@ export default function VehicleTrackingPage() {
                             }}>선택건 ZIP</button>
                         </div>
                         )}
-                        <button className={styles.closeBtnMobile} onClick={() => setIsMobileListOpen(false)} style={{ display: 'none', background: 'none', border: 'none', fontSize: '1.2rem', color: '#64748b' }}>✕</button>
                     </div>
                     {activeTab === 'records' ? (
                     <table className={styles.tripTable}>
@@ -1550,7 +1548,7 @@ export default function VehicleTrackingPage() {
                                     <td data-label="최종위치" title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '220px' }}>
                                         <div>{trip.last_location_address || '-'}</div>
                                         {trip.max_speed > 0 && <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: 2 }}>최고속도: {trip.max_speed} km/h</div>}
-                                        {trip.status === 'completed' && getTripDistance(trip) && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>운행거리: {getTripDistance(trip)}</div>}
+                                        {getTripDistance(trip) && <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700, marginTop: 2 }}>운행거리: {getTripDistance(trip)}</div>}
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
@@ -1638,7 +1636,7 @@ export default function VehicleTrackingPage() {
                                 <div><span>상태</span><strong>{TRIP_STATUS_LABELS[selectedTrip.status] || '-'}</strong></div>
                                 <div><span>운행시간</span><strong>{getElapsedTimeString(selectedTrip.started_at, selectedTrip.completed_at)}</strong></div>
                                 <div><span>운행거리</span><strong>{getTripDistance(selectedTrip) || '-'}</strong></div>
-                                <div><span>경로점</span><strong>{selectedTripLocations.length.toLocaleString('ko-KR')}</strong></div>
+                                <div><span>최고속도</span><strong>{getTripMaxSpeed(selectedTrip)}</strong></div>
                             </div>
                         </div>
                         <div className={styles.detailSection}>
