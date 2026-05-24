@@ -1,3 +1,21 @@
+## [2026-05-24] 상세배차 확정 API 클라이언트 세션 인증 보정 (v5.14.164)
+### 핵심
+- 운영 디버그 점검에서 신규 `BKG확정`/배차확정 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했습니다.
+- 상세배차 화면은 Supabase access token을 Authorization Bearer 헤더로 전달하고, 신규 API는 해당 토큰으로도 사용자를 검증하게 했습니다.
+- SQL 적용 후 화면의 `DB 미적용` 경고는 사라졌고, 실제 저장/확정 흐름은 이 인증 보정 배포 후 이어서 점검합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/confirmation/route.js`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 아산 배차판 RAG 질문 의도 분리 보강 (v5.14.161)
 ### 핵심
 - `모레/내일모레/글피`를 날짜 범위로 정규화하고 `13:00`, `13시30분`, 배차정보 `09 10` 같은 시간 표기를 같은 시간 필터로 매칭하게 했습니다.

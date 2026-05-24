@@ -654,6 +654,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailStartOverrides/);
   assert.match(source, /detailBkgOverrides/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS/);
+  assert.match(source, /createBrowserSupabaseClient/);
+  assert.match(source, /getDetailAuthHeaders/);
+  assert.match(source, /Authorization: `Bearer \$\{session\.access_token\}`/);
   assert.match(source, /changeDetailConfirmation/);
   assert.match(source, /saveDetailBkgOverride/);
   assert.match(source, /routeShipperCode \|\| getGlapsAliasCode\(glapsShipperCodeMap, line\.shipper\)/);
@@ -711,8 +714,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /if \(normalizedRegion === '부곡'\) return '의왕ICD';/);
   assert.match(confirmationApi, /branch_dispatch_confirmations/);
   assert.match(confirmationApi, /branch_dispatch_confirmation_history/);
+  assert.match(confirmationApi, /bearerToken/);
+  assert.match(confirmationApi, /getUser\(bearerToken\)/);
   assert.match(detailOverrideApi, /branch_dispatch_detail_overrides/);
   assert.match(detailOverrideApi, /confirmed_bkg/);
+  assert.match(detailOverrideApi, /bearerToken/);
+  assert.match(detailOverrideApi, /getUser\(bearerToken\)/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_confirmations/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_detail_overrides/);
 });

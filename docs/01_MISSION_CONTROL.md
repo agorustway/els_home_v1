@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.163 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.164 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차에 `BKG확정`을 추가하고, 배차확정/취소 및 변동내역 탭 기반을 만들었다.
+> 최신 업데이트: 상세배차 `BKG확정`/배차확정 API가 클라이언트 Supabase 세션 Bearer 인증을 인식하게 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.163
+- **웹 버전**: v5.14.164
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -29,6 +29,7 @@
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 - GLAPS 수정양식/웹에서 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이므로 일반 보정 대상이 아니다. 항목매핑의 배차판 입력값 컬럼명은 `배차판 매칭용`으로 쓴다.
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, `BKG2/BKG3` 선택 또는 수기 입력을 WEB 보정값으로 저장한다. 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
+- 상세배차 `BKG확정`/배차확정 API는 서버 쿠키와 클라이언트 Supabase 세션 Bearer 토큰을 모두 인증 경로로 인정한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -40,6 +41,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.164**: 운영 디버그 점검 중 `BKG확정`/배차확정 신규 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했다. 상세배차 화면에서 Supabase access token을 Authorization 헤더로 전달하고, API는 Bearer token 인증도 허용하게 보정했다.
 - **v5.14.163**: 상세배차 `업체명` 뒤에 `BKG확정` 컬럼을 추가했다. `BKG1~3` 선택 흔적과 수기 입력값은 상세라인 보정 테이블로 분리 저장하며, 배차확정/확정취소 API와 이력 테이블, `배차변동내역` 탭 기반을 추가했다. 화주사코드는 매칭된 운송경로 원장 payload의 값을 우선 사용한다.
 - **v5.14.162**: GLAPS 수정양식 설명서를 다시 점검해 회색 음영 칸 의미를 명시했다. 운송경로/항목매핑의 GLAPS 원장 기준값은 엑셀과 웹에서 회색으로 표시하고, 항목매핑 `원본명` 라벨은 `배차판 매칭용`으로 바꿨다. 항목매핑 웹 목록에서도 운송경로 파생 alias는 제외했다.
 - **v5.14.161**: 아산 배차판 RAG에서 `모레/내일모레/글피`를 날짜로 정규화하고, `13:00` 같은 콜론 시간과 배차정보 `09 10` 공백형 시간을 시간 필터로 매칭한다. `부산배차`처럼 지역+배차가 붙은 질문은 지역 키워드만 남기도록 보정했다.
@@ -64,12 +66,11 @@
 
 ## VERIFICATION
 - `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "utils/asanDispatchDetailLines.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: `배차변동내역` 탭에서 확정 이후 추가/삭제 라인을 실제 저장/검증하고, 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식을 출력한다.
-- 배차확정 DB 적용 대기: `web/supabase_sql/20260524_asan_dispatch_confirmations.sql`을 Supabase SQL Editor에 적용.
 - 배차판 WEB 전용 셀 DB 적용 대기: `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `cd web; node scripts/backfill-asan-dispatch-web-cells.mjs` 1회 실행.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
 

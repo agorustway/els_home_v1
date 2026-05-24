@@ -22,6 +22,7 @@ import {
     buildGlapsRouteFingerprint,
     normalizeGlapsKey,
 } from '@/utils/glapsMasterData.mjs';
+import { createClient as createBrowserSupabaseClient } from '@/utils/supabase/client';
 
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
@@ -637,6 +638,7 @@ function scrollDateTabHorizontally(tabsEl, tabEl) {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function AsanDispatchContent() {
+    const supabase = useMemo(() => createBrowserSupabaseClient(), []);
     const [viewType, setViewType] = useState('integrated');
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -1005,6 +1007,10 @@ function AsanDispatchContent() {
         };
     }, [activeItem?.target_date, isAllTab, viewType]);
     const detailConfirmationLocked = Boolean(detailConfirmation?.active);
+    const getDetailAuthHeaders = useCallback(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+    }, [supabase]);
 
     useEffect(() => {
         if (!['detail', 'detail-change'].includes(mainView) || !detailScope) {
@@ -1021,9 +1027,10 @@ function AsanDispatchContent() {
         });
         const loadDetailState = async () => {
             try {
+                const authHeaders = await getDetailAuthHeaders();
                 const [confirmationResponse, overrideResponse] = await Promise.all([
-                    fetch(`/api/branches/asan/dispatch/confirmation?${params.toString()}`, { cache: 'no-store' }),
-                    fetch(`/api/branches/asan/dispatch/detail-override?${params.toString()}`, { cache: 'no-store' }),
+                    fetch(`/api/branches/asan/dispatch/confirmation?${params.toString()}`, { cache: 'no-store', headers: authHeaders }),
+                    fetch(`/api/branches/asan/dispatch/detail-override?${params.toString()}`, { cache: 'no-store', headers: authHeaders }),
                 ]);
                 const confirmationPayload = await confirmationResponse.json().catch(() => ({}));
                 const overridePayload = await overrideResponse.json().catch(() => ({}));
@@ -1053,7 +1060,7 @@ function AsanDispatchContent() {
         };
         loadDetailState();
         return () => { cancelled = true; };
-    }, [detailScope, mainView]);
+    }, [detailScope, getDetailAuthHeaders, mainView]);
 
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {
@@ -1442,7 +1449,7 @@ function AsanDispatchContent() {
         try {
             const response = await fetch('/api/branches/asan/dispatch/detail-override', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
                 body: JSON.stringify({
                     ...detailScope,
                     detailLineKey: lineKey,
@@ -1458,7 +1465,7 @@ function AsanDispatchContent() {
         } catch (error) {
             setSyncStatus({ message: error.message || 'BKG확정 저장 실패', isError: true });
         }
-    }, [detailConfirmationLocked, detailScope]);
+    }, [detailConfirmationLocked, detailScope, getDetailAuthHeaders]);
 
     const changeDetailBkgSource = useCallback((line, source) => {
         saveDetailBkgOverride(line, source, getDetailBkgValue(line, source));
@@ -1473,7 +1480,7 @@ function AsanDispatchContent() {
         try {
             const response = await fetch('/api/branches/asan/dispatch/confirmation', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
                 body: JSON.stringify({ ...detailScope, action }),
             });
             const payload = await response.json().catch(() => ({}));
@@ -1493,7 +1500,7 @@ function AsanDispatchContent() {
         } finally {
             setDetailConfirmationSaving(false);
         }
-    }, [detailConfirmationSaving, detailScope]);
+    }, [detailConfirmationSaving, detailScope, getDetailAuthHeaders]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);

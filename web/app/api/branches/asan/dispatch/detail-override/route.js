@@ -43,15 +43,17 @@ function validateScope(payload, { requireLine = false } = {}) {
     return '';
 }
 
-async function requireUser() {
+async function requireUser(request) {
     const sessionSupabase = await createClient();
-    const { data: { user } } = await sessionSupabase.auth.getUser();
+    const authHeader = request.headers.get('authorization') || '';
+    const bearerToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+    const { data: { user } } = await sessionSupabase.auth.getUser(bearerToken);
     if (!user) return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
     return { user, adminSupabase: await createAdminClient() };
 }
 
 export async function GET(request) {
-    const access = await requireUser();
+    const access = await requireUser(request);
     if (access.error) return access.error;
 
     const { searchParams } = new URL(request.url);
@@ -85,7 +87,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const access = await requireUser();
+    const access = await requireUser(request);
     if (access.error) return access.error;
 
     try {
