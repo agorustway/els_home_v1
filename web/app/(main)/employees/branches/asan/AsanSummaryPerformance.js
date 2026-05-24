@@ -343,7 +343,7 @@ function ExecutiveTrendChart({ summary }) {
                                     </rect>
                                     {(isSelected || isBest || isLatest) && (
                                         <text x={x} y={Math.max(20, 132 - barHeight)} textAnchor="middle" className={styles.summaryValueLabel}>
-                                            {isSelected ? '선택' : (isBest ? '최고' : '최근')} {formatPerformanceAmount(item.revenue)}
+                                            {isSelected ? '현재' : (isBest ? '최고' : '최근')} {formatPerformanceAmount(item.revenue)}
                                         </text>
                                     )}
                                     <text x={x} y="194" textAnchor="middle" className={styles.summaryTrendLabel}>{metricLabel(item, basis)}</text>
