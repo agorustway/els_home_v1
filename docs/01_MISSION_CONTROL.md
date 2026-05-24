@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.176 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.178 / APK v5.11.29)
 
-> 최신 업데이트: 아산 상세배차 배차확정자 표시를 이름 기준으로 바꾸고, 배차변동내역 탭에 수정후 상세라인 리스트를 표시한다.
+> 최신 업데이트: 차량위치관제 운행기록/교육이수 목록을 서버 페이지 단위 조회로 바꿔 첫 화면은 20건만 로딩하고, 모바일에도 같은 페이지 컨트롤을 노출했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.176
+- **웹 버전**: v5.14.178
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -26,7 +26,9 @@
 - GLAPS 수정양식에서 상차지/경유지/하차지 경로 정보는 `운송경로_수정양식`에서만 수정한다. `항목매핑_수정양식`은 포트/라인/타입/운송사/컨샤이니 등 별도 코드표만 노출하고 `운송경로코드` 컬럼은 숨긴다.
 - GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조이며, 좌측 A열부터 열리고 입력 시작 셀은 A4로 둔다.
 - GLAPS 수정양식 삭제는 행 삭제가 아니라 `삭제(Y)` 칸에 `Y` 입력으로만 처리한다. 매칭상태는 `확정 / 조정필요 / 코드없음` 한글 표기를 기본으로 쓴다.
-- GLAPS 수정양식 업로드는 ID가 있는 기존 행의 실제 값이 달라진 경우만 update한다. 누락된 행은 보존하고, ID 없는 행은 신규로 본다.
+- GLAPS 수정양식 업로드는 실제 값이 달라진 행만 update한다. 단, `WEB수정` 행은 업로드 변경/삭제에서 제외하고 제외 건수를 알린다.
+- GLAPS 마스터 업로드/NAS 반영은 기존 활성 버전의 `WEB수정` 행을 새 버전으로 보존해 수기 보정값이 사라지지 않게 한다.
+- GLAPS 업로드 처리 결과는 활성 버전 `metadata.lastUploadResult`에 남긴다.
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 - GLAPS 수정양식/웹에서 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이므로 일반 보정 대상이 아니다. 항목매핑의 배차판 입력값 컬럼명은 `배차판 매칭용`으로 쓴다.
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, BKG1/2/3 셀 클릭 또는 수기 입력을 WEB 보정값으로 저장한다. 선택된 BKG 셀은 색으로 표시하고, 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
@@ -46,6 +48,8 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.178**: 운행기록/교육이수 탭은 `page/page_size`를 API로 전달해 20/50/100건 단위로 조회한다. API는 Supabase `count + range`로 총건수와 현재 페이지를 분리하고, 교육이수 탭은 안전교육 로그가 있는 운행만 조회한다.
+- **v5.14.177**: GLAPS 수정양식 업로드가 `WEB수정` 행을 변경/삭제하려 하면 해당 행을 스킵하고 `WEB수정 보호 N건 업로드 제외`로 알린다. 마스터 업로드/NAS 반영 시에는 기존 활성 버전의 WEB수정 행을 새 버전에 보존해 마스터 재반영으로 수기 보정값이 사라지지 않게 했다.
 - **v5.14.176**: 아산 상세배차 배차확정자 표시에서 이메일을 이름으로 치환했다. 배차변동내역 탭은 확정 후 빈 안내 패널 대신 `배차수정후` 상세라인 표를 보여주고, 다운로드도 `변동구분/수정일시` 포함 현재 화면 기준으로 맞췄다.
 - **v5.14.175**: 차량위치관제 운행기록의 `최종위치(속도)` 묶음 컬럼을 `운행거리`/`최고속도`/`최종위치`로 분리했다. 기록 API는 위치 포인트가 없거나 일부 운행만 조회돼도 기존 `distance_km`/`route_distance_km`/`max_speed` 저장값을 0으로 덮어쓰지 않는다.
 - **v5.14.174**: GLAPS코드 테이블 컬럼 필터를 텍스트 입력에서 목록 선택으로 변경했다. 각 컬럼은 현재 탭의 고유값과 `(빈값)`을 옵션으로 제공하고, `전체` 선택 시 해당 컬럼 필터를 해제한다.
@@ -75,11 +79,10 @@
 - **v5.14.150**: GLAPS 코드 화면에 웹 직접 추가/수정/삭제 폼과 `수정출처` 컬럼을 추가했다. 전체 수정양식 내보내기/업로드는 운송경로와 항목매핑을 한 파일에서 처리하며, 저장 전 DB 입력값은 양끝 공백을 trim한다.
 - **v5.14.149**: GLAPS 마스터 API를 1000건 단위 페이지 조회로 바꿔 라인/포트 alias가 잘리지 않게 했다. 상세배차 `포트코드`는 마스터에 ELS/GLAPS 매핑이 있을 때만 표시하고, 함부르크처럼 미등록 값은 공란으로 둔다. 운송사코드는 입력 목록 UI를 제거하고 기본 ELS BP 코드를 일반 코드 셀로 표시한다.
 - **v5.14.148**: NAS `GLAPS_마스터코드.xlsx`에 선사/포트/POD/컨테이너/운송경로 화주/컨샤이니 ELS 입력칸을 보강하고 Supabase 활성 원장을 `952c67b5-fefa-45cc-b97a-934f885e684b`로 재반영했다. 상세배차는 운송사 BP를 맨 뒤 최종 컬럼으로 옮기고, 오더구분/화주사/경로세부코드/컨샤이니 도출 및 항목별 필터를 추가했다.
-- **v5.14.143-145**: GLAPS코드를 배차판 내부 보기로 내리고, 전 시트 원본행/항목매핑과 상세배차 운송경로/타입코드 도출을 보강했다.
 
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/dispatch/actorName.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "app/api/vehicle-tracking/trips/route.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
 - `npm.cmd run build`: 통과
 
 ## IN-PROGRESS

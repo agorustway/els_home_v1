@@ -53,6 +53,31 @@ function buildEditActor(editSource, userEmail) {
   return `${editSource || 'unknown'}:${userEmail || 'system'}`;
 }
 
+function editActorSource(value = '') {
+  return cleanText(value).split(':')[0];
+}
+
+function isWebEditedRow(row = {}) {
+  return editActorSource(row.updated_by) === 'web';
+}
+
+function routeProtectionKey(row = {}) {
+  const routeCode = cleanText(row.route_code ?? row.routeCode);
+  if (routeCode) return `code:${routeCode}`;
+  const fingerprint = cleanText(row.route_fingerprint ?? row.routeFingerprint);
+  if (fingerprint) return `fingerprint:${fingerprint}`;
+  return '';
+}
+
+function aliasProtectionKey(row = {}) {
+  const aliasType = cleanText(row.alias_type ?? row.aliasType);
+  const sourceName = cleanText(row.source_name ?? row.sourceName);
+  const routeCode = cleanText(row.route_code ?? row.routeCode);
+  const fallback = cleanText(row.glaps_code ?? row.glapsCode ?? row.glaps_name ?? row.glapsName ?? row.els_name ?? row.elsName);
+  if (!aliasType) return '';
+  return [aliasType, sourceName || fallback, routeCode].map(cleanText).join('|');
+}
+
 function directRouteFromPayload(row = {}) {
   const route = {
     id: cleanText(row.id),
@@ -224,6 +249,48 @@ function toSheetRowDbRow(sheetRow, { branchId, versionId }) {
   };
 }
 
+function routeDbRowFromExisting(row = {}, { branchId, versionId }) {
+  return {
+    branch_id: branchId,
+    version_id: versionId,
+    route_code: cleanText(row.route_code),
+    route_name: cleanText(row.route_name),
+    start_location_name: cleanText(row.start_location_name),
+    waypoint_name: cleanText(row.waypoint_name),
+    waypoint_els_name: cleanText(row.waypoint_els_name),
+    destination_name: cleanText(row.destination_name),
+    route_fingerprint: cleanText(row.route_fingerprint),
+    review_status: normalizeReviewStatus(row.review_status, 'needs_mapping'),
+    review_note: cleanText(row.review_note),
+    source_sheet: cleanText(row.source_sheet) || 'WEB',
+    source_row_number: row.source_row_number || null,
+    raw_payload: {
+      ...(row.raw_payload || {}),
+      web_protected_from_version: row.version_id || '',
+      web_protected_from_id: row.id || '',
+    },
+    active: true,
+    updated_by: row.updated_by,
+  };
+}
+
+function aliasDbRowFromExisting(row = {}, { branchId, versionId }) {
+  return {
+    branch_id: branchId,
+    version_id: versionId,
+    alias_type: GLAPS_ALIAS_TYPES.has(cleanText(row.alias_type)) ? cleanText(row.alias_type) : 'generic',
+    source_name: cleanText(row.source_name),
+    els_name: cleanText(row.els_name),
+    glaps_name: cleanText(row.glaps_name),
+    glaps_code: cleanText(row.glaps_code),
+    route_code: cleanText(row.route_code),
+    review_status: normalizeReviewStatus(row.review_status, 'needs_mapping'),
+    review_note: cleanText(row.review_note),
+    active: true,
+    updated_by: row.updated_by,
+  };
+}
+
 async function getActiveVersion(adminSupabase, branchId) {
   const { data, error } = await adminSupabase
     .from('glaps_master_versions')
@@ -258,6 +325,22 @@ async function refreshVersionCounts(adminSupabase, versionId) {
     .from('glaps_master_versions')
     .update({ route_count: routeCount || 0, alias_count: aliasCount || 0, sheet_row_count: sheetRowCount || 0 })
     .eq('id', versionId);
+}
+
+async function rememberGlapsUploadResult(adminSupabase, version = {}, uploadLog = {}) {
+  if (!version?.id) return;
+  const metadata = {
+    ...(version.metadata || {}),
+    lastUploadResult: {
+      ...uploadLog,
+      recordedAt: new Date().toISOString(),
+    },
+  };
+  const { error } = await adminSupabase
+    .from('glaps_master_versions')
+    .update({ metadata })
+    .eq('id', version.id);
+  if (error) throw error;
 }
 
 function buildSheetSummary(rows = []) {
@@ -298,6 +381,58 @@ async function fetchRowsByIds(adminSupabase, tableName, versionId, ids = []) {
     rows.push(...(data || []));
   }
   return new Map(rows.map(row => [cleanText(row.id), row]));
+}
+
+async function fetchWebProtectedRows(adminSupabase, tableName, versionId) {
+  const { data, error } = await adminSupabase
+    .from(tableName)
+    .select('*')
+    .eq('version_id', versionId)
+    .eq('active', true)
+    .like('updated_by', 'web:%');
+  if (error) throw error;
+  return data || [];
+}
+
+function applyWebProtectedMasterRows(baseRows = [], protectedRows = [], { branchId, versionId, kind }) {
+  const keyFn = kind === 'routes' ? routeProtectionKey : aliasProtectionKey;
+  const copyFn = kind === 'routes' ? routeDbRowFromExisting : aliasDbRowFromExisting;
+  const rows = [...baseRows];
+  const indexByKey = new Map();
+  rows.forEach((row, index) => {
+    const key = keyFn(row);
+    if (key && !indexByKey.has(key)) indexByKey.set(key, index);
+  });
+
+  let overlaid = 0;
+  let appended = 0;
+  protectedRows.forEach((row) => {
+    const key = keyFn(row);
+    const protectedRow = copyFn(row, { branchId, versionId });
+    if (key && indexByKey.has(key)) {
+      rows[indexByKey.get(key)] = protectedRow;
+      overlaid += 1;
+      return;
+    }
+    rows.push(protectedRow);
+    if (key) indexByKey.set(key, rows.length - 1);
+    appended += 1;
+  });
+
+  return {
+    rows,
+    preserved: protectedRows.length,
+    overlaid,
+    appended,
+  };
+}
+
+function webProtectionSummary(result = {}) {
+  return {
+    preserved: result.preserved || 0,
+    overlaid: result.overlaid || 0,
+    appended: result.appended || 0,
+  };
 }
 
 function hasDbValueChanged(existing = {}, next = {}, fields = []) {
@@ -346,25 +481,47 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
     adminSupabase,
     'glaps_transport_routes',
     versionId,
-    candidateRows.map(row => row.id),
+    [...deleteIds, ...candidateRows.map(row => row.id)],
   );
-  const upsertRows = candidateRows.filter((row) => {
-    if (!row.id) return true;
-    return isRouteTemplateRowChanged(existingById.get(cleanText(row.id)), row);
+  const upsertRows = [];
+  let unchanged = 0;
+  let skippedWebProtected = 0;
+  candidateRows.forEach((row) => {
+    if (!row.id) {
+      upsertRows.push(row);
+      return;
+    }
+    const existing = existingById.get(cleanText(row.id));
+    if (!isRouteTemplateRowChanged(existing, row)) {
+      unchanged += 1;
+      return;
+    }
+    if (isWebEditedRow(existing)) {
+      skippedWebProtected += 1;
+      return;
+    }
+    upsertRows.push(row);
+  });
+  const allowedDeleteIds = deleteIds.filter((id) => {
+    if (isWebEditedRow(existingById.get(id))) {
+      skippedWebProtected += 1;
+      return false;
+    }
+    return true;
   });
 
-  if (deleteIds.length > 0) {
+  if (allowedDeleteIds.length > 0) {
     const { error } = await adminSupabase
       .from('glaps_transport_routes')
       .update({ active: false, updated_by: actor })
-      .in('id', deleteIds);
+      .in('id', allowedDeleteIds);
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
     const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows, { onConflict: 'id' });
     if (error) throw error;
   }
-  return { updated: upsertRows.length, deleted: deleteIds.length };
+  return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
 }
 
 async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
@@ -380,25 +537,47 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
     adminSupabase,
     'glaps_master_aliases',
     versionId,
-    candidateRows.map(row => row.id),
+    [...deleteIds, ...candidateRows.map(row => row.id)],
   );
-  const upsertRows = candidateRows.filter((row) => {
-    if (!row.id) return true;
-    return isAliasTemplateRowChanged(existingById.get(cleanText(row.id)), row);
+  const upsertRows = [];
+  let unchanged = 0;
+  let skippedWebProtected = 0;
+  candidateRows.forEach((row) => {
+    if (!row.id) {
+      upsertRows.push(row);
+      return;
+    }
+    const existing = existingById.get(cleanText(row.id));
+    if (!isAliasTemplateRowChanged(existing, row)) {
+      unchanged += 1;
+      return;
+    }
+    if (isWebEditedRow(existing)) {
+      skippedWebProtected += 1;
+      return;
+    }
+    upsertRows.push(row);
+  });
+  const allowedDeleteIds = deleteIds.filter((id) => {
+    if (isWebEditedRow(existingById.get(id))) {
+      skippedWebProtected += 1;
+      return false;
+    }
+    return true;
   });
 
-  if (deleteIds.length > 0) {
+  if (allowedDeleteIds.length > 0) {
     const { error } = await adminSupabase
       .from('glaps_master_aliases')
       .update({ active: false, updated_by: actor })
-      .in('id', deleteIds);
+      .in('id', allowedDeleteIds);
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
     const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows, { onConflict: 'id' });
     if (error) throw error;
   }
-  return { updated: upsertRows.length, deleted: deleteIds.length };
+  return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
 }
 
 async function handleDirectMutation({ adminSupabase, payload, version, branchId, userEmail }) {
@@ -567,6 +746,14 @@ export async function POST(request) {
       const parsed = parseGlapsMasterSheets(sheets);
       if (parsed.routes.length === 0) return jsonError('운송경로 시트를 찾지 못했습니다.', 400);
 
+      const previousVersion = await getActiveVersion(access.adminSupabase, branchId);
+      const [protectedRouteRows, protectedAliasRows] = previousVersion?.id
+        ? await Promise.all([
+          fetchWebProtectedRows(access.adminSupabase, 'glaps_transport_routes', previousVersion.id),
+          fetchWebProtectedRows(access.adminSupabase, 'glaps_master_aliases', previousVersion.id),
+        ])
+        : [[], []];
+
       await access.adminSupabase
         .from('glaps_master_versions')
         .update({ active: false })
@@ -596,8 +783,12 @@ export async function POST(request) {
       if (versionError) throw versionError;
 
       const masterActor = buildEditActor('master', access.user.email);
-      const routeRows = parsed.routes.map(route => toRouteDbRow(withTemplateRoutePayload(route, 'master'), { branchId, versionId: version.id, userEmail: masterActor }));
-      const aliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: masterActor }));
+      const parsedRouteRows = parsed.routes.map(route => toRouteDbRow(withTemplateRoutePayload(route, 'master'), { branchId, versionId: version.id, userEmail: masterActor }));
+      const parsedAliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: masterActor }));
+      const routeProtection = applyWebProtectedMasterRows(parsedRouteRows, protectedRouteRows, { branchId, versionId: version.id, kind: 'routes' });
+      const aliasProtection = applyWebProtectedMasterRows(parsedAliasRows, protectedAliasRows, { branchId, versionId: version.id, kind: 'aliases' });
+      const routeRows = routeProtection.rows;
+      const aliasRows = aliasProtection.rows;
       const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
@@ -612,6 +803,16 @@ export async function POST(request) {
         const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows);
         if (error) throw error;
       }
+      await refreshVersionCounts(access.adminSupabase, version.id);
+      const uploadLog = {
+        mode,
+        sourceName,
+        actor: access.user.email,
+        routes: { total: routeRows.length, ...webProtectionSummary(routeProtection) },
+        aliases: { total: aliasRows.length, ...webProtectionSummary(aliasProtection) },
+        webProtectedPreserved: routeProtection.preserved + aliasProtection.preserved,
+      };
+      await rememberGlapsUploadResult(access.adminSupabase, version, uploadLog);
 
       return NextResponse.json({
         success: true,
@@ -619,6 +820,12 @@ export async function POST(request) {
         summary: parsed.summary,
         aliasCount: parsed.aliases.length,
         sheetRowCount: parsed.sheetRows.length,
+        webProtection: {
+          preserved: routeProtection.preserved + aliasProtection.preserved,
+          routes: webProtectionSummary(routeProtection),
+          aliases: webProtectionSummary(aliasProtection),
+        },
+        uploadLog,
       });
     }
 
@@ -634,7 +841,9 @@ export async function POST(request) {
         editSource: 'template_upload',
       });
       await refreshVersionCounts(access.adminSupabase, version.id);
-      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result });
+      const uploadLog = { mode, editSource: 'template_upload', actor: access.user.email, ...result };
+      await rememberGlapsUploadResult(access.adminSupabase, version, uploadLog);
+      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result, uploadLog });
     }
 
     if (mode === 'aliases') {
@@ -646,7 +855,9 @@ export async function POST(request) {
         editSource: 'template_upload',
       });
       await refreshVersionCounts(access.adminSupabase, version.id);
-      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result });
+      const uploadLog = { mode, editSource: 'template_upload', actor: access.user.email, ...result };
+      await rememberGlapsUploadResult(access.adminSupabase, version, uploadLog);
+      return NextResponse.json({ success: true, mode, editSource: 'template_upload', ...result, uploadLog });
     }
 
     if (mode === 'all') {
@@ -667,6 +878,18 @@ export async function POST(request) {
         }),
       ]);
       await refreshVersionCounts(access.adminSupabase, version.id);
+      const uploadLog = {
+        mode,
+        editSource: 'template_upload',
+        actor: access.user.email,
+        updated: routeResult.updated + aliasResult.updated,
+        deleted: routeResult.deleted + aliasResult.deleted,
+        skippedWebProtected: routeResult.skippedWebProtected + aliasResult.skippedWebProtected,
+        unchanged: routeResult.unchanged + aliasResult.unchanged,
+        routes: routeResult,
+        aliases: aliasResult,
+      };
+      await rememberGlapsUploadResult(access.adminSupabase, version, uploadLog);
       return NextResponse.json({
         success: true,
         mode,
@@ -675,6 +898,7 @@ export async function POST(request) {
         deleted: routeResult.deleted + aliasResult.deleted,
         routes: routeResult,
         aliases: aliasResult,
+        uploadLog,
       });
     }
 

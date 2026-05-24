@@ -137,6 +137,19 @@ function downloadTemplate() {
     window.location.href = '/api/branches/asan/glaps/master/template';
 }
 
+function uploadProtectionText(payload = {}) {
+    const skipped = Number(
+        payload.skippedWebProtected
+        || (payload.routes?.skippedWebProtected || 0) + (payload.aliases?.skippedWebProtected || 0)
+        || 0,
+    );
+    const preserved = Number(payload.webProtection?.preserved || 0);
+    const parts = [];
+    if (skipped > 0) parts.push(`WEB수정 보호 ${skipped.toLocaleString()}건 업로드 제외`);
+    if (preserved > 0) parts.push(`WEB수정 ${preserved.toLocaleString()}건 보존`);
+    return parts.length ? ` / ${parts.join(' / ')}` : '';
+}
+
 export default function AsanGlapsMaster({ refreshToken = 0 }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -217,7 +230,7 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
                 : (payload.mode === 'all'
                     ? `운송경로 수정 ${payload.routes?.updated || 0}건 / 항목 수정 ${payload.aliases?.updated || 0}건`
                     : `수정 ${payload.updated || 0}건 / 삭제 ${payload.deleted || 0}건`);
-            setMessage({ type: 'success', text: `${suffix} 반영 완료` });
+            setMessage({ type: 'success', text: `${suffix}${uploadProtectionText(payload)} 반영 완료` });
             await fetchData();
         } catch (error) {
             setMessage({ type: 'error', text: error.message });

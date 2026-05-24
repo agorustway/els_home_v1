@@ -1,3 +1,20 @@
+## [2026-05-24] 차량관제 운행기록/교육이수 페이지 조회 적용 (v5.14.178)
+### 핵심
+- 운행기록/교육이수 목록을 한 번에 200건 로딩하던 구조에서 서버 페이지 단위 조회로 바꿨습니다.
+- 첫 화면은 20건만 로딩하고, 화면에서 20/50/100건 단위와 이전/다음 페이지를 선택할 수 있게 했습니다.
+- 교육이수 탭은 `education_only=1`로 안전교육 이수 로그가 있는 운행만 조회하며, 데스크탑/모바일 모두 같은 페이지 컨트롤을 사용합니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 8개 통과
+- `npm.cmd run lint -- "app/(main)/employees/vehicle-tracking/page.js" "app/api/vehicle-tracking/trips/route.js" "tests/vehicleTrackingMobileDetail.test.mjs"`: 통과(기존 hook/img 경고만)
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/app/api/vehicle-tracking/trips/route.js`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 차량관제 운행거리/최고속도 기록 노출 보정 (v5.14.175)
 ### 핵심
 - 운행기록 표의 `최종위치(속도)` 묶음 컬럼을 `운행거리`, `최고속도`, `최종위치` 독립 컬럼으로 분리했습니다.
@@ -10,6 +27,27 @@
 - `web/app/(main)/employees/vehicle-tracking/page.js`
 - `web/app/api/vehicle-tracking/trips/route.js`
 - `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-24] GLAPS WEB수정 업로드 충돌 보호 정책 적용 (v5.14.177)
+### 핵심
+- `수정양식 업로드`가 기존 `WEB수정` 행을 변경하거나 삭제하려 하면 해당 행은 적용하지 않고 스킵하도록 했습니다.
+- `NAS 마스터 반영`/`마스터 업로드`로 새 원장 버전이 만들어질 때 기존 활성 버전의 `WEB수정` 행을 새 버전으로 보존합니다.
+- 업로드 완료 메시지에 `WEB수정 보호 N건 업로드 제외`, `WEB수정 N건 보존`을 표시해 충돌 처리 결과를 바로 알 수 있게 했습니다.
+- 마지막 업로드 처리 결과는 활성 버전 `metadata.lastUploadResult`에도 남깁니다.
+### 정책
+- 현재 DB는 필드별 출처가 아니라 행 단위 `updated_by`만 갖고 있으므로, 충돌 보호도 행 단위로 적용합니다.
+- 필드 단위 병합은 이후 별도 provenance 테이블을 둘 때 확장합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
