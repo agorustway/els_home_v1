@@ -707,6 +707,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /DISPATCH_CHANGE_HEADERS/);
   assert.match(source, /detailChangeRows/);
   assert.match(source, /detailChangeEvents/);
+  assert.match(source, /detailStateRefreshToken/);
+  assert.match(source, /setDetailStateRefreshToken\(token => token \+ 1\)/);
   assert.match(source, /confirmDetailChangeEvents/);
   assert.match(source, /일괄확인/);
   assert.match(source, /확인완료/);

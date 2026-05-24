@@ -739,6 +739,7 @@ function AsanDispatchContent() {
     const [detailChangeStatusFilter, setDetailChangeStatusFilter] = useState('');
     const [detailChangeSetupRequired, setDetailChangeSetupRequired] = useState(false);
     const [detailChangeSaving, setDetailChangeSaving] = useState(false);
+    const [detailStateRefreshToken, setDetailStateRefreshToken] = useState(0);
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const [glapsMasterRefreshToken, setGlapsMasterRefreshToken] = useState(0);
     const tabsRef = useRef(null);
@@ -805,7 +806,7 @@ function AsanDispatchContent() {
         };
         loadGlapsLookup();
         return () => { cancelled = true; };
-    }, [mainView]);
+    }, [glapsMasterRefreshToken, mainView]);
 
     // ===== 데이터 fetch =====
     const fetchSettings = useCallback(async () => {
@@ -853,8 +854,13 @@ function AsanDispatchContent() {
         setSyncStatus({ message: '현재 화면 새로고침 중...', isError: false });
         try {
             const refreshed = await fetchData(viewType, { silent: true, preserveActiveDate: true });
-            if (mainView === 'glaps-master') {
+            if (['detail', 'detail-change', 'glaps-master'].includes(mainView)) {
                 setGlapsMasterRefreshToken(token => token + 1);
+            }
+            if (['detail', 'detail-change'].includes(mainView)) {
+                detailChangeSyncRef.current = '';
+                setDetailChangeDrafts({});
+                setDetailStateRefreshToken(token => token + 1);
             }
             setSyncStatus({
                 message: refreshed ? '현재 보기와 날짜를 유지한 채 새로고침했습니다.' : '배차판 자료 새로고침에 실패했습니다.',
@@ -1161,7 +1167,7 @@ function AsanDispatchContent() {
         };
         loadDetailState();
         return () => { cancelled = true; };
-    }, [detailScope, getDetailAuthHeaders, mainView]);
+    }, [detailScope, detailStateRefreshToken, getDetailAuthHeaders, mainView]);
 
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {

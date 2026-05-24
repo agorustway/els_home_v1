@@ -1,3 +1,19 @@
+## [2026-05-24] 아산 배차판 새로고침 상세상태 재조회 보정 (v5.14.181)
+### 핵심
+- 2026-05-25 테스트 데이터는 배차확정/확정이력/스냅샷/변동이벤트/변동이력/BKG보정/보정이력을 모두 삭제해, 한 번도 확정하지 않은 상태로 리셋했습니다.
+- `새로고침` 버튼이 배차 원본만 다시 읽고 상세배차의 확정/BKG/변동 상태를 다시 조회하지 않던 문제를 보정했습니다.
+- 상세배차/배차변동내역 화면에서 새로고침하면 GLAPS 조회도 함께 갱신하고, 임시 draft와 변동 동기화 서명을 초기화합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. 정적 생성 중 NAS/WebDAV fetch `ECONNRESET` 경고가 있었지만 빌드는 성공했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 배차변동내역 스냅샷/이벤트 원장 구현 (v5.14.180)
 ### 핵심
 - 배차확정 시 상세배차 라인을 `branch_dispatch_detail_snapshots`에 저장하고, 확정 이후 현재 상세라인과 비교해 `추가 / 삭제 / 변경` 이벤트를 `branch_dispatch_detail_change_events`에 남깁니다.
