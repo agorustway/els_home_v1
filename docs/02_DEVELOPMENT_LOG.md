@@ -1,3 +1,21 @@
+## [2026-05-24] 아산 배차판 RAG 질문 의도 분리 보강 (v5.14.161)
+### 핵심
+- `모레/내일모레/글피`를 날짜 범위로 정규화하고 `13:00`, `13시30분`, 배차정보 `09 10` 같은 시간 표기를 같은 시간 필터로 매칭하게 했습니다.
+- `상차지별/지역별/업체별`은 필터가 아니라 집계축으로 보고, `모비스/글로비스`는 데이터셋 필터로 분리합니다.
+- `부산배차`처럼 지역과 배차가 붙은 질문은 `부산` 조건만 남기도록 보정해 표현이 조금 달라도 같은 배차판 의도로 읽게 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 15개 통과
+- `npm.cmd run lint -- "utils/asanDispatchRag.mjs" "utils/aiAssistantMeta.mjs" "tests/asanDispatchRag.test.mjs" "tests/aiAssistantMeta.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchRag.mjs`
+- `web/tests/asanDispatchRag.test.mjs`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 보호값 음영과 배차판 매칭용 라벨 정리 (v5.14.162)
 ### 핵심
 - GLAPS 수정양식 설명서에 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이며 일반 보정 대상이 아니라는 규칙을 추가했습니다.

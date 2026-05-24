@@ -14,10 +14,10 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 test('AI 어시스턴트 버전과 소개는 함수형 메타에서 관리한다', () => {
-  assert.equal(getAiAssistantVersion(), 'v5.14.157');
+  assert.equal(getAiAssistantVersion(), 'v5.14.161');
 
   const intro = getAiAssistantIntroMessage();
-  assert.match(intro, /v5\.14\.157/);
+  assert.match(intro, /v5\.14\.161/);
   assert.match(intro, /branch_dispatch/);
   assert.match(intro, /DB에 저장되거나 색인된 자료/);
   assert.doesNotMatch(intro, /v5\.11\.0/);

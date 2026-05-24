@@ -23,6 +23,11 @@ const CARRIER_HINT_WORDS = [
   '천지', '명진', '한진', '동방', '로컬',
 ];
 
+const TYPE_ALIASES = {
+  mobis: ['모비스', '모비스as', 'mobis', 'mobisas'],
+  glovis: ['글로비스', '글로비스kd', '글로비스kd외', 'glovis', 'kd외'],
+};
+
 const NON_REGION_HEADERS = new Set([
   '순번', '담당자', '당당자', '운송사', '화주', '작업지', '운송지', '보관소',
   '포트', '도착지', '도착항', '국가', '국가명', '오더', '오더(계)', '계',
@@ -44,12 +49,14 @@ const IGNORE_TERMS = new Set([
   '건수', '알려줘', '알려줘요', '어디야', '어디지', '어디냐', '정보',
   '어디', '어느', '좀', '부탁', '부탁해',
   '총', '합계', '전체', '수량', '현황', '몇', '내역', '확인', '조회',
-  '오늘', '내일', '어제', '그제', '이번주', '다음주', '지난주', '금주',
+  '오늘', '내일', '모레', '내일모레', '글피', '그글피', '어제', '그제', '이번주', '다음주', '지난주', '금주',
   '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일',
   '월', '화', '수', '목', '금', '토', '일',
   '작업지', '작업지는', '작업지야', '화주', '담당자', '고객사', '포트',
   '도착항', '상차지', '상차', '배차정보', '특이사항', '비고',
   '업체', '업체별', '운송사', '운송사별', '실행사', '실행사별',
+  '지역별', '상차지별', '상차지역별', '픽업지역별', '상차지별수량',
+  '상차지별배차', '지역별수량', '지역별배차',
 ]);
 
 const WEEKDAYS = [
@@ -142,6 +149,21 @@ function parseDateScope(text, now) {
     }
   }
 
+  if (compact.includes('모레') || compact.includes('내일모레')) {
+    const ymd = addDaysYmd(today, 2);
+    return { mode: 'day', explicit: true, targetDates: [ymd], start: ymd, end: ymd, label: `모레(${ymd})` };
+  }
+
+  if (compact.includes('그글피')) {
+    const ymd = addDaysYmd(today, 4);
+    return { mode: 'day', explicit: true, targetDates: [ymd], start: ymd, end: ymd, label: `그글피(${ymd})` };
+  }
+
+  if (compact.includes('글피')) {
+    const ymd = addDaysYmd(today, 3);
+    return { mode: 'day', explicit: true, targetDates: [ymd], start: ymd, end: ymd, label: `글피(${ymd})` };
+  }
+
   if (compact.includes('내일')) {
     const ymd = addDaysYmd(today, 1);
     return { mode: 'day', explicit: true, targetDates: [ymd], start: ymd, end: ymd, label: `내일(${ymd})` };
@@ -224,11 +246,39 @@ function stripKoreanParticle(term) {
 function isDateLikeTerm(term) {
   const compact = normalizeCompact(term);
   return /^\d{1,2}월\d{0,2}일?$/.test(compact)
-    || /^\d{1,2}[./-]\d{1,2}$/.test(compact)
+    || /^\d{1,2}[./-]\d{1,2}일?$/.test(compact)
     || /^\d{1,2}[월일]$/.test(compact)
     || /^\d{1,2}시/.test(compact)
+    || /^\d{1,2}:\d{1,2}/.test(compact)
     || /^20\d{2}년?$/.test(compact)
     || /^\d+대$/.test(compact);
+}
+
+function isDispatchCompoundTerm(compact, hints = []) {
+  if (!compact || !/(배차판|배차|매차)$/.test(compact)) return false;
+  const withoutTrigger = compact.replace(/(배차판|배차|매차)$/g, '');
+  if (!withoutTrigger || IGNORE_TERMS.has(withoutTrigger)) return true;
+  return hints.some((hint) => withoutTrigger === normalizeCompact(hint));
+}
+
+function detectTypeFilters(text) {
+  const compact = normalizeCompact(text);
+  return Object.entries(TYPE_ALIASES)
+    .filter(([, aliases]) => aliases.some((alias) => compact.includes(normalizeCompact(alias))))
+    .map(([type]) => type);
+}
+
+function isTypeTerm(compact) {
+  return Object.values(TYPE_ALIASES)
+    .flat()
+    .some((alias) => compact === normalizeCompact(alias));
+}
+
+function isAggregationTerm(compact) {
+  if (!compact) return false;
+  if (IGNORE_TERMS.has(compact)) return true;
+  return /(상차지|상차지역|픽업지역|지역|업체|운송사|실행사|작업지|시간대|선사|라인)(별|별수량|별배차|별현황)$/.test(compact)
+    || /(별)(수량|배차|현황)?$/.test(compact) && /(상차|지역|업체|운송사|실행사|작업지|시간대|선사|라인)/.test(compact);
 }
 
 function isPureOperationalNumber(term) {
@@ -248,7 +298,8 @@ function buildSpecificKeywords(text, inputTerms = []) {
     if (normalizeCompact(text).includes(normalizeCompact(hint))) rawTerms.push(hint);
   }
 
-  const keepAsanRegion = /아산\s*(칸|상차|지역)|아산칸/.test(String(text || ''));
+  const hasGroupingAxis = /(상차지|상차지역|픽업지역|지역|업체|운송사|실행사|작업지|시간대|선사|라인)\s*별/.test(String(text || ''));
+  const keepAsanRegion = !hasGroupingAxis && /아산\s*(칸|상차|지역)|아산칸/.test(String(text || ''));
   const keywords = [];
   const seen = new Set();
 
@@ -257,6 +308,9 @@ function buildSpecificKeywords(text, inputTerms = []) {
     const compact = normalizeCompact(stripped);
     if (!compact || compact.length < 2) continue;
     if (IGNORE_TERMS.has(compact)) continue;
+    if (isAggregationTerm(compact)) continue;
+    if (isTypeTerm(compact)) continue;
+    if (isDispatchCompoundTerm(compact, hints)) continue;
     if (compact.startsWith('작업지') || compact.startsWith('배차')) continue;
     if (compact === '아산' && !keepAsanRegion) continue;
     if (isDateLikeTerm(compact) || isPureOperationalNumber(compact)) continue;
@@ -286,6 +340,7 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
   const compact = normalizeCompact(userKwd);
   const dateScope = parseDateScope(text, options.now || new Date());
   const filterHour = extractFilterHour(text);
+  const typeFilters = detectTypeFilters(text);
   const specificKeywords = buildSpecificKeywords(text, options.searchTerms || []);
   const hasDispatchTrigger = hasAnyWord(compact, DISPATCH_TRIGGER_WORDS);
   const hasStructureTrigger = hasAnyWord(compact, STRUCTURE_TRIGGER_WORDS);
@@ -303,6 +358,7 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
     shouldQuery,
     dateScope,
     filterHour,
+    typeFilters,
     specificKeywords,
     hasDispatchTrigger,
     hasStructureTrigger,
@@ -630,11 +686,13 @@ function buildSchemaProfile(records = []) {
 
 function rowMatchesIntent(rowInfo, intent) {
   const lowerText = rowInfo.rowText.toLowerCase();
+  const typeMatch = !intent.typeFilters?.length
+    || intent.typeFilters.includes(String(rowInfo.type || '').toLowerCase());
   const keywordMatch = intent.specificKeywords.length === 0
     || intent.specificKeywords.every((kwd) => lowerText.includes(String(kwd).toLowerCase()));
   const hourMatch = !intent.filterHour
     || rowInfo.memoTexts.some((text) => hasHour(text, intent.filterHour));
-  return keywordMatch && hourMatch;
+  return typeMatch && keywordMatch && hourMatch;
 }
 
 function queryBuilderForIntent(supabase, intent) {
@@ -690,6 +748,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
 
   const loadedDates = [...new Set(sortedRecords.map((record) => record.target_date))].sort();
   const filterLabel = [
+    ...(intent.typeFilters || []).map((type) => (type === 'mobis' ? '모비스' : (type === 'glovis' ? '글로비스' : type))),
     intent.filterHour ? `${intent.filterHour}시` : '',
     ...intent.specificKeywords,
   ].filter(Boolean).join(', ') || '전체';
@@ -721,7 +780,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
   text += `- **상차지별 전체**: ${topMapText(overallSummary.byRegion)}\n`;
 
   text += `### 질문 조건 매칭 현황\n`;
-  if (intent.specificKeywords.length > 0 || intent.filterHour) {
+  if (intent.typeFilters?.length > 0 || intent.specificKeywords.length > 0 || intent.filterHour) {
     text += `- 조건: ${filterLabel}\n`;
     text += `- 매칭 행: ${matchedSummary.rowCount}건 / 오더 ${formatCount(matchedSummary.orderCount)}대 / 실제 배차 ${formatCount(matchedSummary.dispatchCount)}대\n`;
     text += `- 매칭 운송사: ${topMapText(matchedSummary.byCarrier)}\n`;
