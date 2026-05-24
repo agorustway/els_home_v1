@@ -26,6 +26,8 @@
 - `node --test web/tests/vehicleDebugLogRoute.test.mjs`: 2개 통과
 - `npm.cmd run lint -- "tests/vehicleDebugLogRoute.test.mjs"`: 통과
 - `python ast.parse docker/els-backend/app_core.py`: 통과
+- `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/deploy-core.sh"`: NAS core 배포 완료
+- `GET/POST http://192.168.0.4:2929/api/debug/*`: debug view/log 200 확인
 ### 변경 파일
 - `docker/els-backend/app_core.py`
 - `web/tests/vehicleDebugLogRoute.test.mjs`

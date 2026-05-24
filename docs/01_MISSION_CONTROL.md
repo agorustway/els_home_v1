@@ -73,6 +73,8 @@
 - `node --test web/tests/vehicleDebugLogRoute.test.mjs`: 2개 통과
 - `npm.cmd run lint -- "tests/vehicleDebugLogRoute.test.mjs"`: 통과
 - `python ast.parse docker/els-backend/app_core.py`: 통과
+- `ssh elsnas "cd /volume1/docker/els_home_v1 && bash scripts/deploy-core.sh"`: NAS core 배포 완료
+- `GET/POST http://192.168.0.4:2929/api/debug/*`: debug view/log 200 확인
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: `배차변동내역` 탭에서 확정 이후 추가/삭제 라인을 실제 저장/검증하고, 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식을 출력한다.
