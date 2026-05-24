@@ -383,7 +383,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                 style={{
                     backgroundColor: headerBg,
                     color: textColor,
-                    height: '70px',
+                    height: 'var(--header-height, 64px)',
                     transition: 'background-color 0.3s, color 0.3s',
                     position: !isEmployees ? 'fixed' : 'relative',
                     top: 0,
@@ -395,7 +395,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                 <div className="container">
                     <div className={styles.inner}>
                         <Link href="/" className={styles.logo} onClick={handleLinkClick}>
-                            <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} style={{ filter: logoFilter, height: '27px', transition: 'filter 0.3s' }} />
+                            <img src="/images/logo.png" alt="ELS SOLUTION" className={styles.logoImage} style={{ filter: logoFilter, height: '25px', transition: 'filter 0.3s' }} />
                         </Link>
 
                         <nav className={styles.nav}>

@@ -1,12 +1,14 @@
 /* Default Variables */
 /* Desktop First Styles (Default) */
 .sidebar {
+    --sidebar-width: 244px;
+    --sidebar-mobile-width: min(84vw, 244px);
     position: sticky;
-    top: 70px;
+    top: var(--header-height, 64px);
     /* Header Height */
     left: 0;
-    width: 260px;
-    height: calc(100vh - 70px);
+    width: var(--sidebar-width);
+    height: calc(100vh - var(--header-height, 64px));
     background: #ffffff;
     z-index: 800;
     transform: none;
@@ -59,10 +61,10 @@
 /* Hover trigger zone for unpinned mode */
 .hoverTrigger {
     position: fixed;
-    top: 114px;
+    top: calc(var(--header-height, 64px) + var(--ticker-height, 40px));
     left: 0;
     width: 20px;
-    height: calc(100vh - 114px);
+    height: calc(100vh - var(--header-height, 64px) - var(--ticker-height, 40px));
     z-index: 890;
     cursor: e-resize;
 }
@@ -94,12 +96,12 @@
     /* Hidden on Desktop */
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 16px 18px;
     border-bottom: 1px solid #f1f5f9;
 }
 
 .mobileTitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #1e293b;
 }
@@ -107,11 +109,11 @@
 .closeBtn {
     background: none;
     border: none;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     color: #94a3b8;
     cursor: pointer;
     line-height: 1;
-    padding: 5px;
+    padding: 4px;
 }
 
 /* 데스크탑 고정(Pinned) 모드일 땐 닫기 버튼 숨김 */
@@ -121,19 +123,19 @@
 
 /* Search Area */
 .searchWrap {
-    padding: 20px 20px 10px;
+    padding: 12px 14px 8px;
 }
 
 /* Accordion Container */
 .accordionContainer {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 15px;
+    padding: 8px 10px;
 }
 
 .accordionItem {
-    margin-bottom: 8px;
-    border-radius: 12px;
+    margin-bottom: 6px;
+    border-radius: 10px;
     overflow: hidden;
     transition: background-color 0.2s;
 }
@@ -147,13 +149,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
+    padding: 11px 13px;
     background: transparent;
     border: none;
     cursor: pointer;
     text-align: left;
     transition: all 0.2s;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 .accordionTrigger:hover {
@@ -170,7 +172,7 @@
 }
 
 .triggerLabel {
-    font-size: 1rem;
+    font-size: 0.94rem;
     font-weight: 600;
     color: #334155;
 }
@@ -193,28 +195,28 @@
 }
 
 .contentInner {
-    padding: 5px 12px 15px;
+    padding: 2px 8px 10px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .subItem {
     display: block;
-    padding: 10px 16px;
-    font-size: 0.95rem;
+    padding: 8px 12px;
+    font-size: 0.88rem;
     color: #64748b;
     text-decoration: none;
-    border-radius: 8px;
+    border-radius: 7px;
     transition: all 0.2s;
     position: relative;
-    padding-left: 24px;
+    padding-left: 22px;
 }
 
 .subItem:before {
     content: '';
     position: absolute;
-    left: 10px;
+    left: 9px;
     top: 50%;
     transform: translateY(-50%);
     width: 4px;
@@ -239,15 +241,15 @@
 }
 
 .emptyMsg {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    padding: 8px 12px;
+    font-size: 0.8rem;
     color: #94a3b8;
     font-style: italic;
 }
 
 /* Footer (User Info) */
 .footer {
-    padding: 20px;
+    padding: 14px;
     border-top: 1px solid #f1f5f9;
     background: #ffffff;
 }
@@ -255,13 +257,13 @@
 .userInfo {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 
 .avatar {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background: #eff6ff;
     display: flex;
@@ -269,7 +271,7 @@
     justify-content: center;
     color: #3b82f6;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1rem;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
@@ -282,24 +284,24 @@
 
 .username {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: #1e293b;
 }
 
 .role {
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     color: #64748b;
     margin-top: 2px;
 }
 
 .logoutBtn {
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     background: #fef2f2;
     color: #ef4444;
     border: 1px solid #fee2e2;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
@@ -315,7 +317,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
+    width: var(--sidebar-mobile-width);
     height: 100vh;
     z-index: 9001;
     transform: translateX(-100%);
@@ -331,7 +333,7 @@
     display: none;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px 10px;
+    padding: 14px 16px 8px;
 }
 
 .sidebar.unpinned .mobileHeader {
@@ -342,7 +344,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px 10px;
+    padding: 16px 18px 8px;
 }
 
 .desktopPinArea {
@@ -351,7 +353,7 @@
 }
 
 .pinLabel {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #64748b;
     display: flex;
     align-items: center;
@@ -362,8 +364,8 @@
 
 .pinCheckbox {
     cursor: pointer;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
 }
 
 @media (max-width: 1024px) {
@@ -371,7 +373,7 @@
         position: fixed;
         top: 0;
         left: 0;
-        width: 280px;
+        width: var(--sidebar-mobile-width);
         height: 100vh;
         z-index: 9001;
         transform: translateX(-100%);
@@ -389,6 +391,32 @@
 
     .desktopPinArea {
         display: none; /* 모바일에서는 고정 토글 숨김 */
+    }
+
+    .sidebarHeader {
+        padding: 14px 16px 8px;
+    }
+
+    .searchWrap {
+        padding: 10px 12px 6px;
+    }
+
+    .accordionContainer {
+        padding: 6px 8px;
+    }
+
+    .accordionTrigger {
+        padding: 10px 12px;
+    }
+
+    .triggerLabel {
+        font-size: 0.9rem;
+    }
+
+    .subItem {
+        padding-top: 7px;
+        padding-bottom: 7px;
+        font-size: 0.84rem;
     }
 
     /* 모바일에서는 고정 여부와 관계없이 항상 닫기 버튼을 표시 */

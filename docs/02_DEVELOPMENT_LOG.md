@@ -1,3 +1,26 @@
+## [2026-05-24] 메뉴 밀도와 모바일 공간 활용 보정 (v5.14.151)
+### 핵심
+- 전역 헤더 높이를 70px에서 64px로 낮추고, 모바일 헤더는 56px 기준으로 분리했습니다.
+- 티커 높이는 40px로 줄이고, 티커·임직원 헤더·사이드바 sticky 오프셋을 `--header-height`, `--ticker-height` 변수 기준으로 맞췄습니다.
+- 임직원 헤더는 데스크톱 56px, 모바일 40px로 정리하고 검색·링크·인사말 간격을 줄였습니다.
+- 인트라넷 사이드바는 데스크톱 244px, 모바일 244px 상한으로 줄이고 카드/항목/푸터 패딩을 낮춰 같은 화면에서 더 많은 메뉴가 보이게 했습니다.
+- 모바일 전역 메뉴의 헤더·항목·서브항목 패딩을 줄여 사이드 메뉴와 같은 밀도 기준을 맞췄습니다.
+### 검증
+- `npm.cmd run lint -- components/Header.js components/SiteLayout.js components/SubNav.js`: 통과, 기존 `<img>` 경고 3건 유지
+- `npm.cmd run build`: 통과
+- `http://127.0.0.1:3001/employees/ask?debug=true`: 데스크톱 1280x720에서 헤더 64px, 티커 40px, 임직원 헤더 57px, 사이드바 244px 확인
+- 같은 URL 모바일 390x844에서 헤더 56px, 임직원 헤더 40px, 사이드바 244px, 메뉴 항목 36px 확인 후 검증용 서버 종료.
+### 변경 파일
+- `web/app/globals.css`
+- `web/components/Header.js`, `web/components/Header.module.css`
+- `web/components/InfoTicker.module.css`
+- `web/components/EmployeeHeader.module.css`
+- `web/components/EmployeeSidebar.module.css`
+- `web/components/SiteLayout.js`, `web/components/SubNav.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 웹 직접편집과 전체 수정양식 분리 (v5.14.150)
 ### 핵심
 - GLAPS 코드 화면에서 운송경로/항목매핑을 직접 추가·수정·삭제할 수 있게 했습니다.

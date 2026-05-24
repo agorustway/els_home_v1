@@ -108,10 +108,10 @@ export default function SiteLayout({ children }) {
 
     /**
      * 공통 레이아웃 구성 (인트라넷/서브 통합)
-     * 1. Header (Fixed 70px)
-     * 2. Spacer (70px) 또는 Hero (Min-height 300px)
-     * 3. InfoTicker (Sticky 70px)
-     * 4. SubHeader (Sticky 114px) - EmployeeHeader 또는 SubNav
+     * 1. Header (Fixed --header-height)
+     * 2. Spacer (--header-height) 또는 Hero (Min-height 300px)
+     * 3. InfoTicker (Sticky --header-height)
+     * 4. SubHeader (Sticky header + ticker) - EmployeeHeader 또는 SubNav
      */
     return (
         <>
@@ -139,7 +139,7 @@ export default function SiteLayout({ children }) {
                     onMenuClick={handleSidebarToggle}
                 />
             ) : (
-                <SubNav topOffset={70} />
+                <SubNav topOffset="var(--header-height, 64px)" />
             )}
 
             {/* 본문 영역: 인트라넷 모바일 전체에 뉴스 기사처럼 패딩/여백 최소화 레이아웃(newsArticleFull) 적용 */}

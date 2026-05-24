@@ -6,15 +6,15 @@
     backdrop-filter: blur(8px);
     /* 글래스모피즘 효과 추가 */
     color: #f1f5f9;
-    height: 44px;
+    height: var(--ticker-height, 40px);
     display: flex;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 18px;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-    border-bottom: 3px solid #3b82f6;
+    border-bottom: 2px solid #3b82f6;
     /* ELS 블루 포인트 */
     position: sticky;
-    top: 70px;
+    top: var(--header-height, 64px);
     /* 헤더 바로 아래 고정 */
     z-index: 900;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -28,7 +28,7 @@
 .tickerInfo {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 14px;
     flex-shrink: 0;
 }
 
@@ -37,32 +37,32 @@
     font-variant-numeric: tabular-nums;
     color: #93c5fd;
     /* 밝은 블루 */
-    min-width: 210px;
-    font-size: 0.9rem;
+    min-width: 190px;
+    font-size: 0.84rem;
 }
 
 .tickerWeather {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-left: 20px;
+    gap: 6px;
+    padding-left: 14px;
     border-left: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .tickerWeatherIcon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
 }
 
 .tickerWeatherText {
     font-weight: 600;
-    font-size: 0.85rem;
-    min-width: 110px;
+    font-size: 0.8rem;
+    min-width: 100px;
     /* 온도가 바뀌어도 뉴스 위치가 변하지 않기 위해 고정 너비 확보 */
     font-variant-numeric: tabular-nums;
     /* 숫자 폭 고정으로 떨림 방지 */
-    padding-right: 15px;
+    padding-right: 10px;
     /* 뉴스 배지와의 간격(여백) 확보 */
 }
 
@@ -70,7 +70,7 @@
     width: 1px;
     height: 16px;
     background: rgba(255, 255, 255, 0.2);
-    margin: 0 24px;
+    margin: 0 16px;
     flex-shrink: 0;
 }
 
@@ -90,7 +90,7 @@
     font-weight: 900;
     padding: 2px 8px;
     border-radius: 4px;
-    margin-right: 20px;
+    margin-right: 14px;
     flex-shrink: 0;
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
@@ -112,7 +112,7 @@
 }
 
 .tickerNewsItem {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
     color: #e2e8f0;
     transition: color 0.2s;

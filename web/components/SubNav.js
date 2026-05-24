@@ -6,11 +6,12 @@ import { getSubNavItems } from '@/constants/siteLayout';
 export default function SubNav({ topOffset = 114 }) {
     const pathname = usePathname();
     const menuItems = getSubNavItems(pathname);
+    const topValue = typeof topOffset === 'number' ? `${topOffset}px` : topOffset;
 
     if (menuItems.length === 0) return null;
 
     return (
-        <nav className={styles.subNav} style={{ top: `${topOffset}px` }}>
+        <nav className={styles.subNav} style={{ top: topValue }}>
             <div className="container">
                 <div className={styles.inner}>
                     {menuItems.map((item) => (
