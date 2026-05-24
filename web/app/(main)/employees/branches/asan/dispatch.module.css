@@ -843,6 +843,16 @@
     background: #fff7ed !important;
 }
 
+.detailChangeDeleteRow td {
+    background: #e5e7eb !important;
+    color: #475569;
+}
+
+.detailChangeDeleteRow .detailChangeTypeCell {
+    background: #d1d5db !important;
+    color: #334155 !important;
+}
+
 .detailChangeMarker {
     display: inline-flex;
     align-items: center;

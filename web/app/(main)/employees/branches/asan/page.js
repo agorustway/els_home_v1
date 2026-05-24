@@ -837,6 +837,8 @@ function AsanDispatchContent() {
     const [elapsed, setElapsed] = useState('');
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
+    const [syncGate, setSyncGate] = useState({ running: false, cooldownUntil: null, quickDone: false, message: '' });
+    const [syncGateNowMs, setSyncGateNowMs] = useState(() => Date.now());
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
     const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
@@ -863,6 +865,9 @@ function AsanDispatchContent() {
     const detailChangeSyncRef = useRef('');
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const todayKey = useMemo(() => getTodayKey(), []);
+    const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
+    const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
+    const syncActionBlocked = syncing || syncGate.running || syncCooldownActive;
 
     useEffect(() => { dataRef.current = data; }, [data]);
     useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
@@ -967,8 +972,30 @@ function AsanDispatchContent() {
             if (!silent) setLoading(false);
         }
     }, []);
+    const updateSyncGateFromStatus = useCallback((status = {}) => {
+        const nextGate = {
+            running: Boolean(status.running),
+            cooldownUntil: status.request_cooldown_until || status.cooldown_until || null,
+            quickDone: Boolean(status.quick_done),
+            message: status.message || '',
+        };
+        setSyncGate(nextGate);
+        setSyncGateNowMs(Date.now());
+        return nextGate;
+    }, []);
+    const refreshSyncGateStatus = useCallback(async ({ showMessage = false } = {}) => {
+        const statusResponse = await fetch(`/api/branches/asan/sync?t=${Date.now()}`, { cache: 'no-store' });
+        const statusJson = await statusResponse.json().catch(() => ({}));
+        if (!statusResponse.ok) throw new Error(statusJson.error || '동기화 상태 확인 실패');
+        const status = statusJson.status || statusJson;
+        const gate = updateSyncGateFromStatus(status);
+        if (showMessage && gate.running) {
+            setSyncStatus({ message: gate.message || 'NAS 동기화 진행 중입니다.', isError: false });
+        }
+        return status;
+    }, [updateSyncGateFromStatus]);
     const handleRefreshData = () => {
-        if (refreshing || syncing) return;
+        if (refreshing) return;
         if (typeof window === 'undefined') return;
         const activeTargetDate = activeTab === data.length
             ? '__all__'
@@ -1003,6 +1030,10 @@ function AsanDispatchContent() {
         setGlapsMasterRefreshToken(token => token + 1);
     }, []);
     const handleSync = async () => {
+        if (syncActionBlocked) {
+            handleRefreshData();
+            return;
+        }
         setSyncing(true);
         setSyncStatus({ message: 'NAS 동기화 요청 중...', isError: false });
         try {
@@ -1011,19 +1042,27 @@ function AsanDispatchContent() {
             if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '동기화 요청 실패');
 
             let finalStatus = j.status || j;
+            updateSyncGateFromStatus(finalStatus);
+            if (j.cooldown) {
+                setSyncStatus({ message: j.message || '최근 동기화 요청이 있어 새로고침으로 최신 DB를 확인합니다.', isError: false });
+                setTimeout(handleRefreshData, 50);
+                return;
+            }
             if (j.running || finalStatus?.running) {
-                setSyncStatus({ message: 'NAS 동기화 진행 중입니다. 완료되면 화면을 갱신합니다.', isError: false });
+                setSyncStatus({ message: 'NAS 최근 5일 동기화 진행 중입니다. 완료되면 화면을 새로고침합니다.', isError: false });
                 for (let attempt = 0; attempt < 180; attempt += 1) {
                     await wait(2000);
-                    const statusResponse = await fetch(`/api/branches/asan/sync?t=${Date.now()}`, { cache: 'no-store' });
-                    const statusJson = await statusResponse.json().catch(() => ({}));
-                    if (!statusResponse.ok) throw new Error(statusJson.error || '동기화 상태 확인 실패');
-                    finalStatus = statusJson.status || statusJson;
-                    const running = Boolean(statusJson.running || finalStatus?.running);
-                    if (!running) break;
-                    setSyncStatus({ message: finalStatus?.message || 'NAS 동기화 진행 중입니다.', isError: false });
+                    finalStatus = await refreshSyncGateStatus();
+                    const running = Boolean(finalStatus?.running);
+                    if (finalStatus?.quick_done || !running) break;
+                    setSyncStatus({ message: finalStatus?.message || 'NAS 최근 5일 동기화 진행 중입니다.', isError: false });
                 }
-                if (finalStatus?.running) throw new Error('동기화가 오래 걸리고 있습니다. 잠시 후 다시 확인해 주세요.');
+                if (finalStatus?.running && !finalStatus?.quick_done) throw new Error('최근 자료 동기화가 오래 걸리고 있습니다. 잠시 후 새로고침해 주세요.');
+                if (finalStatus?.running && finalStatus?.quick_done) {
+                    setSyncStatus({ message: '최근 5일 자료 반영 완료. 과거 날짜는 백그라운드에서 계속 동기화합니다.', isError: false });
+                    setTimeout(handleRefreshData, 50);
+                    return;
+                }
             }
 
             const results = finalStatus?.results || j.results || [];
@@ -1032,12 +1071,11 @@ function AsanDispatchContent() {
                 const fail = results.find(result => result.success === false);
                 throw new Error(fail?.message || finalStatus?.message || 'NAS 동기화 실패');
             }
-            const refreshed = await fetchData(viewType, { preserveActiveDate: true });
-            if (!refreshed) throw new Error('동기화 후 화면 갱신 실패');
             const detail = results.length
                 ? results.map(result => `${result.type === 'glovis' ? '글로비스' : '모비스'} ${result.sheets || 0}시트`).join(' / ')
                 : '완료';
-            setSyncStatus({ message: `동기화 완료. 최신 자료로 갱신했습니다. (${detail})`, isError: false });
+            setSyncStatus({ message: `동기화 완료. 최신 자료로 새로고침합니다. (${detail})`, isError: false });
+            setTimeout(handleRefreshData, 50);
         } catch (e) {
             setSyncStatus({ message: '동기화 실패: ' + e.message, isError: true });
         } finally {
@@ -1066,6 +1104,31 @@ function AsanDispatchContent() {
 
     // ===== Effects =====
     useEffect(() => { fetchSettings(); }, [fetchSettings]);
+    useEffect(() => {
+        let cancelled = false;
+        const pollSyncGate = async () => {
+            try {
+                const status = await refreshSyncGateStatus();
+                if (cancelled) return;
+                if (status?.running && status?.quick_done) {
+                    setSyncStatus({ message: status.message || '과거 날짜 동기화가 백그라운드에서 진행 중입니다.', isError: false });
+                }
+            } catch {
+                // 상태 확인 실패는 화면 사용을 막지 않는다.
+            }
+        };
+        pollSyncGate();
+        const timer = setInterval(pollSyncGate, 10000);
+        return () => {
+            cancelled = true;
+            clearInterval(timer);
+        };
+    }, [refreshSyncGateStatus]);
+    useEffect(() => {
+        if (!syncGate.running && !syncCooldownActive) return undefined;
+        const timer = setInterval(() => setSyncGateNowMs(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, [syncCooldownActive, syncGate.running]);
     useEffect(() => {
         const preserveReloadState = skipInitialViewResetRef.current;
         skipInitialViewResetRef.current = false;
@@ -2373,13 +2436,13 @@ function AsanDispatchContent() {
                             )}
                         </div>
                         <div className={styles.headerButtons}>
-                            <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing || syncing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
+                            <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
                                 {refreshing ? '⏳ 새로고침' : '🔄 새로고침'}
                             </button>
                             <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
                             <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
-                            <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncing}>
-                                {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                            <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncActionBlocked}>
+                                {(syncing || syncGate.running) ? '⏳ 동기화' : '🚀 NAS 동기화'}
                             </button>
                         </div>
                     </div>
@@ -2707,8 +2770,9 @@ function AsanDispatchContent() {
                                         {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
                                             const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
                                             const hasDraft = hasManualDraft || hasCalculatedDiff;
+                                            const isDeleteEvent = event.change_type === 'delete';
                                             return (
-                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
+                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';

@@ -748,6 +748,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
   assert.match(source, /계산값반영/);
   assert.match(source, /detailChangedRow/);
+  assert.match(source, /detailChangeDeleteRow/);
   assert.match(source, /변경건/);
   assert.match(source, /onMasterChanged=\{handleGlapsMasterChanged\}/);
   assert.match(glapsMasterSource, /onMasterChanged = null/);
@@ -788,6 +789,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailConfirmButton/);
   assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailChangeTypeCell/);
+  assert.match(css, /\.detailChangeDeleteRow td\s*{[\s\S]*background: #e5e7eb !important;/);
   assert.match(css, /\.detailChangeInput/);
   assert.match(css, /\.detailChangeInlinePanel/);
   assert.match(css, /\.detailIssueGroup\s*{/);
@@ -814,6 +816,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(changeApi, /diffDispatchChangeLines/);
   assert.match(changeApi, /confirm_all/);
   assert.match(changeApi, /bulk_confirmed/);
+  assert.match(changeApi, /deletedAfterAddPayload/);
+  assert.match(changeApi, /change_type: 'delete'/);
+  assert.match(changeApi, /quantity_delta: 0/);
+  assert.match(changeApi, /deleted_after_add/);
   assert.match(changeUtil, /diffDispatchChangeLines/);
   assert.match(changeUtil, /DISPATCH_CHANGE_HEADERS/);
   assert.match(actorNameApi, /profiles/);
@@ -1050,9 +1056,12 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(source, /}, 60000\);/);
   assert.match(source, /if \(!silent\) setLoading\(true\);/);
   assert.match(source, /if \(!silent\) setData\(\[\]\);/);
-  assert.match(source, /NAS 동기화 진행 중입니다\. 완료되면 화면을 갱신합니다\./);
+  assert.match(source, /NAS 최근 5일 동기화 진행 중입니다\. 완료되면 화면을 새로고침합니다\./);
   assert.match(source, /fetch\(`\/api\/branches\/asan\/sync\?t=\$\{Date\.now\(\)\}`/);
-  assert.match(source, /동기화 완료\. 최신 자료로 갱신했습니다\./);
+  assert.match(source, /동기화 완료\. 최신 자료로 새로고침합니다\./);
+  assert.match(source, /syncActionBlocked/);
+  assert.match(source, /disabled=\{syncActionBlocked\}/);
+  assert.match(source, /setTimeout\(handleRefreshData, 50\)/);
   assert.match(core, /"comments": comments_dict/);
   assert.match(core, /sort_keys=True/);
   assert.match(core, /def _touch_dispatch_file_modified_at/);
@@ -1060,7 +1069,12 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(core, /metadata_only_dates\.append\(target_date\)/);
   assert.match(core, /데이터 동일 시트 .*파일수정일만 갱신/);
   assert.match(core, /_dispatch_sheet_sort_key\(target_date, now\)/);
-  assert.match(core, /priority_start = now\.date\(\) - timedelta\(days=1\)/);
+  assert.match(core, /return today - timedelta\(days=2\), today \+ timedelta\(days=2\)/);
+  assert.match(core, /quick_done/);
+  assert.match(core, /ASAN_DISPATCH_SYNC_REQUEST_COOLDOWN_SECONDS/);
+  assert.match(core, /def sync_asan_dispatch_manual_python/);
+  assert.match(core, /phase="quick"/);
+  assert.match(core, /phase="rest"/);
   assert.match(core, /methods=\["GET", "POST"\]/);
   assert.match(core, /_get_asan_sync_status/);
   assert.doesNotMatch(core, /sheet_hash = hashlib\.md5\(str\(rows\)\.encode/);

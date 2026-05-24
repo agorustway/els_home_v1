@@ -1,3 +1,25 @@
+## [2026-05-25] 아산 배차판 NAS 빠른 동기화/변동 삭제 이력화 (v5.14.187)
+### 핵심
+- NAS 동기화 수동 요청을 `quick`/`rest` 단계로 나눴습니다.
+- `quick` 단계는 글로비스/모비스 모두 오늘 기준 -2일~+2일 최근 5일 시트만 먼저 반영하고, 완료 신호(`quick_done`)를 상태 API에 남깁니다.
+- 웹은 `quick_done`을 받으면 기존 상단 `새로고침`과 같은 `window.location.reload()` 흐름을 실행해 최신구간을 빠르게 확인하게 했습니다. 과거/잔여 날짜는 백그라운드 `rest` 단계에서 이어 처리합니다.
+- 실제 동기화 진행 중이거나 최근 요청 후 1분이 지나지 않은 경우 NAS 동기화 버튼은 비활성화하고, 새로고침 버튼만 사용할 수 있게 했습니다.
+- 확정 후 감지된 `추가` 변동행이 엑셀 원본에서 다시 삭제되면 active=false로 숨기지 않고, 발생일시를 갱신한 `삭제` 이벤트로 전환해 회색 행으로 남깁니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
+- Codex 번들 Python `-m py_compile docker/els-backend/app_core.py`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 새로고침 실제 reload 전환 (v5.14.186)
 ### 핵심
 - 기존 `새로고침` 버튼은 배차 API만 다시 조회해, 새 배포 코드나 화면 변경 반영 확인에는 F5와 같은 효과가 없었습니다.

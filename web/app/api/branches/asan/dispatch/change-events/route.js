@@ -179,6 +179,27 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
     };
 }
 
+function deletedAfterAddPayload(existing, actor, now) {
+    const deletedLinePayload = existing.editable_payload
+        || existing.after_snapshot
+        || existing.before_snapshot
+        || null;
+    return {
+        change_type: 'delete',
+        event_status: 'pending',
+        quantity_delta: 0,
+        before_snapshot: deletedLinePayload,
+        after_snapshot: null,
+        editable_payload: deletedLinePayload,
+        active: true,
+        occurred_at: now,
+        confirmed_by: null,
+        confirmed_at: null,
+        updated_by: actor,
+        updated_at: now,
+    };
+}
+
 async function insertHistory(adminSupabase, event, confirmation, action, actor, now, oldPayload = null, newPayload = null) {
     const { error } = await adminSupabase
         .from('branch_dispatch_detail_change_history')
@@ -258,6 +279,19 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
 
     for (const existing of existingRows || []) {
         if (!existing.active || nextKeys.has(existing.event_key)) continue;
+        if (existing.change_type === 'add') {
+            const dbPayload = deletedAfterAddPayload(existing, actor, now);
+            const { data, error } = await adminSupabase
+                .from('branch_dispatch_detail_change_events')
+                .update(dbPayload)
+                .eq('id', existing.id)
+                .select()
+                .single();
+            if (error) throw error;
+            await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add', actor, now, existing, data);
+            continue;
+        }
+        if (existing.change_type === 'delete') continue;
         const { data, error } = await adminSupabase
             .from('branch_dispatch_detail_change_events')
             .update({
