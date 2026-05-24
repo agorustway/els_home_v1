@@ -638,6 +638,29 @@ def post_log():
     }).execute()
     return jsonify({"ok": True})
 
+@app.route("/api/debug/log", methods=["POST"])
+def post_debug_log():
+    """Android app and overlay debug log receiver."""
+    try:
+        data = request.get_json(silent=True) or {}
+        ts = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+        log_file = Path(os.environ.get("DEBUG_APP_LOG_PATH", "debug_app.log"))
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with log_file.open("a", encoding="utf-8") as f:
+            f.write(f"[{ts}] {json.dumps(data, ensure_ascii=False)}\n")
+        return jsonify({"ok": True})
+    except Exception as e:
+        app.logger.error(f"디버그 로그 저장 실패: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/debug/view", methods=["GET"])
+def view_debug_log():
+    """Show the collected Android app debug log."""
+    log_file = Path(os.environ.get("DEBUG_APP_LOG_PATH", "debug_app.log"))
+    if not log_file.exists():
+        return Response("공개된 로그가 아직 없습니다.", mimetype="text/plain; charset=utf-8")
+    return send_file(log_file, mimetype="text/plain; charset=utf-8")
+
 @app.route("/api/logs", methods=["DELETE"])
 def delete_logs():
     supabase.from_("user_activity_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()

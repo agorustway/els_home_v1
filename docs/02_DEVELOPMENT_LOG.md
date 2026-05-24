@@ -17,6 +17,22 @@
 
 ---
 
+## [2026-05-24] 차량관제 실시간 로그 라우트 복구 (v5.14.169)
+### 핵심
+- 차량위치관제 상단 `실시간 로그` 버튼이 여는 `/api/debug/view`가 NAS `els-core`에 없어 페이지 없음이 날 수 있던 문제를 수정했습니다.
+- 안드로이드 앱/오버레이가 보내는 `/api/debug/log` 수신 라우트와 파일 조회용 `/api/debug/view` 라우트를 `app_core.py`에 추가했습니다.
+- `DEBUG_APP_LOG_PATH` 환경변수로 로그 파일 위치를 바꿀 수 있게 하고, 기본값은 기존과 같은 `debug_app.log`로 유지했습니다.
+### 검증
+- `node --test web/tests/vehicleDebugLogRoute.test.mjs`: 2개 통과
+- `npm.cmd run lint -- "tests/vehicleDebugLogRoute.test.mjs"`: 통과
+- `python ast.parse docker/els-backend/app_core.py`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `web/tests/vehicleDebugLogRoute.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 차량위치관제 조회 화면 UI 정리 (v5.14.168)
 ### 핵심
 - 실시간 관제 통계 카드의 hover 이동과 과한 유리효과를 제거해 실행 버튼처럼 보이지 않게 정리했습니다.
