@@ -140,6 +140,7 @@ const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡'
 const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
+const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount' },
@@ -251,6 +252,12 @@ function fmtTs(dt) {
     if (!dt) return '';
     const t = new Date(dt);
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
+}
+function fmtShortTs(dt) {
+    if (!dt) return '';
+    const t = new Date(dt);
+    if (Number.isNaN(t.getTime())) return '';
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
 function calcSummary(headers, data, viewType) {
@@ -403,6 +410,25 @@ function makeDispatchDetailLineKey(line) {
         line?.startSuffix ?? '',
         line?.lineNo ?? '',
     ].join('|');
+}
+function getDetailBkgValue(line, source) {
+    if (source === 'BKG2') return line?.bkg2 || '';
+    if (source === 'BKG3') return line?.bkg3 || '';
+    return line?.bkg1 || '';
+}
+function buildDetailLineContext(line = {}) {
+    return {
+        lineNo: line.lineNo || null,
+        workDate: line.workDate || '',
+        shipper: line.shipper || '',
+        workplace: line.workplace || '',
+        startLocation: line.startLocation || '',
+        destination: line.destination || '',
+        company: line.company || '',
+        bkg1: line.bkg1 || '',
+        bkg2: line.bkg2 || '',
+        bkg3: line.bkg3 || '',
+    };
 }
 function buildGlapsAliasCodeMap(aliases = [], aliasType) {
     const map = new Map();
@@ -624,7 +650,7 @@ function AsanDispatchContent() {
     const [browserPath, setBrowserPath] = useState('/아산지점/A_운송실무');
     const [browserLoading, setBrowserLoading] = useState(false);
     const [searchInput, setSearchInput] = useState('');
-    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail' | 'glaps-master'
+    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail' | 'detail-change' | 'glaps-master'
     const [searchTerm, setSearchTerm] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
     const [colorFilter, setColorFilter] = useState(null);
@@ -640,6 +666,11 @@ function AsanDispatchContent() {
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
     const [webCellStatus, setWebCellStatus] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
+    const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
+    const [detailOverrideSetupRequired, setDetailOverrideSetupRequired] = useState(false);
+    const [detailConfirmation, setDetailConfirmation] = useState(null);
+    const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
+    const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
     const [detailIssueFilter, setDetailIssueFilter] = useState('');
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const tabsRef = useRef(null);
@@ -678,6 +709,7 @@ function AsanDispatchContent() {
 
     useEffect(() => {
         setDetailStartOverrides({});
+        setDetailBkgOverrides({});
     }, [viewType, activeTab, allTabMonth, allTabWeek]);
 
     useEffect(() => {
@@ -965,6 +997,63 @@ function AsanDispatchContent() {
             fileModStr: fmtTs(activeItem.file_modified_at)
         };
     }, [activeItem, isAllTab, data]);
+    const detailScope = useMemo(() => {
+        if (isAllTab || !activeItem?.target_date) return null;
+        return {
+            dispatchType: viewType,
+            targetDate: activeItem.target_date,
+        };
+    }, [activeItem?.target_date, isAllTab, viewType]);
+    const detailConfirmationLocked = Boolean(detailConfirmation?.active);
+
+    useEffect(() => {
+        if (!['detail', 'detail-change'].includes(mainView) || !detailScope) {
+            setDetailConfirmation(null);
+            setDetailConfirmationSetupRequired(false);
+            setDetailOverrideSetupRequired(false);
+            return undefined;
+        }
+
+        let cancelled = false;
+        const params = new URLSearchParams({
+            dispatchType: detailScope.dispatchType,
+            targetDate: detailScope.targetDate,
+        });
+        const loadDetailState = async () => {
+            try {
+                const [confirmationResponse, overrideResponse] = await Promise.all([
+                    fetch(`/api/branches/asan/dispatch/confirmation?${params.toString()}`, { cache: 'no-store' }),
+                    fetch(`/api/branches/asan/dispatch/detail-override?${params.toString()}`, { cache: 'no-store' }),
+                ]);
+                const confirmationPayload = await confirmationResponse.json().catch(() => ({}));
+                const overridePayload = await overrideResponse.json().catch(() => ({}));
+                if (cancelled) return;
+                setDetailConfirmation(confirmationPayload.data || null);
+                setDetailConfirmationSetupRequired(Boolean(confirmationPayload.setupRequired));
+                setDetailOverrideSetupRequired(Boolean(overridePayload.setupRequired));
+                const nextOverrides = {};
+                (overridePayload.data || [])
+                    .filter(row => row.field_key === 'confirmed_bkg')
+                    .forEach((row) => {
+                        nextOverrides[row.detail_line_key] = {
+                            value: row.value || '',
+                            source: row.source || 'manual',
+                            updatedBy: row.updated_by || row.created_by || '',
+                            updatedAt: row.updated_at || row.created_at || '',
+                        };
+                    });
+                setDetailBkgOverrides(nextOverrides);
+            } catch (error) {
+                if (!cancelled) {
+                    setDetailConfirmation(null);
+                    setDetailBkgOverrides({});
+                    setSyncStatus({ message: error.message || '상세배차 상태 조회 실패', isError: true });
+                }
+            }
+        };
+        loadDetailState();
+        return () => { cancelled = true; };
+    }, [detailScope, mainView]);
 
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {
@@ -1135,6 +1224,7 @@ function AsanDispatchContent() {
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
         const hasStartOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
+        const bkgOverride = detailBkgOverrides[lineKey] || null;
         const startLocation = hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '';
         const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, 'ELS');
         const routeKeys = buildGlapsDispatchRouteFingerprints({
@@ -1148,7 +1238,8 @@ function AsanDispatchContent() {
         const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
         const glapsOrderTypeCode = getGlapsAliasCode(glapsAliasMaps.orderType, line.direction);
-        const glapsShipperCode = getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
+        const routeShipperCode = getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
+        const glapsShipperCode = routeShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
         const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
@@ -1157,6 +1248,10 @@ function AsanDispatchContent() {
             ...line,
             glapsCarrierBpCode: carrierCode || '',
             startLocation,
+            confirmedBkg: bkgOverride ? bkgOverride.value : line.bkg1 || '',
+            confirmedBkgSource: bkgOverride?.source || 'BKG1',
+            confirmedBkgUpdatedAt: bkgOverride?.updatedAt || '',
+            confirmedBkgUpdatedBy: bkgOverride?.updatedBy || '',
             needsStartLocationSelection: !startLocation,
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
@@ -1181,7 +1276,7 @@ function AsanDispatchContent() {
             needsCarrierCodeMapping: !carrierCode,
             needsConsigneeCodeMapping: Boolean(line.customer) && !glapsConsigneeCode,
         };
-    }), [detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
+    }), [detailBkgOverrides, detailLines, detailStartOverrides, glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
 
     const filteredDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1318,6 +1413,87 @@ function AsanDispatchContent() {
             return undefined;
         }
     }, [expandWebCellColumnWidth, updateWebCellValueInData]);
+
+    const updateDetailBkgDraft = useCallback((line, value, source = 'manual') => {
+        const lineKey = makeDispatchDetailLineKey(line);
+        setDetailBkgOverrides(prev => ({
+            ...prev,
+            [lineKey]: {
+                ...(prev[lineKey] || {}),
+                value,
+                source,
+            },
+        }));
+    }, []);
+
+    const saveDetailBkgOverride = useCallback(async (line, source, value) => {
+        if (!detailScope || detailConfirmationLocked) return;
+        const lineKey = makeDispatchDetailLineKey(line);
+        const nextValue = String(value ?? '').trim();
+        const nextSource = BKG_CONFIRM_SOURCE_OPTIONS.includes(source) ? source : 'manual';
+        setDetailBkgOverrides(prev => ({
+            ...prev,
+            [lineKey]: {
+                ...(prev[lineKey] || {}),
+                value: nextValue,
+                source: nextSource,
+            },
+        }));
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/detail-override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...detailScope,
+                    detailLineKey: lineKey,
+                    fieldKey: 'confirmed_bkg',
+                    value: nextValue,
+                    source: nextSource,
+                    rowContext: buildDetailLineContext(line),
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'BKG확정 저장 실패');
+            if (payload.setupRequired) setDetailOverrideSetupRequired(true);
+        } catch (error) {
+            setSyncStatus({ message: error.message || 'BKG확정 저장 실패', isError: true });
+        }
+    }, [detailConfirmationLocked, detailScope]);
+
+    const changeDetailBkgSource = useCallback((line, source) => {
+        saveDetailBkgOverride(line, source, getDetailBkgValue(line, source));
+    }, [saveDetailBkgOverride]);
+
+    const changeDetailConfirmation = useCallback(async (action) => {
+        if (!detailScope || detailConfirmationSaving) return;
+        if (action === 'cancel' && !window.confirm('배차확정을 취소할까요? 해당일자 상세배차 수정 잠금이 해제됩니다.')) return;
+        if (action === 'confirm' && !window.confirm('해당일자 상세배차를 배차확정 처리할까요? 확정 후 기본 상세배차는 수정 잠금됩니다.')) return;
+
+        setDetailConfirmationSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...detailScope, action }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '배차확정 처리 실패');
+            if (payload.setupRequired) {
+                setDetailConfirmationSetupRequired(true);
+            } else {
+                setDetailConfirmation(payload.data || null);
+                setDetailConfirmationSetupRequired(false);
+                setSyncStatus({
+                    message: action === 'confirm' ? '배차확정 완료' : '배차확정 취소 완료',
+                    isError: false,
+                });
+            }
+        } catch (error) {
+            setSyncStatus({ message: error.message || '배차확정 처리 실패', isError: true });
+        } finally {
+            setDetailConfirmationSaving(false);
+        }
+    }, [detailConfirmationSaving, detailScope]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);
@@ -1567,6 +1743,9 @@ function AsanDispatchContent() {
                             <button className={`${styles.funcBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
                                 상세배차내역
                             </button>
+                            <button className={`${styles.funcBtn} ${mainView === 'detail-change' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail-change')}>
+                                배차변동내역
+                            </button>
                             <button className={`${styles.funcBtn} ${mainView === 'glaps-master' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('glaps-master')}>
                                 GLAPS코드
                             </button>
@@ -1611,7 +1790,7 @@ function AsanDispatchContent() {
                     </div>
                 </div>
 
-                {(mainView === 'grid' || mainView === 'detail') && (
+                {(mainView === 'grid' || mainView === 'detail' || mainView === 'detail-change') && (
                     <div className={styles.searchWrap} style={{ alignSelf: 'flex-start' }}>
                         <input className={styles.searchInput} placeholder={mainView === 'detail' ? '상세배차 검색' : '업체명 검색 (예: 이지, 대신)'} value={searchInput} onChange={e => setSearchInput(e.target.value)} />
                         {searchInput && <button className={styles.searchClear} onClick={() => { setSearchInput(''); setSearchTerm(''); }}>✕</button>}
@@ -1619,7 +1798,7 @@ function AsanDispatchContent() {
                 )}
             </div>
 
-            {(mainView === 'grid' || mainView === 'detail') && dateControls}
+            {(mainView === 'grid' || mainView === 'detail' || mainView === 'detail-change') && dateControls}
 
             {mainView === 'glaps-master' ? (
                 <AsanGlapsMaster />
@@ -1652,6 +1831,34 @@ function AsanDispatchContent() {
                             {detailIssueFilter && <span className={styles.summaryItem}><b>필터표시</b> {detailSummary.visible.toLocaleString()}건</span>}
                         </div>
                         <div className={styles.summaryRight}>
+                            <div className={styles.detailConfirmPanel}>
+                                {detailConfirmationLocked ? (
+                                    <span className={styles.detailConfirmBadge}>
+                                        배차확정 {fmtShortTs(detailConfirmation.confirmed_at)}
+                                        {detailConfirmation.confirmed_by ? ` · ${detailConfirmation.confirmed_by}` : ''}
+                                    </span>
+                                ) : (
+                                    <span className={styles.detailConfirmReady}>
+                                        {detailScope ? '배차확정 전' : '일별 선택 필요'}
+                                    </span>
+                                )}
+                                {detailConfirmationSetupRequired && (
+                                    <span className={styles.detailConfirmWarning}>확정 DB 미적용</span>
+                                )}
+                                {detailOverrideSetupRequired && (
+                                    <span className={styles.detailConfirmWarning}>BKG확정 DB 미적용</span>
+                                )}
+                                {detailScope && (
+                                    <button
+                                        type="button"
+                                        className={detailConfirmationLocked ? styles.detailConfirmCancelButton : styles.detailConfirmButton}
+                                        onClick={() => changeDetailConfirmation(detailConfirmationLocked ? 'cancel' : 'confirm')}
+                                        disabled={detailConfirmationSaving || detailConfirmationSetupRequired}
+                                    >
+                                        {detailConfirmationLocked ? '배차확정취소' : '배차확정'}
+                                    </button>
+                                )}
+                            </div>
                             <div className={styles.detailIssueFilters}>
                                 {DETAIL_ISSUE_FILTERS.map((filter) => {
                                     const count = detailSummary[filter.countKey] || 0;
@@ -1690,7 +1897,7 @@ function AsanDispatchContent() {
                                         const lineKey = makeDispatchDetailLineKey(line);
                                         const rowValues = detailLineToRow(line);
                                         return (
-                                            <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''}`}>
+                                            <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''} ${detailConfirmationLocked ? styles.detailLockedRow : ''}`}>
                                                 {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
                                                     if (header === '상차지') {
                                                         return (
@@ -1703,9 +1910,40 @@ function AsanDispatchContent() {
                                                                     value={line.startLocation || ''}
                                                                     onChange={(event) => setDetailStartOverrides(prev => ({ ...prev, [lineKey]: event.target.value }))}
                                                                     onKeyDown={focusDetailGridInput}
+                                                                    disabled={detailConfirmationLocked || !detailScope}
                                                                     placeholder="선택"
                                                                     title={`${line.startRegion || ''}${line.startSuffix ? ` / ${line.startSuffix}` : ''}`}
                                                                 />
+                                                            </td>
+                                                        );
+                                                    }
+                                                    if (header === 'BKG확정') {
+                                                        return (
+                                                            <td key={header} className={styles.detailBkgConfirmCell}>
+                                                                <div className={styles.detailBkgConfirmControl}>
+                                                                    <select
+                                                                        value={line.confirmedBkgSource || 'BKG1'}
+                                                                        onChange={(event) => changeDetailBkgSource(line, event.target.value)}
+                                                                        disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
+                                                                        title="BKG1/2/3 중 확정값 선택"
+                                                                    >
+                                                                        {BKG_CONFIRM_SOURCE_OPTIONS.map((source) => (
+                                                                            <option key={source} value={source}>{source}</option>
+                                                                        ))}
+                                                                        <option value="manual">수기</option>
+                                                                    </select>
+                                                                    <input
+                                                                        className={styles.detailBkgConfirmInput}
+                                                                        value={line.confirmedBkg || ''}
+                                                                        onChange={(event) => updateDetailBkgDraft(line, event.target.value, 'manual')}
+                                                                        onBlur={(event) => saveDetailBkgOverride(line, 'manual', event.target.value)}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        data-detail-row-index={detailRowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
+                                                                        title={line.confirmedBkgSource && line.confirmedBkgSource !== 'manual' ? `${line.confirmedBkgSource} 선택값` : '수기 입력값'}
+                                                                    />
+                                                                </div>
                                                             </td>
                                                         );
                                                     }
@@ -1730,6 +1968,38 @@ function AsanDispatchContent() {
                                 </span>
                             )}
                         </div>
+                    </div>
+                </>
+            ) : mainView === 'detail-change' ? (
+                <>
+                    <div className={styles.summaryBar}>
+                        <div className={styles.summaryLeft}>
+                            <span className={styles.summaryItem}><b>배차변동내역</b> {detailScope?.targetDate || '일별 선택 필요'}</span>
+                            {detailConfirmationLocked ? (
+                                <span className={styles.summaryItem}>
+                                    <b>확정기준</b> {fmtShortTs(detailConfirmation.confirmed_at)}
+                                    {detailConfirmation.confirmed_by ? ` · ${detailConfirmation.confirmed_by}` : ''}
+                                </span>
+                            ) : (
+                                <span className={`${styles.summaryItem} ${styles.summaryWarn}`}><b>대기</b> 배차확정 후 변동 입력</span>
+                            )}
+                        </div>
+                        <div className={styles.summaryRight}>
+                            {detailScope && (
+                                <button
+                                    type="button"
+                                    className={detailConfirmationLocked ? styles.detailConfirmCancelButton : styles.detailConfirmButton}
+                                    onClick={() => changeDetailConfirmation(detailConfirmationLocked ? 'cancel' : 'confirm')}
+                                    disabled={detailConfirmationSaving || detailConfirmationSetupRequired}
+                                >
+                                    {detailConfirmationLocked ? '배차확정취소' : '배차확정'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className={styles.detailChangePanel}>
+                        <strong>변동 입력 대기</strong>
+                        <span>확정 이후 추가/삭제 라인은 이 탭에서 `추가` / `삭제`와 수정일시를 남기도록 이어서 구현합니다.</span>
                     </div>
                 </>
             ) : (

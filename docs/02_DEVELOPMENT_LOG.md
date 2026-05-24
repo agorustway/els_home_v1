@@ -16,6 +16,30 @@
 
 ---
 
+## [2026-05-24] 상세배차 BKG확정과 배차확정 기반 추가 (v5.14.163)
+### 핵심
+- 상세배차 `업체명`과 `BKG1` 사이에 `BKG확정` 컬럼을 추가했습니다. 기본값은 `BKG1`이며 `BKG2/BKG3` 선택 시 선택 출처를 남기고 해당 값으로 대체합니다.
+- `BKG확정`은 수기 입력도 가능하며, 수기 입력 시 BKG 선택 출처가 `manual`로 바뀌도록 했습니다.
+- 배차확정/확정취소 API와 이력 테이블을 추가해 사용자와 시간을 남기고, 확정된 일자는 상세배차 기본 보정 입력을 잠급니다.
+- `배차변동내역` 탭 기반을 추가했습니다. 다음 단계에서 확정 이후 추가/삭제 라인을 이 탭에서 이어서 저장합니다.
+- 화주사코드는 파일명 추정보다 매칭된 운송경로 원장 payload의 `화주사코드/화주사` 값을 우선 사용합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/detail-override/route.js" "utils/asanDispatchDetailLines.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/confirmation/route.js`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/supabase_sql/20260524_asan_dispatch_confirmations.sql`
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 보호값 음영과 배차판 매칭용 라벨 정리 (v5.14.162)
 ### 핵심
 - GLAPS 수정양식 설명서에 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이며 일반 보정 대상이 아니라는 규칙을 추가했습니다.

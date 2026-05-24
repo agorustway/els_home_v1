@@ -635,11 +635,28 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
     path.join(webRoot, 'utils/asanDispatchDetailLines.mjs'),
     'utf8',
   );
+  const confirmationApi = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/confirmation/route.js'),
+    'utf8',
+  );
+  const detailOverrideApi = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/detail-override/route.js'),
+    'utf8',
+  );
+  const confirmationSql = fs.readFileSync(
+    path.join(webRoot, 'supabase_sql/20260524_asan_dispatch_confirmations.sql'),
+    'utf8',
+  );
 
   assert.match(source, /buildDispatchDetailLines/);
   assert.match(source, /DISPATCH_DETAIL_HEADERS\.map/);
   assert.match(source, /GLAPS_START_LOCATION_OPTIONS\.filter\(Boolean\)\.map/);
   assert.match(source, /detailStartOverrides/);
+  assert.match(source, /detailBkgOverrides/);
+  assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS/);
+  assert.match(source, /changeDetailConfirmation/);
+  assert.match(source, /saveDetailBkgOverride/);
+  assert.match(source, /routeShipperCode \|\| getGlapsAliasCode\(glapsShipperCodeMap, line\.shipper\)/);
   assert.doesNotMatch(source, /detailCarrierOverrides/);
   assert.match(source, /detailIssueFilter/);
   assert.match(source, /glapsDetailLookup/);
@@ -657,12 +674,17 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /DETAIL_ISSUE_FILTERS\.map/);
   assert.doesNotMatch(source, /DETAIL_CARRIER_CODE_DATALIST_ID/);
   assert.match(source, /mainView === 'detail'/);
+  assert.match(source, /mainView === 'detail-change'/);
   assert.match(source, /상세배차내역/);
+  assert.match(source, /배차변동내역/);
+  assert.match(source, /배차확정/);
+  assert.match(source, /배차확정취소/);
   assert.match(source, /상세배차수량/);
   assert.match(source, /상차지 선택필요/);
   assert.match(source, /운송사코드 확인/);
   assert.match(source, /컨샤이니 미도출/);
   assert.match(source, /GLAPS코드 기존 코드 도출 검수용 상세 라인/);
+  assert.match(util, /'BKG확정'/);
   assert.match(util, /'오더구분코드'/);
   assert.match(util, /'화주사코드'/);
   assert.match(util, /'반출지\(출발\)코드'/);
@@ -680,10 +702,19 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(util, /consigneeMissingCount/);
   assert.match(util, /routePartMissingCount/);
   assert.match(css, /\.detailTable th\s*{[\s\S]*background: #1f5673;/);
+  assert.match(css, /\.detailBkgConfirmControl/);
+  assert.match(css, /\.detailConfirmButton/);
+  assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailIssueButtonActive\s*{[\s\S]*background: #fff7ed;/);
   assert.match(css, /\.detailManualRow\s*{[\s\S]*background: #fff7ed !important;/);
   assert.match(util, /인천항국제여객터미널/);
   assert.match(util, /if \(normalizedRegion === '부곡'\) return '의왕ICD';/);
+  assert.match(confirmationApi, /branch_dispatch_confirmations/);
+  assert.match(confirmationApi, /branch_dispatch_confirmation_history/);
+  assert.match(detailOverrideApi, /branch_dispatch_detail_overrides/);
+  assert.match(detailOverrideApi, /confirmed_bkg/);
+  assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_confirmations/);
+  assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_detail_overrides/);
 });
 
 test('아산지점은 GLAPS 마스터 원장 화면과 DB 적용 SQL을 제공한다', () => {

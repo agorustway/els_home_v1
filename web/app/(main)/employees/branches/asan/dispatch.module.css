@@ -720,6 +720,130 @@
     white-space: nowrap;
 }
 
+.detailConfirmPanel {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.detailConfirmBadge,
+.detailConfirmReady,
+.detailConfirmWarning {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.detailConfirmBadge {
+    background: #ecfdf5;
+    border: 1px solid #99f6e4;
+    color: #0f766e;
+}
+
+.detailConfirmReady {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+.detailConfirmWarning {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #c2410c;
+}
+
+.detailConfirmButton,
+.detailConfirmCancelButton {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.detailConfirmButton {
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.detailConfirmCancelButton {
+    border: 1px solid #fecaca;
+    background: #fff5f5;
+    color: #dc2626;
+}
+
+.detailConfirmButton:disabled,
+.detailConfirmCancelButton:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.detailLockedRow td {
+    color: #64748b;
+}
+
+.detailBkgConfirmCell {
+    min-width: 210px;
+}
+
+.detailBkgConfirmControl {
+    display: grid;
+    grid-template-columns: 72px minmax(120px, 1fr);
+    gap: 4px;
+    align-items: center;
+}
+
+.detailBkgConfirmControl select,
+.detailBkgConfirmInput {
+    height: 26px;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0 6px;
+}
+
+.detailBkgConfirmControl select:disabled,
+.detailBkgConfirmInput:disabled,
+.detailComboInput:disabled {
+    background: #e5e7eb;
+    color: #64748b;
+    cursor: default;
+}
+
+.detailChangePanel {
+    min-height: 220px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #475569;
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.detailChangePanel strong {
+    color: #0f172a;
+    font-size: 1rem;
+}
+
 /* 검색 결과 */
 .searchResult {
     padding: 8px 14px;
