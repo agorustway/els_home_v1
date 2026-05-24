@@ -1,3 +1,20 @@
+## [2026-05-24] GLAPS코드 테이블 필터 목록화 (v5.14.174)
+### 핵심
+- GLAPS코드 운송경로/항목매핑/원본시트 테이블 필터를 텍스트 입력에서 목록 선택으로 바꿨습니다.
+- 각 컬럼은 현재 탭의 고유값을 정렬된 옵션으로 제공하고, 값이 없는 항목은 `(빈값)`으로 선택할 수 있게 했습니다.
+- 선택된 목록값은 정확히 같은 값만 표시하며, `전체` 선택 또는 `테이블 필터해제`로 조건을 해제합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS코드 테이블 필터와 정렬 추가 (v5.14.172)
 ### 핵심
 - GLAPS코드 운송경로/항목매핑/원본시트 테이블에 컬럼별 필터 입력줄을 추가했습니다.

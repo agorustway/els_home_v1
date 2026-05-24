@@ -362,7 +362,7 @@
     color: #fef08a;
 }
 
-.filterRow input {
+.filterRow select {
     width: 100%;
     min-width: 72px;
     height: 24px;
@@ -375,7 +375,7 @@
     padding: 0 6px;
 }
 
-.filterRow input:focus {
+.filterRow select:focus {
     outline: none;
     border-color: #0ea5e9;
     box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.14);

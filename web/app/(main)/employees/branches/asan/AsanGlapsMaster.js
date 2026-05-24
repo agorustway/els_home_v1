@@ -26,6 +26,7 @@ const ALIAS_TYPE_OPTIONS = [
 
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const TABLE_COLLATOR = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
+const EMPTY_TABLE_FILTER_VALUE = '__GLAPS_EMPTY_FILTER__';
 
 const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
@@ -90,6 +91,16 @@ function tableText(value) {
 
 function normalizeTableFilter(value) {
     return tableText(value).normalize('NFKC').toLowerCase().trim();
+}
+
+function tableFilterKey(value) {
+    const normalized = normalizeTableFilter(value);
+    return normalized || EMPTY_TABLE_FILTER_VALUE;
+}
+
+function tableFilterLabel(value) {
+    const text = tableText(value).trim();
+    return text || '(빈값)';
 }
 
 function compareTableValues(a, b) {
@@ -307,13 +318,15 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
     }, [activeTable, editor?.id, fetchData]);
 
     const updateTableFilter = (key, value) => {
-        setTableFilters(prev => ({
-            ...prev,
-            [activeTable]: {
-                ...(prev[activeTable] || {}),
-                [key]: value,
-            },
-        }));
+        setTableFilters(prev => {
+            const nextTableFilters = { ...(prev[activeTable] || {}) };
+            if (value) nextTableFilters[key] = value;
+            else delete nextTableFilters[key];
+            return {
+                ...prev,
+                [activeTable]: nextTableFilters,
+            };
+        });
     };
 
     const clearTableFilters = () => {
@@ -391,12 +404,32 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
     const activeTableFilters = useMemo(() => tableFilters[activeTable] || {}, [activeTable, tableFilters]);
     const hasTableFilters = Object.values(activeTableFilters).some(value => normalizeTableFilter(value));
     const activeSort = tableSort.table === activeTable ? tableSort : { table: activeTable, key: '', direction: 'asc' };
+    const tableFilterOptions = useMemo(() => {
+        return tableColumns.reduce((acc, column) => {
+            if (column.filterable === false) return acc;
+            const options = new Map();
+            tableRows.forEach(row => {
+                const rawValue = tableText(column.value?.(row));
+                const optionValue = tableFilterKey(rawValue);
+                if (!options.has(optionValue)) {
+                    options.set(optionValue, tableFilterLabel(rawValue));
+                }
+            });
+            acc[column.key] = Array.from(options, ([value, label]) => ({ value, label }))
+                .sort((a, b) => {
+                    if (a.value === EMPTY_TABLE_FILTER_VALUE) return -1;
+                    if (b.value === EMPTY_TABLE_FILTER_VALUE) return 1;
+                    return TABLE_COLLATOR.compare(a.label, b.label);
+                });
+            return acc;
+        }, {});
+    }, [tableColumns, tableRows]);
     const visibleTableRows = useMemo(() => {
         const filterableColumns = tableColumns.filter(column => column.filterable !== false);
         const filteredRows = tableRows.filter(row => filterableColumns.every(column => {
-            const filterValue = normalizeTableFilter(activeTableFilters[column.key]);
+            const filterValue = activeTableFilters[column.key];
             if (!filterValue) return true;
-            return normalizeTableFilter(column.value?.(row)).includes(filterValue);
+            return tableFilterKey(column.value?.(row)) === filterValue;
         }));
         if (!activeSort.key) return filteredRows;
         const sortColumn = tableColumns.find(column => column.key === activeSort.key && column.sortable !== false);
@@ -602,12 +635,16 @@ export default function AsanGlapsMaster({ refreshToken = 0 }) {
                                         {column.filterable === false ? (
                                             <span className={styles.filterSkip}>-</span>
                                         ) : (
-                                            <input
+                                            <select
                                                 value={activeTableFilters[column.key] || ''}
                                                 onChange={(event) => updateTableFilter(column.key, event.target.value)}
-                                                placeholder="필터"
                                                 aria-label={`${column.label} 필터`}
-                                            />
+                                            >
+                                                <option value="">전체</option>
+                                                {(tableFilterOptions[column.key] || []).map(option => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
                                         )}
                                     </th>
                                 ))}
