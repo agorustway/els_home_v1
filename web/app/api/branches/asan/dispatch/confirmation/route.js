@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
 import { decorateActorFields, getCurrentUserActorName } from '../actorName';
+import { normalizeDispatchChangeLineRecord } from '@/utils/asanDispatchChangeEvents.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,7 +15,8 @@ function isMissingConfirmationTableError(error) {
     return code === '42P01'
         || code === 'PGRST205'
         || message.includes('branch_dispatch_confirmations')
-        || message.includes('branch_dispatch_confirmation_history');
+        || message.includes('branch_dispatch_confirmation_history')
+        || message.includes('branch_dispatch_detail_snapshots');
 }
 
 function normalizePayload(input = {}) {
@@ -22,6 +24,7 @@ function normalizePayload(input = {}) {
         dispatchType: String(input.dispatchType || input.dispatch_type || input.type || '').trim(),
         targetDate: String(input.targetDate || input.target_date || '').trim(),
         action: String(input.action || '').trim(),
+        snapshotLines: Array.isArray(input.snapshotLines || input.snapshot_lines) ? (input.snapshotLines || input.snapshot_lines) : [],
     };
 }
 
@@ -54,6 +57,46 @@ async function fetchConfirmation(adminSupabase, payload) {
 
 async function decorateConfirmation(adminSupabase, row) {
     return decorateActorFields(adminSupabase, row, ['confirmed_by', 'canceled_by', 'created_by', 'updated_by']);
+}
+
+function toSnapshotDbRow(line, resultRow, actor, now) {
+    const normalized = normalizeDispatchChangeLineRecord(line);
+    return {
+        confirmation_id: resultRow.id,
+        branch_id: BRANCH_ID,
+        dispatch_type: resultRow.dispatch_type,
+        target_date: resultRow.target_date,
+        detail_line_key: normalized.detailLineKey,
+        identity_key: normalized.identityKey,
+        group_key: normalized.groupKey,
+        row_fingerprint: normalized.rowFingerprint,
+        row_values: { values: normalized.rowValues },
+        row_context: normalized.rowContext,
+        active: true,
+        created_by: actor,
+        created_at: now,
+    };
+}
+
+async function ensureConfirmationSnapshot(adminSupabase, resultRow, snapshotLines, actor, now) {
+    if (!resultRow?.id || !Array.isArray(snapshotLines) || snapshotLines.length === 0) return;
+    const { count, error: countError } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .select('id', { count: 'exact', head: true })
+        .eq('confirmation_id', resultRow.id)
+        .eq('active', true);
+    if (countError) throw countError;
+    if ((count || 0) > 0) return;
+
+    const rows = snapshotLines
+        .map(line => toSnapshotDbRow(line, resultRow, actor, now))
+        .filter(row => row.detail_line_key);
+    if (rows.length === 0) return;
+
+    const { error } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .insert(rows);
+    if (error) throw error;
 }
 
 export async function GET(request) {
@@ -154,6 +197,10 @@ export async function POST(request) {
                 changed_at: now,
             });
         if (historyError) throw historyError;
+
+        if (payload.action === 'confirm') {
+            await ensureConfirmationSnapshot(access.adminSupabase, result.data, payload.snapshotLines, actor, now);
+        }
 
         return NextResponse.json({ success: true, data: await decorateConfirmation(access.adminSupabase, result.data) });
     } catch (error) {

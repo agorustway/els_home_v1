@@ -1,3 +1,29 @@
+## [2026-05-24] 배차변동내역 스냅샷/이벤트 원장 구현 (v5.14.180)
+### 핵심
+- 배차확정 시 상세배차 라인을 `branch_dispatch_detail_snapshots`에 저장하고, 확정 이후 현재 상세라인과 비교해 `추가 / 삭제 / 변경` 이벤트를 `branch_dispatch_detail_change_events`에 남깁니다.
+- `민경5,이지3 -> 민경2,이지3` 같은 수량 감소는 삭제 3건으로 감지하고, 같은 원천행의 BKG 변경은 변경 이벤트로 감지합니다.
+- 변동내역 탭은 SORT 없이 발생 순서만 유지하며, 미확인/확인완료 필터, 개별 확인, 일괄확인, 행 수정 저장을 제공합니다.
+- 상세배차 하단에는 확정 후 변동 요약과 최종수량을 같이 표시해 현재 상세라인 + 변동 이벤트 기준 수량을 바로 확인할 수 있게 했습니다.
+- 확정취소는 상세배차 잠금만 해제하고 기존 변동 이벤트를 삭제하지 않습니다.
+### DB
+- Supabase migration `asan_dispatch_change_events` 적용 완료
+- 추가 테이블: `branch_dispatch_detail_snapshots`, `branch_dispatch_detail_change_events`, `branch_dispatch_detail_change_history`
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/change-events/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/confirmation/route.js`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/supabase_sql/20260524_asan_dispatch_change_events.sql`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] 배차변동내역 이벤트 장부 기준 재정리 (v5.14.179)
 ### 핵심
 - `배차변동내역` 탭이 확정 후 현재 상세라인 전체를 `배차수정후` 목록처럼 보여주던 동작을 되돌렸습니다.

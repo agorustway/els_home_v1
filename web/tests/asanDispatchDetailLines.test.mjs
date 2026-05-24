@@ -9,6 +9,10 @@ import {
   resolveGlapsStartLocation,
   summarizeDispatchDetailLines,
 } from '../utils/asanDispatchDetailLines.mjs';
+import {
+  diffDispatchChangeLines,
+  makeDispatchChangeSnapshotLine,
+} from '../utils/asanDispatchChangeEvents.mjs';
 
 test('상세배차는 지역칸 업체수량을 1건 단위 라인으로 분해하고 BKG 값을 반복한다', () => {
   const headers = [
@@ -219,4 +223,42 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
     'GA0196',
     '2026-05-24 13:20',
   ]);
+});
+
+test('배차변동 비교는 수량 감소를 삭제 이벤트로 감지한다', () => {
+  const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
+  const beforeLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-26', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경5,이지3', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `before-${index}`));
+  const afterLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-26', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경2,이지3', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `after-${index}`));
+
+  const events = diffDispatchChangeLines(beforeLines, afterLines, { occurredAt: '2026-05-24T12:00:00Z' });
+
+  assert.equal(events.length, 3);
+  assert.deepEqual(events.map(event => event.changeType), ['delete', 'delete', 'delete']);
+  assert.equal(events.reduce((sum, event) => sum + event.quantityDelta, 0), -3);
+});
+
+test('배차변동 비교는 같은 원천행의 BKG 변경을 변경 이벤트로 감지한다', () => {
+  const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
+  const beforeLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-26', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경1', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `before-${index}`));
+  const afterLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-26', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경1', 'BKG-B']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `after-${index}`));
+
+  const events = diffDispatchChangeLines(beforeLines, afterLines, { occurredAt: '2026-05-24T12:00:00Z' });
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].changeType, 'change');
+  assert.equal(events[0].quantityDelta, 0);
+  assert.equal(events[0].beforeSnapshot.rowValues[16], 'BKG-A');
+  assert.equal(events[0].afterSnapshot.rowValues[16], 'BKG-B');
 });

@@ -18,6 +18,13 @@ import {
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
 import {
+    DISPATCH_CHANGE_HEADERS,
+    changeEventToEditableValues,
+    formatDispatchChangeStatus,
+    formatDispatchChangeType,
+    makeDispatchChangeSnapshotLine,
+} from '@/utils/asanDispatchChangeEvents.mjs';
+import {
     buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
     normalizeGlapsKey,
@@ -142,7 +149,13 @@ const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
-const DISPATCH_CHANGE_HEADERS = Object.freeze([...DISPATCH_DETAIL_HEADERS, '변동구분', '수정일시']);
+const DETAIL_CHANGE_STATUS_FILTERS = Object.freeze([
+    { key: '', label: '전체' },
+    { key: 'pending', label: '미확인' },
+    { key: 'confirmed', label: '확인완료' },
+]);
+const DETAIL_CHANGE_COMPANY_COL = DISPATCH_DETAIL_HEADERS.indexOf('업체명');
+const DETAIL_CHANGE_BKG_COL = DISPATCH_DETAIL_HEADERS.indexOf('BKG확정');
 const DETAIL_ISSUE_FILTERS = Object.freeze([
     { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount', group: 'manual' },
     { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount', group: 'missing' },
@@ -721,6 +734,11 @@ function AsanDispatchContent() {
     const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
     const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
     const [detailIssueFilter, setDetailIssueFilter] = useState('');
+    const [detailChangeEvents, setDetailChangeEvents] = useState([]);
+    const [detailChangeDrafts, setDetailChangeDrafts] = useState({});
+    const [detailChangeStatusFilter, setDetailChangeStatusFilter] = useState('');
+    const [detailChangeSetupRequired, setDetailChangeSetupRequired] = useState(false);
+    const [detailChangeSaving, setDetailChangeSaving] = useState(false);
     const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
     const [glapsMasterRefreshToken, setGlapsMasterRefreshToken] = useState(0);
     const tabsRef = useRef(null);
@@ -728,6 +746,7 @@ function AsanDispatchContent() {
     const topBarRef = useRef(null);
     const dataRef = useRef([]);
     const activeTabRef = useRef(-1);
+    const detailChangeSyncRef = useRef('');
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const todayKey = useMemo(() => getTodayKey(), []);
 
@@ -1087,6 +1106,10 @@ function AsanDispatchContent() {
             setDetailConfirmation(null);
             setDetailConfirmationSetupRequired(false);
             setDetailOverrideSetupRequired(false);
+            setDetailChangeEvents([]);
+            setDetailChangeSetupRequired(false);
+            setDetailChangeDrafts({});
+            detailChangeSyncRef.current = '';
             return undefined;
         }
 
@@ -1098,18 +1121,23 @@ function AsanDispatchContent() {
         const loadDetailState = async () => {
             try {
                 const authHeaders = await getDetailAuthHeaders();
-                const [confirmationResponse, overrideResponse] = await Promise.all([
+                const [confirmationResponse, overrideResponse, changeResponse] = await Promise.all([
                     fetch(`/api/branches/asan/dispatch/confirmation?${params.toString()}`, { cache: 'no-store', headers: authHeaders }),
                     fetch(`/api/branches/asan/dispatch/detail-override?${params.toString()}`, { cache: 'no-store', headers: authHeaders }),
+                    fetch(`/api/branches/asan/dispatch/change-events?${params.toString()}`, { cache: 'no-store', headers: authHeaders }),
                 ]);
                 const confirmationPayload = await confirmationResponse.json().catch(() => ({}));
                 const overridePayload = await overrideResponse.json().catch(() => ({}));
+                const changePayload = await changeResponse.json().catch(() => ({}));
                 if (!confirmationResponse.ok) throw new Error(confirmationPayload.error || '배차확정 상태 조회 실패');
                 if (!overrideResponse.ok) throw new Error(overridePayload.error || 'BKG확정 상태 조회 실패');
+                if (!changeResponse.ok) throw new Error(changePayload.error || '배차변동내역 조회 실패');
                 if (cancelled) return;
                 setDetailConfirmation(confirmationPayload.data || null);
                 setDetailConfirmationSetupRequired(Boolean(confirmationPayload.setupRequired));
                 setDetailOverrideSetupRequired(Boolean(overridePayload.setupRequired));
+                setDetailChangeSetupRequired(Boolean(changePayload.setupRequired));
+                setDetailChangeEvents(changePayload.data || []);
                 const nextOverrides = {};
                 (overridePayload.data || [])
                     .filter(row => row.field_key === 'confirmed_bkg')
@@ -1126,6 +1154,7 @@ function AsanDispatchContent() {
                 if (!cancelled) {
                     setDetailConfirmation(null);
                     setDetailBkgOverrides({});
+                    setDetailChangeEvents([]);
                     setSyncStatus({ message: error.message || '상세배차 상태 조회 실패', isError: true });
                 }
             }
@@ -1432,10 +1461,89 @@ function AsanDispatchContent() {
         visible: filteredDetailLines.length,
     }), [detailDisplayLines, filteredDetailLines.length]);
 
+    const detailSnapshotLines = useMemo(() => (
+        detailDisplayLines.map(line => makeDispatchChangeSnapshotLine(line, makeDispatchDetailLineKey(line)))
+    ), [detailDisplayLines]);
+
+    const detailSnapshotSignature = useMemo(() => (
+        detailSnapshotLines.map(line => `${line.detailLineKey}:${line.rowFingerprint}`).join('|')
+    ), [detailSnapshotLines]);
+
+    const detailChangeSummary = useMemo(() => {
+        const activeEvents = detailChangeEvents || [];
+        const quantityDelta = activeEvents.reduce((sum, event) => sum + Number(event.quantity_delta || 0), 0);
+        return {
+            total: activeEvents.length,
+            pending: activeEvents.filter(event => event.event_status !== 'confirmed').length,
+            confirmed: activeEvents.filter(event => event.event_status === 'confirmed').length,
+            quantityDelta,
+            finalTotal: detailSummary.total + quantityDelta,
+        };
+    }, [detailChangeEvents, detailSummary.total]);
+
     const detailChangeRows = useMemo(() => {
-        // 확정 이후 추가/삭제/변경 이벤트 원장이 붙기 전까지 현재 상세라인 전체를 변동으로 노출하지 않는다.
-        return [];
-    }, []);
+        const term = String(searchTerm || '').trim().toLowerCase();
+        return (detailChangeEvents || [])
+            .filter(event => !detailChangeStatusFilter || event.event_status === detailChangeStatusFilter)
+            .map((event) => {
+                const editableValues = detailChangeDrafts[event.id] || changeEventToEditableValues(event);
+                const values = [
+                    ...editableValues,
+                    formatDispatchChangeType(event.change_type),
+                    formatDispatchChangeStatus(event.event_status),
+                    fmtShortTs(event.occurred_at || ''),
+                    fmtShortTs(event.confirmed_at || ''),
+                    '',
+                ];
+                return { event, editableValues, values };
+            })
+            .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
+    }, [detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, searchTerm]);
+
+    useEffect(() => {
+        if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
+        if (detailChangeSetupRequired || detailConfirmationSetupRequired || detailSnapshotLines.length === 0) return undefined;
+        const signature = `${detailConfirmation.id}:${detailSnapshotSignature}`;
+        if (!detailSnapshotSignature || detailChangeSyncRef.current === signature) return undefined;
+        detailChangeSyncRef.current = signature;
+
+        let cancelled = false;
+        const syncChanges = async () => {
+            try {
+                const response = await fetch('/api/branches/asan/dispatch/change-events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                    body: JSON.stringify({
+                        ...detailScope,
+                        action: 'sync',
+                        currentLines: detailSnapshotLines,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(payload.error || '배차변동내역 동기화 실패');
+                if (cancelled) return;
+                if (payload.setupRequired) {
+                    setDetailChangeSetupRequired(true);
+                } else {
+                    setDetailChangeEvents(payload.data || []);
+                    setDetailChangeSetupRequired(false);
+                }
+            } catch (error) {
+                if (!cancelled) setSyncStatus({ message: error.message || '배차변동내역 동기화 실패', isError: true });
+            }
+        };
+        syncChanges();
+        return () => { cancelled = true; };
+    }, [
+        detailChangeSetupRequired,
+        detailConfirmation?.active,
+        detailConfirmation?.id,
+        detailConfirmationSetupRequired,
+        detailScope,
+        detailSnapshotLines,
+        detailSnapshotSignature,
+        getDetailAuthHeaders,
+    ]);
 
     // 표시 제한 (성능 최적화)
     const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
@@ -1624,7 +1732,11 @@ function AsanDispatchContent() {
             const response = await fetch('/api/branches/asan/dispatch/confirmation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
-                body: JSON.stringify({ ...detailScope, action }),
+                body: JSON.stringify({
+                    ...detailScope,
+                    action,
+                    snapshotLines: action === 'confirm' ? detailSnapshotLines : [],
+                }),
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.error || '배차확정 처리 실패');
@@ -1643,7 +1755,90 @@ function AsanDispatchContent() {
         } finally {
             setDetailConfirmationSaving(false);
         }
-    }, [detailConfirmationSaving, detailScope, getDetailAuthHeaders]);
+    }, [detailConfirmationSaving, detailScope, detailSnapshotLines, getDetailAuthHeaders]);
+
+    const updateDetailChangeDraft = useCallback((event, colIdx, value) => {
+        if (!event?.id || colIdx < 0 || colIdx >= DISPATCH_DETAIL_HEADERS.length) return;
+        setDetailChangeDrafts(prev => {
+            const baseValues = prev[event.id] || changeEventToEditableValues(event);
+            const nextValues = [...baseValues];
+            nextValues[colIdx] = value;
+            return { ...prev, [event.id]: nextValues };
+        });
+    }, []);
+
+    const saveDetailChangeEvent = useCallback(async (event) => {
+        if (!detailScope || !event?.id || detailChangeSaving) return;
+        const rowValues = detailChangeDrafts[event.id] || changeEventToEditableValues(event);
+        const basePayload = event.editable_payload || event.after_snapshot || event.before_snapshot || {};
+        setDetailChangeSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/change-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                body: JSON.stringify({
+                    ...detailScope,
+                    action: 'update',
+                    eventId: event.id,
+                    editablePayload: {
+                        ...basePayload,
+                        detailLineKey: basePayload.detailLineKey || event.detail_line_key || '',
+                        identityKey: basePayload.identityKey || event.identity_key || '',
+                        groupKey: basePayload.groupKey || event.group_key || '',
+                        rowFingerprint: basePayload.rowFingerprint || '',
+                        rowValues,
+                        rowContext: basePayload.rowContext || {},
+                    },
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '변동내역 수정 저장 실패');
+            if (payload.setupRequired) {
+                setDetailChangeSetupRequired(true);
+            } else {
+                setDetailChangeEvents(payload.data || []);
+                setDetailChangeDrafts(prev => {
+                    const next = { ...prev };
+                    delete next[event.id];
+                    return next;
+                });
+                setSyncStatus({ message: '변동내역 수정 저장 완료', isError: false });
+            }
+        } catch (error) {
+            setSyncStatus({ message: error.message || '변동내역 수정 저장 실패', isError: true });
+        } finally {
+            setDetailChangeSaving(false);
+        }
+    }, [detailChangeDrafts, detailChangeSaving, detailScope, getDetailAuthHeaders]);
+
+    const confirmDetailChangeEvents = useCallback(async (eventIds = [], { bulk = false } = {}) => {
+        if (!detailScope || detailChangeSaving) return;
+        if (bulk && detailChangeSummary.pending === 0) return;
+        setDetailChangeSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/change-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                body: JSON.stringify({
+                    ...detailScope,
+                    action: bulk ? 'confirm_all' : 'confirm',
+                    eventIds,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '변동내역 확인 처리 실패');
+            if (payload.setupRequired) {
+                setDetailChangeSetupRequired(true);
+            } else {
+                setDetailChangeEvents(payload.data || []);
+                setSyncStatus({ message: bulk ? '변동내역 일괄확인 완료' : '변동내역 확인 완료', isError: false });
+            }
+        } catch (error) {
+            setSyncStatus({ message: error.message || '변동내역 확인 처리 실패', isError: true });
+        } finally {
+            setDetailChangeSaving(false);
+        }
+    }, [detailChangeSaving, detailChangeSummary.pending, detailScope, getDetailAuthHeaders]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);
@@ -1977,6 +2172,14 @@ function AsanDispatchContent() {
                     <div className={styles.summaryBar}>
                         <div className={styles.summaryLeft}>
                             <span className={styles.summaryItem}><b>상세배차수량</b> {detailSummary.total.toLocaleString()}건</span>
+                            {detailChangeSummary.total > 0 && (
+                                <>
+                                    <span className={`${styles.summaryItem} ${detailChangeSummary.pending > 0 ? styles.summaryWarn : ''}`}>
+                                        <b>변동</b> {detailChangeSummary.quantityDelta >= 0 ? '+' : ''}{detailChangeSummary.quantityDelta.toLocaleString()}건 · 미확인 {detailChangeSummary.pending.toLocaleString()}건
+                                    </span>
+                                    <span className={styles.summaryItem}><b>최종수량</b> {detailChangeSummary.finalTotal.toLocaleString()}건</span>
+                                </>
+                            )}
                             {searchTerm && <span className={styles.summaryItem}><b>검색표시</b> {detailSummary.visible.toLocaleString()}건</span>}
                             <span className={`${styles.summaryItem} ${detailSummary.manualStartLocationCount > 0 ? styles.summaryWarn : ''}`}>
                                 <b>상차지 선택필요</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
@@ -2000,6 +2203,9 @@ function AsanDispatchContent() {
                                 )}
                                 {detailOverrideSetupRequired && (
                                     <span className={styles.detailConfirmWarning}>BKG확정 DB 미적용</span>
+                                )}
+                                {detailChangeSetupRequired && (
+                                    <span className={styles.detailConfirmWarning}>변동 DB 미적용</span>
                                 )}
                                 {detailScope && (
                                     <button
@@ -2137,6 +2343,7 @@ function AsanDispatchContent() {
                                 {Math.min(filteredDetailLines.length, displayLimit).toLocaleString()}건 표시
                                 {searchTerm ? ` / 검색 ${filteredDetailLines.length.toLocaleString()}건` : ''}
                                 {' '} / 전체 {detailSummary.total.toLocaleString()}건
+                                {detailChangeSummary.total > 0 ? ` / 최종 ${detailChangeSummary.finalTotal.toLocaleString()}건` : ''}
                             </span>
                             {filteredDetailLines.length > displayLimit && (
                                 <span className={styles.loadMoreWrap}>
@@ -2145,6 +2352,29 @@ function AsanDispatchContent() {
                                 </span>
                             )}
                         </div>
+                        {detailChangeSummary.total > 0 && (
+                            <div className={styles.detailChangeInlinePanel}>
+                                <div className={styles.detailChangeInlineHead}>
+                                    <strong>확정 후 변동</strong>
+                                    <span>추가/삭제/변경 {detailChangeSummary.total.toLocaleString()}건 · 미확인 {detailChangeSummary.pending.toLocaleString()}건 · 최종 {detailChangeSummary.finalTotal.toLocaleString()}건</span>
+                                    <button type="button" className={styles.loadMoreBtn} onClick={() => setMainView('detail-change')}>변동내역 열기</button>
+                                </div>
+                                <div className={styles.detailChangeInlineList}>
+                                    {detailChangeEvents.slice(0, 8).map((event) => {
+                                        const values = changeEventToEditableValues(event);
+                                        return (
+                                            <span key={event.id} className={styles.detailChangeInlineItem}>
+                                                <b>{formatDispatchChangeType(event.change_type)}</b>
+                                                {values[DETAIL_CHANGE_COMPANY_COL] || '-'}
+                                                {values[DETAIL_CHANGE_BKG_COL] ? ` · ${values[DETAIL_CHANGE_BKG_COL]}` : ''}
+                                                <em>{formatDispatchChangeStatus(event.event_status)}</em>
+                                            </span>
+                                        );
+                                    })}
+                                    {detailChangeEvents.length > 8 && <span className={styles.detailChangeInlineItem}>외 {(detailChangeEvents.length - 8).toLocaleString()}건</span>}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             ) : mainView === 'detail-change' ? (
@@ -2152,16 +2382,44 @@ function AsanDispatchContent() {
                     <div className={styles.summaryBar}>
                         <div className={styles.summaryLeft}>
                             <span className={styles.summaryItem}><b>배차변동내역</b> {detailScope?.targetDate || '일별 선택 필요'}</span>
-                            {detailConfirmationLocked ? (
+                            {detailConfirmation?.id ? (
                                 <span className={styles.summaryItem}>
-                                    <b>확정기준</b> {fmtShortTs(detailConfirmation.confirmed_at)}
+                                    <b>{detailConfirmationLocked ? '확정기준' : '확정취소됨'}</b> {fmtShortTs(detailConfirmation.confirmed_at)}
                                     {confirmationActorName(detailConfirmation) ? ` · ${confirmationActorName(detailConfirmation)}` : ''}
                                 </span>
                             ) : (
                                 <span className={`${styles.summaryItem} ${styles.summaryWarn}`}><b>대기</b> 배차확정 후 변동 입력</span>
                             )}
+                            <span className={`${styles.summaryItem} ${detailChangeSummary.pending > 0 ? styles.summaryWarn : ''}`}>
+                                <b>미확인</b> {detailChangeSummary.pending.toLocaleString()}건
+                            </span>
+                            <span className={styles.summaryItem}><b>확인완료</b> {detailChangeSummary.confirmed.toLocaleString()}건</span>
+                            <span className={styles.summaryItem}><b>최종수량</b> {detailChangeSummary.finalTotal.toLocaleString()}건</span>
                         </div>
                         <div className={styles.summaryRight}>
+                            <div className={styles.detailIssueGroup}>
+                                <span className={styles.detailIssueGroupLabel}>확인</span>
+                                {DETAIL_CHANGE_STATUS_FILTERS.map((filter) => (
+                                    <button
+                                        key={filter.key || 'all'}
+                                        type="button"
+                                        className={`${styles.detailIssueButton} ${detailChangeStatusFilter === filter.key ? styles.detailIssueButtonActive : ''}`}
+                                        onClick={() => setDetailChangeStatusFilter(filter.key)}
+                                    >
+                                        {filter.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {detailChangeSummary.pending > 0 && (
+                                <button
+                                    type="button"
+                                    className={styles.detailConfirmButton}
+                                    onClick={() => confirmDetailChangeEvents([], { bulk: true })}
+                                    disabled={detailChangeSaving}
+                                >
+                                    일괄확인
+                                </button>
+                            )}
                             {detailScope && (
                                 <button
                                     type="button"
@@ -2174,7 +2432,7 @@ function AsanDispatchContent() {
                             )}
                         </div>
                     </div>
-                    {detailConfirmationLocked && detailChangeRows.length > 0 ? (
+                    {detailChangeRows.length > 0 ? (
                         <div className={styles.tableWrap}>
                             <div className={styles.tableScroll}>
                                 <table className={`${styles.table} ${styles.detailTable}`}>
@@ -2184,15 +2442,63 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ line, values }) => {
-                                            const lineKey = makeDispatchDetailLineKey(line);
+                                        {detailChangeRows.slice(0, displayLimit).map(({ event, values }, rowIdx) => {
+                                            const hasDraft = Boolean(detailChangeDrafts[event.id]);
                                             return (
-                                                <tr key={`change-${lineKey}`} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
-                                                    {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => (
-                                                        <td key={header} className={header === '변동구분' && values[colIdx] === '수정' ? styles.detailChangeTypeCell : ''}>
-                                                            {values[colIdx]}
-                                                        </td>
-                                                    ))}
+                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow}`}>
+                                                    {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
+                                                        const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
+                                                        const isChangeType = header === '변동구분';
+                                                        const isManage = header === '관리';
+                                                        return (
+                                                            <td
+                                                                key={header}
+                                                                className={isChangeType ? styles.detailChangeTypeCell : ''}
+                                                            >
+                                                                {isDetailValue ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        className={styles.detailChangeInput}
+                                                                        value={values[colIdx] || ''}
+                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, colIdx, inputEvent.target.value)}
+                                                                        onBlur={() => {
+                                                                            if (detailChangeDrafts[event.id]) saveDetailChangeEvent(event);
+                                                                        }}
+                                                                        onKeyDown={(keyEvent) => {
+                                                                            if (keyEvent.key === 'Enter') keyEvent.currentTarget.blur();
+                                                                        }}
+                                                                    />
+                                                                ) : isManage ? (
+                                                                    <span className={styles.detailChangeActions}>
+                                                                        {hasDraft && (
+                                                                            <button
+                                                                                type="button"
+                                                                                className={styles.detailChangeActionButton}
+                                                                                onClick={() => saveDetailChangeEvent(event)}
+                                                                                disabled={detailChangeSaving}
+                                                                            >
+                                                                                저장
+                                                                            </button>
+                                                                        )}
+                                                                        {event.event_status !== 'confirmed' ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                className={styles.detailChangeActionButton}
+                                                                                onClick={() => confirmDetailChangeEvents([event.id])}
+                                                                                disabled={detailChangeSaving}
+                                                                            >
+                                                                                확인완료
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span className={styles.detailChangeConfirmed}>완료</span>
+                                                                        )}
+                                                                    </span>
+                                                                ) : (
+                                                                    values[colIdx]
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
                                                 </tr>
                                             );
                                         })}
@@ -2215,9 +2521,9 @@ function AsanDispatchContent() {
                         </div>
                     ) : (
                         <div className={styles.detailChangePanel}>
-                            <strong>{detailConfirmationLocked ? '변동 없음' : '변동 입력 대기'}</strong>
+                            <strong>{detailConfirmation?.id ? '변동 없음' : '변동 입력 대기'}</strong>
                             <span>
-                                {detailConfirmationLocked
+                                {detailConfirmation?.id
                                     ? '확정 이후 추가/삭제/변경 이벤트가 감지되면 발생 순서대로 표시합니다.'
                                     : '배차확정 후 추가/삭제/변경 이벤트를 기록합니다.'}
                             </span>

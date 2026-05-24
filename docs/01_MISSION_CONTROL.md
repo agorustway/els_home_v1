@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.179 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.180 / APK v5.11.29)
 
-> 최신 업데이트: 아산 상세배차 `배차변동내역`을 확정 이후 이벤트 장부 기준으로 재정의하고, 실제 변동이 없으면 현재 상세라인을 노출하지 않게 되돌렸다.
+> 최신 업데이트: 아산 상세배차 확정 스냅샷과 배차변동 이벤트 원장을 추가해 확정 이후 추가/삭제/변경을 저장·확인·수정할 수 있게 했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.179
+- **웹 버전**: v5.14.180
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -34,7 +34,8 @@
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, BKG1/2/3 셀 클릭 또는 수기 입력을 WEB 보정값으로 저장한다. 선택된 BKG 셀은 색으로 표시하고, 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
 - 상세배차 `BKG확정`/배차확정 API는 서버 쿠키와 클라이언트 Supabase 세션 Bearer 토큰을 모두 인증 경로로 인정한다.
 - 상세배차 배차확정자/보정 수정자는 `profiles.full_name` 또는 `user_roles.name`을 우선 표시하고, 이메일 전체는 화면에 노출하지 않는다.
-- `배차변동내역` 탭은 확정 당시 스냅샷 대비 추가/삭제/변경 이벤트만 발생 순서대로 표시한다. 변동이 없으면 현재 상세라인 전체를 노출하지 않는다.
+- `배차변동내역` 탭은 확정 당시 스냅샷 대비 추가/삭제/변경 이벤트만 발생 순서대로 표시한다. 개별/일괄 확인과 변동행 수정은 모두 이력에 남긴다.
+- 확정취소는 상세배차 잠금만 해제하며 기존 변동 이벤트를 삭제하지 않는다. 활성 확정 상태에서 현재 상세라인과 스냅샷을 비교해 최종수량을 계산한다.
 - 아산 배차판 `엑셀` 버튼은 배차판 보기에서는 현재 필터/숨김 컬럼 기준, 상세배차에서는 상세라인 기준, 배차변동내역에서는 저장된 변동 이벤트 기준으로 내려받는다. GLAPS 업로드 전용 컬럼 순서 출력은 별도 단계로 둔다.
 - `GLAPS코드` 화면 테이블은 헤더 클릭으로 오름차순/내림차순/해제 정렬하고, 헤더 아래 목록에서 현재 탭 컬럼별 고유값 필터를 건다.
 
@@ -48,6 +49,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.180**: Supabase에 `branch_dispatch_detail_snapshots/change_events/change_history` 원장을 적용했다. 배차확정 시 상세라인 스냅샷을 저장하고, 이후 상세라인 변화는 `추가/삭제/변경` 이벤트로 동기화한다. 변동내역은 필터만 제공하고 SORT 없이 발생 순서를 유지하며, 개별/일괄 확인과 행 수정 이력을 저장한다.
 - **v5.14.179**: `배차변동내역`은 현재 상세라인 전체를 보여주지 않고, 확정 이후 추가/삭제/변경 이벤트만 표시하는 구조로 되돌렸다. 변동 이벤트 테이블은 필터만 허용하고 SORT는 금지하는 방향으로 설계한다.
 - **v5.14.178**: 운행기록/교육이수 탭은 `page/page_size`를 API로 전달해 20/50/100건 단위로 조회한다. API는 Supabase `count + range`로 총건수와 현재 페이지를 분리하고, 교육이수 탭은 안전교육 로그가 있는 운행만 조회한다.
 - **v5.14.177**: GLAPS 수정양식 업로드가 `WEB수정` 행을 변경/삭제하려 하면 해당 행을 스킵하고 `WEB수정 보호 N건 업로드 제외`로 알린다. 마스터 업로드/NAS 반영 시에는 기존 활성 버전의 WEB수정 행을 새 버전에 보존해 마스터 재반영으로 수기 보정값이 사라지지 않게 했다.
@@ -77,15 +79,15 @@
 - **v5.14.153**: GLAPS 마스터 코드시트 `ELS코드1~N` 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 셀에 여러 개 들어와도 각각 alias로 분리되게 했다. 수정양식 설명서에도 ELS 수기 컬럼 위치 무관/다중값 구분 규칙을 추가했다.
 - **v5.14.152**: GLAPS 코드 화면의 `현재/전체 수정양식` 구분을 제거하고 `수정양식 내보내기/업로드` 단일 흐름으로 정리했다. 다운로드 파일명은 `GLAPS_수정양식.xlsx`이며, 첫 시트 `설명서`에 컬럼별 입력방법과 삭제/수정출처 주의사항을 넣었다.
 - **v5.14.151**: 전역 헤더를 64px, 모바일 헤더를 56px 기준으로 낮추고 티커·임직원 헤더·사이드바 sticky 오프셋을 변수 기준으로 동기화했다. 인트라넷 사이드바는 데스크톱 244px, 모바일 244px 상한으로 줄이고 항목 높이/패딩을 낮춰 메뉴 밀도를 높였다.
-- **v5.14.150**: GLAPS 코드 화면에 웹 직접 추가/수정/삭제 폼과 `수정출처` 컬럼을 추가했다. 전체 수정양식 내보내기/업로드는 운송경로와 항목매핑을 한 파일에서 처리하며, 저장 전 DB 입력값은 양끝 공백을 trim한다.
-- **v5.14.149**: GLAPS 마스터 API를 1000건 단위 페이지 조회로 바꿔 라인/포트 alias가 잘리지 않게 했다. 상세배차 `포트코드`는 마스터에 ELS/GLAPS 매핑이 있을 때만 표시하고, 함부르크처럼 미등록 값은 공란으로 둔다. 운송사코드는 입력 목록 UI를 제거하고 기본 ELS BP 코드를 일반 코드 셀로 표시한다.
 
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 39개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/confirmation/route.js" "app/api/branches/asan/dispatch/change-events/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+- Supabase migration `asan_dispatch_change_events`: 적용 완료
 
 ## IN-PROGRESS
-- GLAPS 다음 단계: `배차변동내역` 탭에서 확정 이후 추가/삭제 라인을 실제 저장/검증하고, 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식을 출력한다.
+- GLAPS 다음 단계: 상세배차/배차변동내역을 GLAPS 업로드 전용 컬럼 순서로 출력하고, 실제 확정일 테스트 데이터로 변동 이벤트 감지 결과를 검수한다.
 - 배차판 WEB 전용 셀 DB 적용 대기: `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `cd web; node scripts/backfill-asan-dispatch-web-cells.mjs` 1회 실행.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
 
