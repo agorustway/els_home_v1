@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.154 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.155 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 수정양식 엑셀이 열릴 때 A1 제목부터 보이도록 운송경로/항목매핑 시트에 제목·설명·컬럼명 행을 분리했다.
+> 최신 업데이트: 헤더 인트라넷 `직원 서비스` 하위 메뉴에 `AI 어시스턴트`를 추가했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.154
+- **웹 버전**: v5.14.155
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -35,6 +35,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.155**: 전역 헤더 인트라넷 드롭다운의 `직원 서비스` 하위 메뉴 첫 항목에 `AI 어시스턴트` 링크(`/employees/ask`)를 추가해 사이드바 메뉴와 맞췄다.
 - **v5.14.154**: GLAPS 수정양식 운송경로/항목매핑 시트가 엑셀에서 빈 헤더처럼 보이지 않도록 1행 제목, 2행 설명, 3행 컬럼명으로 분리하고, 열릴 때 A1부터 보이도록 시트 뷰를 고정했다.
 - **v5.14.153**: GLAPS 마스터 코드시트 `ELS코드1~N` 값이 `CMA, CMA-CGM` 또는 줄바꿈처럼 한 셀에 여러 개 들어와도 각각 alias로 분리되게 했다. 수정양식 설명서에도 ELS 수기 컬럼 위치 무관/다중값 구분 규칙을 추가했다.
 - **v5.14.152**: GLAPS 코드 화면의 `현재/전체 수정양식` 구분을 제거하고 `수정양식 내보내기/업로드` 단일 흐름으로 정리했다. 다운로드 파일명은 `GLAPS_수정양식.xlsx`이며, 첫 시트 `설명서`에 컬럼별 입력방법과 삭제/수정출처 주의사항을 넣었다.
@@ -49,9 +50,9 @@
 - **v5.14.140**: 배차판 원본 `.xlsm`에서 WEB 전용 BKG/TARGET/비고 컬럼을 분리했다.
 
 ## VERIFICATION
-- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
-- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
-- `npm.cmd run build`: 통과
+- `npm.cmd run lint -- components/Header.js`: 통과, 기존 `<img>` 경고 3건 유지
+- `npm.cmd run build`: 첫 실행은 이전 `.next/export` ENOTEMPTY 산출물 정리 후 재실행 통과
+- `http://127.0.0.1:3002/employees/ask?debug=true`: 헤더 드롭다운 DOM에서 `AI 어시스턴트` 링크(`/employees/ask`) 확인 후 서버 종료
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 상세배차 최종 컬럼 순서대로 엑셀 업로드 양식 출력과 업로드 전 검증을 구현한다.

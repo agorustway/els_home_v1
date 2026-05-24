@@ -1,3 +1,17 @@
+## [2026-05-24] 헤더 인트라넷 AI 어시스턴트 메뉴 복구 (v5.14.155)
+### 핵심
+- 전역 헤더의 인트라넷 드롭다운은 사이드바 메뉴와 별도 배열이라 `직원 서비스` 하위에 `AI 어시스턴트`가 빠져 있었습니다.
+- `직원 서비스` 하위 첫 항목에 `AI 어시스턴트` 링크(`/employees/ask`)를 추가해 사이드바의 인트라넷 홈 구성과 맞췄습니다.
+### 검증
+- `npm.cmd run lint -- components/Header.js`: 통과, 기존 `<img>` 경고 3건 유지
+- `npm.cmd run build`: 첫 실행은 이전 `.next/export` ENOTEMPTY 산출물 정리 후 재실행 통과
+- `http://127.0.0.1:3002/employees/ask?debug=true`: 헤더 드롭다운 DOM에서 `AI 어시스턴트` 링크(`/employees/ask`) 확인 후 검증용 서버 종료.
+### 변경 파일
+- `web/components/Header.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] GLAPS 수정양식 제목/컬럼명 가시성 보정 (v5.14.154)
 ### 핵심
 - GLAPS 수정양식의 `운송경로_수정양식`, `항목매핑_수정양식` 시트에 1행 제목, 2행 설명, 3행 컬럼명 구조를 적용했습니다.
