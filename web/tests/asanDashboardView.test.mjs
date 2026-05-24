@@ -1037,10 +1037,14 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(source, /activeTabRef = useRef\(-1\)/);
   assert.match(source, /fetchData\(viewType, \{ silent: true, preserveActiveDate: true \}\);/);
   assert.match(source, /const \[refreshing, setRefreshing\] = useState\(false\);/);
-  assert.match(source, /const handleRefreshData = async \(\) =>/);
-  assert.match(source, /fetchData\(viewType, \{ silent: true, preserveActiveDate: true \}\)/);
-  assert.match(source, /setGlapsMasterRefreshToken\(token => token \+ 1\)/);
-  assert.match(source, /현재 보기와 날짜를 유지한 채 새로고침했습니다\./);
+  assert.match(source, /ASAN_DISPATCH_RELOAD_STATE_KEY/);
+  assert.match(source, /consumeAsanDispatchReloadState/);
+  assert.match(source, /skipInitialViewResetRef/);
+  assert.match(source, /const handleRefreshData = \(\) =>/);
+  assert.match(source, /window\.sessionStorage\.setItem\(ASAN_DISPATCH_RELOAD_STATE_KEY, JSON\.stringify\(restoreState\)\)/);
+  assert.match(source, /window\.location\.reload\(\)/);
+  assert.match(source, /현재 위치를 저장하고 페이지를 새로고침합니다\./);
+  assert.match(source, /restoreState\.activeTargetDate === '__all__'/);
   assert.match(source, /🔄 새로고침/);
   assert.match(source, /setInterval\(\(\) => \{/);
   assert.match(source, /}, 60000\);/);

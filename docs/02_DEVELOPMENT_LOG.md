@@ -1,3 +1,20 @@
+## [2026-05-25] 아산 배차판 새로고침 실제 reload 전환 (v5.14.186)
+### 핵심
+- 기존 `새로고침` 버튼은 배차 API만 다시 조회해, 새 배포 코드나 화면 변경 반영 확인에는 F5와 같은 효과가 없었습니다.
+- 버튼을 누르면 현재 보기, 배차 구분, 선택 날짜/전체 기간, 검색어, 컬럼/상태 필터, 상세/변동 필터, 스크롤 위치를 `sessionStorage`에 저장합니다.
+- 저장 직후 `window.location.reload()`를 호출해 브라우저 F5처럼 페이지와 번들을 다시 불러오고, 재진입 시 저장한 작업 위치를 복원합니다.
+- 사용자가 F5를 눌렀을 때 페이지 상태를 잃는 문제를 줄이면서도, 버튼이 실제 새로고침 의미를 갖도록 정리했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차변동내역 확정 후 작업판 재정렬 (v5.14.185)
 ### 핵심
 - 배차변동내역은 확정 후 상세현황의 연장선이므로, `상차지` 선택과 `BKG확정`/BKG1~3 클릭 선택을 상세배차와 같은 방식으로 다시 제공했습니다.

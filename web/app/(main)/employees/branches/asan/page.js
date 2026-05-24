@@ -34,8 +34,11 @@ import { createClient as createBrowserSupabaseClient } from '@/utils/supabase/cl
 // ===== 상수 =====
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
+const ASAN_DISPATCH_RELOAD_STATE_KEY = 'asan_dispatch_reload_state';
 const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
+const ASAN_DISPATCH_VIEW_TYPES = Object.freeze(['integrated', 'glovis', 'mobis']);
+const ASAN_DISPATCH_MAIN_VIEWS = Object.freeze(['dashboard', 'grid', 'detail', 'detail-change', 'glaps-master']);
 
 const loadAsanShipping = () => import('./AsanShipping');
 const loadAsanGlapsMaster = () => import('./AsanGlapsMaster');
@@ -782,10 +785,29 @@ function scrollDateTabHorizontally(tabsEl, tabEl) {
     tabsEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
 }
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+function consumeAsanDispatchReloadState() {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(ASAN_DISPATCH_RELOAD_STATE_KEY);
+        window.sessionStorage.removeItem(ASAN_DISPATCH_RELOAD_STATE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || Date.now() - Number(parsed.savedAt || 0) > 300000) return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
 
 function AsanDispatchContent() {
     const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-    const [viewType, setViewType] = useState('integrated');
+    const reloadRestoreRef = useRef(undefined);
+    if (reloadRestoreRef.current === undefined) reloadRestoreRef.current = consumeAsanDispatchReloadState();
+    const reloadRestoreState = reloadRestoreRef.current || {};
+    const skipInitialViewResetRef = useRef(Boolean(reloadRestoreRef.current));
+    const [viewType, setViewType] = useState(() => (
+        ASAN_DISPATCH_VIEW_TYPES.includes(reloadRestoreState.viewType) ? reloadRestoreState.viewType : 'integrated'
+    ));
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
@@ -798,18 +820,20 @@ function AsanDispatchContent() {
     const [browserFiles, setBrowserFiles] = useState([]);
     const [browserPath, setBrowserPath] = useState('/아산지점/A_운송실무');
     const [browserLoading, setBrowserLoading] = useState(false);
-    const [searchInput, setSearchInput] = useState('');
-    const [mainView, setMainView] = useState('dashboard'); // 'dashboard' | 'grid' | 'detail' | 'detail-change' | 'glaps-master'
-    const [searchTerm, setSearchTerm] = useState('');
-    const [columnFilters, setColumnFilters] = useState({});
-    const [colorFilter, setColorFilter] = useState(null);
+    const [searchInput, setSearchInput] = useState(reloadRestoreState.searchInput || '');
+    const [mainView, setMainView] = useState(() => (
+        ASAN_DISPATCH_MAIN_VIEWS.includes(reloadRestoreState.mainView) ? reloadRestoreState.mainView : 'dashboard'
+    ));
+    const [searchTerm, setSearchTerm] = useState(reloadRestoreState.searchTerm || reloadRestoreState.searchInput || '');
+    const [columnFilters, setColumnFilters] = useState(reloadRestoreState.columnFilters || {});
+    const [colorFilter, setColorFilter] = useState(reloadRestoreState.colorFilter || null);
     const [filterDropdown, setFilterDropdown] = useState(null);
     const [tooltip, setTooltip] = useState(null);
     const [hiddenCols, setHiddenCols] = useState(new Set());
     const [colWidths, setColWidths] = useState({});
     const [showColPanel, setShowColPanel] = useState(false);
-    const [allTabMonth, setAllTabMonth] = useState(null);
-    const [allTabWeek, setAllTabWeek] = useState(null);
+    const [allTabMonth, setAllTabMonth] = useState(reloadRestoreState.allTabMonth || null);
+    const [allTabWeek, setAllTabWeek] = useState(reloadRestoreState.allTabWeek || null);
     const [elapsed, setElapsed] = useState('');
     const [displayLimit, setDisplayLimit] = useState(100);
     const [syncStatus, setSyncStatus] = useState(null); // { message, isError }
@@ -820,10 +844,10 @@ function AsanDispatchContent() {
     const [detailConfirmation, setDetailConfirmation] = useState(null);
     const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
     const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
-    const [detailIssueFilter, setDetailIssueFilter] = useState('');
+    const [detailIssueFilter, setDetailIssueFilter] = useState(reloadRestoreState.detailIssueFilter || '');
     const [detailChangeEvents, setDetailChangeEvents] = useState([]);
     const [detailChangeDrafts, setDetailChangeDrafts] = useState({});
-    const [detailChangeStatusFilter, setDetailChangeStatusFilter] = useState('');
+    const [detailChangeStatusFilter, setDetailChangeStatusFilter] = useState(reloadRestoreState.detailChangeStatusFilter || '');
     const [detailChangeSetupRequired, setDetailChangeSetupRequired] = useState(false);
     const [detailChangeSaving, setDetailChangeSaving] = useState(false);
     const [detailStateRefreshToken, setDetailStateRefreshToken] = useState(0);
@@ -943,28 +967,36 @@ function AsanDispatchContent() {
             if (!silent) setLoading(false);
         }
     }, []);
-    const handleRefreshData = async () => {
+    const handleRefreshData = () => {
         if (refreshing || syncing) return;
+        if (typeof window === 'undefined') return;
+        const activeTargetDate = activeTab === data.length
+            ? '__all__'
+            : data[activeTab]?.target_date || '';
+        const restoreState = {
+            savedAt: Date.now(),
+            viewType,
+            mainView,
+            activeTargetDate,
+            allTabMonth,
+            allTabWeek,
+            searchInput,
+            searchTerm,
+            columnFilters,
+            colorFilter,
+            detailIssueFilter,
+            detailChangeStatusFilter,
+            scrollX: window.scrollX || 0,
+            scrollY: window.scrollY || 0,
+        };
         setRefreshing(true);
-        setSyncStatus({ message: '현재 화면 새로고침 중...', isError: false });
+        setSyncStatus({ message: '현재 위치를 저장하고 페이지를 새로고침합니다.', isError: false });
         try {
-            const refreshed = await fetchData(viewType, { silent: true, preserveActiveDate: true });
-            if (['detail', 'detail-change', 'glaps-master'].includes(mainView)) {
-                setGlapsMasterRefreshToken(token => token + 1);
-            }
-            if (['detail', 'detail-change'].includes(mainView)) {
-                detailChangeSyncRef.current = '';
-                setDetailChangeDrafts({});
-                setDetailStateRefreshToken(token => token + 1);
-            }
-            setSyncStatus({
-                message: refreshed ? '현재 보기와 날짜를 유지한 채 새로고침했습니다.' : '배차판 자료 새로고침에 실패했습니다.',
-                isError: !refreshed,
-            });
-        } finally {
-            setRefreshing(false);
-            setTimeout(() => setSyncStatus(null), 3000);
+            window.sessionStorage.setItem(ASAN_DISPATCH_RELOAD_STATE_KEY, JSON.stringify(restoreState));
+        } catch {
+            // 저장 실패 시에도 사용자가 기대한 F5 효과는 유지한다.
         }
+        window.location.reload();
     };
     const handleGlapsMasterChanged = useCallback(() => {
         detailChangeSyncRef.current = '';
@@ -1034,7 +1066,17 @@ function AsanDispatchContent() {
 
     // ===== Effects =====
     useEffect(() => { fetchSettings(); }, [fetchSettings]);
-    useEffect(() => { fetchData(viewType); setSearchInput(''); setSearchTerm(''); setColumnFilters({}); setColorFilter(null); }, [fetchData, viewType]);
+    useEffect(() => {
+        const preserveReloadState = skipInitialViewResetRef.current;
+        skipInitialViewResetRef.current = false;
+        fetchData(viewType, { preserveActiveDate: preserveReloadState });
+        if (!preserveReloadState) {
+            setSearchInput('');
+            setSearchTerm('');
+            setColumnFilters({});
+            setColorFilter(null);
+        }
+    }, [fetchData, viewType]);
     useEffect(() => {
         if (syncing || showSettings || showBrowser) return undefined;
         const timer = setInterval(() => {
@@ -1064,6 +1106,27 @@ function AsanDispatchContent() {
 
     // ===== "전체" 탭 데이터 (모든 날짜 합산, 내림차순) =====
     const isAllTab = activeTab === data.length;
+
+    useEffect(() => {
+        const restoreState = reloadRestoreRef.current;
+        if (!restoreState || restoreState.activeRestored || data.length === 0) return;
+        restoreState.activeRestored = true;
+        if (restoreState.activeTargetDate === '__all__') {
+            setActiveTab(data.length);
+            setAllTabMonth(restoreState.allTabMonth || null);
+            setAllTabWeek(restoreState.allTabWeek || null);
+        } else if (restoreState.activeTargetDate) {
+            const targetIdx = data.findIndex(item => item.target_date === restoreState.activeTargetDate);
+            if (targetIdx >= 0) {
+                setActiveTab(targetIdx);
+                setAllTabMonth(null);
+                setAllTabWeek(null);
+            }
+        }
+        if (typeof window !== 'undefined') {
+            setTimeout(() => window.scrollTo(restoreState.scrollX || 0, restoreState.scrollY || 0), 120);
+        }
+    }, [data]);
 
     useEffect(() => {
         if (isAllTab || data.length === 0 || activeTab < 0) return;
@@ -2310,7 +2373,7 @@ function AsanDispatchContent() {
                             )}
                         </div>
                         <div className={styles.headerButtons}>
-                            <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing || syncing}>
+                            <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing || syncing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
                                 {refreshing ? '⏳ 새로고침' : '🔄 새로고침'}
                             </button>
                             <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>

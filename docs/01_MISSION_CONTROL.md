@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.185 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.186 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차변동내역을 확정 후 상세현황 작업판으로 재정렬하고, GLAPS 파생코드 보강은 변동 이벤트로 보지 않게 했다.
+> 최신 업데이트: 아산 배차판 `새로고침` 버튼을 실제 페이지 reload + 현재 보기 복원 방식으로 변경했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.185
+- **웹 버전**: v5.14.186
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -19,7 +19,7 @@
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
 - 상세배차 수정필요 필터는 상차지, 운송경로, 오더구분, 화주사, 경로세부코드, 포트, 라인, 타입, 운송사, 컨샤이니, 수정건 항목별로 토글한다.
-- 아산 배차판 작업 중 자료 갱신은 브라우저 F5 대신 상단 `새로고침` 버튼을 사용한다. 현재 보기와 선택 날짜를 유지하고 GLAPS코드 화면도 내부 조회를 다시 실행한다.
+- 아산 배차판 작업 중 화면/배포 반영 확인은 브라우저 F5 대신 상단 `새로고침` 버튼을 사용한다. 버튼은 현재 보기, 배차 구분, 선택 날짜/전체 기간, 검색/필터를 저장한 뒤 실제 페이지를 다시 불러온다.
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
 - GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
@@ -52,6 +52,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.186**: 아산 배차판 `새로고침` 버튼을 API 재조회에서 실제 `window.location.reload()`로 변경했다. reload 전 sessionStorage에 현재 보기/날짜/검색/필터/스크롤을 저장하고 복원해, F5처럼 새 코드가 반영되면서도 작업 위치를 잃지 않게 했다.
 - **v5.14.185**: 배차변동내역에서 상차지 선택과 `BKG확정`/BKG1~3 선택을 상세배차와 같은 방식으로 다시 열었다. 변동 감지 fingerprint에서는 GLAPS 파생코드를 제외해 코드 보강이나 lookup 중간상태가 변경 이벤트를 만들지 않게 했고, 확정 전 BKG 보정시간은 확정 후 `수정건`으로 표시하지 않는다.
 - **v5.14.184**: 배차변동내역의 셀 직접입력을 제거하고 상세배차와 같은 GLAPS 계산 결과를 읽기 중심으로 표시한다. 저장된 변동 row와 현재 계산값이 다르면 `계산값반영`만 제공해 파생 코드 저장을 제한하고, 원천 수정은 WEB 부킹/비고 또는 엑셀 수정 흐름에서 변동으로 감지하게 했다.
 - **v5.14.183**: 배차변동내역 행을 상세배차 line으로 재구성해 GLAPS 코드 계산을 동일하게 적용했다. 상세배차 화면의 active 변동건은 목록 하단으로 보내고 마지막 칸에 `변경건` 배지를 표시한다.
@@ -80,9 +81,9 @@
 - **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 42개 통과
-- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
-- `npm.cmd run build`: 통과. 정적 생성 중 NAS/WebDAV fetch `ECONNRESET` 경고가 있었지만 빌드는 성공.
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
 - Supabase migration `asan_dispatch_change_events`: 적용 완료
 
 ## IN-PROGRESS
