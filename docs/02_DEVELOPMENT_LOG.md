@@ -1,3 +1,20 @@
+## [2026-05-24] GLAPS 수정양식 매칭상태 한글 표기 (v5.14.158)
+### 핵심
+- GLAPS 수정양식 다운로드 시 운송경로/항목매핑 `매칭상태` 값을 내부 코드 대신 `확정 / 조정필요 / 코드없음` 한글로 표시합니다.
+- 업로드 파서는 기존처럼 한글과 영문(`ready / needs_mapping / missing_route_code`)을 모두 인식합니다.
+- 설명서에 행을 지우는 것은 삭제로 처리하지 않고, `삭제(Y)` 칸에 `Y`를 입력한 행만 삭제 처리한다고 명시했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm.cmd run lint -- "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-24] AI 어시스턴트 안내/웹 RAG 설명 정합성 보정 (v5.14.157)
 ### 핵심
 - AI 어시스턴트 화면의 버전, 소개 문구, 빠른 질문, 가이드 섹션을 `web/utils/aiAssistantMeta.mjs` 함수로 통합했습니다.

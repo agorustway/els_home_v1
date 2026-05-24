@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   GLAPS_ALIAS_TEMPLATE_HEADERS,
+  GLAPS_REVIEW_STATUS_LABELS,
   GLAPS_ROUTE_TEMPLATE_HEADERS,
   buildGlapsDispatchRouteFingerprints,
   buildGlapsRouteFingerprint,
@@ -46,6 +47,11 @@ test('GLAPS 수정양식 다운로드 헤더는 현업이 읽는 한국어 컬�
     '수정일시',
     '삭제(Y)',
   ]);
+  assert.deepEqual(GLAPS_REVIEW_STATUS_LABELS, {
+    ready: '확정',
+    needs_mapping: '조정필요',
+    missing_route_code: '코드없음',
+  });
 });
 
 test('GLAPS 운송경로명은 상차지, 경유지, 하차지를 추론한다', () => {

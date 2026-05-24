@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/utils/supabase/server';
 import {
   DEFAULT_GLAPS_BRANCH_ID,
   GLAPS_ALIAS_TEMPLATE_HEADERS,
+  GLAPS_REVIEW_STATUS_LABELS,
   GLAPS_ROUTE_TEMPLATE_HEADERS,
 } from '@/utils/glapsMasterData.mjs';
 
@@ -115,11 +116,11 @@ function addGuideWorksheet(workbook) {
   sheet.addRow(['구분', '시트', '컬럼명', '입력방법', '비고']);
   [
     ['공통', '전체', 'ID', '기존 행은 그대로 둡니다. 새 행 추가 시 비워둡니다.', 'ID가 있으면 기존 행 수정, 비어 있으면 신규 추가'],
-    ['공통', '전체', '매칭상태', 'ready / needs_mapping / missing_route_code 중 하나를 입력합니다.', '한글 확정 / 조정필요 / 코드없음도 인식'],
+    ['공통', '전체', '매칭상태', '확정 / 조정필요 / 코드없음 중 하나를 입력합니다.', '영문 ready / needs_mapping / missing_route_code도 인식'],
     ['공통', '전체', '조정안내', '검수 메모를 자유 입력합니다.', '업로드 시 DB에 반영'],
     ['공통', '전체', '수정출처', '참고용입니다. 수정하지 않아도 됩니다.', '웹수정 / 업로드수정 / 마스터반영 표시'],
     ['공통', '전체', '수정일시', '참고용입니다. 수정하지 않아도 됩니다.', '업로드 반영 기준 아님'],
-    ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다.', 'Y 외 값은 삭제로 보지 않음'],
+    ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다. 행을 지우는 것은 삭제로 처리하지 않습니다.', 'Y 외 값은 삭제로 보지 않음'],
     ['마스터코드', '원본 코드시트', 'ELS코드1~N', '수기 별칭은 컬럼 위치와 무관하게 헤더명으로 읽습니다. 한 칸에 여러 값을 넣을 때는 쉼표 또는 줄바꿈으로 구분합니다.', '새 코드 시트 추가 시 파서 연결 필요'],
     ['운송경로', '운송경로_수정양식', '운송경로코드', 'GLAPS 기존 운송경로코드를 입력합니다.', '새 코드를 만들지 말고 원장 코드를 사용'],
     ['운송경로', '운송경로_수정양식', '운송경로명', 'GLAPS 운송경로명을 입력합니다.', '참고/검색용'],
@@ -157,6 +158,10 @@ function editSourceLabel(updatedBy = '') {
   return updatedBy ? '기존수정' : '';
 }
 
+function reviewStatusLabel(status = '') {
+  return GLAPS_REVIEW_STATUS_LABELS[status] || status || '';
+}
+
 function routeToTemplateRow(row = {}) {
   return [
     row.id || '',
@@ -166,7 +171,7 @@ function routeToTemplateRow(row = {}) {
     row.waypoint_name || '',
     row.waypoint_els_name || '',
     row.destination_name || '',
-    row.review_status || '',
+    reviewStatusLabel(row.review_status),
     row.review_note || '',
     editSourceLabel(row.updated_by),
     row.updated_at || '',
@@ -183,7 +188,7 @@ function aliasToTemplateRow(row = {}) {
     row.glaps_name || '',
     row.glaps_code || '',
     row.route_code || '',
-    row.review_status || '',
+    reviewStatusLabel(row.review_status),
     row.review_note || '',
     editSourceLabel(row.updated_by),
     row.updated_at || '',
