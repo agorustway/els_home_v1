@@ -1,3 +1,39 @@
+## [2026-05-26] 월간실적 이월 순환 기준 분리 (v5.14.220)
+### 핵심
+- 월간 원장의 `청구/하불`은 마감월 반영 금액으로 유지하고, 첫 컬럼 값이 `이월`인 행은 `상단이월 반영분`으로 따로 집계했습니다.
+- `이월구분 + 청구_1/하불_1`은 이번 마감에서 다음 마감월로 넘어갈 `익월이월 발생분`으로 분리했습니다.
+- 월간 dashboard summary의 기준을 `마감월`로 고정하고, 월별 series에는 상단이월/익월이월 금액과 건수를 함께 보존합니다.
+- 월간 화면 KPI와 구성 분석은 `이월` 단일 표현 대신 `상단이월`과 `익월이월`을 분리해 보여줍니다.
+- 운영 Supabase monthly 메타는 2026-01~05 current 원장 기준으로 백필했습니다. 2026-04 기준 익월이월은 청구 484,932,800원 / 하불 410,156,300원으로 확인했습니다.
+### 검증
+- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 25개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" lib/asan-branch-db.js utils/asanPerformanceView.mjs scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+- Supabase 운영 확인: monthly 2026-01~05 `carryoverCycle.incoming/outgoing` 생성 확인
+### 변경 파일
+- `web/utils/asanPerformanceView.mjs`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `web/supabase_sql/20260526_asan_monthly_carryover_cycle_backfill.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
+## [2026-05-26] GLAPS 운송서비스코드 도출 추가 (v5.14.221)
+### 핵심
+- GLAPS 상세배차/배차변동 라인에서 배차판 `구분` 값을 기준으로 `운송서비스코드`를 자동 도출하도록 연결했습니다.
+- 현재 확인 코드표를 fallback으로 두고, 향후 GLAPS 마스터에 `운송서비스` 시트가 들어오면 해당 시트의 `운송서비스/설명` 값을 함께 코드표로 읽습니다.
+- 도출 기준은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`입니다.
+### 검증
+- 진행 예정
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 실적관리 이익 표기와 마감자료 구분 정리 (v5.14.219)
 ### 핵심
 - 종합실적, 월간실적, 연간실적 화면의 표시 문구를 `손익/손익률` 대신 `이익/이익률`로 통일했습니다.

@@ -579,7 +579,7 @@ function buildCarryoverDimensionSection(items = []) {
             revenue,
             purchase,
             profit,
-            rowCount: 0,
+            rowCount: safeNumber(item.rowCount),
             profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
             revenueShare: totalRevenue ? Math.round((revenue / totalRevenue) * 10000) / 100 : 0,
         };
@@ -735,6 +735,32 @@ function carryoverClientItemsFromReport(report = null) {
             carryoverProfit: safeNumber(group.carryoverProfit || safeNumber(group.carryoverRevenue) - safeNumber(group.carryoverPurchase)),
         }))
         .filter(item => item.carryoverRevenue || item.carryoverPurchase || item.carryoverProfit)
+        .sort((a, b) => Math.abs(b.carryoverRevenue) - Math.abs(a.carryoverRevenue));
+}
+
+function carryoverMetricFromMonthly(item = {}, prefix = 'carryover') {
+    const normalizedPrefix = prefix === 'incoming' ? 'incomingCarryover' : 'carryover';
+    const revenue = safeNumber(item?.[`${normalizedPrefix}Revenue`]);
+    const purchase = safeNumber(item?.[`${normalizedPrefix}Purchase`]);
+    const profit = safeNumber(item?.[`${normalizedPrefix}Profit`] || revenue - purchase);
+    return {
+        revenue,
+        purchase,
+        profit,
+        rowCount: safeNumber(item?.[`${normalizedPrefix}Rows`]),
+    };
+}
+
+function carryoverClientItemsFromCycle(cycle = null) {
+    return safeObjectList(cycle?.outgoing?.clientItems)
+        .map(item => ({
+            name: item.name || item.label || '미분류',
+            carryoverRevenue: safeNumber(item.revenue),
+            carryoverPurchase: safeNumber(item.purchase),
+            carryoverProfit: safeNumber(item.profit || safeNumber(item.revenue) - safeNumber(item.purchase)),
+            rowCount: safeNumber(item.rowCount),
+        }))
+        .filter(item => item.carryoverRevenue || item.carryoverPurchase || item.carryoverProfit || item.rowCount)
         .sort((a, b) => Math.abs(b.carryoverRevenue) - Math.abs(a.carryoverRevenue));
 }
 
@@ -1162,6 +1188,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
         return normalizePerformanceColumnOrder(colOrder, headers).filter(col => !hidden.has(col));
     }, [colOrder, headers, hiddenCols]);
     const availableMonths = useMemo(() => monthly.filter(isMetricActive), [monthly]);
+    const monthlyByPeriod = useMemo(() => new Map(monthly.map(item => [item.period, item])), [monthly]);
     const availableDays = useMemo(() => daily
         .filter(isMetricActive)
         .map(normalizeDailyOption)
@@ -1229,12 +1256,33 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const reportTotals = selectedReport?.totals || {};
     const reportCarryover = selectedReport?.carryover || summary.carryover || {};
     const scopeReport = selectedScopePeriod ? monthlyReports.find(report => report.period === selectedScopePeriod) : null;
+    const scopeMonthlyMetric = selectedScopePeriod ? monthlyByPeriod.get(selectedScopePeriod) : null;
+    const carryoverCycle = summary.carryoverCycle || {};
+    const scopeCyclePeriod = selectedScopePeriod
+        ? safeObjectList(carryoverCycle.periods).find(item => item.period === selectedScopePeriod)
+        : null;
+    const allOutgoingCarryover = carryoverCycle.outgoing || summary.carryover || {};
+    const allIncomingCarryover = carryoverCycle.incoming || carryoverCycle.included || {};
     const scopeCarryover = analysisScope === ANALYSIS_SCOPE_ALL
-        ? (allReport?.carryover || summary.carryover || {})
-        : (analysisScope === ANALYSIS_SCOPE_MONTH ? (scopeReport?.carryover || {}) : {});
+        ? (allReport?.carryover || allOutgoingCarryover)
+        : (analysisScope === ANALYSIS_SCOPE_MONTH
+            ? (scopeReport?.carryover || scopeCyclePeriod?.outgoing || carryoverMetricFromMonthly(scopeMonthlyMetric, 'outgoing'))
+            : {});
+    const scopeIncomingCarryover = analysisScope === ANALYSIS_SCOPE_ALL
+        ? allIncomingCarryover
+        : (analysisScope === ANALYSIS_SCOPE_MONTH
+            ? (scopeCyclePeriod?.incoming || scopeCyclePeriod?.included || carryoverMetricFromMonthly(scopeMonthlyMetric, 'incoming'))
+            : {});
     const carryoverRevenue = safeNumber(scopeCarryover.revenue);
+    const incomingCarryoverRevenue = safeNumber(scopeIncomingCarryover.revenue);
+    const scopeCarryoverCycle = analysisScope === ANALYSIS_SCOPE_ALL
+        ? carryoverCycle
+        : (scopeCyclePeriod ? { ...carryoverCycle, outgoing: scopeCyclePeriod.outgoing, incoming: scopeCyclePeriod.incoming || scopeCyclePeriod.included } : null);
     const carryoverClientReport = analysisScope === ANALYSIS_SCOPE_ALL ? allReport : (scopeReport || null);
-    const carryoverClientItems = useMemo(() => carryoverClientItemsFromReport(carryoverClientReport), [carryoverClientReport]);
+    const carryoverClientItems = (() => {
+        const reportItems = carryoverClientItemsFromReport(carryoverClientReport);
+        return reportItems.length ? reportItems : carryoverClientItemsFromCycle(scopeCarryoverCycle);
+    })();
     const reportDimensionSource = analysisScope === ANALYSIS_SCOPE_ALL ? allReport : (analysisScope === ANALYSIS_SCOPE_MONTH ? scopeReport : null);
     const reportDimensionSections = useMemo(() => buildReportDimensionSections(reportDimensionSource), [reportDimensionSource]);
     const carryoverDimensionSection = useMemo(() => buildCarryoverDimensionSection(carryoverClientItems), [carryoverClientItems]);
@@ -1242,7 +1290,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const reportPeriodText = selectedReport?.period === REPORT_ALL_KEY ? '전체' : formatReportPeriod(selectedReport?.period || selectedReportPeriod);
     const reportTitleText = selectedReportPeriod === REPORT_ALL_KEY ? '매출보고서' : formatReportTitle(selectedReport?.period || selectedReportPeriod);
     const reportColumnCount = reportGroups.length + 3;
-    const diagramMax = Math.max(1, Math.abs(scopeRevenue), Math.abs(scopePurchase), Math.abs(scopeProfit), Math.abs(carryoverRevenue));
+    const diagramMax = Math.max(1, Math.abs(scopeRevenue), Math.abs(scopePurchase), Math.abs(scopeProfit), Math.abs(incomingCarryoverRevenue), Math.abs(carryoverRevenue));
     const reportTableReady = Boolean(selectedReport && reportGroups.length);
     const scopeFlowItems = useMemo(() => {
         if (analysisScope === ANALYSIS_SCOPE_MONTH) {
@@ -1289,6 +1337,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const revenueDelta = metricDelta(latestFlowItem, previousFlowItem, 'revenue');
     const avgRevenuePerJob = scopeRows ? scopeRevenue / scopeRows : 0;
     const carryoverRate = scopeRevenue ? (carryoverRevenue / scopeRevenue) * 100 : 0;
+    const incomingCarryoverRate = scopeRevenue ? (incomingCarryoverRevenue / scopeRevenue) * 100 : 0;
     const segmentItems = safeObjectList(summary.strategicSegments)
         .map(normalizeStrategicSegment)
         .filter(Boolean);
@@ -1719,10 +1768,17 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                             </div>
                             <div className={styles.monthlyInfoCard}>
                                 <MetricDonut value={carryoverRevenue} max={scopeRevenue || diagramMax} tone="carryover" />
-                                <span>이월</span>
+                                <span>익월이월</span>
                                 <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
                                 <em>청구 대비 {formatPercent(carryoverRate, 1)}</em>
                                 <i style={{ width: metricWidth(carryoverRevenue, diagramMax) }} />
+                            </div>
+                            <div className={styles.monthlyInfoCard}>
+                                <MetricDonut value={incomingCarryoverRevenue} max={scopeRevenue || diagramMax} tone="carryover" />
+                                <span>상단이월</span>
+                                <strong>{formatPerformanceAmount(incomingCarryoverRevenue)}</strong>
+                                <em>마감 반영 {formatPercent(incomingCarryoverRate, 1)}</em>
+                                <i style={{ width: metricWidth(incomingCarryoverRevenue, diagramMax) }} />
                             </div>
                             <div className={styles.monthlyInfoCard}>
                                 <MetricDonut value={avgRevenuePerJob} max={Math.max(1, scopeRevenue)} tone="revenue" />
@@ -1904,7 +1960,12 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopeProfit) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
-                                <span>이월</span>
+                                <span>상단이월</span>
+                                <strong>{formatPerformanceAmount(incomingCarryoverRevenue)}</strong>
+                                <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(incomingCarryoverRevenue) / diagramMax * 100))}%` }} />
+                            </div>
+                            <div>
+                                <span>익월이월</span>
                                 <strong>{formatPerformanceAmount(carryoverRevenue)}</strong>
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(carryoverRevenue) / diagramMax * 100))}%` }} />
                             </div>
@@ -2004,9 +2065,9 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                         {renderReportRow('매입(계산서)', 'invoicePurchase')}
                                         {renderReportRow('매출이익(계산서)', 'invoiceProfit')}
                                         <tr className={styles.reportSectionRow}><td colSpan={reportColumnCount}>이 월</td></tr>
-                                        {renderReportRow('매출 이월', 'carryoverRevenue')}
-                                        {renderReportRow('매입 이월', 'carryoverPurchase')}
-                                        {renderReportRow('이월 차액', 'carryoverProfit')}
+                                        {renderReportRow('익월이월 청구', 'carryoverRevenue')}
+                                        {renderReportRow('익월이월 하불', 'carryoverPurchase')}
+                                        {renderReportRow('익월이월 차액', 'carryoverProfit')}
                                     </tbody>
                                 </table>
                             </div>
@@ -2014,7 +2075,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <span>순매출 {formatPerformanceAmount(safeNumber(reportTotals.netRevenue) || totalRevenue)}</span>
                                 <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
                                 <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
-                                <span>이월금액 {formatPerformanceAmount(reportCarryoverRevenue)}</span>
+                                <span>익월이월 {formatPerformanceAmount(reportCarryoverRevenue)}</span>
                                 <span>이익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
                             </div>
                         </section>

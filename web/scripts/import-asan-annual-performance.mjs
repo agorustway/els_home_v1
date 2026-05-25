@@ -9,7 +9,9 @@ import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
 import {
   FIRST_SHEET_TOKEN,
+  buildMonthlyCarryoverCycle,
   buildMonthlyPerformanceReport,
+  createMonthlyCarryoverCycleAccumulator,
   isPerformanceDateHeader,
   isPerformanceMonthHeader,
   normalizeAnnualPerformanceRow,
@@ -921,6 +923,7 @@ function buildSummary(headers, rows, fallbackPeriod = {}, rawPreviewRows = []) {
   const advancedSummary = advanced.finish(roundItem, totalRevenue);
   const fallback = normalizeFallbackPeriod(fallbackPeriod);
   const fallbackPeriodKey = fallback.year && fallback.month ? `${fallback.year}-${String(fallback.month).padStart(2, '0')}` : '';
+  const carryoverCycle = buildMonthlyCarryoverCycle(headers, analysisRows, { period: fallbackPeriodKey });
 
   return {
     totalRows: rows.length,
@@ -933,6 +936,8 @@ function buildSummary(headers, rows, fallbackPeriod = {}, rawPreviewRows = []) {
     monthly: monthlyList.slice(0, 240),
     monthlyBasis: '마감월',
     monthlyReport: buildMonthlyPerformanceReport(headers, rows, { period: fallbackPeriodKey, rawRows: rawPreviewRows }),
+    carryover: carryoverCycle.outgoing,
+    carryoverCycle,
     ...advancedSummary,
     topGroups: topGroups.slice(0, 15),
     breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),
@@ -1011,6 +1016,9 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}, rawP
   const groups = new Map();
   const breakdowns = new Map();
   const advanced = createAdvancedAccumulator(headers);
+  const fallback = normalizeFallbackPeriod(fallbackPeriod);
+  const fallbackPeriodKey = fallback.year && fallback.month ? `${fallback.year}-${String(fallback.month).padStart(2, '0')}` : '';
+  const carryoverCycleAccumulator = createMonthlyCarryoverCycleAccumulator(headers, { period: fallbackPeriodKey });
   let totalRows = 0;
   let analysisRows = 0;
   let totalRevenue = 0;
@@ -1021,6 +1029,7 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}, rawP
     totalRows += 1;
     if (isTotalRow(row)) return;
     analysisRows += 1;
+    carryoverCycleAccumulator.add(row);
 
     if (revenueCols.length || purchaseCols.length || profitCols.length) {
       const { year, month } = inferYearMonth(headers, row, fallbackPeriod);
@@ -1110,8 +1119,7 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}, rawP
     topGroups.sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue));
 
     const advancedSummary = advanced.finish(roundItem, totalRevenue);
-    const fallback = normalizeFallbackPeriod(fallbackPeriod);
-    const fallbackPeriodKey = fallback.year && fallback.month ? `${fallback.year}-${String(fallback.month).padStart(2, '0')}` : '';
+    const carryoverCycle = carryoverCycleAccumulator.finish();
 
     return {
       totalRows,
@@ -1124,6 +1132,8 @@ function createSummaryAccumulator(headers, sampleRows, fallbackPeriod = {}, rawP
       monthly: monthlyList.slice(0, 240),
       monthlyBasis: '마감월',
       monthlyReport: buildMonthlyPerformanceReport(headers, sampleRows, { period: fallbackPeriodKey, rawRows: rawPreviewRows }),
+      carryover: carryoverCycle.outgoing,
+      carryoverCycle,
       ...advancedSummary,
       topGroups: topGroups.slice(0, 15),
       breakdowns: finalizeBreakdowns(headers, breakdownCandidates, breakdowns, totalRevenue, roundItem),

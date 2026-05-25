@@ -85,6 +85,180 @@ function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
+function compactCarryoverText(value) {
+  return normalizePerformanceFilterValue(value)
+    .replace(/\s+/g, '')
+    .toLocaleLowerCase('ko-KR');
+}
+
+function findCarryoverHeaderIndex(headers = [], candidates = []) {
+  const compactCandidates = candidates.map(compactCarryoverText);
+  let idx = headers.findIndex(header => compactCandidates.includes(compactCarryoverText(header)));
+  if (idx >= 0) return idx;
+  idx = headers.findIndex(header => compactCandidates.some(candidate => candidate && compactCarryoverText(header).includes(candidate)));
+  return idx >= 0 ? idx : -1;
+}
+
+function blankCarryoverMetric(label = '') {
+  return {
+    label,
+    revenue: 0,
+    purchase: 0,
+    profit: 0,
+    rowCount: 0,
+  };
+}
+
+function addCarryoverMetric(target, revenue, purchase, rowCount = 1) {
+  target.revenue += Number(revenue) || 0;
+  target.purchase += Number(purchase) || 0;
+  target.profit += (Number(revenue) || 0) - (Number(purchase) || 0);
+  target.rowCount += rowCount;
+}
+
+function addCarryoverParty(map, name, revenue, purchase) {
+  const key = normalizePerformanceFilterValue(name) || '미분류';
+  if (!map.has(key)) map.set(key, blankCarryoverMetric(key));
+  addCarryoverMetric(map.get(key), revenue, purchase);
+}
+
+function finalizeCarryoverMetric(metric, extra = {}) {
+  const revenue = roundMoney(metric?.revenue || 0);
+  const purchase = roundMoney(metric?.purchase || 0);
+  const profit = roundMoney(metric?.profit || revenue - purchase);
+  return {
+    ...extra,
+    label: metric?.label || extra.label || '',
+    revenue,
+    purchase,
+    profit,
+    rowCount: Number(metric?.rowCount || 0) || 0,
+    profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+  };
+}
+
+function finalizeCarryoverParties(map, limit = 30) {
+  return Array.from(map.values())
+    .map(item => finalizeCarryoverMetric(item, { name: item.label }))
+    .filter(item => item.revenue || item.purchase || item.profit || item.rowCount)
+    .sort((a, b) => Math.abs(b.revenue) - Math.abs(a.revenue))
+    .slice(0, limit);
+}
+
+function resolveCarryoverTargetPeriod(label, sourcePeriod = '') {
+  const text = compactCarryoverText(label);
+  const match = text.match(/(1[0-2]|0?[1-9])월이월/);
+  if (!match) return '';
+  const targetMonth = Number(match[1]);
+  const periodMatch = String(sourcePeriod || '').match(/^(20\d{2})-(0[1-9]|1[0-2])$/);
+  if (!periodMatch) return '';
+  const sourceYear = Number(periodMatch[1]);
+  const sourceMonth = Number(periodMatch[2]);
+  const targetYear = targetMonth <= sourceMonth ? sourceYear + 1 : sourceYear;
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+}
+
+function hasMeaningfulCarryoverMarker(value) {
+  const text = compactCarryoverText(value);
+  if (!text || text === '-' || text === '없음' || text === '미정') return false;
+  return text.includes('이월');
+}
+
+export function createMonthlyCarryoverCycleAccumulator(headers = [], options = {}) {
+  const sourcePeriod = options.period || options.sourcePeriod || '';
+  const categoryIdx = findCarryoverHeaderIndex(headers, ['이월여부']);
+  const carryoverTypeIdx = findCarryoverHeaderIndex(headers, ['이월구분']);
+  const revenueIdx = findCarryoverHeaderIndex(headers, ['청구']);
+  const purchaseIdx = findCarryoverHeaderIndex(headers, ['하불']);
+  const carryoverRevenueIdx = findCarryoverHeaderIndex(headers, ['청구_1', '이월청구', '이월청구액']);
+  const carryoverPurchaseIdx = findCarryoverHeaderIndex(headers, ['하불_1', '이월하불', '이월매입', '이월하불액']);
+  const clientIdx = findCarryoverHeaderIndex(headers, ['청구처', '거래처', '화주']);
+  const vendorIdx = findCarryoverHeaderIndex(headers, ['지급처', '운송사(명의)', '운송사']);
+  const incoming = blankCarryoverMetric('상단이월 반영분');
+  const outgoing = blankCarryoverMetric('익월이월 발생분');
+  const incomingClients = new Map();
+  const incomingVendors = new Map();
+  const outgoingClients = new Map();
+  const outgoingVendors = new Map();
+  const targets = new Map();
+
+  const valueAt = (row, idx) => (idx >= 0 ? row[idx] : '');
+  const amountAt = (row, idx) => parsePerformanceAmountValue(valueAt(row, idx)) || 0;
+
+  function add(row = []) {
+    const category = compactCarryoverText(valueAt(row, categoryIdx));
+    const carryoverType = normalizePerformanceFilterValue(valueAt(row, carryoverTypeIdx));
+    const revenue = amountAt(row, revenueIdx);
+    const purchase = amountAt(row, purchaseIdx);
+    const nextRevenue = amountAt(row, carryoverRevenueIdx);
+    const nextPurchase = amountAt(row, carryoverPurchaseIdx);
+    const client = valueAt(row, clientIdx);
+    const vendor = valueAt(row, vendorIdx);
+
+    if (category === '이월' && (revenue || purchase)) {
+      addCarryoverMetric(incoming, revenue, purchase);
+      addCarryoverParty(incomingClients, client, revenue, purchase);
+      addCarryoverParty(incomingVendors, vendor, revenue, purchase);
+    }
+
+    if (hasMeaningfulCarryoverMarker(carryoverType) || nextRevenue || nextPurchase) {
+      addCarryoverMetric(outgoing, nextRevenue, nextPurchase);
+      addCarryoverParty(outgoingClients, client, nextRevenue, nextPurchase);
+      addCarryoverParty(outgoingVendors, vendor, nextRevenue, nextPurchase);
+      const targetPeriod = resolveCarryoverTargetPeriod(carryoverType, sourcePeriod) || '미정';
+      if (!targets.has(targetPeriod)) {
+        targets.set(targetPeriod, {
+          ...blankCarryoverMetric(carryoverType || targetPeriod),
+          period: targetPeriod,
+          carryoverType,
+        });
+      }
+      addCarryoverMetric(targets.get(targetPeriod), nextRevenue, nextPurchase);
+    }
+  }
+
+  function finish() {
+    const included = finalizeCarryoverMetric(incoming, {
+      key: 'incoming',
+      description: '전월에서 넘어와 이번 마감월 청구/하불에 반영된 상단 이월분입니다.',
+      clientItems: finalizeCarryoverParties(incomingClients),
+      vendorItems: finalizeCarryoverParties(incomingVendors),
+    });
+    const outgoingMetric = finalizeCarryoverMetric(outgoing, {
+      key: 'outgoing',
+      description: '이번 마감에서 정리되어 다음 마감월로 넘어갈 이월 발생분입니다.',
+      clientItems: finalizeCarryoverParties(outgoingClients),
+      vendorItems: finalizeCarryoverParties(outgoingVendors),
+    });
+    const netChange = finalizeCarryoverMetric({
+      label: '이월 순증감',
+      revenue: outgoingMetric.revenue - included.revenue,
+      purchase: outgoingMetric.purchase - included.purchase,
+      profit: outgoingMetric.profit - included.profit,
+      rowCount: outgoingMetric.rowCount - included.rowCount,
+    });
+    return {
+      sourcePeriod,
+      basis: '마감월',
+      included,
+      incoming: included,
+      outgoing: outgoingMetric,
+      netChange,
+      targetPeriods: Array.from(targets.values())
+        .map(item => finalizeCarryoverMetric(item, { period: item.period, carryoverType: item.carryoverType }))
+        .sort((a, b) => String(a.period).localeCompare(String(b.period), 'ko-KR')),
+    };
+  }
+
+  return { add, finish };
+}
+
+export function buildMonthlyCarryoverCycle(headers = [], rows = [], options = {}) {
+  const accumulator = createMonthlyCarryoverCycleAccumulator(headers, options);
+  (rows || []).forEach(row => accumulator.add(row));
+  return accumulator.finish();
+}
+
 function compactReportText(value) {
   return normalizePerformanceFilterValue(value)
     .replace(/\s+/g, '')

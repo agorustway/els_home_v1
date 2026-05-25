@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.219 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.221 / APK v5.11.29)
 
-> 최신 업데이트: 실적관리 종합·월간·연간 화면 표기를 `이익/이익률`로 통일하고, 종합실적의 `원장 신뢰도` 제목을 `마감자료 구분`으로 바꾼다.
+> 최신 업데이트: GLAPS 상세배차/변동내역의 `운송서비스코드`를 배차판 `구분` 기준으로 도출한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.219
+- **웹 버전**: v5.14.221
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -14,7 +14,7 @@
 - `GLAPS코드` 화면은 아산 배차판 내부 탭으로 유지한다. 상위 메뉴로 올리지 않는다.
 - GLAPS 업로드용 코드는 새로 만들지 않는다. 마스터 원장의 기존 코드를 도출하기 위해 ELS 별칭만 보강한다.
 - 운송사코드는 `운송사코드` 시트의 `GLAPS 코드`가 아니라 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
-- 운송서비스코드는 아직 미확정이므로 상세배차 최종 컬럼에 공란으로 둔다.
+- 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
 - 이번 마스터 보강 확인값: `ELS -> B000005273`, `CMA -> CMA`, `MAE -> MAE`, `40HC -> 4510`, `INKAT/USMOB -> 동일 코드`, `KIN -> GA0196`, `HMMA -> UH03`.
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
@@ -22,6 +22,7 @@
 - 아산 배차판 작업 중 화면/배포 반영 확인은 브라우저 F5 대신 상단 `새로고침` 버튼을 사용한다. 버튼은 현재 보기, 배차 구분, 선택 날짜/전체 기간, 검색/필터를 저장한 뒤 실제 페이지를 다시 불러온다.
 - 아산 배차판 상태칩은 진행 중 메시지(`파일 확인 중`, `요청 중`, `저장 중` 등)에 `진행` prefix를 쓰고, 완료 메시지에만 `완료` prefix를 쓴다.
 - 아산 예하페이지 우측 작업 버튼 순서는 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 고정한다.
+- 월간실적 이월은 마감월 기준으로 `상단이월 반영분(전월 미마감분이 이번 달 청구/하불에 반영)`과 `익월이월 발생분(이번 마감에서 다음 달로 넘김)`을 분리해 저장한다.
 - NAS 동기화 버튼은 수동 요청 시 글로비스/모비스 모두 1순위 작업일을 먼저 반영한다. 1순위는 오늘 시트, 없으면 오늘 이후 첫 작업일, 그래도 없으면 가장 최근 과거 작업일이다.
 - 1순위 완료 신호(`quick_done`)를 받으면 웹은 즉시 새로고침해 상세배차/배차변동에 최신 자료를 도출한다. 전/후 작업일과 나머지 날짜는 백그라운드에서 순차 반영한다.
 - 백그라운드 동기화 중에도 1순위 완료 후 1분 쿨다운이 끝나면 NAS 동기화를 다시 요청할 수 있다. 이때 기존 백그라운드는 시트 단위로 중단하고 1순위 작업일을 다시 동기화한다.
@@ -66,6 +67,8 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.221**: GLAPS 상세배차/변동내역의 `운송서비스코드`를 배차판 `구분` 기준으로 자동 도출하고, 마스터 `운송서비스` 시트가 들어오면 해당 시트 값을 코드표로 읽는다.
+- **v5.14.220**: 월간실적 importer와 dashboard summary에 이월 순환 기준을 추가했다. `청구/하불`은 마감월 반영 금액으로 유지하고, 첫 컬럼 `이월` 행은 상단이월 반영분, `이월구분 + 청구_1/하불_1`은 익월이월 발생분으로 분리한다. 운영 Supabase monthly 메타도 2026-01~05 current 원장 기준으로 백필했다.
 - **v5.14.219**: 종합·월간·연간 실적관리 화면과 RAG 문맥의 `손익/손익률` 표기를 `이익/이익률`로 통일하고, 종합실적 `원장 신뢰도` 제목을 `마감자료 구분`으로 변경했다.
 - **v5.14.217**: 인트라넷 엑셀 산출물 공통 유틸을 추가하고, 안전운임/차량관제/아산 선적관리/연락처 양식/컨테이너 이력 fallback의 헤더, 제목, 생성정보, 자동너비 톤앤매너를 상세배차내역 기준으로 맞췄다. 안전운임 구간조회는 일반 표가 아니라 경로·운임·운행비 섹션을 가진 보고서형 시트로 유지한다.
 - **v5.14.216**: 종합/월간/연간 실적 화면과 RAG의 원가율 표기를 통일하고, 연간/월간 테이블은 검색 안내와 상세배차 톤의 엑셀 다운로드를 제공한다.
@@ -73,16 +76,10 @@
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
 - **v5.14.207**: 선적관리 모바일 테이블은 표시 행을 100건 단위로 제한하고, 바닥 근처 스크롤 시 먼저 화면 표시량을 늘린 뒤 필요할 때만 다음 서버 페이지를 조회한다. 모바일 가로 스크롤은 더 이상 다음 페이지 로딩을 트리거하지 않는다.
-- **v5.14.206**: 아산 배차판 모바일에서 상태/작업 버튼 영역이 데스크톱 `flex-basis`를 유지해 큰 공백이 생기던 문제를 수정했다. 모바일 상태영역은 자동 높이로 초기화하고, 저장/동기화 상태가 없으면 빈 상태 박스를 렌더링하지 않는다.
-- **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
 ## VERIFICATION
-- `node --test web/tests/intranetExcelExport.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 통과
-- `cd web; npm.cmd run lint -- utils/intranetExcelExport.mjs ...`: 통과, 기존 `container-history`/`RouteSearchView` hook 및 img 경고 11건 유지
-- `git diff --check`: 통과
-- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanPerformanceRag.test.mjs`: 27개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" utils/asanPerformanceRag.mjs utils/aiAssistantMeta.mjs tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs tests/asanPerformanceRag.test.mjs`: 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js"`: 통과
-- `cd web; npm run build`: 통과.
+- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 25개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" lib/asan-branch-db.js utils/asanPerformanceView.mjs scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+- Supabase 운영 확인: monthly 2026-04 `상단이월 청구 508,098,400 / 하불 435,804,350`, `익월이월 청구 484,932,800 / 하불 410,156,300`
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식을 설계한다.

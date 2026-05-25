@@ -15,7 +15,7 @@ const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
 const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 const SUPABASE_RANGE_CHUNK_SIZE = 1000;
-const DASHBOARD_SNAPSHOT_VERSION = 2;
+const DASHBOARD_SNAPSHOT_VERSION = 3;
 const DASHBOARD_SNAPSHOT_TABLE = 'branch_performance_dashboard_snapshots';
 
 let adminClient;
@@ -731,6 +731,97 @@ function roundMetric(value) {
     return Math.round(numberValue(value) * 100) / 100;
 }
 
+function blankCarryoverMetric(label = '') {
+    return {
+        label,
+        revenue: 0,
+        purchase: 0,
+        profit: 0,
+        rowCount: 0,
+    };
+}
+
+function normalizeCarryoverMetric(metric = {}, fallbackLabel = '') {
+    const revenue = roundMetric(metric.revenue);
+    const purchase = roundMetric(metric.purchase);
+    const profit = roundMetric(metric.profit || revenue - purchase);
+    return {
+        ...metric,
+        label: metric.label || fallbackLabel,
+        revenue,
+        purchase,
+        profit,
+        rowCount: numberValue(metric.rowCount),
+        profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+    };
+}
+
+function addCarryoverMetric(target, metric = {}) {
+    target.revenue += numberValue(metric.revenue);
+    target.purchase += numberValue(metric.purchase);
+    target.profit += numberValue(metric.profit || numberValue(metric.revenue) - numberValue(metric.purchase));
+    target.rowCount += numberValue(metric.rowCount);
+}
+
+function addCarryoverParties(map, items = []) {
+    for (const item of items || []) {
+        const key = String(item.name || item.label || '').trim() || '미분류';
+        if (!map.has(key)) map.set(key, { ...blankCarryoverMetric(key), name: key });
+        addCarryoverMetric(map.get(key), item);
+    }
+}
+
+function carryoverPartiesFromMap(map, limit = 40) {
+    return Array.from(map.values())
+        .map(item => normalizeCarryoverMetric(item, item.name || item.label))
+        .filter(item => item.revenue || item.purchase || item.profit || item.rowCount)
+        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)))
+        .slice(0, limit);
+}
+
+function normalizeCarryoverCycle(summary = {}, report = null, sourcePeriod = '') {
+    const cycle = summary.carryoverCycle && typeof summary.carryoverCycle === 'object' ? summary.carryoverCycle : null;
+    const reportCarryover = report?.carryover || summary.carryover || {};
+    const incoming = normalizeCarryoverMetric(cycle?.incoming || cycle?.included || {}, '상단이월 반영분');
+    const outgoingSeed = cycle?.outgoing || reportCarryover || {};
+    const outgoing = normalizeCarryoverMetric(outgoingSeed, '익월이월 발생분');
+    return {
+        sourcePeriod: cycle?.sourcePeriod || sourcePeriod,
+        basis: cycle?.basis || '마감월',
+        incoming,
+        included: incoming,
+        outgoing,
+        targetPeriods: Array.isArray(cycle?.targetPeriods) ? cycle.targetPeriods : [],
+    };
+}
+
+function addCarryoverFieldsToMonthly(bucket, incoming = {}, outgoing = {}) {
+    bucket.incomingCarryoverRevenue = numberValue(bucket.incomingCarryoverRevenue) + numberValue(incoming.revenue);
+    bucket.incomingCarryoverPurchase = numberValue(bucket.incomingCarryoverPurchase) + numberValue(incoming.purchase);
+    bucket.incomingCarryoverProfit = numberValue(bucket.incomingCarryoverProfit) + numberValue(incoming.profit || numberValue(incoming.revenue) - numberValue(incoming.purchase));
+    bucket.incomingCarryoverRows = numberValue(bucket.incomingCarryoverRows) + numberValue(incoming.rowCount);
+    bucket.carryoverRevenue = numberValue(bucket.carryoverRevenue) + numberValue(outgoing.revenue);
+    bucket.carryoverPurchase = numberValue(bucket.carryoverPurchase) + numberValue(outgoing.purchase);
+    bucket.carryoverProfit = numberValue(bucket.carryoverProfit) + numberValue(outgoing.profit || numberValue(outgoing.revenue) - numberValue(outgoing.purchase));
+    bucket.carryoverRows = numberValue(bucket.carryoverRows) + numberValue(outgoing.rowCount);
+}
+
+function finalizeCarryoverFields(item = {}) {
+    for (const key of [
+        'incomingCarryoverRevenue',
+        'incomingCarryoverPurchase',
+        'incomingCarryoverProfit',
+        'incomingCarryoverRows',
+        'carryoverRevenue',
+        'carryoverPurchase',
+        'carryoverProfit',
+        'carryoverRows',
+    ]) {
+        if (key in item) item[key] = key.endsWith('Rows') ? numberValue(item[key]) : roundMetric(item[key]);
+    }
+    return item;
+}
+
 function lastPathName(value) {
     return String(value || '').split('/').filter(Boolean).pop() || String(value || '');
 }
@@ -881,6 +972,18 @@ function compactDashboardSeriesItem(item = {}, type = 'monthly') {
         rowCount: numberValue(item.rowCount),
         profitRate: numberValue(item.profitRate),
     };
+    for (const key of [
+        'incomingCarryoverRevenue',
+        'incomingCarryoverPurchase',
+        'incomingCarryoverProfit',
+        'incomingCarryoverRows',
+        'carryoverRevenue',
+        'carryoverPurchase',
+        'carryoverProfit',
+        'carryoverRows',
+    ]) {
+        if (key in item) compact[key] = key.endsWith('Rows') ? numberValue(item[key]) : roundMetric(item[key]);
+    }
     if (type === 'daily') {
         compact.date = item.date || '';
         compact.period = item.period || '';
@@ -1644,7 +1747,13 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
     const daily = new Map();
     const yearly = new Map();
     const monthlyReports = [];
-    const carryover = { revenue: 0, purchase: 0, profit: 0 };
+    const incomingCarryover = blankCarryoverMetric('상단이월 반영분');
+    const outgoingCarryover = blankCarryoverMetric('익월이월 발생분');
+    const incomingCarryoverClients = new Map();
+    const incomingCarryoverVendors = new Map();
+    const outgoingCarryoverClients = new Map();
+    const outgoingCarryoverVendors = new Map();
+    const carryoverPeriods = [];
     const detected = {
         numericColumns: new Set(),
         revenueColumns: new Set(),
@@ -1680,6 +1789,7 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
         const summary = meta.summary && typeof meta.summary === 'object' ? meta.summary : {};
         const sourcePeriod = metaSourcePeriod(meta);
         const report = summary.monthlyReport && typeof summary.monthlyReport === 'object' ? summary.monthlyReport : null;
+        const carryoverCycle = normalizeCarryoverCycle(summary, report, sourcePeriod);
         const hasReport = Boolean(report?.hasReportRows);
         const hasPrimaryReport = isMonthlyReportPrimaryReady(report);
         const reportTotals = report?.totals || {};
@@ -1701,6 +1811,25 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
             sourceMetric.purchase += metricPurchase;
             sourceMetric.profit += metricProfit;
             sourceMetric.rowCount += Number(summary.analysisRows || meta.current_row_count || meta.row_count || 0) || 0;
+            addCarryoverFieldsToMonthly(sourceMetric, carryoverCycle.incoming, carryoverCycle.outgoing);
+        }
+
+        addCarryoverMetric(incomingCarryover, carryoverCycle.incoming);
+        addCarryoverMetric(outgoingCarryover, carryoverCycle.outgoing);
+        addCarryoverParties(incomingCarryoverClients, carryoverCycle.incoming.clientItems);
+        addCarryoverParties(incomingCarryoverVendors, carryoverCycle.incoming.vendorItems);
+        addCarryoverParties(outgoingCarryoverClients, carryoverCycle.outgoing.clientItems);
+        addCarryoverParties(outgoingCarryoverVendors, carryoverCycle.outgoing.vendorItems);
+        carryoverPeriods.push({
+            period: sourcePeriod,
+            incoming: carryoverCycle.incoming,
+            included: carryoverCycle.incoming,
+            outgoing: carryoverCycle.outgoing,
+            targetPeriods: carryoverCycle.targetPeriods || [],
+        });
+
+        if (hasReport && report && !(report.carryover?.revenue || report.carryover?.purchase) && (carryoverCycle.outgoing.revenue || carryoverCycle.outgoing.purchase)) {
+            report.carryover = carryoverCycle.outgoing;
         }
 
         if (hasReport) {
@@ -1711,9 +1840,6 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
                 fileName: String(meta.file_path || '').split('/').filter(Boolean).pop() || meta.file_path,
             };
             monthlyReports.push(nextReport);
-            carryover.revenue += Number(report.carryover?.revenue || 0) || 0;
-            carryover.purchase += Number(report.carryover?.purchase || 0) || 0;
-            carryover.profit += Number(report.carryover?.profit || 0) || 0;
         }
 
         for (const item of summary.daily || []) {
@@ -1745,13 +1871,38 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
     }
 
     const monthlyList = Array.from(monthly.values())
-        .map(item => ({
+        .map(item => finalizeCarryoverFields({
             ...item,
             revenue: Math.round(item.revenue * 100) / 100,
             purchase: Math.round(item.purchase * 100) / 100,
             profit: Math.round(item.profit * 100) / 100,
         }))
         .sort((a, b) => a.period.localeCompare(b.period));
+
+    const incomingFinal = {
+        ...normalizeCarryoverMetric(incomingCarryover, '상단이월 반영분'),
+        clientItems: carryoverPartiesFromMap(incomingCarryoverClients),
+        vendorItems: carryoverPartiesFromMap(incomingCarryoverVendors),
+    };
+    const outgoingFinal = {
+        ...normalizeCarryoverMetric(outgoingCarryover, '익월이월 발생분'),
+        clientItems: carryoverPartiesFromMap(outgoingCarryoverClients),
+        vendorItems: carryoverPartiesFromMap(outgoingCarryoverVendors),
+    };
+    const carryoverCycle = {
+        basis: '마감월',
+        incoming: incomingFinal,
+        included: incomingFinal,
+        outgoing: outgoingFinal,
+        netChange: normalizeCarryoverMetric({
+            label: '이월 순증감',
+            revenue: outgoingFinal.revenue - incomingFinal.revenue,
+            purchase: outgoingFinal.purchase - incomingFinal.purchase,
+            profit: outgoingFinal.profit - incomingFinal.profit,
+            rowCount: outgoingFinal.rowCount - incomingFinal.rowCount,
+        }),
+        periods: carryoverPeriods.sort((a, b) => String(a.period).localeCompare(String(b.period), 'ko-KR')),
+    };
 
     for (const item of monthlyList) {
         const yearKey = String(item.year || '미지정');
@@ -1780,18 +1931,15 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
                 profit: Math.round(item.profit * 100) / 100,
             }))
             .sort((a, b) => String(a.period || '').localeCompare(String(b.period || '')) || a.date.localeCompare(b.date)),
-        monthlyBasis: '파일월',
+        monthlyBasis: '마감월',
         monthlyFileCount: metas.length,
         monthlyFileSlots,
         monthlyReports: monthlyReports.sort((a, b) => String(a.period || '').localeCompare(String(b.period || ''))),
         breakdowns: mergeBreakdowns(metas, totalRevenue),
         strategicSegments: mergeStrategicSegments(metas, totalRevenue),
         vehiclePerformance: mergeVehiclePerformance(metas, totalRevenue),
-        carryover: {
-            revenue: Math.round(carryover.revenue * 100) / 100,
-            purchase: Math.round(carryover.purchase * 100) / 100,
-            profit: Math.round(carryover.profit * 100) / 100,
-        },
+        carryover: outgoingFinal,
+        carryoverCycle,
         detected: Object.fromEntries(Object.entries(detected).map(([key, set]) => [key, Array.from(set)])),
     };
 }
