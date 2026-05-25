@@ -7,7 +7,7 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 const PERFORMANCE_TRIGGER_WORDS = [
   '실적관리', '종합실적', '월간실적', '연간실적', '통합실적',
-  '실적', '마감', '마감자료', '손익', '손익률',
+  '실적', '마감', '마감자료', '이익', '이익률', '손익', '손익률',
   '매출', '매입', '청구', '하불', '이익률', '순매출', '순매입',
 ];
 
@@ -108,7 +108,7 @@ export function parseAsanPerformanceIntent(userText = '', options = {}) {
   const text = String(userText || '');
   const compact = normalizeCompact(text);
   const hasTrigger = PERFORMANCE_TRIGGER_WORDS.some((word) => compact.includes(normalizeCompact(word)))
-    || (compact.includes('금액') && /(아산|실적|마감|손익|매출|매입|청구|하불)/.test(compact));
+    || (compact.includes('금액') && /(아산|실적|마감|이익|손익|매출|매입|청구|하불)/.test(compact));
   const menu = compact.includes('연간실적') || compact.includes('연간')
     ? 'annual'
     : (compact.includes('월간실적') || compact.includes('월간') || compact.includes('마감') ? 'monthly' : 'summary');
@@ -168,11 +168,11 @@ function formatDelta(delta = {}) {
 
 function metricText(item = {}) {
   const label = item.label || item.name || item.vehicleNo || item.key || '-';
-  return `${label}: 매출 ${formatMoney(item.revenue)} / 매입 ${formatMoney(item.purchase)} / 손익 ${formatMoney(item.profit)} / 손익률 ${formatRate(item.profitRate)}`;
+  return `${label}: 매출 ${formatMoney(item.revenue)} / 매입 ${formatMoney(item.purchase)} / 이익 ${formatMoney(item.profit)} / 이익률 ${formatRate(item.profitRate)}`;
 }
 
 function sourceLine(source = {}, label = '') {
-  return `${label}: 매출 ${formatMoney(source.revenue)} / 매입 ${formatMoney(source.purchase)} / 손익 ${formatMoney(source.profit)} / 행 ${Number(source.rowCount || 0).toLocaleString('ko-KR')}건`;
+  return `${label}: 매출 ${formatMoney(source.revenue)} / 매입 ${formatMoney(source.purchase)} / 이익 ${formatMoney(source.profit)} / 행 ${Number(source.rowCount || 0).toLocaleString('ko-KR')}건`;
 }
 
 function targetMenuLabel(menu) {
@@ -197,13 +197,13 @@ export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}
   let text = `\n\n## 아산지점 실적관리\n`;
   text += `[시스템: 실적관리 화면 도출항목 재사용 / 메뉴 ${targetMenuLabel(intent.menu)} / 범위 ${scope.label || scope.mode || '전체'} / 원천 Supabase branch_performance_files·dashboard_snapshots]\n`;
   text += `- 예하 메뉴 연결: 종합실적, 월간실적, 연간실적\n`;
-  text += `- 합계: 매출 ${formatMoney(summary.totalRevenue)} / 매입 ${formatMoney(summary.totalPurchase)} / 손익 ${formatMoney(summary.totalProfit)} / 손익률 ${formatRate(summary.profitRate)} / 원가율 ${formatRate(summary.purchaseRate)}\n`;
+  text += `- 합계: 매출 ${formatMoney(summary.totalRevenue)} / 매입 ${formatMoney(summary.totalPurchase)} / 이익 ${formatMoney(summary.totalProfit)} / 이익률 ${formatRate(summary.profitRate)} / 원가율 ${formatRate(summary.purchaseRate)}\n`;
   text += `- 기간/원장: ${summary.periodStart || '-'} ~ ${summary.periodEnd || '-'} / 행 ${Number(summary.rowCount || 0).toLocaleString('ko-KR')}건 / 파일 ${Number(summary.fileCount || 0).toLocaleString('ko-KR')}개 / 동기화 ${summary.syncedAt || '-'}\n`;
   if (latestMonth?.period) {
     text += `- 최신월 ${latestMonth.period}: ${metricText(latestMonth)}\n`;
   }
   if (previousMonth?.period) {
-    text += `- 전월 ${previousMonth.period} 대비: 매출 ${formatDelta(summary.latestRevenueDelta)} / 손익 ${formatDelta(summary.latestProfitDelta)}\n`;
+    text += `- 전월 ${previousMonth.period} 대비: 매출 ${formatDelta(summary.latestRevenueDelta)} / 이익 ${formatDelta(summary.latestProfitDelta)}\n`;
   }
   if (latestDay?.date) {
     text += `- 최신 일별 ${latestDay.date}: ${metricText(latestDay)}\n`;
@@ -234,7 +234,7 @@ export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}
   if (trendItems.length) {
     text += `### 기간 흐름 샘플\n`;
     trendItems.slice(-Math.min(maxItems, trendItems.length)).forEach((item) => {
-      text += `- ${item.period || item.year || item.date || '-'}: 매출 ${formatMoney(item.revenue)} / 손익 ${formatMoney(item.profit)} / 손익률 ${formatRate(item.profitRate)}\n`;
+      text += `- ${item.period || item.year || item.date || '-'}: 매출 ${formatMoney(item.revenue)} / 이익 ${formatMoney(item.profit)} / 이익률 ${formatRate(item.profitRate)}\n`;
     });
   }
 

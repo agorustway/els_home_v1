@@ -221,6 +221,10 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(page, /activePerformanceTab === 'monthly-performance' && \(\s*<AsanMonthlyPerformance/);
   assert.doesNotMatch(page, /searchHandoff=\{performanceSearchHandoff\?\.target === 'monthly-performance'/);
   assert.match(component, /월간실적/);
+  assert.doesNotMatch(component, /손익/);
+  assert.doesNotMatch(component, /손익률/);
+  assert.match(component, /이익액/);
+  assert.match(component, /이익률/);
   assert.match(component, /\/api\/branches\/asan\/performance\/monthly/);
   assert.match(component, /params\.set\('dashboard', '1'\)/);
   assert.match(component, /activeTab === 'table' \|\| append \|\| Boolean\(options\.search\) \|\| Boolean\(options\.sortKey\)/);

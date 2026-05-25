@@ -12,7 +12,7 @@ const SCOPE_BUTTONS = [
     { key: 'month', label: '월별' },
     { key: 'day', label: '일별' },
 ];
-const LEGACY_PROFIT_RATE_LABEL = '손익' + '률';
+const LEGACY_PROFIT_RATE_LABEL = '손' + '익' + '률';
 const LEGACY_PROFIT_SIGNAL_TITLE = '수익성 ' + '압력';
 const LEGACY_OWN_SIGNAL_TITLE = 'ELS/외부 ' + '집중도';
 const LEGACY_HIGH_MARGIN_LABEL = '고' + '마진';
@@ -260,7 +260,7 @@ function ExecutiveFlowDiagram({ summary }) {
                             <em>{formatPerformanceAmount(summary?.totalPurchase)}</em>
                         </div>
                         <div>
-                            <span>통합 손익</span>
+                            <span>통합 이익</span>
                             <b className={safeNumber(summary?.totalProfit) < 0 ? styles.summaryNegativeBar : styles.summaryPositiveBar} style={{ width: `${profitWidth}%` }} />
                             <em>{formatPerformanceAmount(summary?.totalProfit)}</em>
                         </div>
@@ -270,7 +270,7 @@ function ExecutiveFlowDiagram({ summary }) {
             <div className={styles.summaryFormulaStrip}>
                 <span>매출 = 연간실적 + 월간실적</span>
                 <strong>{formatPerformanceAmount(annual.revenue)} + {formatPerformanceAmount(monthly.revenue)} = {formatPerformanceAmount(summary?.totalRevenue)}</strong>
-                <span>손익 = 매출 - 매입</span>
+                <span>이익 = 매출 - 매입</span>
                 <strong>{formatPerformanceAmount(summary?.totalRevenue)} - {formatPerformanceAmount(summary?.totalPurchase)} = {formatPerformanceAmount(summary?.totalProfit)}</strong>
             </div>
         </section>
@@ -289,12 +289,12 @@ function ExecutiveTrendChart({ summary }) {
     const basis = summary?.trendBasis || '월별';
     const scopeMode = summary?.scope?.mode || 'all';
     const title = basis === '연도별'
-        ? '연도별 매출·손익 흐름'
+        ? '연도별 매출·이익 흐름'
         : basis === '일별'
-            ? '일별 매출·손익 흐름'
+            ? '일별 매출·이익 흐름'
             : scopeMode === 'month'
-                ? '월별 매출·손익 흐름'
-                : '최근월 매출·손익 흐름';
+                ? '월별 매출·이익 흐름'
+                : '최근월 매출·이익 흐름';
     const width = 820;
     const height = 214;
     const maxRevenue = Math.max(1, ...items.map(item => Math.abs(safeNumber(item.revenue))));
@@ -319,10 +319,10 @@ function ExecutiveTrendChart({ summary }) {
                 <div className={styles.emptyPanel}>선택 범위 흐름을 만들 데이터가 아직 부족합니다.</div>
             ) : (
                 <div className={styles.summaryTrendChart}>
-                    <svg className={styles.summaryTrendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="종합실적 매출 손익 흐름 차트">
+                    <svg className={styles.summaryTrendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="종합실적 매출 이익 흐름 차트">
                         <text x="18" y="28" className={styles.summaryAxisText}>매출 최대 {formatPerformanceAmount(maxRevenue)}</text>
                         <line x1="42" y1="140" x2="782" y2="140" className={styles.zeroLine} />
-                        <text x="18" y="144" className={styles.summaryAxisText}>손익 0</text>
+                        <text x="18" y="144" className={styles.summaryAxisText}>이익 0</text>
                         {items.map((item, idx) => {
                             const x = xAt(idx);
                             const barHeight = Math.max(4, 138 - revenueY(item.revenue));
@@ -357,11 +357,11 @@ function ExecutiveTrendChart({ summary }) {
                             return (
                                 <g key={`${item.scopeKey || item.period || item.date || idx}-profit`}>
                                     <circle cx={xAt(idx)} cy={profitY(item.profit)} r={isSelected ? 5 : (isWorst ? 4.5 : 3.6)} className={isWorst ? styles.summaryProfitPointWarn : (isSelected ? styles.summaryProfitPointActive : styles.summaryProfitPoint)}>
-                                        <title>{`${metricTitleLabel(item, basis)} 손익 ${formatPerformanceAmount(item.profit)}`}</title>
+                                        <title>{`${metricTitleLabel(item, basis)} 이익 ${formatPerformanceAmount(item.profit)}`}</title>
                                     </circle>
                                     {isWorst && (
                                         <text x={xAt(idx)} y={Math.min(184, profitY(item.profit) + 18)} textAnchor="middle" className={styles.summaryWarnLabel}>
-                                            최저 손익 {formatPerformanceAmount(item.profit)}
+                                            최저 이익 {formatPerformanceAmount(item.profit)}
                                         </text>
                                     )}
                                 </g>
@@ -370,9 +370,9 @@ function ExecutiveTrendChart({ summary }) {
                     </svg>
                     <div className={styles.summaryTrendLegend}>
                         <span><i className={styles.revenueDot} />청록 막대 = 매출</span>
-                        <span><i className={styles.profitDot} />파란 선 = 손익</span>
+                        <span><i className={styles.profitDot} />파란 선 = 이익</span>
                         <span>최고 매출 {bestRevenue ? `${metricLabel(bestRevenue, basis)} ${formatPerformanceAmount(bestRevenue.revenue)}` : '-'}</span>
-                        <span>최저 손익 {worstProfit ? `${metricLabel(worstProfit, basis)} ${formatPerformanceAmount(worstProfit.profit)}` : '-'}</span>
+                        <span>최저 이익 {worstProfit ? `${metricLabel(worstProfit, basis)} ${formatPerformanceAmount(worstProfit.profit)}` : '-'}</span>
                     </div>
                 </div>
             )}
@@ -424,7 +424,7 @@ function ExecutiveSourceTable({ summary }) {
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
-                    <h3>원장 신뢰도</h3>
+                    <h3>마감자료 구분</h3>
                     <span>{summary?.scope?.label || '전체'} 기준 · 원장 확인은 월간실적·연간실적 탭 기준</span>
                 </div>
             </div>
@@ -696,7 +696,7 @@ export default function AsanSummaryPerformance() {
                 tone: 'good',
             },
             {
-                label: '선택 범위 손익',
+                label: '선택 범위 이익',
                 value: formatPerformanceAmount(summary.totalProfit),
                 sub: `매입 차감 후 ${formatPercent(summary.profitRate, 2)}`,
                 tone: safeNumber(summary.totalProfit) >= 0 ? 'good' : 'danger',
@@ -717,8 +717,8 @@ export default function AsanSummaryPerformance() {
                 label: summary.scope?.mode === 'day' ? '선택일' : '최근월',
                 value: summary.scope?.mode === 'day' ? (summary.latestDay?.date || '-') : (summary.latestMonth?.period || '-'),
                 sub: summary.scope?.mode === 'day'
-                    ? `일 손익 ${formatPerformanceAmount(summary.latestDay?.profit)}`
-                    : `매출 ${formatSignedRate(summary.latestRevenueDelta?.rate)} · 손익 ${formatSignedRate(summary.latestProfitDelta?.rate)}`,
+                    ? `일 이익 ${formatPerformanceAmount(summary.latestDay?.profit)}`
+                    : `매출 ${formatSignedRate(summary.latestRevenueDelta?.rate)} · 이익 ${formatSignedRate(summary.latestProfitDelta?.rate)}`,
                 tone: trendTone(summary.latestRevenueDelta),
             },
         ];

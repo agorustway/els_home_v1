@@ -833,7 +833,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
                 <div className={styles.monthlyTrendLegend}>
                     <span><i className={styles.revenueDot} />청구</span>
                     <span><i className={styles.purchaseDot} />하불</span>
-                    <span><i className={styles.profitDot} />손익</span>
+                    <span><i className={styles.profitDot} />이익</span>
                 </div>
             </div>
             {series.length === 0 ? (
@@ -910,7 +910,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
                     <div className={styles.monthlyTrendStats}>
                         <div><span>최고 청구</span><strong>{high?.displayLabel || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
                         <div><span>최근 항목</span><strong>{last?.displayLabel || '-'}</strong><em>{last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
-                        <div><span>평균 청구</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>{formatPerformanceAmount(avgProfit)} 손익</em></div>
+                        <div><span>평균 청구</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>{formatPerformanceAmount(avgProfit)} 이익</em></div>
                         <div><span>누적 청구</span><strong>{formatPerformanceAmount(totals.revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}{unitLabel} · {totals.rowCount.toLocaleString('ko-KR')}건</em></div>
                         <div>
                             <span>최근 증감</span>
@@ -1712,7 +1712,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                             </div>
                             <div className={styles.monthlyInfoCard}>
                                 <MetricDonut value={scopeProfit} max={scopeRevenue || diagramMax} tone="profit" />
-                                <span>손익</span>
+                                <span>이익</span>
                                 <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
                                 <em>{formatPercent(scopeProfitRate, 2)}</em>
                                 <i style={{ width: metricWidth(scopeProfit, diagramMax) }} />
@@ -1744,7 +1744,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                             </div>
                             <b>→</b>
                             <div>
-                                <span>손익</span>
+                                <span>이익</span>
                                 <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
                             </div>
                         </div>
@@ -1755,7 +1755,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <em>{bestRevenueItem ? formatPerformanceAmount(bestRevenueItem.revenue) : '-'}</em>
                             </div>
                             <div>
-                                <span>최고 손익</span>
+                                <span>최고 이익</span>
                                 <strong>{bestProfitItem?.scopeLabel || '-'}</strong>
                                 <em>{bestProfitItem ? formatPerformanceAmount(bestProfitItem.profit) : '-'}</em>
                             </div>
@@ -1839,8 +1839,8 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                         <span>범위</span>
                                         <span>매출</span>
                                         <span>매출액</span>
-                                        <span>손익</span>
-                                        <span>손익액</span>
+                                        <span>이익</span>
+                                        <span>이익액</span>
                                         <span>률</span>
                                     </div>
                                     {scopeFlowItems.map(item => (
@@ -1899,7 +1899,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopePurchase) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
-                                <span>손익</span>
+                                <span>이익</span>
                                 <strong className={scopeProfit < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(scopeProfit)}</strong>
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopeProfit) / diagramMax * 100))}%` }} />
                             </div>
@@ -1935,7 +1935,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                         <span>항목</span>
                                         <span>청구</span>
                                         <span>하불</span>
-                                        <span>손익</span>
+                                        <span>이익</span>
                                         <span>건수</span>
                                         <span>률</span>
                                     </div>
@@ -2015,7 +2015,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <span>순매입 {formatPerformanceAmount(safeNumber(reportTotals.netPurchase) || totalPurchase)}</span>
                                 <span>매출이익 {formatPerformanceAmount(safeNumber(reportTotals.netProfit) || totalProfit)}</span>
                                 <span>이월금액 {formatPerformanceAmount(reportCarryoverRevenue)}</span>
-                                <span>손익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
+                                <span>이익률 {formatPercent(safeNumber(reportTotals.netProfitRate) || totalProfitRate, 2)}</span>
                             </div>
                         </section>
                     )}

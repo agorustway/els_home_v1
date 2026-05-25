@@ -147,7 +147,7 @@ function getPerformanceGrade(profitRate) {
     if (profitRate >= 10) return { label: '수익성 양호', tone: 'good' };
     if (profitRate >= 5) return { label: '마진 관리', tone: 'watch' };
     if (profitRate > 0) return { label: '저마진 주의', tone: 'warn' };
-    return { label: '손익 위험', tone: 'danger' };
+    return { label: '이익 위험', tone: 'danger' };
 }
 
 function getPeriodRange(monthly = []) {
@@ -358,9 +358,9 @@ function scopePerformanceItem(item = {}, scopeBounds = {}, scopedRevenue = 0) {
 function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMonth, topSegment, top3Share, lowMarginItems }) {
     const notes = [];
     if (latestMonth && previousMonth) {
-        notes.push(`최근월 매출은 전월 대비 ${formatSignedAmount(safeNumber(latestMonth.revenue) - safeNumber(previousMonth.revenue))}, 손익은 ${formatSignedAmount(safeNumber(latestMonth.profit) - safeNumber(previousMonth.profit))}입니다.`);
+        notes.push(`최근월 매출은 전월 대비 ${formatSignedAmount(safeNumber(latestMonth.revenue) - safeNumber(previousMonth.revenue))}, 이익은 ${formatSignedAmount(safeNumber(latestMonth.profit) - safeNumber(previousMonth.profit))}입니다.`);
     }
-    notes.push(`전체 손익률은 ${formatPercent(profitRate)}이고 원가율은 ${formatPercent(purchaseRate)}입니다.`);
+    notes.push(`전체 이익률은 ${formatPercent(profitRate)}이고 원가율은 ${formatPercent(purchaseRate)}입니다.`);
     if (topSegment) {
         notes.push(`최대 기여 항목은 ${topSegment.name || '미분류'}이며 매출 비중 ${formatPercent(topSegment.revenueShare)}입니다.`);
     }
@@ -368,7 +368,7 @@ function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMo
         notes.push(`상위 3개 집중도는 ${formatPercent(top3Share)}입니다.`);
     }
     if (lowMarginItems.length) {
-        notes.push(`매출 상위권 중 손익률이 낮은 항목 ${lowMarginItems.length.toLocaleString('ko-KR')}개를 우선 점검 대상으로 표시했습니다.`);
+        notes.push(`매출 상위권 중 이익률이 낮은 항목 ${lowMarginItems.length.toLocaleString('ko-KR')}개를 우선 점검 대상으로 표시했습니다.`);
     }
     return notes.slice(0, 5);
 }
@@ -459,7 +459,7 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
     }));
     const markerDefs = [
         { key: 'high', item: high, field: 'revenue', label: '최고 매출', tone: 'revenue' },
-        { key: 'profit', item: highProfit, field: 'revenue', label: '최고 손익', tone: 'profit', valueField: 'profit' },
+        { key: 'profit', item: highProfit, field: 'revenue', label: '최고 이익', tone: 'profit', valueField: 'profit' },
         { key: 'recent', item: last, field: 'revenue', label: '최근', tone: 'recent' },
     ].filter(marker => marker.item);
     const tickEvery = Math.max(1, Math.ceil(series.length / 8));
@@ -536,8 +536,8 @@ function LedgerFlowChart({ items = [], title = '장기 흐름', scopeLabel = '-'
                     <div className={styles.marketFlowStats}>
                         <div><span>최고 매출월</span><strong>{high?.period || '-'}</strong><em>{high ? formatPerformanceAmount(high.revenue) : '-'}</em></div>
                         <div><span>최고 매입월</span><strong>{highPurchase?.period || '-'}</strong><em>{highPurchase ? formatPerformanceAmount(highPurchase.purchase) : '-'}</em></div>
-                        <div><span>최고 손익월</span><strong>{highProfit?.period || '-'}</strong><em>{highProfit ? formatPerformanceAmount(highProfit.profit) : '-'}</em></div>
-                        <div><span>최저 손익월</span><strong>{lowProfit?.period || '-'}</strong><em>{lowProfit ? formatPerformanceAmount(lowProfit.profit) : '-'}</em></div>
+                        <div><span>최고 이익월</span><strong>{highProfit?.period || '-'}</strong><em>{highProfit ? formatPerformanceAmount(highProfit.profit) : '-'}</em></div>
+                        <div><span>최저 이익월</span><strong>{lowProfit?.period || '-'}</strong><em>{lowProfit ? formatPerformanceAmount(lowProfit.profit) : '-'}</em></div>
                         <div><span>최근월</span><strong>{last?.period || '-'}</strong><em>매출 {last ? formatPerformanceAmount(last.revenue) : '-'}</em></div>
                         <div><span>매출 평균</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>월 평균</em></div>
                         <div><span>매입 평균</span><strong>{formatPerformanceAmount(avgPurchase)}</strong><em>월 평균</em></div>
@@ -586,9 +586,9 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                 </div>
                 <div className={styles.trendLegend}>
                     <span><i className={styles.revenueDot} />매출</span>
-                    <span><i className={styles.profitDot} />손익</span>
+                    <span><i className={styles.profitDot} />이익</span>
                     <span><i className={styles.avgRevenueDot} />매출 평균</span>
-                    <span><i className={styles.avgProfitDot} />손익 평균</span>
+                    <span><i className={styles.avgProfitDot} />이익 평균</span>
                 </div>
             </div>
             {series.length < 2 ? (
@@ -608,7 +608,7 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                         <line x1={padX} y1={revenueY(avgRevenue)} x2={width - padX} y2={revenueY(avgRevenue)} className={styles.trendAvgRevenueLine} />
                         <line x1={padX} y1={profitY(avgProfit)} x2={width - padX} y2={profitY(avgProfit)} className={styles.trendAvgProfitLine} />
                         <text x={width - padX} y={Math.max(14, revenueY(avgRevenue) - 7)} className={styles.trendAvgLabel} textAnchor="end">매출 평균 {formatPerformanceAmount(avgRevenue)}</text>
-                        <text x={width - padX} y={Math.min(height - 8, profitY(avgProfit) + 14)} className={styles.trendAvgLabel} textAnchor="end">손익 평균 {formatPerformanceAmount(avgProfit)}</text>
+                        <text x={width - padX} y={Math.min(height - 8, profitY(avgProfit) + 14)} className={styles.trendAvgLabel} textAnchor="end">이익 평균 {formatPerformanceAmount(avgProfit)}</text>
                         <polyline points={revenuePoints} className={styles.revenueLine} />
                         <polyline points={profitPoints} className={styles.profitLine} />
                         {highRevenue && (
@@ -622,23 +622,23 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                         {highProfit && (
                             <g>
                                 <circle cx={xAt(highProfitIndex)} cy={profitY(highProfit.profit)} r="4.8" className={styles.trendProfitPoint}>
-                                    <title>{`${getFlowItemLabel(highProfit)} 최고 손익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
+                                    <title>{`${getFlowItemLabel(highProfit)} 최고 이익 ${formatPerformanceAmount(highProfit.profit)}`}</title>
                                 </circle>
-                                <text x={xAt(highProfitIndex)} y={Math.max(96, profitY(highProfit.profit) - 8)} className={styles.trendMarkerLabel} textAnchor="middle">손익 최고</text>
+                                <text x={xAt(highProfitIndex)} y={Math.max(96, profitY(highProfit.profit) - 8)} className={styles.trendMarkerLabel} textAnchor="middle">이익 최고</text>
                             </g>
                         )}
                         {lowProfit && lowProfit !== highProfit && (
                             <g>
                                 <circle cx={xAt(lowProfitIndex)} cy={profitY(lowProfit.profit)} r="4.8" className={styles.trendLossPoint}>
-                                    <title>{`${getFlowItemLabel(lowProfit)} 최저 손익 ${formatPerformanceAmount(lowProfit.profit)}`}</title>
+                                    <title>{`${getFlowItemLabel(lowProfit)} 최저 이익 ${formatPerformanceAmount(lowProfit.profit)}`}</title>
                                 </circle>
-                                <text x={xAt(lowProfitIndex)} y={Math.min(height - 10, profitY(lowProfit.profit) + 18)} className={styles.trendMarkerLabel} textAnchor="middle">손익 최저</text>
+                                <text x={xAt(lowProfitIndex)} y={Math.min(height - 10, profitY(lowProfit.profit) + 18)} className={styles.trendMarkerLabel} textAnchor="middle">이익 최저</text>
                             </g>
                         )}
                         {recent && (
                             <g>
                                 <circle cx={xAt(recentIndex)} cy={revenueY(recent.revenue)} r="4.5" className={styles.trendRecentPoint}>
-                                    <title>{`${getFlowItemLabel(recent)} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 손익 ${formatPerformanceAmount(recent.profit)}`}</title>
+                                    <title>{`${getFlowItemLabel(recent)} 최근 매출 ${formatPerformanceAmount(recent.revenue)}, 이익 ${formatPerformanceAmount(recent.profit)}`}</title>
                                 </circle>
                                 <text x={Math.min(width - 36, xAt(recentIndex) - 8)} y={revenueY(recent.revenue) - 10} className={styles.trendMarkerLabel} textAnchor="end">최근 {formatPerformanceAmount(recent.revenue)}</text>
                             </g>
@@ -647,11 +647,11 @@ function MiniTrendChart({ items = [], title = '흐름', basis = '월', scopeLabe
                     <div className={styles.trendSummaryGrid}>
                         <div><span>최근 구간</span><strong>{getFlowItemLabel(recent)}</strong><em>매출 {formatPerformanceAmount(recent?.revenue)}</em></div>
                         <div><span>최고 매출 구간</span><strong>{getFlowItemLabel(highRevenue)}</strong><em>{formatPerformanceAmount(highRevenue?.revenue)}</em></div>
-                        <div><span>최고 손익 구간</span><strong>{getFlowItemLabel(highProfit)}</strong><em>{formatPerformanceAmount(highProfit?.profit)}</em></div>
-                        <div><span>평균 손익률</span><strong>{formatPercent(avgProfitRate, 2)}</strong><em>기간 평균선 기준</em></div>
+                        <div><span>최고 이익 구간</span><strong>{getFlowItemLabel(highProfit)}</strong><em>{formatPerformanceAmount(highProfit?.profit)}</em></div>
+                        <div><span>평균 이익률</span><strong>{formatPercent(avgProfitRate, 2)}</strong><em>기간 평균선 기준</em></div>
                     </div>
                     <div className={styles.trendFoot}>
-                        <span>월평균 매출 {formatPerformanceAmount(avgRevenue)}, 월평균 손익 {formatPerformanceAmount(avgProfit)}</span>
+                        <span>월평균 매출 {formatPerformanceAmount(avgRevenue)}, 월평균 이익 {formatPerformanceAmount(avgProfit)}</span>
                         <span>원장 summary 기반, 금액은 원 단위 집계 후 화면에서 축약 표시</span>
                     </div>
                 </>
@@ -692,7 +692,7 @@ function WeekdayPerformanceDiagram({ items = [], scopeLabel = '-' }) {
     return (
         <section className={styles.panel}>
             <div className={styles.panelHeader}>
-                <h3>요일별 매출·손익 지도</h3>
+                <h3>요일별 매출·이익 지도</h3>
                 <span>{scopeLabel} · 작업일자 기준</span>
             </div>
             {series.length === 0 ? (
@@ -736,7 +736,7 @@ function WeekdayPerformanceDiagram({ items = [], scopeLabel = '-' }) {
                                     key={item.label || item.day}
                                     className={`${styles.weekdayDiagramRow} ${isPeak ? styles.weekdayPeak : ''} ${isWeak ? styles.weekdayWeak : ''}`}
                                     style={{ '--weekday-accent': accent, '--weekday-bar-height': `${barHeight}%` }}
-                                    title={`${item.label}요일 매출 ${formatPerformanceAmount(item.revenue)} / 손익 ${formatPerformanceAmount(item.profit)} / ${safeNumber(item.rowCount).toLocaleString('ko-KR')}건`}
+                                    title={`${item.label}요일 매출 ${formatPerformanceAmount(item.revenue)} / 이익 ${formatPerformanceAmount(item.profit)} / ${safeNumber(item.rowCount).toLocaleString('ko-KR')}건`}
                                 >
                                     <div className={styles.weekdayCardHead}>
                                         <strong>{item.label}요일</strong>
@@ -749,11 +749,11 @@ function WeekdayPerformanceDiagram({ items = [], scopeLabel = '-' }) {
                                         </div>
                                     </div>
                                     <div className={styles.weekdayMetricGrid}>
-                                        <span>손익 기여 <strong className={item.profitShare < 0 ? styles.warningText : styles.positive}>{formatPercent(item.profitShare, 1)}</strong></span>
+                                        <span>이익 기여 <strong className={item.profitShare < 0 ? styles.warningText : styles.positive}>{formatPercent(item.profitShare, 1)}</strong></span>
                                         <span>건수 비중 <strong>{formatPercent(item.rowShare, 1)}</strong></span>
-                                        <span>손익률 <strong className={profitRate < 5 ? styles.warningText : styles.positive}>{formatPercent(profitRate, 1)}</strong></span>
+                                        <span>이익률 <strong className={profitRate < 5 ? styles.warningText : styles.positive}>{formatPercent(profitRate, 1)}</strong></span>
                                     </div>
-                                    <p>{formatPerformanceAmount(item.revenue)} · 손익 {formatPerformanceAmount(item.profit)} · {safeNumber(item.rowCount).toLocaleString('ko-KR')}건</p>
+                                    <p>{formatPerformanceAmount(item.revenue)} · 이익 {formatPerformanceAmount(item.profit)} · {safeNumber(item.rowCount).toLocaleString('ko-KR')}건</p>
                                 </article>
                             );
                         })}
@@ -790,7 +790,7 @@ function YearMonthHeatmap({ monthly = [], onSelectPeriod = null }) {
                                 className={styles.heatCell}
                                 style={{ '--heat': intensity }}
                                 onClick={() => item && onSelectPeriod?.(period)}
-                                title={`${period}\n매출 ${formatPerformanceAmount(item?.revenue)}\n손익 ${formatPerformanceAmount(item?.profit)}\n손익률 ${formatPercent(margin)}`}
+                                title={`${period}\n매출 ${formatPerformanceAmount(item?.revenue)}\n이익 ${formatPerformanceAmount(item?.profit)}\n이익률 ${formatPercent(margin)}`}
                                 disabled={!item}
                             >
                                 <span>{item ? formatPerformanceAmount(item.revenue, { unit: '' }) : '-'}</span>
@@ -808,9 +808,9 @@ function EvidenceHelp() {
     return (
         <div className={styles.evidenceHelp}>
             <strong>등급 기준</strong>
-            <span>수익성 양호: 전체 손익률 10% 이상. 마진 관리: 5~10%. 저마진 주의: 0~5%. 손익 위험: 0% 이하.</span>
+            <span>수익성 양호: 전체 이익률 10% 이상. 마진 관리: 5~10%. 저마진 주의: 0~5%. 이익 위험: 0% 이하.</span>
             <strong>금액 기준</strong>
-            <span>매출은 청구, 매입은 하불, 손익은 청구 - 하불로 집계합니다. 모든 합계는 원장 행의 원 단위 값을 합산한 뒤 화면에서만 억/만 원으로 축약합니다.</span>
+            <span>매출은 청구, 매입은 하불, 이익은 청구 - 하불로 집계합니다. 모든 합계는 원장 행의 원 단위 값을 합산한 뒤 화면에서만 억/만 원으로 축약합니다.</span>
             <strong>상세 보기 기준</strong>
             <span>분석 항목의 상세 버튼은 테이블 탭으로 이동해 AND 검색을 적용합니다. 예: ELS솔루션 + 직계약은 두 단어가 모두 있는 원장 행만 보여줍니다.</span>
         </div>
@@ -830,8 +830,8 @@ function SegmentEvidenceTable({ label, items = [], filterTerms = [], onOpen }) {
                     <span>항목</span>
                     <span>매출</span>
                     <span>매입</span>
-                    <span>손익</span>
-                    <span>손익률</span>
+                    <span>이익</span>
+                    <span>이익률</span>
                 </div>
                 {visibleItems.length === 0 ? (
                     <div className={styles.emptyMini}>근거 데이터 없음</div>
@@ -1500,14 +1500,14 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                             <em>원가율 {formatPercent(purchaseRate)}</em>
                         </div>
                         <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>손익</span>
+                            <span className={styles.kpiLabel}>이익</span>
                             <strong className={scopedTotals.profit < 0 ? styles.negative : styles.positive}>
                                 {formatPerformanceAmount(scopedTotals.profit)}
                             </strong>
                             <em>건당 {formatPerformanceAmount(avgProfit)}</em>
                         </div>
                         <div className={styles.kpi}>
-                            <span className={styles.kpiLabel}>손익률</span>
+                            <span className={styles.kpiLabel}>이익률</span>
                             <strong>{formatPercent(profitRate, 2)}</strong>
                             <em>{topSegment ? `최대 비중 ${formatPercent(topSegment.revenueShare)}` : '비중 자료 없음'}</em>
                         </div>
@@ -1516,14 +1516,14 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                     <div className={styles.reportGrid}>
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
-                                <h3>손익 구조</h3>
-                                <span>매출 → 매입 → 손익</span>
+                                <h3>이익 구조</h3>
+                                <span>매출 → 매입 → 이익</span>
                             </div>
                             <div className={styles.bridgeList}>
                                 {[
                                     { label: '매출', value: scopedTotals.revenue, tone: 'revenue', sub: '총 청구 기준' },
                                     { label: '매입', value: scopedTotals.purchase, tone: 'purchase', sub: `${formatPercent(purchaseRate)} 사용` },
-                                    { label: '손익', value: scopedTotals.profit, tone: scopedTotals.profit < 0 ? 'loss' : 'profit', sub: `${formatPercent(profitRate, 2)} 잔여` },
+                                    { label: '이익', value: scopedTotals.profit, tone: scopedTotals.profit < 0 ? 'loss' : 'profit', sub: `${formatPercent(profitRate, 2)} 잔여` },
                                 ].map(item => (
                                     <div className={styles.bridgeRow} key={item.label}>
                                         <div>
@@ -1540,7 +1540,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                     </div>
                                 ))}
                                 <div className={styles.bridgeFormula}>
-                                    <span>손익 = 매출 - 매입</span>
+                                    <span>이익 = 매출 - 매입</span>
                                     <strong>{formatPerformanceAmount(scopedTotals.revenue)} - {formatPerformanceAmount(scopedTotals.purchase)} = {formatPerformanceAmount(scopedTotals.profit)}</strong>
                                 </div>
                             </div>
@@ -1560,8 +1560,8 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                             <span>구간</span>
                                             <span>매출</span>
                                             <span>매입</span>
-                                            <span>손익</span>
-                                            <span>손익률</span>
+                                            <span>이익</span>
+                                            <span>이익률</span>
                                         </div>
                                         {timeFlowItems.map(item => (
                                             <div className={styles.timeFlowRow} key={item.period}>
@@ -1582,7 +1582,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>고마진 항목</h3>
-                                <span>{evidenceBasisLabel || '손익률 기준'}</span>
+                                <span>{evidenceBasisLabel || '이익률 기준'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {marginLeaders.length === 0 ? (
@@ -1600,7 +1600,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>저마진 주의</h3>
-                                <span>{evidenceBasisLabel || '매출 상위 내 손익률 낮음'}</span>
+                                <span>{evidenceBasisLabel || '매출 상위 내 이익률 낮음'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {lowMarginItems.length === 0 ? (
@@ -1618,7 +1618,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h3>손실 항목</h3>
-                                <span>{evidenceBasisLabel || '손익 음수'}</span>
+                                <span>{evidenceBasisLabel || '이익 음수'}</span>
                             </div>
                             <div className={styles.compactList}>
                                 {lossItems.length === 0 ? (
@@ -1636,7 +1636,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                     <section className={styles.detectPanel}>
                         <span>매출: {(summary.detected?.revenueColumns || []).join(', ') || '자동 후보 없음'}</span>
                         <span>매입: {(summary.detected?.purchaseColumns || []).join(', ') || '자동 후보 없음'}</span>
-                        <span>손익: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
+                        <span>이익: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
                         <span>그룹: {(summary.detected?.groupColumns || []).join(', ') || '자동 후보 없음'}</span>
                         <span>조회: {summary.currentSnapshotId ? '현재 스냅샷 고정' : 'current 행 기준'}</span>
                         <span>원장: 삭제 없이 누적</span>
@@ -1647,7 +1647,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                     {analysisView === 'matrix' && (
                         <section className={styles.panel}>
                             <div className={styles.panelHeader}>
-                                <h3>연도×월 매출/손익 매트릭스</h3>
+                                <h3>연도×월 매출/이익 매트릭스</h3>
                                 <span>{summary.monthlyBasis || '마감월'} 기준 · {scopedMonthly.length.toLocaleString('ko-KR')}개월</span>
                             </div>
                             <YearMonthHeatmap monthly={scopedMonthly} onSelectPeriod={period => openDetailSearch([period], 'and')} />
@@ -1670,7 +1670,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                         >
                                             <span>{segment.label}</span>
                                             <strong>{formatPerformanceAmount(segment.revenue)}</strong>
-                                            <em>손익률 {formatPercent(segment.profitRate, 2)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
+                                            <em>이익률 {formatPercent(segment.profitRate, 2)} · {safeNumber(segment.rowCount).toLocaleString('ko-KR')}건</em>
                                         </button>
                                     ))}
                                 </div>
@@ -1692,7 +1692,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                             <div>
                                                 <span>매출</span><strong>{formatPerformanceAmount(selectedSegment.revenue)}</strong>
                                                 <span>매입</span><strong>{formatPerformanceAmount(selectedSegment.purchase)}</strong>
-                                                <span>손익</span><strong>{formatPerformanceAmount(selectedSegment.profit)}</strong>
+                                                <span>이익</span><strong>{formatPerformanceAmount(selectedSegment.profit)}</strong>
                                                 <span>비중</span><strong>{formatPercent(selectedSegment.revenueShare, 2)}</strong>
                                             </div>
                                         </div>
@@ -1723,7 +1723,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                             )}
                             <section className={styles.panel}>
                                 <div className={styles.panelHeader}>
-                                    <h3>차량별 손익</h3>
+                                    <h3>차량별 이익</h3>
                                     <span>{scopeBounds.label} · 영업넘버 기준</span>
                                 </div>
                                 {safeNumber(missingVehicle.rowCount) > 0 && (
@@ -1741,16 +1741,16 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                             <strong>{formatPerformanceAmount(missingVehicle.purchase)}</strong>
                                         </div>
                                         <div>
-                                            <span>손익</span>
+                                            <span>이익</span>
                                             <strong className={safeNumber(missingVehicle.profit) < 0 ? styles.negative : styles.positive}>
                                                 {formatPerformanceAmount(missingVehicle.profit)}
                                             </strong>
                                         </div>
-                                        <em>영업넘버가 빈칸이거나 &apos;-&apos;로 입력된 원장입니다. 실제 차량 손익 순위에서는 분리했습니다.</em>
+                                        <em>영업넘버가 빈칸이거나 &apos;-&apos;로 입력된 원장입니다. 실제 차량 이익 순위에서는 분리했습니다.</em>
                                     </div>
                                 )}
                                 {scopedVehiclePerformance.length === 0 ? (
-                                    <div className={styles.emptyPanel}>차량별 손익 summary가 아직 없습니다.</div>
+                                    <div className={styles.emptyPanel}>차량별 이익 summary가 아직 없습니다.</div>
                                 ) : (
                                     <div className={styles.vehicleProfitTable}>
                                         <div className={styles.vehicleProfitHead}>
@@ -1758,7 +1758,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                                             <span>기사</span>
                                             <span>매출</span>
                                             <span>매입</span>
-                                            <span>손익</span>
+                                            <span>이익</span>
                                             <span>률</span>
                                             <span>건수</span>
                                         </div>
@@ -1824,7 +1824,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                             <section className={styles.detectPanel}>
                                 <span>매출 컬럼: {(summary.detected?.revenueColumns || []).join(', ') || '자동 후보 없음'}</span>
                                 <span>매입 컬럼: {(summary.detected?.purchaseColumns || []).join(', ') || '자동 후보 없음'}</span>
-                                <span>손익 산식: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
+                                <span>이익 산식: {(summary.detected?.profitColumns || []).join(', ') || '매출-매입'}</span>
                                 <span>월 기준: {summary.monthlyBasis || '마감월'}</span>
                                 <span>검증: 원장 재집계와 summary 차이 0원 기준</span>
                             </section>

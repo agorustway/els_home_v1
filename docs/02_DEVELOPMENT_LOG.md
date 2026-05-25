@@ -1,3 +1,19 @@
+## [2026-05-26] 실적관리 이익 표기와 마감자료 구분 정리 (v5.14.219)
+### 핵심
+- 종합실적, 월간실적, 연간실적 화면의 표시 문구를 `손익/손익률` 대신 `이익/이익률`로 통일했습니다.
+- 실적관리 RAG 문맥과 AI 메뉴 설명도 응답에는 `이익/이익률`을 쓰도록 바꾸고, 기존 `손익` 질문은 호환 검색어로만 유지했습니다.
+- 종합실적의 `원장 신뢰도` 제목을 `마감자료 구분`으로 변경했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanPerformanceRag.test.mjs`: 27개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" utils/asanPerformanceRag.mjs utils/aiAssistantMeta.mjs tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs tests/asanPerformanceRag.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `AsanMonthlyPerformance.js`, `AsanSummaryPerformance.js`
+- `web/utils/asanPerformanceRag.mjs`, `web/utils/aiAssistantMeta.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`, `web/tests/asanPerformanceRag.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
 ## [2026-05-26] 종합실적 빠른 뷰와 풀네임 검색 보정 (v5.14.218)
 ### 핵심
 - 종합실적의 경영 신호, 연도 매트릭스, 당사/협력사 비교, 원장 신뢰도 영역에서 월간/연간 테이블 검색으로 넘어가는 클릭 동작을 제거했습니다.
