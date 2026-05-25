@@ -1,3 +1,21 @@
+## [2026-05-25] GLAPS 항목매핑 라벨/BP 노출 정리 (v5.14.205)
+### 핵심
+- 항목매핑 화면과 수정양식의 `배차판 매칭용`을 `ELS 매치코드`, `ELS명`을 `ELS 디스크립션(설명)`, `GLAPS명`을 `GLAPS 디스크립션(설명)`, `GLAPS코드`를 `최종코드(BP)`로 바꿨습니다.
+- `항목`은 `매핑항목`으로 한글 표시하고, 수정양식 업로드도 `포트/선사/컨테이너규격/운송사/컨샤이니/기타` 한글값을 인식하게 했습니다. 기존 영문값과 구형 헤더도 계속 허용합니다.
+- 상세배차 매칭은 기존처럼 `ELS 매치코드`, `ELS 디스크립션(설명)`, `GLAPS 디스크립션(설명)`, `최종코드(BP)`를 모두 같은 최종코드로 참조합니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js"`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 동기화 상태칩 prefix 수정 (v5.14.204)
 ### 핵심
 - 상태칩이 에러가 아니면 무조건 `완료` prefix를 붙이던 표시 로직을 수정했습니다.

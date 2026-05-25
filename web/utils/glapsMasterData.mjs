@@ -9,7 +9,7 @@ export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
   '경유지(ELS)',
   '하차지(선적)',
   '매칭상태',
-  '조정안내',
+  '검수메모',
   '수정출처',
   '수정일시',
   '삭제(Y)',
@@ -17,17 +17,29 @@ export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
 
 export const GLAPS_ALIAS_TEMPLATE_HEADERS = Object.freeze([
   'ID',
-  '항목',
-  '배차판 매칭용',
-  'ELS명',
-  'GLAPS명',
-  'GLAPS코드',
+  '매핑항목',
+  'ELS 매치코드',
+  'ELS 디스크립션(설명)',
+  'GLAPS 디스크립션(설명)',
+  '최종코드(BP)',
   '매칭상태',
-  '조정안내',
+  '검수메모',
   '수정출처',
   '수정일시',
   '삭제(Y)',
 ]);
+
+export const GLAPS_ALIAS_TYPE_LABELS = Object.freeze({
+  start: '상차지',
+  waypoint: '경유지',
+  destination: '하차지',
+  port: '포트',
+  line: '선사',
+  container_type: '컨테이너규격',
+  carrier: '운송사',
+  consignee: '컨샤이니',
+  generic: '기타',
+});
 
 export const GLAPS_REVIEW_STATUS_LABELS = Object.freeze({
   ready: '확정',
@@ -42,7 +54,7 @@ const ROUTE_HEADER_CANDIDATES = Object.freeze({
   waypointName: ['경유지', '경유지명', '작업지', '작업지명'],
   waypointElsName: ['경유지(ELS)', 'ELS경유지', 'ELS작업지', '우리작업지'],
   destinationName: ['하차지', '하차지명', '도착지', '도착지명', '도착항', '선적'],
-  reviewNote: ['비고', '메모', '조정안내'],
+  reviewNote: ['비고', '메모', '검수메모', '조정안내'],
 });
 
 const ROUTE_TEMPLATE_ALIASES = Object.freeze({
@@ -54,20 +66,20 @@ const ROUTE_TEMPLATE_ALIASES = Object.freeze({
   waypointElsName: ['waypoint_els_name', '경유지(ELS)'],
   destinationName: ['destination_name', '하차지', '선적'],
   reviewStatus: ['review_status', '매칭상태'],
-  reviewNote: ['review_note', '조정안내', '비고'],
+  reviewNote: ['review_note', '검수메모', '조정안내', '비고'],
   deleteFlag: ['삭제(Y)', '삭제', 'delete'],
 });
 
 const ALIAS_TEMPLATE_ALIASES = Object.freeze({
   id: ['id', 'ID'],
-  aliasType: ['alias_type', '항목', '구분'],
-  sourceName: ['source_name', '배차판 매칭용', '배차판매칭용', '원본명', '배차판명'],
-  elsName: ['els_name', 'ELS명', 'ELS'],
-  glapsName: ['glaps_name', 'GLAPS명', '마스터명'],
-  glapsCode: ['glaps_code', 'GLAPS코드', '코드'],
+  aliasType: ['alias_type', '매핑항목', '항목', '구분'],
+  sourceName: ['source_name', 'ELS 매치코드', 'ELS매치코드', '배차판 매칭용', '배차판매칭용', '원본명', '배차판명'],
+  elsName: ['els_name', 'ELS 디스크립션(설명)', 'ELS디스크립션', 'ELS 설명', 'ELS명', 'ELS'],
+  glapsName: ['glaps_name', 'GLAPS 디스크립션(설명)', 'GLAPS디스크립션', 'GLAPS 설명', 'GLAPS명', '마스터명'],
+  glapsCode: ['glaps_code', '최종코드(BP)', '최종코드', 'GLAPS코드', '코드', 'BP'],
   routeCode: ['route_code', '운송경로코드'],
   reviewStatus: ['review_status', '매칭상태'],
-  reviewNote: ['review_note', '조정안내', '비고'],
+  reviewNote: ['review_note', '검수메모', '조정안내', '비고'],
   deleteFlag: ['삭제(Y)', '삭제', 'delete'],
 });
 
@@ -98,6 +110,33 @@ const GLAPS_CODE_ALIAS_TYPES = new Set([
   'generic',
 ]);
 
+const GLAPS_ALIAS_TYPE_INPUTS = new Map([
+  ...Object.entries(GLAPS_ALIAS_TYPE_LABELS).map(([value, label]) => [normalizeGlapsKey(label), value]),
+  ['상차지', 'start'],
+  ['출발지', 'start'],
+  ['경유지', 'waypoint'],
+  ['작업지', 'waypoint'],
+  ['하차지', 'destination'],
+  ['도착지', 'destination'],
+  ['도착항', 'destination'],
+  ['포트', 'port'],
+  ['PORT', 'port'],
+  ['프로코드', 'port'],
+  ['선사', 'line'],
+  ['라인', 'line'],
+  ['LINE', 'line'],
+  ['컨테이너규격', 'container_type'],
+  ['컨테이너', 'container_type'],
+  ['규격', 'container_type'],
+  ['운송사', 'carrier'],
+  ['운송사코드', 'carrier'],
+  ['컨샤이니', 'consignee'],
+  ['컨사이니', 'consignee'],
+  ['CONSIGNEE', 'consignee'],
+  ['기타', 'generic'],
+  ['공통', 'generic'],
+].map(([key, value]) => [normalizeGlapsKey(key), value]));
+
 const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
   ['부산신항', ['KRBNP']],
   ['부산북항', ['KRBNX']],
@@ -119,6 +158,16 @@ export function cleanGlapsText(value) {
 
 export function normalizeGlapsKey(value) {
   return cleanGlapsText(value).replace(/[()\[\]{}_\-\s]/g, '').toUpperCase();
+}
+
+export function normalizeGlapsAliasType(value, fallback = 'waypoint') {
+  const cleaned = cleanGlapsText(value);
+  if (GLAPS_CODE_ALIAS_TYPES.has(cleaned)) return cleaned;
+  return GLAPS_ALIAS_TYPE_INPUTS.get(normalizeGlapsKey(cleaned)) || fallback;
+}
+
+export function formatGlapsAliasType(value) {
+  return GLAPS_ALIAS_TYPE_LABELS[value] || value || '';
 }
 
 function routePartKey(value) {
@@ -711,7 +760,7 @@ export function parseGlapsAliasTemplateSheets(sheets = []) {
     requiredKeys: ['aliasType', 'sourceName'],
   }).map(({ row, cols, sourceRowNumber }) => ({
     id: getRowValue(row, cols.id),
-    aliasType: GLAPS_CODE_ALIAS_TYPES.has(getRowValue(row, cols.aliasType)) ? getRowValue(row, cols.aliasType) : 'waypoint',
+    aliasType: normalizeGlapsAliasType(getRowValue(row, cols.aliasType), 'waypoint'),
     sourceName: getRowValue(row, cols.sourceName),
     elsName: getRowValue(row, cols.elsName),
     glapsName: getRowValue(row, cols.glapsName),

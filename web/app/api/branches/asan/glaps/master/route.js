@@ -8,6 +8,7 @@ import {
   buildGlapsRouteFingerprint,
   getGlapsRouteReviewStatus,
   getGlapsRouteMatchQuery,
+  normalizeGlapsAliasType,
   parseGlapsAliasTemplateSheets,
   parseGlapsMasterSheets,
   parseGlapsRouteTemplateSheets,
@@ -103,10 +104,10 @@ function directRouteFromPayload(row = {}) {
 }
 
 function directAliasFromPayload(row = {}) {
-  const aliasType = cleanText(row.aliasType ?? row.alias_type);
+  const aliasType = normalizeGlapsAliasType(row.aliasType ?? row.alias_type, 'waypoint');
   const alias = {
     id: cleanText(row.id),
-    aliasType: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'waypoint',
+    aliasType,
     sourceName: cleanText(row.sourceName ?? row.source_name),
     elsName: cleanText(row.elsName ?? row.els_name),
     glapsName: cleanText(row.glapsName ?? row.glaps_name),
@@ -222,7 +223,7 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
 }
 
 function toAliasDbRow(alias, { branchId, versionId, userEmail }) {
-  const aliasType = cleanText(alias.aliasType);
+  const aliasType = normalizeGlapsAliasType(alias.aliasType, 'waypoint');
   return {
     branch_id: branchId,
     version_id: versionId,

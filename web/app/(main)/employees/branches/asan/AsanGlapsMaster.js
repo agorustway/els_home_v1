@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './glapsMaster.module.css';
+import { formatGlapsAliasType } from '@/utils/glapsMasterData.mjs';
 
 const STATUS_LABELS = {
     ready: '확정',
@@ -369,7 +370,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name },
-                { key: 'review_note', label: '조정안내', value: row => row.review_note },
+                { key: 'review_note', label: '검수메모', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
                     key: 'actions',
@@ -388,12 +389,12 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         if (activeTable === 'aliases') {
             return [
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
-                { key: 'alias_type', label: '항목', value: row => row.alias_type },
-                { key: 'source_name', label: '배차판 매칭용', value: row => row.source_name },
-                { key: 'els_name', label: 'ELS명', value: row => row.els_name },
-                { key: 'glaps_name', label: 'GLAPS명', value: row => row.glaps_name, className: styles.protectedCell },
-                { key: 'glaps_code', label: '코드', value: row => row.glaps_code, className: styles.protectedCell },
-                { key: 'review_note', label: '조정안내', value: row => row.review_note },
+                { key: 'alias_type', label: '매핑항목', value: row => formatGlapsAliasType(row.alias_type) },
+                { key: 'source_name', label: 'ELS 매치코드', value: row => row.source_name },
+                { key: 'els_name', label: 'ELS 디스크립션(설명)', value: row => row.els_name },
+                { key: 'glaps_name', label: 'GLAPS 디스크립션(설명)', value: row => row.glaps_name, className: styles.protectedCell },
+                { key: 'glaps_code', label: '최종코드(BP)', value: row => row.glaps_code, className: styles.protectedCell },
+                { key: 'review_note', label: '검수메모', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
                     key: 'actions',
@@ -569,32 +570,32 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                                 </select>
                             </label>
                             <label className={styles.editorField}>
-                                <span>조정안내</span>
+                                <span>검수메모</span>
                                 <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
                             </label>
                         </div>
                     ) : (
                         <div className={styles.editorGrid}>
                             <label className={styles.editorField}>
-                                <span>항목</span>
+                                <span>매핑항목</span>
                                 <select value={editor.values.aliasType} onChange={(event) => updateEditorValue('aliasType', event.target.value)} autoFocus>
                                     {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                                 </select>
                             </label>
                             <label className={styles.editorField}>
-                                <span>배차판 매칭용</span>
+                                <span>ELS 매치코드</span>
                                 <input value={editor.values.sourceName} onChange={(event) => updateEditorValue('sourceName', event.target.value)} />
                             </label>
                             <label className={styles.editorField}>
-                                <span>ELS명</span>
+                                <span>ELS 디스크립션(설명)</span>
                                 <input value={editor.values.elsName} onChange={(event) => updateEditorValue('elsName', event.target.value)} />
                             </label>
                             <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>GLAPS명</span>
+                                <span>GLAPS 디스크립션(설명)</span>
                                 <input value={editor.values.glapsName} onChange={(event) => updateEditorValue('glapsName', event.target.value)} />
                             </label>
                             <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>GLAPS코드</span>
+                                <span>최종코드(BP)</span>
                                 <input value={editor.values.glapsCode} onChange={(event) => updateEditorValue('glapsCode', event.target.value)} />
                             </label>
                             <label className={styles.editorField}>
@@ -604,7 +605,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                                 </select>
                             </label>
                             <label className={styles.editorField}>
-                                <span>조정안내</span>
+                                <span>검수메모</span>
                                 <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
                             </label>
                         </div>

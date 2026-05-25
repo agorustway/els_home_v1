@@ -6,6 +6,7 @@ import {
   GLAPS_ALIAS_TEMPLATE_HEADERS,
   GLAPS_REVIEW_STATUS_LABELS,
   GLAPS_ROUTE_TEMPLATE_HEADERS,
+  formatGlapsAliasType,
 } from '@/utils/glapsMasterData.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,15 @@ const PAGE_SIZE = 1000;
 const TEMPLATE_HEADER_ROW_NUMBER = 3;
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const ROUTE_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', '운송경로코드', '운송경로명', '경유지', '수정출처', '수정일시']);
-const ALIAS_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', 'GLAPS명', 'GLAPS코드', '수정출처', '수정일시']);
+const ALIAS_PROTECTED_TEMPLATE_COLUMNS = new Set([
+  'ID',
+  'GLAPS 디스크립션(설명)',
+  '최종코드(BP)',
+  'GLAPS명',
+  'GLAPS코드',
+  '수정출처',
+  '수정일시',
+]);
 const PROTECTED_CELL_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
 const PROTECTED_HEADER_FONT = { bold: true, color: { argb: 'FF334155' } };
 const PROTECTED_CELL_FONT = { color: { argb: 'FF475569' } };
@@ -150,11 +159,11 @@ function addGuideWorksheet(workbook) {
   [
     ['공통', '전체', 'ID', '기존 행은 그대로 둡니다. 새 행 추가 시 비워둡니다.', 'ID가 있으면 기존 행 수정, 비어 있으면 신규 추가'],
     ['공통', '전체', '매칭상태', '확정 / 조정필요 / 코드없음 중 하나를 입력합니다.', '영문 ready / needs_mapping / missing_route_code도 인식'],
-    ['공통', '전체', '조정안내', '검수 메모를 자유 입력합니다.', '업로드 시 DB에 반영'],
+    ['공통', '전체', '검수메모', '검수 메모를 자유 입력합니다.', '업로드 시 DB에 반영'],
     ['공통', '전체', '수정출처', '참고용입니다. 수정하지 않아도 됩니다.', '웹수정 / 업로드수정 / 마스터반영 표시'],
     ['공통', '전체', '수정일시', '참고용입니다. 수정하지 않아도 됩니다.', '업로드 반영 기준 아님'],
     ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다. 행을 지우는 것은 삭제로 처리하지 않습니다.', 'Y 외 값은 삭제로 보지 않음'],
-    ['공통', '전체', '회색 음영', '회색 칸은 GLAPS 실제 업로드/원장 기준값입니다. 일반 수정 대상이 아닙니다.', '배차판 매칭용/ELS/조정안내 중심으로 보정'],
+    ['공통', '전체', '회색 음영', '회색 칸은 GLAPS 실제 업로드/원장 기준값입니다. 일반 수정 대상이 아닙니다.', 'ELS 매치코드/ELS 디스크립션/검수메모 중심으로 보정'],
     ['마스터코드', '원본 코드시트', 'ELS코드1~N', '수기 별칭은 컬럼 위치와 무관하게 헤더명으로 읽습니다. 한 칸에 여러 값을 넣을 때는 쉼표 또는 줄바꿈으로 구분합니다.', '새 코드 시트 추가 시 파서 연결 필요'],
     ['운송경로', '운송경로_수정양식', '운송경로코드', '회색 보호칸입니다. GLAPS 기존 운송경로코드를 유지합니다.', '새 코드를 만들지 말고 원장 코드를 사용'],
     ['운송경로', '운송경로_수정양식', '운송경로명', '회색 보호칸입니다. GLAPS 운송경로명을 유지합니다.', '참고/검색용'],
@@ -162,11 +171,11 @@ function addGuideWorksheet(workbook) {
     ['운송경로', '운송경로_수정양식', '경유지', '회색 보호칸입니다. GLAPS 원장 작업지명을 유지합니다.', '배차판 매칭은 경유지(ELS)로 보정'],
     ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
     ['운송경로', '운송경로_수정양식', '하차지(선적)', '배차 상세의 하차지/선적과 매칭될 값을 입력합니다.', '예: 부산신항, 광양항'],
-    ['항목매핑', '항목매핑_수정양식', '항목', 'port / line / container_type / carrier / consignee / generic 중 하나를 입력합니다.', '운송경로의 상차지/경유지/하차지는 운송경로 시트에서 수정'],
-    ['항목매핑', '항목매핑_수정양식', '배차판 매칭용', '배차판에서 들어오는 값을 입력합니다.', '예: 40HC, CMA, INKAT'],
-    ['항목매핑', '항목매핑_수정양식', 'ELS명', '우리 기준 이름 또는 별칭을 입력합니다.', '검색/매칭 보조'],
-    ['항목매핑', '항목매핑_수정양식', 'GLAPS명', '회색 보호칸입니다. GLAPS 원장 명칭을 유지합니다.', '참고/검색용'],
-    ['항목매핑', '항목매핑_수정양식', 'GLAPS코드', '회색 보호칸입니다. GLAPS 업로드에 들어갈 기존 코드를 유지합니다.', '임의 생성 금지'],
+    ['항목매핑', '항목매핑_수정양식', '매핑항목', '포트 / 선사 / 컨테이너규격 / 운송사 / 컨샤이니 / 기타 중 하나를 입력합니다.', '영문 port / line / container_type / carrier / consignee / generic도 인식'],
+    ['항목매핑', '항목매핑_수정양식', 'ELS 매치코드', '배차판에서 들어오는 짧은 코드값을 입력합니다.', '예: 40HC, CMA, INKAT'],
+    ['항목매핑', '항목매핑_수정양식', 'ELS 디스크립션(설명)', '우리 기준 설명 또는 별칭을 입력합니다.', '검색/매칭 보조'],
+    ['항목매핑', '항목매핑_수정양식', 'GLAPS 디스크립션(설명)', '회색 보호칸입니다. GLAPS 원장 설명을 유지합니다.', '참고/검색용'],
+    ['항목매핑', '항목매핑_수정양식', '최종코드(BP)', '회색 보호칸입니다. GLAPS 업로드에 들어갈 기존 코드를 유지합니다. 운송사는 BP 값입니다.', '임의 생성 금지'],
   ].forEach(row => sheet.addRow(row));
   sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2', activePane: 'bottomLeft' }];
   applyRowCellStyle(sheet, 1, 5, {
@@ -215,7 +224,7 @@ function routeToTemplateRow(row = {}) {
 function aliasToTemplateRow(row = {}) {
   return [
     row.id || '',
-    row.alias_type || '',
+    formatGlapsAliasType(row.alias_type) || row.alias_type || '',
     row.source_name || '',
     row.els_name || '',
     row.glaps_name || '',

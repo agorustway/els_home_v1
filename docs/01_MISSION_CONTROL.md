@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.204 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.205 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 상태칩이 진행 중 메시지에 `완료`를 붙이지 않게 수정했다.
+> 최신 업데이트: GLAPS 항목매핑 라벨을 ELS 매치코드/디스크립션/최종코드(BP) 기준으로 정리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.204
+- **웹 버전**: v5.14.205
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -35,7 +35,7 @@
 - GLAPS 마스터 업로드/NAS 반영은 기존 활성 버전의 `WEB수정` 행을 새 버전으로 보존해 수기 보정값이 사라지지 않게 한다.
 - GLAPS 업로드 처리 결과는 활성 버전 `metadata.lastUploadResult`에 남긴다.
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
-- GLAPS 수정양식/웹에서 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이므로 일반 보정 대상이 아니다. 항목매핑의 배차판 입력값 컬럼명은 `배차판 매칭용`으로 쓴다.
+- GLAPS 수정양식/웹 항목매핑은 `매핑항목`, `ELS 매치코드`, `ELS 디스크립션(설명)`, `GLAPS 디스크립션(설명)`, `최종코드(BP)`, `검수메모`를 쓴다. `ELS 매치코드`/디스크립션/최종코드는 모두 매칭 키로 참조된다.
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, BKG1/2/3 셀 클릭 또는 수기 입력을 WEB 보정값으로 저장한다. 선택된 BKG 셀은 색으로 표시하고, 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
 - 배차확정 후 배차판 WEB BKG1/2/3의 기존값은 잠근다. 단, 비어 있던 BKG2/3 같은 후속 부킹 칸은 추가 입력할 수 있고 저장 후 상세배차/변동내역 코드 도출에 반영한다.
 - TARGET VESSEL과 비고는 확정 이후에도 운영 메모로 계속 수정 가능하다. 확정 후 변경된 BKG/TARGET VESSEL/비고 등은 상세배차/배차변동의 변경 표시 마우스오버에서 전후 값을 확인한다.
@@ -66,6 +66,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.205**: GLAPS 항목매핑 화면/수정양식 라벨을 `ELS 매치코드`, `ELS 디스크립션(설명)`, `GLAPS 디스크립션(설명)`, `최종코드(BP)`로 정리했다. 매핑항목은 한글 표시/업로드를 지원하고 구형 영문/기존 헤더도 계속 파싱한다.
 - **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
 - **v5.14.203**: 배차확정 후 배차판 WEB BKG 기존값을 UI/API 양쪽에서 잠그고, 비어 있던 BKG 칸은 추가 입력만 허용한다. TARGET VESSEL/비고는 계속 수정 가능하게 두며, 상세배차/배차변동 변경 표시 tooltip에 확정 후 변경된 전후 값을 노출한다.
 - **v5.14.202**: 배차변동에서 추가분 삭제 시 기존 추가 이벤트를 삭제로 덮어쓰지 않고 `delete-after-add:*` 삭제 이벤트를 별도 생성한다. 추가/삭제 쌍은 회색 `추가취소쌍`으로 표시하고, 확인완료 행은 잠금 처리하며 `확인취소`로만 재수정하게 했다. 최종수량은 현재 상세라인 수량을 기준으로 표시해 delta 이중계산을 막았다.
@@ -75,12 +76,10 @@
 - **v5.14.198**: GLAPS 마스터 API에 `mode=lookup`을 추가해 상세배차/배차변동내역 코드 도출에 필요한 운송경로, 포트/라인/컨테이너/운송사/컨샤이니 alias, 컨테이너규격/수출입코드 원본행만 내려준다. 실측 기준 상세 lookup payload는 약 3.2MB에서 약 738KB로 줄고, 같은 refresh token 안에서는 중복 fetch를 생략한다.
 - **v5.14.197**: 배차변동내역 API가 글로비스/모비스 하위 탭에서 직접 확정 이벤트가 없으면 `integrated` 변동 이벤트를 화주 기준으로 fallback 조회한다. 하위 탭의 개별/일괄 확인과 변동행 수정은 event id 기준으로 통합 이벤트도 안전하게 처리한다.
 - **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
-- **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.
-- **v5.14.163**: 상세배차 `업체명` 뒤에 `BKG확정` 컬럼을 추가했다. `BKG1~3` 선택 흔적과 수기 입력값은 상세라인 보정 테이블로 분리 저장하며, 배차확정/확정취소 API와 이력 테이블, `배차변동내역` 탭 기반을 추가했다. 화주사코드는 매칭된 운송경로 원장 payload의 값을 우선 사용한다.
 ## VERIFICATION
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
 - Export API 메모리 검증: `상세배차내역`, `GLAPS_업로드` 2개 시트 생성, GLAPS 헤더 62개, 부킹번호/컨테이너 수량 위치 확인.
-- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/web-cell/route.js"`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js"`: 통과
 - `cd web; npm run build`: 통과.
 - `git diff --check`: 통과
 - NAS deploy 검증: 2026-05-25 `els-gateway`, `els-core`, `els-bot` 재생성 후 `/api/branches/asan/sync` gateway/core 응답 확인.
