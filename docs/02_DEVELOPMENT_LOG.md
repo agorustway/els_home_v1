@@ -1,3 +1,16 @@
+## [2026-05-25] Vercel Preview middleware 환경변수 보정 (v5.14.195)
+### 핵심
+- Vercel Preview 배포는 READY 상태가 됐지만, 외부 URL 접근 시 middleware에서 Supabase client 생성이 실패해 `MIDDLEWARE_INVOCATION_FAILED`가 발생했습니다.
+- `utils/supabase/middleware.js`에서 Supabase URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- utils/supabase/middleware.js utils/supabase/server.js utils/supabase/client.js utils/supabase/unavailableClient.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/utils/supabase/middleware.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] Vercel Preview 공용 Supabase fallback 보정 (v5.14.194)
 ### 핵심
 - Vercel Preview 재빌드에서 `/api/driver-contacts/search`, `/admin/logs`, `/driver-app` 등 공용 Supabase client를 쓰는 경로가 환경변수 누락으로 빌드 중 실패하는 것을 확인했습니다.
