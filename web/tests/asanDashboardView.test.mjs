@@ -1080,7 +1080,9 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(source, /mode: 'date', date: activeDate/);
   assert.match(source, /mode: 'full'/);
   assert.match(source, /mergeDispatchDateItems/);
-  assert.match(source, /NAS 최근 5일 동기화 진행 중입니다\. 완료되면 화면을 새로고침합니다\./);
+  assert.match(source, /NAS 1순위 작업일 동기화 진행 중입니다\. 완료되면 화면을 새로고침합니다\./);
+  assert.match(source, /syncGate\.running && !syncGate\.quickDone/);
+  assert.match(source, /1순위 재동기화/);
   assert.match(source, /fetch\(`\/api\/branches\/asan\/sync\?t=\$\{Date\.now\(\)\}`/);
   assert.match(source, /동기화 완료\. 최신 자료로 새로고침합니다\./);
   assert.match(source, /syncActionBlocked/);
@@ -1099,9 +1101,14 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(core, /\.in_\(.*"target_date", chunk\)/s);
   assert.match(core, /metadata_only_dates\.append\(target_date\)/);
   assert.match(core, /데이터 동일 시트 .*파일수정일만 갱신/);
-  assert.match(core, /_dispatch_sheet_sort_key\(target_date, now\)/);
-  assert.match(core, /return today - timedelta\(days=2\), today \+ timedelta\(days=2\)/);
+  assert.match(core, /def _dispatch_priority_context\(target_dates, now\)/);
+  assert.match(core, /future_days\[0\] if future_days else available_days\[-1\]/);
+  assert.match(core, /_dispatch_sheet_sort_key\(target_date, now, priority_context\)/);
   assert.match(core, /quick_done/);
+  assert.match(core, /phase="adjacent"/);
+  assert.match(core, /def _request_asan_sync_cancel/);
+  assert.match(core, /def _restart_asan_dispatch_manual_after_current/);
+  assert.match(core, /status\.get\("quick_done"\)/);
   assert.match(core, /ASAN_DISPATCH_SYNC_REQUEST_COOLDOWN_SECONDS/);
   assert.match(core, /def sync_asan_dispatch_manual_python/);
   assert.match(core, /phase="quick"/);

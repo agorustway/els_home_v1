@@ -64,6 +64,9 @@ last_file_signature_cache = {}
 last_sheet_hash_cache = {}  # [v5.10.14] 시트별 데이터 해시 캐시 — 변경된 시트만 Supabase upsert
 asan_sync_lock = threading.Lock()
 asan_sync_start_time = 0
+asan_sync_control_lock = threading.Lock()
+asan_sync_cancel_generation = 0
+asan_sync_restart_lock = threading.Lock()
 asan_sync_status_lock = threading.Lock()
 asan_sync_status = {
     "running": False,
@@ -79,6 +82,9 @@ asan_sync_status = {
     "quick_completed_types": [],
     "quick_window_start": None,
     "quick_window_end": None,
+    "priority_primary_date": None,
+    "priority_adjacent_dates": [],
+    "cancel_requested": False,
 }
 dispatch_settings_cache = {"data": None, "loaded_at": 0.0}
 
@@ -178,6 +184,29 @@ def _get_asan_sync_status():
         return dict(asan_sync_status)
 
 
+class AsanDispatchSyncCancelled(Exception):
+    pass
+
+
+def _get_asan_sync_cancel_generation():
+    with asan_sync_control_lock:
+        return asan_sync_cancel_generation
+
+
+def _request_asan_sync_cancel(reason=""):
+    global asan_sync_cancel_generation
+    with asan_sync_control_lock:
+        asan_sync_cancel_generation += 1
+        generation = asan_sync_cancel_generation
+    _set_asan_sync_status(cancel_requested=True, message=reason or "기존 백그라운드 동기화 중단 요청")
+    return generation
+
+
+def _raise_if_asan_sync_cancelled(sync_cancel_generation):
+    if _get_asan_sync_cancel_generation() != sync_cancel_generation:
+        raise AsanDispatchSyncCancelled()
+
+
 def _parse_iso_datetime(value):
     if not value:
         return None
@@ -194,18 +223,51 @@ def _asan_sync_cooldown_active(now_dt):
     return bool(cooldown_until and now_dt < cooldown_until)
 
 
-def _quick_window_bounds(now):
-    today = now.date()
-    return today - timedelta(days=2), today + timedelta(days=2)
-
-
-def _dispatch_date_in_quick_window(target_date, now):
+def _parse_dispatch_target_day(target_date):
     try:
-        target_day = datetime.strptime(target_date, "%Y-%m-%d").date()
+        return datetime.strptime(str(target_date), "%Y-%m-%d").date()
     except Exception:
-        return False
-    quick_start, quick_end = _quick_window_bounds(now)
-    return quick_start <= target_day <= quick_end
+        return None
+
+
+def _dispatch_priority_context(target_dates, now):
+    """1순위=오늘, 없으면 오늘 이후 첫 작업일. 2순위=그 기준 전/후 작업일."""
+    today = now.date()
+    available_days = sorted({
+        day for day in (_parse_dispatch_target_day(target_date) for target_date in target_dates)
+        if day is not None
+    })
+    if not available_days:
+        return {"primary": None, "adjacent": set(), "ordered": []}
+
+    if today in available_days:
+        primary_day = today
+    else:
+        future_days = [day for day in available_days if day > today]
+        primary_day = future_days[0] if future_days else available_days[-1]
+
+    primary_idx = available_days.index(primary_day)
+    adjacent_days = set()
+    if primary_idx > 0:
+        adjacent_days.add(available_days[primary_idx - 1])
+    if primary_idx + 1 < len(available_days):
+        adjacent_days.add(available_days[primary_idx + 1])
+
+    return {
+        "primary": primary_day,
+        "adjacent": adjacent_days,
+        "ordered": available_days,
+    }
+
+
+def _dispatch_date_in_primary_priority(target_date, priority_context):
+    target_day = _parse_dispatch_target_day(target_date)
+    return bool(target_day and target_day == priority_context.get("primary"))
+
+
+def _dispatch_date_in_adjacent_priority(target_date, priority_context):
+    target_day = _parse_dispatch_target_day(target_date)
+    return bool(target_day and target_day in (priority_context.get("adjacent") or set()))
 
 
 def _mark_asan_sync_quick_type(dtype, sync_results=None):
@@ -216,7 +278,7 @@ def _mark_asan_sync_quick_type(dtype, sync_results=None):
     updates = {
         "quick_completed_types": sorted(completed),
         "quick_done": quick_done,
-        "message": "최근 5일 자료 반영 완료. 과거 날짜는 계속 동기화 중입니다." if quick_done else f"{dtype} 최근 5일 자료 반영 완료",
+        "message": "1순위 작업일 자료 반영 완료. 전/후 작업일과 나머지 날짜는 계속 동기화 중입니다." if quick_done else f"{dtype} 1순위 작업일 자료 반영 완료",
     }
     if quick_done:
         updates["quick_finished_at"] = datetime.now(KST).isoformat()
@@ -263,17 +325,21 @@ def _resolve_dispatch_sheet_date(sheet_name, now):
     return f"{year}-{m:02d}-{d:02d}"
 
 
-def _dispatch_sheet_sort_key(target_date, now):
-    try:
-        target_day = datetime.strptime(target_date, "%Y-%m-%d").date()
-    except Exception:
+def _dispatch_sheet_sort_key(target_date, now, priority_context=None):
+    target_day = _parse_dispatch_target_day(target_date)
+    if not target_day:
         return (2, target_date)
-    priority_start, priority_end = _quick_window_bounds(now)
-    if priority_start <= target_day <= priority_end:
-        return (0, target_day.toordinal())
-    if target_day > priority_end:
-        return (1, target_day.toordinal())
-    return (2, -target_day.toordinal())
+    context = priority_context or _dispatch_priority_context([target_date], now)
+    primary_day = context.get("primary")
+    adjacent_days = context.get("adjacent") or set()
+    if primary_day and target_day == primary_day:
+        return (0, 0, target_day.toordinal())
+    if target_day in adjacent_days:
+        distance = abs(target_day.toordinal() - primary_day.toordinal()) if primary_day else 0
+        return (1, distance, target_day.toordinal())
+    if primary_day and target_day > primary_day:
+        return (2, target_day.toordinal(), 0)
+    return (3, -target_day.toordinal(), 0)
 
 
 def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
@@ -298,18 +364,29 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
         return {"ok": True, "running": True, "message": "이미 동기화가 진행 중입니다.", "results": []}
 
     asan_sync_start_time = time.time()
+    sync_cancel_generation = _get_asan_sync_cancel_generation()
     sync_results = []
     sync_error = None
+    sync_cancelled = False
     sync_started_at = datetime.now(KST)
-    quick_start, quick_end = _quick_window_bounds(sync_started_at)
     quick_updates = {} if preserve_quick else {
         "quick_done": False,
         "quick_finished_at": None,
         "quick_completed_types": [],
-        "quick_window_start": quick_start.isoformat(),
-        "quick_window_end": quick_end.isoformat(),
+        "quick_window_start": None,
+        "quick_window_end": None,
+        "priority_primary_date": None,
+        "priority_adjacent_dates": [],
+        "cancel_requested": False,
     }
-    phase_message = "아산 배차판 최근 5일 동기화 준비 중" if phase == "quick" else "아산 배차판 동기화 준비 중"
+    if phase == "quick":
+        phase_message = "아산 배차판 1순위 작업일 동기화 준비 중"
+    elif phase == "adjacent":
+        phase_message = "아산 배차판 전/후 작업일 동기화 준비 중"
+    elif phase == "rest":
+        phase_message = "아산 배차판 나머지 날짜 동기화 준비 중"
+    else:
+        phase_message = "아산 배차판 동기화 준비 중"
     _set_asan_sync_status(
         running=True,
         started_at=sync_started_at.isoformat(),
@@ -332,6 +409,7 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
             return {"ok": False, "message": sync_error, "results": sync_results}
 
         for dtype in ['glovis', 'mobis']:
+            _raise_if_asan_sync_cancelled(sync_cancel_generation)
             dtype_result = {"type": dtype, "phase": phase, "success": True, "sheets": 0, "metadata_touched": 0, "message": ""}
             _set_asan_sync_status(message=f"{dtype} 파일 확인 중", results=sync_results)
             rel_path = settings.get(f"{dtype}_path")
@@ -429,24 +507,44 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
                     target_date = _resolve_dispatch_sheet_date(sheet_name, now)
                     if not target_date:
                         continue
-                    sheet_jobs.append((_dispatch_sheet_sort_key(target_date, now), target_date, sheet_name))
+                    sheet_jobs.append((target_date, sheet_name))
+                priority_context = _dispatch_priority_context([target_date for target_date, _ in sheet_jobs], now)
+                primary_date = priority_context.get("primary")
+                adjacent_dates = sorted(day.isoformat() for day in (priority_context.get("adjacent") or set()))
+                if phase in ("all", "quick") and primary_date:
+                    _set_asan_sync_status(
+                        quick_window_start=primary_date.isoformat(),
+                        quick_window_end=primary_date.isoformat(),
+                        priority_primary_date=primary_date.isoformat(),
+                        priority_adjacent_dates=adjacent_dates,
+                    )
+                sheet_jobs = [
+                    (_dispatch_sheet_sort_key(target_date, now, priority_context), target_date, sheet_name)
+                    for target_date, sheet_name in sheet_jobs
+                ]
                 sheet_jobs.sort(key=lambda item: item[0])
                 if phase == "quick":
-                    _set_asan_sync_status(message=f"{dtype} 최근 5일 날짜 처리 중", results=sync_results)
+                    _set_asan_sync_status(message=f"{dtype} 1순위 작업일 처리 중", results=sync_results)
+                elif phase == "adjacent":
+                    _set_asan_sync_status(message=f"{dtype} 전/후 작업일 처리 중", results=sync_results)
                 elif phase == "rest":
-                    _set_asan_sync_status(message=f"{dtype} 과거/잔여 날짜 처리 중", results=sync_results)
+                    _set_asan_sync_status(message=f"{dtype} 나머지 날짜 처리 중", results=sync_results)
                 else:
-                    _set_asan_sync_status(message=f"{dtype} 최근 5일 날짜 우선 처리 중", results=sync_results)
+                    _set_asan_sync_status(message=f"{dtype} 1순위 작업일 우선 처리 중", results=sync_results)
 
                 metadata_only_dates = []
                 quick_marked = False
                 for _, target_date, sheet_name in sheet_jobs:
-                    is_quick_sheet = _dispatch_date_in_quick_window(target_date, now)
-                    if phase == "quick" and not is_quick_sheet:
+                    _raise_if_asan_sync_cancelled(sync_cancel_generation)
+                    is_primary_sheet = _dispatch_date_in_primary_priority(target_date, priority_context)
+                    is_adjacent_sheet = _dispatch_date_in_adjacent_priority(target_date, priority_context)
+                    if phase == "quick" and not is_primary_sheet:
                         continue
-                    if phase == "rest" and is_quick_sheet:
+                    if phase == "adjacent" and not is_adjacent_sheet:
                         continue
-                    if phase == "all" and not quick_marked and not is_quick_sheet:
+                    if phase == "rest" and (is_primary_sheet or is_adjacent_sheet):
+                        continue
+                    if phase == "all" and not quick_marked and not is_primary_sheet:
                         _mark_asan_sync_quick_type(dtype, sync_results)
                         quick_marked = True
                     valid_dates.append(target_date)
@@ -552,10 +650,12 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
                     rows = None
                     comments_dict = None
                     gc.collect()
+                    _raise_if_asan_sync_cancelled(sync_cancel_generation)
                 if phase in ("all", "quick") and not quick_marked:
                     _mark_asan_sync_quick_type(dtype, sync_results)
 
                 metadata_touched = 0
+                _raise_if_asan_sync_cancelled(sync_cancel_generation)
                 if metadata_only_dates:
                     metadata_touched = _touch_dispatch_file_modified_at(
                         dtype,
@@ -622,17 +722,24 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
                 comments_dict = None
                 gc.collect()
 
+    except AsanDispatchSyncCancelled:
+        sync_cancelled = True
+        app.logger.info("[자동동기화] 새 1순위 요청으로 기존 백그라운드 동기화를 중단합니다.")
     except Exception as e:
         sync_error = str(e)
         app.logger.error(f"[자동동기화] 전체 프로세스 에러: {e}", exc_info=True)
     finally:
         ok = sync_error is None and all(result.get("success", True) for result in sync_results)
-        if sync_error:
+        if sync_cancelled:
+            message = "새 1순위 동기화 요청으로 기존 백그라운드 동기화를 중단했습니다."
+        elif sync_error:
             message = sync_error
         elif phase == "quick":
-            message = "아산 배차판 최근 5일 동기화 완료"
+            message = "아산 배차판 1순위 작업일 동기화 완료"
+        elif phase == "adjacent":
+            message = "아산 배차판 전/후 작업일 동기화 완료"
         elif phase == "rest":
-            message = "아산 배차판 과거/잔여 날짜 동기화 완료"
+            message = "아산 배차판 나머지 날짜 동기화 완료"
         else:
             message = "아산 배차판 동기화 완료"
         _set_asan_sync_status(
@@ -641,17 +748,30 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
             ok=ok,
             message=message,
             results=sync_results,
+            cancel_requested=False,
         )
         asan_sync_lock.release()
-    return {"ok": ok, "message": message, "results": sync_results}
+    return {"ok": ok, "cancelled": sync_cancelled, "message": message, "results": sync_results}
 
 
 def sync_asan_dispatch_manual_python():
-    """수동 요청은 최근 5일을 먼저 끝낸 뒤 과거/잔여 날짜를 이어서 처리한다."""
+    """수동 요청은 1순위 작업일을 먼저 끝낸 뒤 전/후 작업일과 나머지 날짜를 이어서 처리한다."""
     quick_result = sync_asan_dispatch_python(force=True, phase="quick")
     if quick_result.get("ok") is False:
         return quick_result
+    adjacent_result = sync_asan_dispatch_python(force=True, phase="adjacent", preserve_quick=True)
+    if adjacent_result.get("ok") is False or adjacent_result.get("cancelled"):
+        return adjacent_result
     return sync_asan_dispatch_python(force=True, phase="rest", preserve_quick=True)
+
+
+def _restart_asan_dispatch_manual_after_current():
+    with asan_sync_restart_lock:
+        for _ in range(1200):
+            if not asan_sync_lock.locked():
+                break
+            time.sleep(0.25)
+        sync_asan_dispatch_manual_python()
 
 
 def asan_sync_scheduler():
@@ -2137,23 +2257,48 @@ def trigger_asan_sync():
 
     try:
         app.logger.info("🚀 [API] 아산 배차판 강제 동기화 요청 수신")
-        if asan_sync_lock.locked():
-            return jsonify({
-                "ok": True,
-                "running": True,
-                "status": _get_asan_sync_status(),
-                "message": "이미 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
-            }), 202
-
         now_dt = datetime.now(KST)
         if _asan_sync_cooldown_active(now_dt):
             status = _get_asan_sync_status()
             return jsonify({
                 "ok": True,
-                "running": False,
+                "running": bool(status.get("running")),
                 "cooldown": True,
                 "status": status,
                 "message": "최근 1분 이내 동기화 요청이 있어 새 요청은 건너뜁니다. 새로고침으로 최신 DB를 확인해 주세요.",
+            }), 202
+
+        if asan_sync_lock.locked():
+            status = _get_asan_sync_status()
+            if status.get("quick_done"):
+                _request_asan_sync_cancel("전/후/나머지 백그라운드 동기화를 중단하고 1순위 작업일 재동기화를 예약했습니다.")
+                _set_asan_sync_status(
+                    running=True,
+                    started_at=now_dt.isoformat(),
+                    finished_at=None,
+                    ok=True,
+                    message="기존 백그라운드 동기화 중단 후 1순위 작업일 재동기화를 시작합니다.",
+                    results=[],
+                    force=True,
+                    last_requested_at=now_dt.isoformat(),
+                    request_cooldown_until=(now_dt + timedelta(seconds=ASAN_DISPATCH_SYNC_REQUEST_COOLDOWN_SECONDS)).isoformat(),
+                    quick_done=False,
+                    quick_finished_at=None,
+                    quick_completed_types=[],
+                    cancel_requested=True,
+                )
+                threading.Thread(target=_restart_asan_dispatch_manual_after_current, daemon=True).start()
+                return jsonify({
+                    "ok": True,
+                    "running": True,
+                    "status": _get_asan_sync_status(),
+                    "message": "백그라운드 동기화를 중단하고 1순위 작업일 재동기화를 시작합니다.",
+                }), 202
+            return jsonify({
+                "ok": True,
+                "running": True,
+                "status": status,
+                "message": "1순위 작업일 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
             }), 202
 
         # force=True 옵션으로 캐시 무시하고 강제 실행하되, 백그라운드 쓰레드로 분리하여 Vercel Timeout(504) 방지
@@ -2162,7 +2307,7 @@ def trigger_asan_sync():
             started_at=now_dt.isoformat(),
             finished_at=None,
             ok=True,
-            message="아산 배차판 동기화 대기 중",
+            message="아산 배차판 1순위 작업일 동기화 대기 중",
             results=[],
             force=True,
             last_requested_at=now_dt.isoformat(),
@@ -2170,6 +2315,7 @@ def trigger_asan_sync():
             quick_done=False,
             quick_finished_at=None,
             quick_completed_types=[],
+            cancel_requested=False,
         )
         threading.Thread(target=sync_asan_dispatch_manual_python, daemon=True).start()
         return jsonify({

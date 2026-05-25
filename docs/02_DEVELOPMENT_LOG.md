@@ -1,3 +1,24 @@
+## [2026-05-25] 아산 배차판 NAS 동기화 우선순위 재정렬 (v5.14.201)
+### 핵심
+- 수동 NAS 동기화의 빠른 반영 기준을 기존 최근 5일에서 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜`로 바꿨습니다.
+- 1순위 작업일은 오늘 시트가 있으면 오늘, 없으면 오늘 이후 첫 작업일, 미래 시트가 없으면 가장 최근 과거 작업일로 잡습니다.
+- 1순위가 글로비스/모비스 모두 끝나면 `quick_done`을 즉시 세워 웹이 새로고침으로 상세배차/배차변동을 먼저 볼 수 있게 했습니다.
+- 전/후 작업일과 나머지 날짜를 백그라운드로 처리하는 중에는 1분 쿨다운이 끝난 뒤 재요청할 수 있고, 이 경우 기존 백그라운드를 시트 단위로 중단한 뒤 1순위부터 다시 시작합니다.
+### 주의
+- 엑셀 파일 읽기/시트 저장 중간을 OS 레벨로 강제 종료하지는 않고, 시트 처리 경계에서 취소 토큰을 확인하는 협력적 중단 방식입니다. 데이터 반영 중간 끊김을 피하기 위한 선택입니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `py -3 -m py_compile docker/els-backend/app_core.py`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 조회 2차 경량화 및 버튼 순서 정리 (v5.14.200)
 ### 핵심
 - 아산 예하페이지 우측 작업 버튼 순서를 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 변경했습니다.

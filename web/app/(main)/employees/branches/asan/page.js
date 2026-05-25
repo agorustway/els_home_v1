@@ -895,7 +895,10 @@ function AsanDispatchContent() {
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
     const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
-    const syncActionBlocked = syncing || syncGate.running || syncCooldownActive;
+    const syncActionBlocked = syncing || syncCooldownActive || (syncGate.running && !syncGate.quickDone);
+    const syncButtonText = syncing || (syncGate.running && !syncGate.quickDone)
+        ? '동기화 중'
+        : (syncGate.running && syncGate.quickDone ? '1순위 재동기화' : 'NAS 동기화');
 
     useEffect(() => { dataRef.current = data; }, [data]);
     useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
@@ -1124,17 +1127,17 @@ function AsanDispatchContent() {
                 return;
             }
             if (j.running || finalStatus?.running) {
-                setSyncStatus({ message: 'NAS 최근 5일 동기화 진행 중입니다. 완료되면 화면을 새로고침합니다.', isError: false });
+                setSyncStatus({ message: 'NAS 1순위 작업일 동기화 진행 중입니다. 완료되면 화면을 새로고침합니다.', isError: false });
                 for (let attempt = 0; attempt < 180; attempt += 1) {
                     await wait(2000);
                     finalStatus = await refreshSyncGateStatus();
                     const running = Boolean(finalStatus?.running);
                     if (finalStatus?.quick_done || !running) break;
-                    setSyncStatus({ message: finalStatus?.message || 'NAS 최근 5일 동기화 진행 중입니다.', isError: false });
+                    setSyncStatus({ message: finalStatus?.message || 'NAS 1순위 작업일 동기화 진행 중입니다.', isError: false });
                 }
-                if (finalStatus?.running && !finalStatus?.quick_done) throw new Error('최근 자료 동기화가 오래 걸리고 있습니다. 잠시 후 새로고침해 주세요.');
+                if (finalStatus?.running && !finalStatus?.quick_done) throw new Error('1순위 작업일 동기화가 오래 걸리고 있습니다. 잠시 후 새로고침해 주세요.');
                 if (finalStatus?.running && finalStatus?.quick_done) {
-                    setSyncStatus({ message: '최근 5일 자료 반영 완료. 과거 날짜는 백그라운드에서 계속 동기화합니다.', isError: false });
+                    setSyncStatus({ message: '1순위 작업일 자료 반영 완료. 전/후 작업일과 나머지 날짜는 백그라운드에서 계속 동기화합니다.', isError: false });
                     setTimeout(handleRefreshData, 50);
                     return;
                 }
@@ -1186,7 +1189,7 @@ function AsanDispatchContent() {
                 const status = await refreshSyncGateStatus();
                 if (cancelled) return;
                 if (status?.running && status?.quick_done) {
-                    setSyncStatus({ message: status.message || '과거 날짜 동기화가 백그라운드에서 진행 중입니다.', isError: false });
+                    setSyncStatus({ message: status.message || '전/후 작업일과 나머지 날짜 동기화가 백그라운드에서 진행 중입니다.', isError: false });
                 }
             } catch {
                 // 상태 확인 실패는 화면 사용을 막지 않는다.
@@ -2528,7 +2531,7 @@ function AsanDispatchContent() {
                                 {refreshing ? '새로고침 중' : '새로고침'}
                             </button>
                             <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncActionBlocked}>
-                                {(syncing || syncGate.running) ? '동기화 중' : 'NAS 동기화'}
+                                {syncButtonText}
                             </button>
                         </div>
                     </div>
