@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.195 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.196 / APK v5.11.29)
 
-> 최신 업데이트: Vercel Preview 접근 시 middleware가 Supabase 환경변수 없이도 통과하도록 보정했다.
+> 최신 업데이트: 실제 Next 루트 middleware도 Supabase 환경변수 없이 Preview 접근을 통과하도록 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.195
+- **웹 버전**: v5.14.196
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -55,6 +55,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.195**: Supabase middleware에서 URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과시킨다. Preview 환경변수가 비어 있어도 외부 URL 접근 시 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.194**: 공용 Supabase server/browser client에 환경변수 누락 fallback을 추가했다. Preview 빌드처럼 Supabase URL/키가 없는 환경에서는 import/렌더 단계에서 예외를 던지지 않고, 실제 요청은 503 성격의 응답 객체로 처리한다. 아산 export/성과 DB 헬퍼도 같은 기준으로 보정했다.
 - **v5.14.193**: `/api/branches/asan/settings`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
@@ -63,7 +64,6 @@
 - **v5.14.190**: 서비스 페이지 `주요 사업 및 운영 현황` 제목 위의 공통 `ELS` 보조 라벨을 해당 섹션에서만 숨겨, 공개 페이지 제목부의 어색한 장식 요소를 제거했다.
 - **v5.14.189**: 공개 헤더 미로그인 상태에서 `임직원 로그인`과 `로그인`이 나란히 보이던 중복 CTA를 제거했다. 공개 내비게이션에는 `인트라넷` 단일 메뉴만 남기고, 클릭 시 기존처럼 로그인 후 임직원 홈으로 진입한다.
 - **v5.14.188**: 공개 홈페이지는 한국 사용자 기준의 직관적 카피와 노출 범위로 정리하고, 미로그인 공개 헤더에서는 인트라넷 세부 메뉴 대신 `임직원 로그인`만 노출한다. 인트라넷/아산지점/안전운임/자료실/게시판 계열은 장식성 이모지를 제거하고 버튼·카드·테이블 여백과 라운드를 아산 배차판 기준의 조밀한 톤으로 맞췄다.
-- **v5.14.187**: NAS 동기화 수동 요청을 최근 5일 quick phase와 과거/잔여 rest phase로 분리했다. 최근구간 완료 후 웹은 실제 reload를 실행하고, 동기화 중/요청 후 1분 내에는 NAS 동기화 버튼을 잠근다. 확정 후 `추가` 변동행이 원본에서 다시 사라지면 inactive로 숨기지 않고 `삭제` 이벤트로 전환해 회색 행으로 남긴다.
 - **v5.14.169**: 차량위치관제 `실시간 로그` 버튼이 `/api/debug/view`를 열 때 NAS core에 라우트가 없어 404가 날 수 있던 문제를 수정했다. `els-core`에 `/api/debug/log` 수신과 `/api/debug/view` 텍스트 조회 라우트를 추가해 안드로이드 앱/오버레이 디버그 로그 흐름을 복구했다.
 - **v5.14.165**: 모바일 운행 상세현황을 데스크탑 우측 패널/표 기반에서 갤럭시24 기준 전체화면 상세로 재구성했다. 위치 이력과 운행 기록은 모바일에서 카드형 타임라인으로 표시하고, 기본 정보 입력·미니맵·액션 버튼은 손가락 조작 가능한 높이와 1열 레이아웃으로 보정했다.
 - **v5.14.164**: 운영 디버그 점검 중 `BKG확정`/배차확정 신규 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했다. 상세배차 화면에서 Supabase access token을 Authorization 헤더로 전달하고, API는 Bearer token 인증도 허용하게 보정했다.
