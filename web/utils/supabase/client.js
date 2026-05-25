@@ -1,9 +1,19 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { createUnavailableSupabaseClient } from './unavailableClient'
+
+const MISSING_SUPABASE_CONFIG_MESSAGE = 'Supabase 환경변수가 설정되지 않았습니다.'
 
 export function createClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        return createUnavailableSupabaseClient(MISSING_SUPABASE_CONFIG_MESSAGE)
+    }
+
     const client = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        supabaseUrl,
+        supabaseAnonKey
     )
 
     const hasDebugCookie = typeof document !== 'undefined' && document.cookie.includes('__debug_mode=true');

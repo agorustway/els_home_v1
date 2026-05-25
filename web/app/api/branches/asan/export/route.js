@@ -9,6 +9,17 @@ import {
     shouldIncludeDispatchRow,
 } from '@/utils/asanDispatchWebCells.mjs';
 
+function getSupabaseAdminClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        return null;
+    }
+
+    return createClient(supabaseUrl, serviceRoleKey);
+}
+
 function normalizeDispatchHeader(value) {
     return String(value || '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
 }
@@ -76,10 +87,10 @@ export async function GET(request) {
     const weekStart = searchParams.get('weekStart');
     const weekEnd = searchParams.get('weekEnd');
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+        return new Response('Supabase 환경변수가 설정되지 않았습니다.', { status: 503 });
+    }
 
     let query = supabase.from('branch_dispatch')
         .select('*')

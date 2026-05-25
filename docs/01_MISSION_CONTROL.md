@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.193 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.194 / APK v5.11.29)
 
-> 최신 업데이트: Vercel Preview 빌드에서 아산 설정 API도 Supabase 환경변수 누락 시 import가 실패하지 않도록 보정했다.
+> 최신 업데이트: Vercel Preview 빌드에서 Supabase 환경변수 누락 시 공용 client 생성이 실패하지 않도록 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.193
+- **웹 버전**: v5.14.194
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -55,6 +55,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.194**: 공용 Supabase server/browser client에 환경변수 누락 fallback을 추가했다. Preview 빌드처럼 Supabase URL/키가 없는 환경에서는 import/렌더 단계에서 예외를 던지지 않고, 실제 요청은 503 성격의 응답 객체로 처리한다. 아산 export/성과 DB 헬퍼도 같은 기준으로 보정했다.
 - **v5.14.193**: `/api/branches/asan/settings`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.192**: `/api/branches/asan/dispatch`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.

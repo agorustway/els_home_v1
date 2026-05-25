@@ -1,3 +1,19 @@
+## [2026-05-25] Vercel Preview 공용 Supabase fallback 보정 (v5.14.194)
+### 핵심
+- Vercel Preview 재빌드에서 `/api/driver-contacts/search`, `/admin/logs`, `/driver-app` 등 공용 Supabase client를 쓰는 경로가 환경변수 누락으로 빌드 중 실패하는 것을 확인했습니다.
+- `utils/supabase/server.js`, `utils/supabase/client.js`에 환경변수 누락 시 예외를 던지지 않는 fallback client를 연결했습니다.
+- fallback client는 빌드/렌더/import 단계에서는 안전하게 통과하고, 실제 DB 요청은 503 성격의 오류 응답 객체를 반환합니다.
+- 직접 Supabase admin client를 생성하던 아산 export 라우트와 아산 성과 DB 헬퍼도 같은 기준으로 보정했습니다.
+### 검증
+- `cd web; npm run lint -- utils/supabase/server.js utils/supabase/client.js utils/supabase/unavailableClient.js app/api/branches/asan/export/route.js lib/asan-branch-db.js app/api/branches/asan/settings/route.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/utils/supabase/server.js`, `web/utils/supabase/client.js`, `web/utils/supabase/unavailableClient.js`
+- `web/app/api/branches/asan/export/route.js`, `web/lib/asan-branch-db.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] Vercel Preview 아산 설정 API 초기화 보정 (v5.14.193)
 ### 핵심
 - PR Preview 재빌드가 `/api/branches/asan/settings` 수집 단계에서 다시 `supabaseUrl is required`로 실패하는 것을 확인했습니다.
