@@ -1,3 +1,17 @@
+## [2026-05-25] Vercel Preview 아산 설정 API 초기화 보정 (v5.14.193)
+### 핵심
+- PR Preview 재빌드가 `/api/branches/asan/settings` 수집 단계에서 다시 `supabaseUrl is required`로 실패하는 것을 확인했습니다.
+- 해당 라우트도 Supabase admin client를 모듈 import 시점에 생성하고 있어, Preview 환경변수가 없는 경우 빌드 단계에서 예외가 발생했습니다.
+- Supabase admin client 생성을 GET/PATCH 요청 시점으로 늦기고, 환경변수가 없으면 실제 API 요청에서 503 JSON을 반환하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- app/api/branches/asan/settings/route.js app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/api/branches/asan/settings/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] Vercel Preview Supabase 환경변수 누락 보정 (v5.14.192)
 ### 핵심
 - PR 생성 후 Vercel Preview 빌드가 `/api/branches/asan/dispatch` 수집 단계에서 `supabaseUrl is required`로 실패하는 것을 확인했습니다.

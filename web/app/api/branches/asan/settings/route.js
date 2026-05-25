@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function getSupabaseAdminClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        return null;
+    }
+
+    return createClient(supabaseUrl, serviceRoleKey);
+}
 
 function normalizeSettings(data) {
     if (!data) return null;
@@ -15,6 +21,14 @@ function normalizeSettings(data) {
 }
 
 export async function GET() {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+        return NextResponse.json(
+            { error: 'Supabase 환경변수가 설정되지 않았습니다.' },
+            { status: 503 }
+        );
+    }
+
     const { data, error } = await supabase
         .from('branch_dispatch_settings')
         .select('*')
@@ -26,6 +40,14 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+        return NextResponse.json(
+            { error: 'Supabase 환경변수가 설정되지 않았습니다.' },
+            { status: 503 }
+        );
+    }
+
     const body = await request.json();
     const { data: current, error: currentError } = await supabase
         .from('branch_dispatch_settings')
