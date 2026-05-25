@@ -1,3 +1,19 @@
+## [2026-05-26] 연간/월간 실적 테이블 검색 원본값 포함 보정 (v5.14.213)
+### 핵심
+- 연간/월간 실적 테이블 검색이 화면에 매핑된 컬럼값만 보지 않고, Supabase 원장 원본 `row_data`, `row_values`, 파일/시트/기간 메타까지 함께 훑도록 확장했습니다.
+- 연간 개별 파일 조회도 검색 시 `row_data`를 같이 읽고 5,000행 배치 스캔 경로를 사용해 앞쪽 일부 행 제한을 피하도록 보정했습니다.
+- 검색 결과 0건일 때 `total`이 전체 원장 건수로 되살아나지 않도록 `paged.total ?? fallbackTotal` 기준으로 정리했습니다.
+- 운영 DB 확인 결과, 월간 2026 원장에는 `대신` 검색 결과가 있으며 현재 연간 원장에는 `대신`/`rsb` 문자열이 0건임을 확인했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 연간/월간 실적 테이블 검색 전체 원장 스캔 보정 (v5.14.212)
 ### 핵심
 - 연간/월간 실적 테이블 검색이 정렬/검색 보호 로직 때문에 현재 원장의 앞쪽 일부 행만 훑던 문제를 수정했습니다.

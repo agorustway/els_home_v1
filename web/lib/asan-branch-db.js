@@ -229,8 +229,41 @@ function normalizePerformanceSearchText(value) {
     return compact && compact !== raw ? `${raw} ${compact}` : raw;
 }
 
+function collectPerformanceSearchValues(value, bucket) {
+    if (value == null) return;
+    if (Array.isArray(value)) {
+        value.forEach(item => collectPerformanceSearchValues(item, bucket));
+        return;
+    }
+    if (typeof value === 'object') {
+        for (const [key, item] of Object.entries(value)) {
+            bucket.push(key);
+            collectPerformanceSearchValues(item, bucket);
+        }
+        return;
+    }
+    bucket.push(value);
+}
+
+function performanceSearchValuesFromRow(row = {}) {
+    if (Array.isArray(row)) return row;
+    const values = [];
+    collectPerformanceSearchValues(row.mapped_values, values);
+    collectPerformanceSearchValues(row.row_values, values);
+    collectPerformanceSearchValues(row.row_data, values);
+    values.push(
+        row.file_path,
+        row.sheet_name,
+        row.year_value,
+        row.month_value,
+        row.row_index,
+        row.snapshot_id,
+    );
+    return values;
+}
+
 function rowPerformanceSearchText(values = []) {
-    return (Array.isArray(values) ? values : [])
+    return (Array.isArray(values) ? values : performanceSearchValuesFromRow(values))
         .map(normalizePerformanceSearchText)
         .filter(Boolean)
         .join(' ');
@@ -280,7 +313,7 @@ async function scanPerformanceSearchRows({
 
         for (const raw of rows) {
             const mapped = mapRow(raw);
-            if (!rowMatchesPerformanceSearch(mapped.mapped_values, search, searchMode)) continue;
+            if (!rowMatchesPerformanceSearch(mapped, search, searchMode)) continue;
             if (shouldSort) {
                 sortableRows.push(mapped);
             } else if (total >= start && pageRows.length <= end - start) {
@@ -499,11 +532,30 @@ async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sort
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
     const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0 || shouldFilter) {
+    if (shouldFilter) {
+        const { query } = buildQuery();
+        const scanned = await scanPerformanceSearchRows({
+            baseOrdered: query.order('row_index', { ascending: true }),
+            mapRow: item => ({ ...item, mapped_values: item.row_values || [] }),
+            search,
+            searchMode,
+            start,
+            end,
+            sortIdx,
+            sortDesc,
+        });
+        return {
+            rows: scanned.rows,
+            total: scanned.total,
+            totalEstimated: scanned.totalEstimated,
+            sortKey: sortIdx >= 0 ? sortKey : '',
+            sortDir: sortDesc ? 'desc' : 'asc',
+        };
+    }
+
+    if (sortIdx >= 0) {
         const { rows: data, total } = await fetchRowsInChunks(buildQuery, 0, maxSortRows);
-        const filtered = shouldFilter
-            ? (data || []).filter(item => rowMatchesPerformanceSearch(item.row_values || [], search, searchMode))
-            : (data || []);
+        const filtered = data || [];
 
         const sortable = [];
         const blanks = [];
@@ -593,7 +645,7 @@ export async function queryAsanShippingFromSupabase(searchParams) {
         data: paged.rows.map(row => row.row_values || []),
         file_modified_at: meta.file_modified_at,
         synced_at: meta.synced_at,
-        total: paged.total || meta.row_count || 0,
+        total: paged.total ?? meta.row_count ?? 0,
         total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,
@@ -1432,7 +1484,7 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         synced_at: metas.reduce((latest, meta) => (
             !latest || new Date(meta.synced_at || 0) > new Date(latest) ? meta.synced_at : latest
         ), ''),
-        total: paged.total || fallbackTotal,
+        total: paged.total ?? fallbackTotal,
         total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,
@@ -1481,7 +1533,7 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
         const selectOptions = options.count ? { count: options.count } : undefined;
         let query = supabase
             .from('branch_performance_rows')
-            .select('row_values,row_index', selectOptions)
+            .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id', selectOptions)
             .eq('branch_id', 'asan')
             .eq('dataset_type', 'annual')
             .eq('file_path', normalizedPath)
@@ -1516,7 +1568,7 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
         header_row: meta.header_row,
         file_modified_at: meta.file_modified_at,
         synced_at: meta.synced_at,
-        total: paged.total || meta.current_row_count || 0,
+        total: paged.total ?? meta.current_row_count ?? 0,
         total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,
@@ -2076,7 +2128,7 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         synced_at: metas.reduce((latest, meta) => (
             !latest || new Date(meta.synced_at || 0) > new Date(latest) ? meta.synced_at : latest
         ), ''),
-        total: paged.total || fallbackTotal,
+        total: paged.total ?? fallbackTotal,
         total_is_estimated: Boolean(paged.totalEstimated),
         page,
         page_size: pageSize,

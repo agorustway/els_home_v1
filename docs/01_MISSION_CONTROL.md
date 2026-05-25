@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.212 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.213 / APK v5.11.29)
 
-> 최신 업데이트: 연간/월간 실적 테이블 검색이 원장 앞 일부 행만 보던 문제를 전체 현재 원장 배치 스캔으로 보정하고, 검색 조건 구분자와 모두/하나라도 포함 기준을 화면에 명시했다.
+> 최신 업데이트: 연간/월간 실적 테이블 검색 대상을 표시 컬럼값뿐 아니라 원본 row_data/row_values와 파일·시트 메타까지 확장했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.212
+- **웹 버전**: v5.14.213
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -66,7 +66,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
-- **v5.14.212**: 연간/월간 실적 테이블 검색은 현재 원장을 5,000행 단위로 훑어 앞 2만 행 이후 자료도 찾는다. `,`와 `;`를 조건 구분자로 받고 버튼 문구를 `하나라도 포함/모두 포함`으로 바꿔 OR/AND 기준을 명확히 했다.
+- **v5.14.213**: 연간/월간 실적 테이블 검색은 표시값과 원본 `row_data`/`row_values`/파일 메타까지 포함하고, 0건 검색 시 전체 원장 건수로 되살아나는 표시를 막는다.
 - **v5.14.211**: AI는 `GLAPS 경로확인 안되는 작업지`를 운송경로 미도출 조건으로 읽고, 실적관리 예하 `종합실적/월간실적/연간실적` 화면 도출항목과 요약 스냅샷을 DB 기준으로 주입한다. 채팅 예시 컨테이너는 정상 선적 이력 샘플 `CMAU7631738`로 교체했다.
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
@@ -76,7 +76,7 @@
 - **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
 ## VERIFICATION
 - `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
 - `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 24개 통과 / Supabase 2026-05-26 상세배차 81라인 중 GLAPS 운송경로 미도출 44건 조회
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js"`: 통과
 - `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과

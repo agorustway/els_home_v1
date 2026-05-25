@@ -70,11 +70,17 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.match(dbReader, /PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000/);
   assert.match(dbReader, /async function scanPerformanceSearchRows/);
   assert.match(dbReader, /replace\(PERFORMANCE_SEARCH_COMPACT_RE/);
-  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped\.mapped_values, search, searchMode\)/);
+  assert.match(dbReader, /function performanceSearchValuesFromRow/);
+  assert.match(dbReader, /collectPerformanceSearchValues\(row\.row_data, values\)/);
+  assert.match(dbReader, /collectPerformanceSearchValues\(row\.row_values, values\)/);
+  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped, search, searchMode\)/);
+  assert.match(dbReader, /row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id/);
   assert.match(annualPagedRowsSource, /if \(shouldFilter\) \{/);
   assert.match(annualPagedRowsSource, /scanPerformanceSearchRows/);
   assert.match(dbReader, /totalEstimated/);
   assert.match(dbReader, /total_is_estimated/);
+  assert.match(dbReader, /total: paged\.total \?\? fallbackTotal/);
+  assert.match(dbReader, /total: paged\.total \?\? meta\.current_row_count \?\? 0/);
 });
 
 test('아산 연간실적 백엔드는 원장 행을 삭제하지 않고 current 상태만 전환한다', () => {

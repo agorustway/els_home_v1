@@ -411,10 +411,13 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /모두 포함/);
   assert.match(component, /title="클릭하여 정렬"/);
   assert.match(dbReader, /split\(\/\[;,，；\]\+\//);
-  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped\.mapped_values, search, searchMode\)/);
+  assert.match(dbReader, /function performanceSearchValuesFromRow/);
+  assert.match(dbReader, /collectPerformanceSearchValues\(row\.row_data, values\)/);
+  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped, search, searchMode\)/);
   assert.match(dbReader, /PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 5000/);
   assert.match(dbReader, /async function scanPerformanceSearchRows/);
   assert.match(dbReader, /if \(shouldFilter\) \{[\s\S]*scanPerformanceSearchRows/);
+  assert.match(dbReader, /total: paged\.total \?\? fallbackTotal/);
   assert.match(dbReader, /replace\(PERFORMANCE_SEARCH_COMPACT_RE/g);
   assert.match(css, /\.analytics\s*{[\s\S]*grid-template-columns: repeat\(auto-fit/);
   assert.match(css, /minmax\(min\(100%, 640px\), 1fr\)/);
