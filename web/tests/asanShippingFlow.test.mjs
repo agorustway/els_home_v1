@@ -136,6 +136,7 @@ test('아산 선적관리 화면은 DB 조회를 페이지 단위로 가져온�
   );
 
   assert.match(source, /const SHIPPING_PAGE_SIZE = 100;/);
+  assert.match(source, /const MOBILE_RENDER_BATCH_SIZE = 100;/);
   assert.match(source, /const FULL_FILTER_PAGE_SIZE = 10000;/);
   assert.match(source, /page_size: String\(pageSize\)/);
   assert.match(source, /params\.set\('date_col', dateCol\)/);
@@ -151,14 +152,23 @@ test('아산 선적관리 화면은 DB 조회를 페이지 단위로 가져온�
   assert.match(source, /date_col: dateFilter\.col/);
   assert.match(source, /months: dateFilter\.months \|\| \[\]/);
   assert.match(source, /const shouldLoadFullRowsForFilters = Boolean/);
+  assert.match(source, /&& !isMobileTableMode[\s\S]*&& Number\(data\?\.total \|\| 0\) > \(data\?\.data\?\.length \|\| 0\)/);
   assert.match(source, /pageSize: FULL_FILTER_PAGE_SIZE/);
   assert.match(source, /\.\.\.serverDateFilterParams/);
   assert.doesNotMatch(source, /\|\| Boolean\(dateFilter\.col && dateFilter\.months\?\.length > 0\)/);
   assert.match(source, /const handleTableScroll = \(e\) =>/);
+  assert.match(source, /if \(isMobileTableMode\) return;/);
   assert.match(source, /remaining < ROW_HEIGHT \* 10/);
   assert.match(source, /onScroll=\{handleTableScroll\}/);
   assert.match(source, /window\.addEventListener\('scroll', handleWindowScroll, \{ passive: true \}\)/);
-  assert.match(source, /const visibleRows = isMobileTableMode \? processedData : processedData\.slice\(visibleStart, visibleEnd\);/);
+  assert.match(source, /const \[mobileVisibleLimit, setMobileVisibleLimit\] = useState\(MOBILE_RENDER_BATCH_SIZE\);/);
+  assert.match(source, /setMobileVisibleLimit\(MOBILE_RENDER_BATCH_SIZE\);/);
+  assert.match(source, /const canRevealMoreMobileRows = isMobileTableMode && mobileVisibleLimit < totalRows;/);
+  assert.match(source, /setMobileVisibleLimit\(prev => Math\.min\(totalRows, prev \+ MOBILE_RENDER_BATCH_SIZE\)\)/);
+  assert.match(source, /const visibleEnd = isMobileTableMode \? Math\.min\(totalRows, mobileVisibleLimit\) : virtualWindow\.visibleEnd;/);
+  assert.match(source, /const visibleRows = processedData\.slice\(visibleStart, visibleEnd\);/);
+  assert.match(source, /canRevealMoreMobileRows \|\| canLoadMore/);
+  assert.match(source, /onClick=\{handleListMore\}/);
   assert.match(source, /function scheduleShippingIdleTask/);
   assert.match(source, /return scheduleShippingIdleTask\(\(\) => loadSavedContainerLookupResults\(containers\)\)/);
   assert.match(source, /const \[unshippedOnly, setUnshippedOnly\] = useState\(false\);/);

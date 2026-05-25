@@ -1,3 +1,19 @@
+## [2026-05-25] 선적관리 모바일 목록 100건 단위 렌더링 제한 (v5.14.207)
+### 핵심
+- 모바일 선적관리 테이블이 `processedData` 전체를 한 번에 렌더링하지 않고 100건 단위로만 화면에 표시되도록 제한했습니다.
+- 모바일 창 스크롤이 하단에 가까워지면 먼저 화면 표시량을 100건씩 늘리고, 이미 받은 행을 다 보여준 뒤에만 다음 서버 페이지를 조회합니다.
+- 모바일 가로 스크롤이 테이블 내부 `onScroll`을 통해 다음 페이지 로딩을 호출하지 않도록 차단했습니다.
+- 모바일에서는 컬럼 필터/빠른 필터 때문에 `FULL_FILTER_PAGE_SIZE` 전체 로딩을 자동 실행하지 않게 해 초기 진입 부하를 줄였습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 모바일 상단 여백 제거 (v5.14.206)
 ### 핵심
 - 모바일에서 아산 배차판 상단 상태/작업 버튼 영역이 데스크톱용 `flex-basis: 520px`와 `justify-content: flex-end`를 유지해 선택일 배지 아래에 큰 빈 여백이 생기던 문제를 수정했습니다.

@@ -30,6 +30,7 @@ const PREFS_KEY = 'asan_shipping_prefs';
 const ROW_HEIGHT = 28;
 const VIRTUAL_OVERSCAN = 12;
 const SHIPPING_PAGE_SIZE = 100;
+const MOBILE_RENDER_BATCH_SIZE = 100;
 const FULL_FILTER_PAGE_SIZE = 10000;
 const SEARCH_DEBOUNCE_MS = 1000;
 const SEARCH_CLEAR_DEBOUNCE_MS = 250;
@@ -712,6 +713,8 @@ export default function AsanShipping() {
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const [tableScrollTop, setTableScrollTop] = useState(0);
     const [tableViewportHeight, setTableViewportHeight] = useState(480);
+    const [mobileVisibleLimit, setMobileVisibleLimit] = useState(MOBILE_RENDER_BATCH_SIZE);
+    const isMobileTableMode = dynamicHeight === 'auto';
 
     useEffect(() => {
         const updateHeight = () => {
@@ -1256,6 +1259,7 @@ export default function AsanShipping() {
 
     const shouldLoadFullRowsForFilters = Boolean(
         data?.source === 'supabase'
+        && !isMobileTableMode
         && Number(data?.total || 0) > (data?.data?.length || 0)
         && (data?.data?.length || 0) < Math.min(Number(data?.total || 0), FULL_FILTER_PAGE_SIZE)
         && (
@@ -1280,6 +1284,7 @@ export default function AsanShipping() {
 
     useEffect(() => {
         setTableScrollTop(0);
+        setMobileVisibleLimit(MOBILE_RENDER_BATCH_SIZE);
         if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
     }, [searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly]);
 
@@ -1288,7 +1293,6 @@ export default function AsanShipping() {
     const loadedRows = data?.source === 'supabase' ? (data.data?.length || 0) : totalRows;
     const canLoadMore = data?.source === 'supabase' && loadedRows < serverTotalRows;
     const serverTotalRowsLabel = `${serverTotalRows.toLocaleString()}${data?.total_is_estimated ? '+' : ''}`;
-    const isMobileTableMode = dynamicHeight === 'auto';
     const selectedMonthSet = new Set(dateFilter.months || []);
 
     const toggleMonthFilter = (monthKey) => {
@@ -1317,19 +1321,29 @@ export default function AsanShipping() {
         });
     }, [canLoadMore, loadingMore, selectedPath, data?.page, searchTerm, serverSortParams, serverDateFilterParams, fetchData]);
 
+    const revealNextMobileRows = useCallback(() => {
+        setMobileVisibleLimit(prev => Math.min(totalRows, prev + MOBILE_RENDER_BATCH_SIZE));
+    }, [totalRows]);
+
+    const canRevealMoreMobileRows = isMobileTableMode && mobileVisibleLimit < totalRows;
+
     useEffect(() => {
-        if (!isMobileTableMode || loading || loadingMore || !canLoadMore) return undefined;
+        if (!isMobileTableMode || loading || loadingMore || (!canRevealMoreMobileRows && !canLoadMore)) return undefined;
         const handleWindowScroll = () => {
             const doc = document.documentElement;
             const remaining = doc.scrollHeight - window.scrollY - window.innerHeight;
             if (remaining < ROW_HEIGHT * 14) {
-                loadNextPage();
+                if (canRevealMoreMobileRows) {
+                    revealNextMobileRows();
+                } else {
+                    loadNextPage();
+                }
             }
         };
         window.addEventListener('scroll', handleWindowScroll, { passive: true });
         handleWindowScroll();
         return () => window.removeEventListener('scroll', handleWindowScroll);
-    }, [isMobileTableMode, loading, loadingMore, canLoadMore, loadNextPage]);
+    }, [isMobileTableMode, loading, loadingMore, canRevealMoreMobileRows, canLoadMore, revealNextMobileRows, loadNextPage]);
 
     if (loading) return <div className={styles.loading}>데이터를 불러오는 중입니다...</div>;
     if (!data || !data.data) return <div className={styles.loading}>데이터가 없습니다.</div>;
@@ -1346,6 +1360,7 @@ export default function AsanShipping() {
     );
 
     const handleTableScroll = (e) => {
+        if (isMobileTableMode) return;
         const target = e.currentTarget;
         setTableScrollTop(target.scrollTop);
         const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
@@ -1361,11 +1376,19 @@ export default function AsanShipping() {
         overscan: VIRTUAL_OVERSCAN,
     });
     const visibleStart = isMobileTableMode ? 0 : virtualWindow.visibleStart;
-    const visibleEnd = isMobileTableMode ? totalRows : virtualWindow.visibleEnd;
+    const visibleEnd = isMobileTableMode ? Math.min(totalRows, mobileVisibleLimit) : virtualWindow.visibleEnd;
     const topSpacerHeight = isMobileTableMode ? 0 : virtualWindow.topSpacerHeight;
     const bottomSpacerHeight = isMobileTableMode ? 0 : virtualWindow.bottomSpacerHeight;
-    const visibleRows = isMobileTableMode ? processedData : processedData.slice(visibleStart, visibleEnd);
+    const visibleRows = processedData.slice(visibleStart, visibleEnd);
     const tableIsRefreshing = Boolean(searchRefreshing || loadingMore || shouldLoadFullRowsForFilters);
+    const canContinueList = canRevealMoreMobileRows || canLoadMore;
+    const handleListMore = () => {
+        if (canRevealMoreMobileRows) {
+            revealNextMobileRows();
+        } else {
+            loadNextPage();
+        }
+    };
 
     // Extract unique values for the currently opened dropdown
     const getUniqueValues = (col) => {
@@ -1736,13 +1759,13 @@ export default function AsanShipping() {
 
             {data.source === 'supabase' && (
                 <div className={styles.pageBar}>
-                    <span>{loadedRows.toLocaleString()} / {serverTotalRowsLabel}행</span>
+                    <span>{(isMobileTableMode ? visibleEnd : loadedRows).toLocaleString()} / {serverTotalRowsLabel}행</span>
                     <button
                         className={styles.loadMoreBtn}
-                        onClick={loadNextPage}
-                        disabled={!canLoadMore || loadingMore}
+                        onClick={handleListMore}
+                        disabled={!canContinueList || loadingMore}
                     >
-                        {loadingMore ? '불러오는 중' : canLoadMore ? '더 보기' : '전체 로드됨'}
+                        {loadingMore ? '불러오는 중' : canContinueList ? '더 보기' : '전체 로드됨'}
                     </button>
                 </div>
             )}
