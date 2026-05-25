@@ -16,6 +16,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 - **아카이브 금지**: `web/utils/loggerServer.js` 등 `_archive/` 폴더 내 파일은 절대 사용 금지.
 - **Python 인코딩**: Python 코드 작업 시 `PYTHONIOENCODING=utf-8` 환경 고려.
 - **PowerShell**: 파일 I/O 시 `-Encoding UTF8` 필수. 명령어 체인은 `&&` 대신 `;` 사용 (한글 깨짐·호환성 방지).
+- **PowerShell 경로 괄호 주의**: `web\app\(main)\...`처럼 괄호가 포함된 경로는 반드시 따옴표로 감싼다. 예: `rg -n "검색어" 'web\app\(main)\employees\branches\asan'`. 따옴표 없이 `web\app\(main)`을 넘기면 PowerShell이 `(main)`을 실행식/명령처럼 해석해 `C:\WINDOWS\system32\main.cpl`을 호출할 수 있고, 이 PC에서는 그 결과 `마우스 속성` 창이 뜬다.
 - **PDCA**: 코드 변경은 계획(Plan)→실행(Do)→검증(Check)→적용(Act) 단계 준수.
 - **도구·권한 요청**: 작업 중 네트워크, Git, NAS, Supabase, Android/Gradle, 브라우저 자동화, OS 권한, 추가 CLI 도구가 필요하거나 막히면 우회하지 말고 형에게 필요한 항목·이유·명령어·영향 범위를 짧게 요청한다. 세부 기준은 `docs/08_ENVIRONMENT_SETUP.md`의 "AI 작업 권한/도구 요청" 섹션을 따른다.
 
