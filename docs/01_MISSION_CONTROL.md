@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.191 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.192 / APK v5.11.29)
 
-> 최신 업데이트: 서비스 페이지 히어로 문구에서 `및 제조 서비스` 표현을 제거해 물류 서비스 중심으로 정리했다.
+> 최신 업데이트: Vercel Preview 빌드에서 Supabase 환경변수 누락 시 API 라우트 import가 실패하지 않도록 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.191
+- **웹 버전**: v5.14.192
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -55,6 +55,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.192**: `/api/branches/asan/dispatch`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.
 - **v5.14.190**: 서비스 페이지 `주요 사업 및 운영 현황` 제목 위의 공통 `ELS` 보조 라벨을 해당 섹션에서만 숨겨, 공개 페이지 제목부의 어색한 장식 요소를 제거했다.
 - **v5.14.189**: 공개 헤더 미로그인 상태에서 `임직원 로그인`과 `로그인`이 나란히 보이던 중복 CTA를 제거했다. 공개 내비게이션에는 `인트라넷` 단일 메뉴만 남기고, 클릭 시 기존처럼 로그인 후 임직원 홈으로 진입한다.
@@ -89,6 +90,8 @@
 - **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 ## VERIFICATION
+- `cd web; npm run lint -- app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
 - `cd web; npm run lint -- constants/siteLayout.js`: 통과
 - Browser local check (`http://localhost:3010/services`): 기존 `물류 및 제조 서비스` 문구 없음, 새 `맞춤형 물류 서비스` 문구 확인.
 - `cd web; npm run lint -- components/Business.js`: 통과

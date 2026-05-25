@@ -12,12 +12,26 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // [v5.10.22] 데이터 부정합 문제로 캐시 완전 비활성화 (정확성 우선)
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function getSupabaseAdminClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        return null;
+    }
+
+    return createClient(supabaseUrl, serviceRoleKey);
+}
 
 export async function GET(request) {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+        return NextResponse.json(
+            { error: 'Supabase 환경변수가 설정되지 않았습니다.' },
+            { status: 503 }
+        );
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'glovis';
 

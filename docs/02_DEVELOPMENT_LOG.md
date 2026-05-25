@@ -1,3 +1,17 @@
+## [2026-05-25] Vercel Preview Supabase 환경변수 누락 보정 (v5.14.192)
+### 핵심
+- PR 생성 후 Vercel Preview 빌드가 `/api/branches/asan/dispatch` 수집 단계에서 `supabaseUrl is required`로 실패하는 것을 확인했습니다.
+- 원인은 API 라우트가 모듈 import 시점에 Supabase admin client를 생성해, Preview 환경변수가 없는 경우 빌드 단계에서 즉시 예외가 발생하던 구조였습니다.
+- Supabase admin client 생성을 요청 시점으로 늦기고, 환경변수가 없으면 실제 API 요청에서 503 JSON을 반환하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 서비스 히어로 문구 정리 (v5.14.191)
 ### 핵심
 - 서비스 페이지 히어로 문구에서 `및 제조 서비스` 표현을 제거했습니다.
