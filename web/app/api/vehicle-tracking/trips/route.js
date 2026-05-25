@@ -12,6 +12,7 @@ import {
 
 const roadSnapCache = new Map();
 const ROAD_SNAP_CACHE_TTL_MS = 20 * 1000;
+const RECORD_LOCATION_BATCH_SIZE = 3;
 
 function getRoadSnapCache(key) {
     const cached = roadSnapCache.get(key);
@@ -78,6 +79,25 @@ function applyTripLocationStats(trips = [], groupedLocations = {}, options = {})
         }
     });
     return trips;
+}
+
+async function fetchLocationsForTripIds(supabase, tripIds = []) {
+    const rows = [];
+    for (let i = 0; i < tripIds.length; i += RECORD_LOCATION_BATCH_SIZE) {
+        const chunkIds = tripIds.slice(i, i + RECORD_LOCATION_BATCH_SIZE);
+        const { data, error } = await supabase
+            .from('vehicle_locations')
+            .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
+            .in('trip_id', chunkIds)
+            .order('recorded_at', { ascending: true })
+            .limit(2000);
+        if (error) {
+            console.warn('[vehicle-tracking] record location batch failed', error.message);
+            continue;
+        }
+        rows.push(...(data || []));
+    }
+    return rows;
 }
 
 async function getRoadSnappedLocation(trip, locations = []) {
@@ -344,14 +364,8 @@ export async function GET(request) {
             // 각 트립의 마지막 위치 주소 가져오기
             const tripIds = pageTrips.map(t => t.id);
             if (tripIds.length > 0) {
-                // RPC 대신 일반 쿼리로 최신 데이터 가져오기 (메모리에서 최신값 추출)
-                const { data: locData, error: locError } = await supabase
-                    .from('vehicle_locations')
-                    .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
-                    .in('trip_id', tripIds)
-                    .order('recorded_at', { ascending: true });
-                
-                if (!locError && locData) {
+                const locData = await fetchLocationsForTripIds(supabase, tripIds);
+                if (locData.length > 0) {
                     const grouped = groupLocationsByTrip(locData);
                     applyTripLocationStats(pageTrips, grouped, { includeLastLocation: true });
                 }

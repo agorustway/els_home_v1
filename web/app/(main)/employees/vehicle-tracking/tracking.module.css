@@ -2457,6 +2457,21 @@
         line-height: 1.35;
     }
 
+    .recordsTableSection .tripTypeInline {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .recordsTableSection .dateStack {
+        display: grid;
+        gap: 1px;
+        min-width: 0;
+    }
+
     .recordsTableSection .tripTable td:nth-child(2) {
         margin-bottom: 2px;
         padding-right: 24px;
@@ -2469,6 +2484,40 @@
     .recordsTableSection .tripTable td:nth-child(10) {
         margin-top: 3px;
         padding-top: 5px;
+    }
+
+    .recordsTableSection .tripTable td[data-label="날짜"] {
+        flex-direction: row;
+        align-items: flex-start;
+        border-top: 1px dashed #e2e8f0;
+        gap: 7px;
+    }
+
+    .recordsTableSection .tripTable td[data-label="날짜"]::before {
+        flex: 0 0 58px;
+        line-height: 1.35;
+    }
+
+    .recordsTableSection .tripTable td[data-label="운행거리"],
+    .recordsTableSection .tripTable td[data-label="최고속도"],
+    .recordsTableSection .tripTable td[data-label="최종위치"] {
+        align-items: flex-start;
+    }
+
+    .recordsTableSection .finalLocationText {
+        min-width: 0;
+        max-width: 100%;
+        color: #334155;
+        font-weight: 800;
+        line-height: 1.35;
+    }
+
+    .recordsTableSection .finalLocationMeta {
+        margin-top: 2px;
+        color: #94a3b8;
+        font-size: 0.66rem;
+        font-weight: 700;
+        line-height: 1.25;
     }
 
     .recordsTableSection .tripTable td:last-child {

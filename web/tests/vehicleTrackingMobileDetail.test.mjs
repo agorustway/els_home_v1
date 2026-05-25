@@ -43,21 +43,44 @@ test('관제 통계 카드는 실행 버튼처럼 떠오르지 않는다', () =>
 
 test('상세/기록 화면은 운행거리와 최고속도 중심으로 표시한다', () => {
   assert.ok(pageSource.includes('const getTripMaxSpeed'), 'trip max speed helper should exist');
+  assert.ok(pageSource.includes('const getTripFinalLocation'), 'record cards should format final location with a coordinate fallback');
   assert.ok(pageSource.includes('<span>최고속도</span>'), 'detail metrics should show max speed');
   assert.ok(pageSource.includes('<th style={{ width: \'90px\' }}>운행거리</th>'), 'record table should expose distance as its own column');
   assert.ok(pageSource.includes('<th style={{ width: \'90px\' }}>최고속도</th>'), 'record table should expose max speed as its own column');
   assert.ok(pageSource.includes('data-label="운행거리"'), 'mobile record cards should show distance label');
   assert.ok(pageSource.includes('data-label="최고속도"'), 'mobile record cards should show max speed label');
   assert.ok(pageSource.includes('{getTripMaxSpeed(trip)}'), 'record rows should use max speed fallback helper');
+  assert.ok(pageSource.includes('styles.tripTypeInline'), 'mobile trip type should stay on one line');
+  assert.ok(pageSource.includes('styles.dateStack'), 'mobile date values should be grouped without vertical gaps');
+  assert.ok(cssSource.includes('.recordsTableSection .tripTypeInline'), 'mobile trip type should have nowrap styling');
+  assert.ok(cssSource.includes('.recordsTableSection .dateStack'), 'mobile date stack should have compact styling');
+  assert.ok(cssSource.includes('.recordsTableSection .finalLocationMeta'), 'mobile final location should expose time/coordinate metadata');
   assert.ok(!pageSource.includes('최종위치(속도)'), 'final location should not hide distance and speed in one column');
   assert.ok(!pageSource.includes('평균속도'), 'average speed should not be displayed');
 });
 
 test('운행기록 API는 위치 포인트가 부족해도 기존 거리/최고속도 저장값을 0으로 덮지 않는다', () => {
   assert.ok(tripsRouteSource.includes('function pickPositiveMetric'), 'API should have a positive metric fallback helper');
+  assert.ok(tripsRouteSource.includes('const RECORD_LOCATION_BATCH_SIZE = 3'), 'record location enrichment should query small batches');
+  assert.ok(tripsRouteSource.includes('async function fetchLocationsForTripIds'), 'record location enrichment should have a batched helper');
   assert.ok(tripsRouteSource.includes('const stats = list.length > 0 ? computeReliableRouteStats(list, trip) : null'), 'API should skip zero stats when there are no location points');
   assert.match(tripsRouteSource, /pickPositiveMetric\(trip\.distance_km, trip\.route_distance_km\)/, 'distance should fall back to stored trip values');
   assert.match(tripsRouteSource, /pickPositiveMetric\(trip\.max_speed, trip\.maxSpeed\)/, 'max speed should fall back to stored trip values');
+});
+
+test('운행 상세 단건 API도 위치 기반 거리/최고속도/최종위치를 보강한다', () => {
+  const detailRouteSource = readFileSync(new URL('../app/api/vehicle-tracking/trips/[id]/route.js', import.meta.url), 'utf8');
+  assert.ok(detailRouteSource.includes('function enrichTripWithLocationStats'), 'detail API should enrich one trip with location stats');
+  assert.ok(detailRouteSource.includes('computeReliableRouteStats(cleanLocations, trip)'), 'detail API should compute route stats from locations');
+  assert.ok(detailRouteSource.includes('pickLatestDisplayLocation(cleanLocations)'), 'detail API should pick a display-safe final location');
+  assert.ok(detailRouteSource.includes("last_location_address: latestLocation?.address"), 'detail API should return final address fallback');
+});
+
+test('상세현황 위치 포인트 목록은 최근 일부만 렌더링한다', () => {
+  assert.ok(pageSource.includes('const DETAIL_LOCATION_LIST_LIMIT = 60'), 'detail location list should have a fixed render limit');
+  assert.ok(pageSource.includes('selectedTripLocations.slice(-DETAIL_LOCATION_LIST_LIMIT)'), 'detail screen should keep only recent points for visible lists');
+  assert.ok(pageSource.includes('최근 ${displayTripLocations.length}개 표시'), 'detail header should tell the visible point count');
+  assert.ok(pageSource.includes('displayTripLocations.slice().reverse().map'), 'desktop/mobile point lists should render the capped list');
 });
 
 test('운행기록과 교육이수는 서버 페이지 단위로 1차 목록을 로딩한다', () => {

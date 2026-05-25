@@ -20,6 +20,7 @@ const LIVE_DEFAULT_ZOOM = 13;
 const LIVE_FOCUS_ZOOM = 15;
 const RECORDS_PAGE_SIZE_OPTIONS = [20, 50, 100];
 const DEFAULT_RECORDS_PAGE_SIZE = 20;
+const DETAIL_LOCATION_LIST_LIMIT = 60;
 
 function animateMarker(marker, fromLat, fromLng, toLat, toLng, duration = 650) {
     const start = performance.now();
@@ -1061,6 +1062,28 @@ export default function VehicleTrackingPage() {
         return `${Math.round(value)} km/h`;
     };
 
+    const formatLocationCoords = (loc) => {
+        if (!loc || !Number.isFinite(Number(loc.lat)) || !Number.isFinite(Number(loc.lng))) return '';
+        return `${Number(loc.lat).toFixed(5)}, ${Number(loc.lng).toFixed(5)}`;
+    };
+
+    const getTripFinalLocation = (trip) => {
+        const loc = trip?.lastLocation || null;
+        const address = trip?.last_location_address || loc?.address || '';
+        const coords = formatLocationCoords(loc);
+        const time = loc?.timestamp || loc?.recorded_at ? formatDateTime(loc.timestamp || loc.recorded_at) : '';
+        return {
+            title: address || (coords ? `좌표 ${coords}` : '-'),
+            meta: [time, coords].filter(Boolean).join(' · '),
+        };
+    };
+
+    const displayTripLocations = useMemo(() => {
+        if (!Array.isArray(selectedTripLocations)) return [];
+        return selectedTripLocations.slice(-DETAIL_LOCATION_LIST_LIMIT);
+    }, [selectedTripLocations]);
+    const hiddenTripLocationCount = Math.max(0, selectedTripLocations.length - displayTripLocations.length);
+
     const educationRows = useMemo(() => {
         return records.flatMap(trip => (trip.education_logs || []).map(log => ({ trip, log })));
     }, [records]);
@@ -1590,7 +1613,7 @@ export default function VehicleTrackingPage() {
                                     <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(trip.id)} onChange={() => toggleSelect(trip.id)} /></td>
                                     <td data-label="상태"><span className={`${styles.statusBadge} ${getStatusClass(trip.status)}`}>{getStatusIcon(trip.status)} {TRIP_STATUS_LABELS[trip.status]}</span></td>
                                     <td data-label="구분" style={{ fontSize: '0.78rem', fontWeight: 800, color: (trip.cargo_type || 'container') === 'general' ? '#7c3aed' : '#2563eb' }} onClick={(e) => e.stopPropagation()}>
-                                        {cargoTypeLabel(trip.cargo_type || 'container')}<br />{contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}
+                                        <span className={styles.tripTypeInline}>{cargoTypeLabel(trip.cargo_type || 'container')} · {contractTypeLabel(trip.driver_contract_type || trip.contract_type || 'uncontracted')}</span>
                                     </td>
                                     <td data-label="기사/차량">
                                         <div><strong>{trip.driver_name}</strong></div>
@@ -1629,8 +1652,10 @@ export default function VehicleTrackingPage() {
                                     </td>
                                     <td data-label="사진" style={{ textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>{trip.photos?.length || 0}장</td>
                                     <td data-label="날짜" style={{ fontSize: '0.8rem' }}>
-                                        <div style={{ color: '#1e293b' }}>{formatDateTime(trip.started_at)}</div>
-                                        <div style={{ color: '#64748b' }}>{formatDateTime(trip.completed_at)}</div>
+                                        <div className={styles.dateStack}>
+                                            <div style={{ color: '#1e293b' }}>{formatDateTime(trip.started_at)}</div>
+                                            <div style={{ color: '#64748b' }}>{formatDateTime(trip.completed_at)}</div>
+                                        </div>
                                     </td>
                                     <td data-label="운행거리" style={{ fontSize: '0.78rem', fontWeight: 800, color: '#2563eb', whiteSpace: 'nowrap' }}>
                                         {getTripDistance(trip) || '-'}
@@ -1638,8 +1663,9 @@ export default function VehicleTrackingPage() {
                                     <td data-label="최고속도" style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ef4444', whiteSpace: 'nowrap' }}>
                                         {getTripMaxSpeed(trip)}
                                     </td>
-                                    <td data-label="최종위치" title={trip.last_location_address || '주소 정보 없음'} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '180px' }}>
-                                        <div>{trip.last_location_address || '-'}</div>
+                                    <td data-label="최종위치" title={getTripFinalLocation(trip).title} style={{ whiteSpace: 'normal', wordBreak: 'keep-all', fontSize: '0.8rem', lineHeight: '1.3', color: '#374151', maxWidth: '180px' }}>
+                                        <div className={styles.finalLocationText}>{getTripFinalLocation(trip).title}</div>
+                                        {getTripFinalLocation(trip).meta && <div className={styles.finalLocationMeta}>{getTripFinalLocation(trip).meta}</div>}
                                     </td>
                                     <td className={styles.actionCol} onClick={(e) => e.stopPropagation()}>
                                         <button className={styles.viewIconBtn} onClick={() => handleSelectTrip(trip)}>상세보기</button>
@@ -1796,7 +1822,7 @@ export default function VehicleTrackingPage() {
                         </div>
                         <div className={styles.detailSection}>
                             <div className={styles.sectionTitle}>
-                                <span>이동 경로 ({selectedTripLocations.length})</span>
+                                <span>이동 경로 ({selectedTripLocations.length}{hiddenTripLocationCount > 0 ? ` · 최근 ${displayTripLocations.length}개 표시` : ''})</span>
                                 <div className={styles.detailActionRow}>
                                     <button className={styles.filterSearchBtn} style={{ background: '#10b981', borderColor: '#10b981', padding: '0 10px', fontSize: '0.75rem', height: '26px', borderRadius: '6px' }} onClick={handleDownloadLocationsCsv}>엑셀 다운로드</button>
                                     <button className={styles.resetZoomBtn} onClick={() => {
@@ -1830,7 +1856,7 @@ export default function VehicleTrackingPage() {
                                         {selectedTripLocations.length === 0 ? (
                                             <tr><td colSpan="4" style={{ padding: '20px', color: '#94a3b8' }}>위치 기록 데이터가 없습니다.</td></tr>
                                         ) : (
-                                            selectedTripLocations.slice().reverse().map((loc, i) => {
+                                            displayTripLocations.slice().reverse().map((loc, i) => {
                                                 const realIndex = selectedTripLocations.length - 1 - i;
                                                 const hasAddr = loc.address && loc.address !== '주소 정보 없음';
                                                 const d = new Date(loc.timestamp || loc.recorded_at);
@@ -1860,7 +1886,7 @@ export default function VehicleTrackingPage() {
                                     {selectedTripLocations.length === 0 ? (
                                         <div className={styles.mobileEmptyState}>위치 기록 데이터가 없습니다.</div>
                                     ) : (
-                                        selectedTripLocations.slice().reverse().map((loc, i) => {
+                                        displayTripLocations.slice().reverse().map((loc, i) => {
                                             const realIndex = selectedTripLocations.length - 1 - i;
                                             const hasAddr = loc.address && loc.address !== '주소 정보 없음';
                                             const d = new Date(loc.timestamp || loc.recorded_at);

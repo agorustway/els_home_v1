@@ -1,3 +1,22 @@
+## [2026-05-25] 차량관제 모바일 기록/상세 표시 안정화 (v5.14.209)
+### 핵심
+- 모바일 운행기록 카드에서 `구분` 값을 한 줄로 표시하고, 날짜 라벨 아래에 생기던 큰 여백을 줄였습니다.
+- 운행기록 카드의 최종위치는 주소가 없을 때 좌표/기록시간을 fallback으로 보여주도록 보강했습니다.
+- 운행기록 목록 API는 위치 포인트를 소량 배치로 나눠 읽어 포인트가 많은 운행이 섞여도 운행거리, 최고속도, 최종위치 보강값이 빠지지 않게 했습니다.
+- 단건 상세 API도 위치 포인트를 기반으로 운행거리, 최고속도, 최종위치를 계산해 상세보기 진입 시 목록에서 보이던 값이 사라지지 않게 했습니다.
+- 상세현황의 위치 포인트 목록은 전체 포인트를 보유하되 화면에는 최근 60개만 렌더링해 모바일 다운 위험을 줄였습니다.
+### 검증
+- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `web/app/api/vehicle-tracking/trips/route.js`
+- `web/app/api/vehicle-tracking/trips/[id]/route.js`
+- `web/tests/vehicleTrackingMobileDetail.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] GLAPS 운송경로 보호 컬럼 우측 배치 (v5.14.208)
 ### 핵심
 - 운송경로 탭에서 `운송경로코드/운송경로명` 회색 보호 컬럼이 왼쪽에 있어 항목매핑 탭과 시선 흐름이 달랐던 문제를 정리했습니다.

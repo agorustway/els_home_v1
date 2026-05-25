@@ -1,5 +1,37 @@
 import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { computeReliableRouteStats, filterRouteLocations, pickLatestDisplayLocation } from '@/utils/vehicleLocation.mjs';
+
+function pickPositiveMetric(...values) {
+    for (const value of values) {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    }
+    return 0;
+}
+
+function enrichTripWithLocationStats(trip, locations = []) {
+    const cleanLocations = filterRouteLocations(locations || []);
+    const stats = cleanLocations.length > 0 ? computeReliableRouteStats(cleanLocations, trip) : null;
+    const distanceKm = stats?.distanceKm > 0
+        ? stats.distanceKm
+        : pickPositiveMetric(trip.distance_km, trip.route_distance_km);
+    const maxSpeed = stats?.maxSpeed > 0
+        ? stats.maxSpeed
+        : pickPositiveMetric(trip.max_speed, trip.maxSpeed);
+    const latestLocation = cleanLocations.length > 0
+        ? pickLatestDisplayLocation(cleanLocations) || cleanLocations[cleanLocations.length - 1]
+        : null;
+
+    return {
+        ...trip,
+        distance_km: distanceKm || trip.distance_km || trip.route_distance_km || null,
+        route_distance_km: distanceKm || trip.route_distance_km || trip.distance_km || null,
+        max_speed: maxSpeed || trip.max_speed || trip.maxSpeed || null,
+        lastLocation: latestLocation || null,
+        last_location_address: latestLocation?.address || trip.last_location_address || null,
+    };
+}
 
 /**
  * 운전원정보(driver_contacts) 매칭 및 갱신
@@ -84,13 +116,21 @@ export async function GET(request, { params }) {
 
         if (error) throw error;
         if (!data) return NextResponse.json({ error: '데이터를 찾을 수 없습니다.' }, { status: 404 });
+        const { data: locations } = await supabase
+            .from('vehicle_locations')
+            .select('trip_id, lat, lng, accuracy, address, recorded_at, speed, method')
+            .eq('trip_id', id)
+            .order('recorded_at', { ascending: true });
+
+        const enrichedTrip = enrichTripWithLocationStats(data, locations || []);
+
         const { data: logs } = await supabase
             .from('vehicle_trip_logs')
             .select('*')
             .eq('trip_id', id)
             .order('created_at', { ascending: false });
 
-        return NextResponse.json({ ...data, logs: logs || [] });
+        return NextResponse.json({ ...enrichedTrip, logs: logs || [] });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
