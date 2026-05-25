@@ -474,7 +474,7 @@
 }
 
 .welcomeMsg {
-    font-size: 0.86rem;
+    font-size: 0.94rem;
     color: #333;
     line-height: 1.35;
     margin-bottom: 6px;
@@ -487,7 +487,7 @@
     color: white;
     border: none;
     border-radius: 7px;
-    font-size: 0.84rem;
+    font-size: 0.92rem;
     font-weight: 600;
     cursor: pointer;
 }
@@ -502,7 +502,7 @@
     align-items: center;
     padding: 8px 14px;
     min-height: 34px;
-    font-size: 0.86rem;
+    font-size: 0.94rem;
     font-weight: 600;
     color: #333;
     text-decoration: none;
@@ -528,7 +528,7 @@
     align-items: center;
     padding: 7px 14px 7px 22px;
     min-height: 32px;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     color: #666;
     text-decoration: none;
     border-left: 3px solid transparent;
@@ -536,7 +536,7 @@
 
 .mobileSubItemNested {
     padding-left: 32px;
-    font-size: 0.78rem;
+    font-size: 0.86rem;
 }
 
 .mobileSubItem:hover,
@@ -548,7 +548,7 @@
 
 .mobileSubLabel {
     padding: 10px 14px 3px;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #999;
     text-transform: uppercase;
@@ -567,7 +567,7 @@
     align-items: center;
     padding: 7px 14px 7px 22px;
     min-height: 32px;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     color: #666;
     text-decoration: none;
     cursor: pointer;

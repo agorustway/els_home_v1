@@ -101,7 +101,7 @@
 }
 
 .mobileTitle {
-    font-size: 0.92rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #1e293b;
 }
@@ -416,7 +416,7 @@
     }
 
     .triggerLabel {
-        font-size: 0.84rem;
+        font-size: 0.92rem;
     }
 
     .chevron {
@@ -431,7 +431,7 @@
 
     .subItem {
         padding: 6px 9px 6px 18px;
-        font-size: 0.78rem;
+        font-size: 0.86rem;
         line-height: 1.25;
     }
 
@@ -453,20 +453,20 @@
     .avatar {
         width: 30px;
         height: 30px;
-        font-size: 0.86rem;
+        font-size: 0.94rem;
     }
 
     .username {
-        font-size: 0.82rem;
+        font-size: 0.9rem;
     }
 
     .role {
-        font-size: 0.7rem;
+        font-size: 0.78rem;
     }
 
     .logoutBtn {
         padding: 7px;
-        font-size: 0.78rem;
+        font-size: 0.86rem;
     }
 
     /* 모바일에서는 고정 여부와 관계없이 항상 닫기 버튼을 표시 */
