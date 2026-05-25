@@ -63,9 +63,16 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.equal(annualPagedRowsSource.includes(".order('year_value'"), false);
   assert.match(dbReader, /String\(mode \|\| ''\)\.toLowerCase\(\) === 'and'/);
   assert.match(dbReader, /nextQuery\.ilike\('search_text'/);
+  assert.match(dbReader, /split\(\/\[;,，；\]\+\//);
+  assert.match(dbReader, /replace\(\/\[;,，；\\\\\]\//);
   assert.match(dbReader, /function rowMatchesPerformanceSearch/);
+  assert.match(dbReader, /PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 5000/);
+  assert.match(dbReader, /PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000/);
+  assert.match(dbReader, /async function scanPerformanceSearchRows/);
   assert.match(dbReader, /replace\(PERFORMANCE_SEARCH_COMPACT_RE/);
-  assert.match(annualPagedRowsSource, /rowMatchesPerformanceSearch\(item\.mapped_values, search, searchMode\)/);
+  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped\.mapped_values, search, searchMode\)/);
+  assert.match(annualPagedRowsSource, /if \(shouldFilter\) \{/);
+  assert.match(annualPagedRowsSource, /scanPerformanceSearchRows/);
   assert.match(dbReader, /totalEstimated/);
   assert.match(dbReader, /total_is_estimated/);
 });
@@ -123,7 +130,7 @@ test('아산 연간실적 운영 동기화는 장시간 작업 타임아웃을 �
   const nginx = read('docker/els-gateway/nginx.conf');
   assert.match(component, /async: true/);
   assert.match(component, /params\.set\('dashboard', '1'\)/);
-  assert.match(component, /activeTab === 'table' \|\| append/);
+  assert.match(component, /activeTab === 'table' \|\| append \|\| Boolean\(options\.search\) \|\| Boolean\(options\.sortKey\)/);
   assert.match(component, /const searchEffectReadyRef = useRef\(false\)/);
   assert.match(component, /\[selectedPath, sheetName, headerRow, activeTab\]\); \/\/ eslint-disable-line react-hooks\/exhaustive-deps/);
   assert.doesNotMatch(component, /\[selectedPath, sheetName, headerRow, fetchData\]/);
@@ -352,7 +359,9 @@ test('아산 연간실적 화면은 분석/테이블 탭, 파일 선택, 제목�
   assert.match(component, /EvidenceHelp/);
   assert.match(component, /search_mode/);
   assert.match(component, /AND 검색/);
-  assert.match(component, /placeholder="검색어 또는 금액"/);
+  assert.match(component, /placeholder="검색어 또는 금액 \(\, ; 로 조건 추가\)"/);
+  assert.match(component, /하나라도 포함/);
+  assert.match(component, /모두 포함/);
   assert.match(component, /title="클릭하여 정렬"/);
   assert.match(component, /totalRowsLabel/);
   assert.match(component, /payload\?\.total_is_estimated/);

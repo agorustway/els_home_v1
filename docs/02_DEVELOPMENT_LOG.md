@@ -1,3 +1,22 @@
+## [2026-05-25] 연간/월간 실적 테이블 검색 전체 원장 스캔 보정 (v5.14.212)
+### 핵심
+- 연간/월간 실적 테이블 검색이 정렬/검색 보호 로직 때문에 현재 원장의 앞쪽 일부 행만 훑던 문제를 수정했습니다.
+- 검색 시 현재 원장을 5,000행 단위로 배치 스캔해 2만 행 이후 자료도 찾고, 기본 테이블 페이징은 기존처럼 가볍게 유지했습니다.
+- 상세 분석에서 테이블 탭으로 넘어가며 검색어를 바로 넣는 경우에도 검색 파라미터가 빠지지 않도록 `options.search/options.sortKey`가 있으면 테이블 조회로 처리합니다.
+- 검색 입력은 `,`와 `;`를 조건 구분자로 받고, 버튼 문구를 `하나라도 포함/모두 포함`으로 바꿔 OR/AND 기준을 화면에서 알 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] GLAPS 경로미도출/실적관리 RAG 보정 (v5.14.211)
 ### 핵심
 - `내일 GLAPS 경로확인 안되는 작업지 어디야?` 같은 질문을 단순 키워드 검색이 아니라 상세배차의 `운송경로 미도출` 조건으로 해석하도록 보정했습니다.

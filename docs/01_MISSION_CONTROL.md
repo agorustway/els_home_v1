@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.211 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.212 / APK v5.11.29)
 
-> 최신 업데이트: AI RAG가 GLAPS 경로확인 안됨을 상세배차 운송경로 미도출로 해석하고, 실적관리 화면 도출항목/요약 스냅샷까지 읽는다.
+> 최신 업데이트: 연간/월간 실적 테이블 검색이 원장 앞 일부 행만 보던 문제를 전체 현재 원장 배치 스캔으로 보정하고, 검색 조건 구분자와 모두/하나라도 포함 기준을 화면에 명시했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.211
+- **웹 버전**: v5.14.212
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -66,6 +66,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.212**: 연간/월간 실적 테이블 검색은 현재 원장을 5,000행 단위로 훑어 앞 2만 행 이후 자료도 찾는다. `,`와 `;`를 조건 구분자로 받고 버튼 문구를 `하나라도 포함/모두 포함`으로 바꿔 OR/AND 기준을 명확히 했다.
 - **v5.14.211**: AI는 `GLAPS 경로확인 안되는 작업지`를 운송경로 미도출 조건으로 읽고, 실적관리 예하 `종합실적/월간실적/연간실적` 화면 도출항목과 요약 스냅샷을 DB 기준으로 주입한다. 채팅 예시 컨테이너는 정상 선적 이력 샘플 `CMAU7631738`로 교체했다.
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
@@ -73,12 +74,10 @@
 - **v5.14.206**: 아산 배차판 모바일에서 상태/작업 버튼 영역이 데스크톱 `flex-basis`를 유지해 큰 공백이 생기던 문제를 수정했다. 모바일 상태영역은 자동 높이로 초기화하고, 저장/동기화 상태가 없으면 빈 상태 박스를 렌더링하지 않는다.
 - **v5.14.205**: GLAPS 항목매핑 화면/수정양식 라벨을 `ELS 매치코드`, `ELS 디스크립션(설명)`, `GLAPS 디스크립션(설명)`, `최종코드(BP)`로 정리했다. 매핑항목은 한글 표시/업로드를 지원하고 구형 영문/기존 헤더도 계속 파싱한다.
 - **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
-- **v5.14.203**: 배차확정 후 배차판 WEB BKG 기존값을 UI/API 양쪽에서 잠그고, 비어 있던 BKG 칸은 추가 입력만 허용한다. TARGET VESSEL/비고는 계속 수정 가능하게 두며, 상세배차/배차변동 변경 표시 tooltip에 확정 후 변경된 전후 값을 노출한다.
 ## VERIFICATION
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
 - `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 24개 통과 / Supabase 2026-05-26 상세배차 81라인 중 GLAPS 운송경로 미도출 44건 조회
-- `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 통과
-- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js"`: 통과
 - `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
@@ -93,6 +92,7 @@
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.
+- PowerShell에서 `web\app\(main)\...` 경로는 반드시 따옴표로 감싼다. 따옴표 없이 넘기면 `(main)`이 `C:\WINDOWS\system32\main.cpl`로 해석돼 `마우스 속성` 창이 뜰 수 있다. 예: `rg -n "검색어" 'web\app\(main)\employees\branches\asan'`.
 - Android 앱 수정은 `web/driver-src/`만 편집하고 APK는 `scripts/build_driver_apk.ps1`만 사용.
 - 매크로/배열수식 포함 배차판 `.xlsm` 원본 수정 시 `openpyxl.save()` 금지. 백업 후 Excel COM 자동화 또는 OOXML 엔트리 패치 후 Excel 열기 검증까지 수행.
 - GLAPS 마스터 `.xlsx` 수정 시에도 백업을 먼저 만들고, ELS 별칭/입력칸 보강과 DB 활성 버전 재반영 결과를 문서에 남긴다.

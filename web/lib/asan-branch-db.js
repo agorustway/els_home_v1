@@ -211,14 +211,16 @@ function parsePositiveInt(value, fallback, max) {
 }
 
 function searchTerms(search) {
-    return String(search || '').split(',').map(term => term.trim()).filter(Boolean);
+    return String(search || '').split(/[;,，；]+/).map(term => term.trim()).filter(Boolean);
 }
 
 function searchFilterValue(term) {
-    return String(term || '').replace(/[,\\]/g, ' ');
+    return String(term || '').replace(/[;,，；\\]/g, ' ');
 }
 
 const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원]/g;
+const PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 5000;
+const PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000;
 
 function normalizePerformanceSearchText(value) {
     const raw = String(value ?? '').trim().toLocaleLowerCase('ko-KR');
@@ -246,6 +248,77 @@ function rowMatchesPerformanceSearch(values = [], search = '', mode = 'or') {
     return String(mode || '').toLowerCase() === 'and'
         ? terms.every(matches)
         : terms.some(matches);
+}
+
+async function scanPerformanceSearchRows({
+    baseOrdered,
+    mapRow,
+    search = '',
+    searchMode = 'or',
+    start = 0,
+    end = 0,
+    sortIdx = -1,
+    sortDesc = false,
+    maxScanRows = PERFORMANCE_SEARCH_SCAN_MAX_ROWS,
+    batchSize = PERFORMANCE_SEARCH_SCAN_BATCH_SIZE,
+}) {
+    const shouldSort = sortIdx >= 0;
+    const pageRows = [];
+    const sortableRows = [];
+    let total = 0;
+    let exhausted = false;
+
+    for (let offset = 0; offset < maxScanRows; offset += batchSize) {
+        const rangeEnd = Math.min(offset + batchSize - 1, maxScanRows - 1);
+        const { data, error } = await baseOrdered.range(offset, rangeEnd);
+        if (error) throw new Error(error.message);
+        const rows = data || [];
+        if (!rows.length) {
+            exhausted = true;
+            break;
+        }
+
+        for (const raw of rows) {
+            const mapped = mapRow(raw);
+            if (!rowMatchesPerformanceSearch(mapped.mapped_values, search, searchMode)) continue;
+            if (shouldSort) {
+                sortableRows.push(mapped);
+            } else if (total >= start && pageRows.length <= end - start) {
+                pageRows.push(mapped);
+            }
+            total += 1;
+        }
+
+        if (rows.length < rangeEnd - offset + 1) {
+            exhausted = true;
+            break;
+        }
+    }
+
+    if (shouldSort) {
+        const sortable = [];
+        const blanks = [];
+        for (const item of sortableRows) {
+            const value = sortValue(item.mapped_values?.[sortIdx]);
+            if (!value) blanks.push(item);
+            else sortable.push([value, item]);
+        }
+        sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
+        const ordered = sortDesc
+            ? sortable.map(([, item]) => item).concat(blanks)
+            : blanks.concat(sortable.map(([, item]) => item));
+        return {
+            rows: ordered.slice(start, end + 1),
+            total: ordered.length,
+            totalEstimated: !exhausted,
+        };
+    }
+
+    return {
+        rows: pageRows,
+        total,
+        totalEstimated: !exhausted,
+    };
 }
 
 function normalizeMonthKeys(months) {
@@ -1019,7 +1092,31 @@ async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSi
     });
     const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0 || shouldFilter) {
+    if (shouldFilter) {
+        const scanned = await scanPerformanceSearchRows({
+            baseOrdered,
+            mapRow: item => {
+                const row = attachHeaders(item);
+                const mapped = annualRowToValues(row, headers);
+                return { ...row, mapped_values: mapped };
+            },
+            search,
+            searchMode,
+            start,
+            end,
+            sortIdx,
+            sortDesc,
+        });
+        return {
+            rows: scanned.rows,
+            total: scanned.total,
+            totalEstimated: scanned.totalEstimated,
+            sortKey: sortIdx >= 0 ? sortKey : '',
+            sortDir: sortDesc ? 'desc' : 'asc',
+        };
+    }
+
+    if (sortIdx >= 0) {
         const { data, error } = await baseOrdered.range(0, maxSortRows);
         if (error) throw new Error(error.message);
         const mappedRows = (data || []).map(item => {
@@ -1027,24 +1124,21 @@ async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSi
             const mapped = annualRowToValues(row, headers);
             return { ...row, mapped_values: mapped };
         });
-        const filtered = shouldFilter
-            ? mappedRows.filter(item => rowMatchesPerformanceSearch(item.mapped_values, search, searchMode))
-            : mappedRows;
         const sortable = [];
         const blanks = [];
-        for (const item of filtered) {
+        for (const item of mappedRows) {
             const value = sortValue(item.mapped_values?.[sortIdx]);
             if (!value) blanks.push(item);
             else sortable.push([value, item]);
         }
         sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortIdx >= 0
-            ? (sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item)))
-            : filtered;
+        const ordered = sortDesc
+            ? sortable.map(([, item]) => item).concat(blanks)
+            : blanks.concat(sortable.map(([, item]) => item));
         return {
             rows: ordered.slice(start, end + 1),
-            total: shouldFilter ? ordered.length : Math.max(numberValue(fallbackTotal), ordered.length),
-            sortKey: sortIdx >= 0 ? sortKey : '',
+            total: Math.max(numberValue(fallbackTotal), ordered.length),
+            sortKey,
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }
@@ -1655,28 +1749,45 @@ async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, so
         .order('row_index', { ascending: true });
     const shouldFilter = searchTerms(search).length > 0;
 
-    if (sortIdx >= 0 || shouldFilter) {
+    if (shouldFilter) {
+        const scanned = await scanPerformanceSearchRows({
+            baseOrdered,
+            mapRow: item => ({ ...item, mapped_values: monthlyRowToValues(item, headers) }),
+            search,
+            searchMode,
+            start,
+            end,
+            sortIdx,
+            sortDesc,
+        });
+        return {
+            rows: scanned.rows,
+            total: scanned.total,
+            totalEstimated: scanned.totalEstimated,
+            sortKey: sortIdx >= 0 ? sortKey : '',
+            sortDir: sortDesc ? 'desc' : 'asc',
+        };
+    }
+
+    if (sortIdx >= 0) {
         const { data, error } = await baseOrdered.range(0, maxSortRows);
         if (error) throw new Error(error.message);
         const mappedRows = (data || []).map(item => ({ ...item, mapped_values: monthlyRowToValues(item, headers) }));
-        const filtered = shouldFilter
-            ? mappedRows.filter(item => rowMatchesPerformanceSearch(item.mapped_values, search, searchMode))
-            : mappedRows;
         const sortable = [];
         const blanks = [];
-        for (const item of filtered) {
+        for (const item of mappedRows) {
             const value = sortValue(item.mapped_values?.[sortIdx]);
             if (!value) blanks.push(item);
             else sortable.push([value, item]);
         }
         sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortIdx >= 0
-            ? (sortDesc ? sortable.map(([, item]) => item).concat(blanks) : blanks.concat(sortable.map(([, item]) => item)))
-            : filtered;
+        const ordered = sortDesc
+            ? sortable.map(([, item]) => item).concat(blanks)
+            : blanks.concat(sortable.map(([, item]) => item));
         return {
             rows: ordered.slice(start, end + 1),
-            total: shouldFilter ? ordered.length : Math.max(fallbackTotal, ordered.length),
-            sortKey: sortIdx >= 0 ? sortKey : '',
+            total: Math.max(fallbackTotal, ordered.length),
+            sortKey,
             sortDir: sortDesc ? 'desc' : 'asc',
         };
     }

@@ -982,7 +982,7 @@ export default function AsanAnnualPerformance() {
             });
             const effectiveHeaderRow = options.headerRow ?? headerRow;
             if (effectiveHeaderRow) params.set('header_row', String(effectiveHeaderRow));
-            const tableMode = activeTab === 'table' || append;
+            const tableMode = activeTab === 'table' || append || Boolean(options.search) || Boolean(options.sortKey);
             const effectiveSearch = tableMode ? (options.search ?? searchTerm) : '';
             if (effectiveSearch) params.set('search', effectiveSearch);
             const effectiveSearchMode = options.searchMode ?? searchMode;
@@ -1774,14 +1774,14 @@ export default function AsanAnnualPerformance() {
                             className={styles.searchInput}
                             value={searchInput}
                             onChange={e => setSearchInput(e.target.value)}
-                            placeholder="검색어 또는 금액"
+                            placeholder="검색어 또는 금액 (, ; 로 조건 추가)"
                         />
                         <button
                             className={searchMode === 'and' ? styles.smallActiveBtn : styles.ghostBtn}
                             onClick={() => setSearchMode(prev => (prev === 'and' ? 'or' : 'and'))}
-                            title="쉼표로 나눈 검색어를 모두 포함할지, 하나라도 포함할지 선택합니다."
+                            title=", 또는 ; 로 나눈 조건을 모두 포함할지, 하나라도 포함할지 선택합니다."
                         >
-                            {searchMode === 'and' ? 'AND 검색' : 'OR 검색'}
+                            {searchMode === 'and' ? '모두 포함' : '하나라도 포함'}
                         </button>
                         <button className={styles.ghostBtn} onClick={() => setShowColPanel(prev => !prev)}>컬럼</button>
                         <span className={styles.rowCount}>조회 {loadedRows.toLocaleString()} / 전체 {totalRowsLabel}</span>

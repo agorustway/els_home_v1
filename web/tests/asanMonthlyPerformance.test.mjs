@@ -221,7 +221,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /월간실적/);
   assert.match(component, /\/api\/branches\/asan\/performance\/monthly/);
   assert.match(component, /params\.set\('dashboard', '1'\)/);
-  assert.match(component, /activeTab === 'table' \|\| append/);
+  assert.match(component, /activeTab === 'table' \|\| append \|\| Boolean\(options\.search\) \|\| Boolean\(options\.sortKey\)/);
   assert.match(component, /const searchEffectReadyRef = useRef\(false\)/);
   assert.match(component, /\[baseYear, extraMonths, activeTab\]\); \/\/ eslint-disable-line react-hooks\/exhaustive-deps/);
   assert.doesNotMatch(component, /\[fetchData\]\);/);
@@ -406,9 +406,15 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.summarySourceRows\s*{[\s\S]*overflow-x: auto/);
   assert.match(css, /\.carryoverClientRows\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
   assert.match(css, /\.dataTable\s*{[\s\S]*width: max-content/);
-  assert.match(component, /placeholder="검색어 또는 금액"/);
+  assert.match(component, /placeholder="검색어 또는 금액 \(\, ; 로 조건 추가\)"/);
+  assert.match(component, /하나라도 포함/);
+  assert.match(component, /모두 포함/);
   assert.match(component, /title="클릭하여 정렬"/);
-  assert.match(dbReader, /rowMatchesPerformanceSearch\(item\.mapped_values, search, searchMode\)/);
+  assert.match(dbReader, /split\(\/\[;,，；\]\+\//);
+  assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped\.mapped_values, search, searchMode\)/);
+  assert.match(dbReader, /PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 5000/);
+  assert.match(dbReader, /async function scanPerformanceSearchRows/);
+  assert.match(dbReader, /if \(shouldFilter\) \{[\s\S]*scanPerformanceSearchRows/);
   assert.match(dbReader, /replace\(PERFORMANCE_SEARCH_COMPACT_RE/g);
   assert.match(css, /\.analytics\s*{[\s\S]*grid-template-columns: repeat\(auto-fit/);
   assert.match(css, /minmax\(min\(100%, 640px\), 1fr\)/);
