@@ -1,3 +1,23 @@
+## [2026-05-25] 배차변동 추가/삭제 이력 보존 및 확인취소 잠금 정책 (v5.14.202)
+### 핵심
+- 배차확정 후 추가된 상세라인이 다시 삭제될 때 기존 `추가` 이벤트를 `삭제`로 덮어쓰지 않고, `delete-after-add:*` 별도 삭제 이벤트를 아래에 추가하도록 변경했습니다.
+- 추가/삭제 쌍은 `추가취소쌍` 배지와 회색 배경으로 함께 표시해, 3건 추가 후 2건 삭제처럼 일부만 살아남는 상황을 눈으로 구분할 수 있게 했습니다.
+- 확인완료된 배차변동 행은 상차지/BKG확정/BKG 클릭 선택을 잠그고, `확인취소` 버튼으로 미확인 상태로 되돌린 뒤 수정하도록 했습니다.
+- 최종수량은 이미 최신 원천 데이터가 반영된 상세라인 수량을 기준으로 표시해, 변동 delta를 다시 더하는 이중계산을 막았습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
+- `cd web; npm run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 NAS 동기화 우선순위 재정렬 (v5.14.201)
 ### 핵심
 - 수동 NAS 동기화의 빠른 반영 기준을 기존 최근 5일에서 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜`로 바꿨습니다.

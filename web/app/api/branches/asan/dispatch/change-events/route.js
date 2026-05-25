@@ -138,6 +138,23 @@ function jsonPayload(value) {
     return JSON.stringify(value ?? null);
 }
 
+function addDeletedAfterAddContext(payload = {}, addEvent = {}) {
+    if (!payload) return payload;
+    return {
+        ...payload,
+        rowContext: {
+            ...(payload.rowContext || {}),
+            deletedAfterAdd: true,
+            deletedAfterAddEventKey: addEvent.event_key || '',
+            deletedAfterAddEventId: addEvent.id || '',
+        },
+    };
+}
+
+function deleteAfterAddEventKey(existing = {}) {
+    return `delete-after-add:${existing.event_key || existing.id || ''}`;
+}
+
 function snapshotRecordToLine(row = {}) {
     return normalizeDispatchChangeLineRecord({
         detailLineKey: row.detail_line_key,
@@ -219,13 +236,22 @@ function deletedAfterAddPayload(existing, actor, now) {
         || existing.after_snapshot
         || existing.before_snapshot
         || null;
+    const pairedPayload = addDeletedAfterAddContext(deletedLinePayload, existing);
     return {
+        confirmation_id: existing.confirmation_id,
+        branch_id: existing.branch_id || BRANCH_ID,
+        dispatch_type: existing.dispatch_type,
+        target_date: existing.target_date,
+        event_key: deleteAfterAddEventKey(existing),
         change_type: 'delete',
         event_status: 'pending',
-        quantity_delta: 0,
-        before_snapshot: deletedLinePayload,
+        detail_line_key: existing.detail_line_key || pairedPayload?.detailLineKey || '',
+        identity_key: existing.identity_key || pairedPayload?.identityKey || '',
+        group_key: existing.group_key || pairedPayload?.groupKey || '',
+        quantity_delta: -1,
+        before_snapshot: pairedPayload,
         after_snapshot: null,
-        editable_payload: deletedLinePayload,
+        editable_payload: pairedPayload,
         active: true,
         occurred_at: now,
         confirmed_by: null,
@@ -316,14 +342,30 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
         if (!existing.active || nextKeys.has(existing.event_key)) continue;
         if (existing.change_type === 'add') {
             const dbPayload = deletedAfterAddPayload(existing, actor, now);
+            const existingDelete = existingByKey.get(dbPayload.event_key);
+            if (existingDelete?.active) continue;
+            if (existingDelete?.id) {
+                const { data, error } = await adminSupabase
+                    .from('branch_dispatch_detail_change_events')
+                    .update(dbPayload)
+                    .eq('id', existingDelete.id)
+                    .select()
+                    .single();
+                if (error) throw error;
+                await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add_reopened', actor, now, existingDelete, data);
+                continue;
+            }
             const { data, error } = await adminSupabase
                 .from('branch_dispatch_detail_change_events')
-                .update(dbPayload)
-                .eq('id', existing.id)
+                .insert({
+                    ...dbPayload,
+                    created_by: actor,
+                    created_at: now,
+                })
                 .select()
                 .single();
             if (error) throw error;
-            await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add', actor, now, existing, data);
+            await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add', actor, now, null, data);
             continue;
         }
         if (existing.change_type === 'delete') continue;
@@ -382,6 +424,46 @@ async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false 
     return targetIds.length;
 }
 
+async function unconfirmEvents(adminSupabase, payload, actor, now) {
+    let query = adminSupabase
+        .from('branch_dispatch_detail_change_events')
+        .select('*')
+        .eq('branch_id', BRANCH_ID)
+        .eq('target_date', payload.targetDate)
+        .eq('active', true)
+        .eq('event_status', 'confirmed');
+
+    if (payload.eventIds.length > 0) query = query.in('id', payload.eventIds);
+    else if (payload.eventId) query = query.eq('id', payload.eventId);
+    else throw new Error('확인취소할 변동 이벤트를 선택해 주세요.');
+
+    const { data: targets, error: targetError } = await query;
+    if (targetError) throw targetError;
+    const scopedTargets = (targets || []).filter(row => eventMatchesRequestedScope(row, payload));
+    if (!scopedTargets.length) return 0;
+
+    const targetIds = scopedTargets.map(row => row.id);
+    const { data: updatedRows, error: updateError } = await adminSupabase
+        .from('branch_dispatch_detail_change_events')
+        .update({
+            event_status: 'pending',
+            confirmed_by: null,
+            confirmed_at: null,
+            updated_by: actor,
+            updated_at: now,
+        })
+        .in('id', targetIds)
+        .select('*');
+    if (updateError) throw updateError;
+
+    const updatedById = new Map((updatedRows || []).map(row => [row.id, row]));
+    for (const oldRow of scopedTargets) {
+        const newRow = updatedById.get(oldRow.id);
+        await insertHistory(adminSupabase, newRow, null, 'unconfirmed', actor, now, oldRow, newRow);
+    }
+    return targetIds.length;
+}
+
 async function updateEventPayload(adminSupabase, payload, actor, now) {
     if (!payload.eventId) throw new Error('변동 이벤트 식별값이 없습니다.');
     const normalized = normalizeDispatchChangeLineRecord(payload.editablePayload || {});
@@ -403,6 +485,7 @@ async function updateEventPayload(adminSupabase, payload, actor, now) {
         .maybeSingle();
     if (existingError) throw existingError;
     if (!existing || !eventMatchesRequestedScope(existing, payload)) throw new Error('변동 이벤트를 찾을 수 없습니다.');
+    if (existing.event_status === 'confirmed') throw new Error('확인완료된 변동은 확인취소 후 수정할 수 있습니다.');
 
     const { data, error } = await adminSupabase
         .from('branch_dispatch_detail_change_events')
@@ -461,6 +544,8 @@ export async function POST(request) {
             await confirmEvents(access.adminSupabase, payload, actor, now);
         } else if (payload.action === 'confirm_all') {
             await confirmEvents(access.adminSupabase, payload, actor, now, { bulk: true });
+        } else if (payload.action === 'unconfirm') {
+            await unconfirmEvents(access.adminSupabase, payload, actor, now);
         } else if (payload.action === 'update') {
             await updateEventPayload(access.adminSupabase, payload, actor, now);
         } else {

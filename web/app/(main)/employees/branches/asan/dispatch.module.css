@@ -857,6 +857,16 @@
     color: #334155 !important;
 }
 
+.detailChangePairedRow td {
+    background: #eef2f7 !important;
+    color: #475569;
+}
+
+.detailChangePairedRow .detailChangeTypeCell {
+    background: #dbe4ee !important;
+    color: #334155 !important;
+}
+
 .detailChangeMarker {
     display: inline-flex;
     align-items: center;
@@ -984,6 +994,26 @@
     font-weight: 900;
 }
 
+.detailChangeTypeWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.detailChangeTypeWrap em {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    color: #334155;
+    font-style: normal;
+    font-size: 0.62rem;
+    font-weight: 900;
+}
+
 .detailChangeInput {
     width: 100%;
     min-width: 72px;
@@ -1025,6 +1055,12 @@
 .detailChangeActionButton:disabled {
     opacity: 0.45;
     cursor: default;
+}
+
+.detailChangeUnconfirmButton {
+    border-color: #f97316;
+    background: #fff7ed;
+    color: #c2410c;
 }
 
 .detailChangeConfirmed {

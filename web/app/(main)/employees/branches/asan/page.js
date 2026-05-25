@@ -307,6 +307,22 @@ function actorDisplayName(value = '', fallback = '') {
 function confirmationActorName(confirmation = {}, field = 'confirmed_by') {
     return actorDisplayName(confirmation?.[`${field}_name`], confirmation?.[field]);
 }
+function getDeletedAfterAddPairKey(event = {}) {
+    const rowContext = event.before_snapshot?.rowContext
+        || event.editable_payload?.rowContext
+        || event.after_snapshot?.rowContext
+        || {};
+    return rowContext.deletedAfterAddEventKey || '';
+}
+function buildDeletedAfterAddPairKeySet(events = []) {
+    const keys = new Set();
+    events.forEach((event) => {
+        if (event.change_type !== 'delete') return;
+        const pairKey = getDeletedAfterAddPairKey(event);
+        if (pairKey) keys.add(pairKey);
+    });
+    return keys;
+}
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
     if (allTabWeek?.start && allTabWeek?.end) return `${allTabWeek.start}_${allTabWeek.end}`;
@@ -1816,9 +1832,14 @@ function AsanDispatchContent() {
             pending: activeEvents.filter(event => event.event_status !== 'confirmed').length,
             confirmed: activeEvents.filter(event => event.event_status === 'confirmed').length,
             quantityDelta,
-            finalTotal: detailSummary.total + quantityDelta,
+            confirmedBaseTotal: Math.max(0, detailSummary.total - quantityDelta),
+            finalTotal: detailSummary.total,
         };
     }, [detailChangeEvents, detailSummary.total]);
+
+    const deletedAfterAddPairKeys = useMemo(() => (
+        buildDeletedAfterAddPairKeySet(detailChangeEvents || [])
+    ), [detailChangeEvents]);
 
     const detailChangeEventByLineKey = useMemo(() => {
         const map = new Map();
@@ -1863,6 +1884,8 @@ function AsanDispatchContent() {
                 const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event));
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
+                const isDeletedAfterAdd = Boolean(getDeletedAfterAddPairKey(event));
+                const isPairedAdd = event.change_type === 'add' && deletedAfterAddPairKeys.has(event.event_key);
                 const values = [
                     ...editableValues,
                     formatDispatchChangeType(event.change_type),
@@ -1871,10 +1894,10 @@ function AsanDispatchContent() {
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
-                return { event, hasCalculatedDiff, line, rawValues, values };
+                return { event, hasCalculatedDiff, isDeletedAfterAdd, isPairedAdd, line, rawValues, values };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
-    }, [detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
+    }, [deletedAfterAddPairKeys, detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
 
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
@@ -2162,6 +2185,10 @@ function AsanDispatchContent() {
 
     const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null) => {
         if (!detailScope || !event?.id || detailChangeSaving) return;
+        if (event.event_status === 'confirmed') {
+            setSyncStatus({ message: '확인완료된 변동은 확인취소 후 수정할 수 있습니다.', isError: true });
+            return;
+        }
         const rowValues = rowValuesOverride || detailChangeDrafts[event.id] || changeEventToEditableValues(event);
         const basePayload = event.editable_payload || event.after_snapshot || event.before_snapshot || {};
         const rowContext = buildDetailChangeRowContext(rowValues, basePayload.rowContext || {});
@@ -2238,6 +2265,34 @@ function AsanDispatchContent() {
             setDetailChangeSaving(false);
         }
     }, [detailChangeSaving, detailChangeSummary.pending, detailScope, getDetailAuthHeaders]);
+
+    const unconfirmDetailChangeEvents = useCallback(async (eventIds = []) => {
+        if (!detailScope || detailChangeSaving || eventIds.length === 0) return;
+        setDetailChangeSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/change-events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                body: JSON.stringify({
+                    ...detailScope,
+                    action: 'unconfirm',
+                    eventIds,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '변동내역 확인취소 실패');
+            if (payload.setupRequired) {
+                setDetailChangeSetupRequired(true);
+            } else {
+                setDetailChangeEvents(payload.data || []);
+                setSyncStatus({ message: '변동내역 확인취소 완료', isError: false });
+            }
+        } catch (error) {
+            setSyncStatus({ message: error.message || '변동내역 확인취소 실패', isError: true });
+        } finally {
+            setDetailChangeSaving(false);
+        }
+    }, [detailChangeSaving, detailScope, getDetailAuthHeaders]);
 
     // ===== 핸들러 =====
     const toggleFilter = (ci) => setFilterDropdown(prev => prev === ci ? null : ci);
@@ -2861,12 +2916,14 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
+                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, isDeletedAfterAdd, isPairedAdd, line, rawValues, values }, rowIdx) => {
                                             const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
                                             const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             const isDeleteEvent = event.change_type === 'delete';
+                                            const isConfirmedEvent = event.event_status === 'confirmed';
+                                            const editDisabled = detailChangeSaving || isConfirmedEvent;
                                             return (
-                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''}`}>
+                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''} ${(isPairedAdd || isDeletedAfterAdd) ? styles.detailChangePairedRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
@@ -2883,7 +2940,7 @@ function AsanDispatchContent() {
                                                                         onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, '상차지', inputEvent.target.value))}
                                                                         onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, '상차지', inputEvent.target.value))}
                                                                         onKeyDown={focusDetailGridInput}
-                                                                        disabled={detailChangeSaving}
+                                                                        disabled={editDisabled}
                                                                         placeholder="선택"
                                                                     />
                                                                 </td>
@@ -2905,7 +2962,7 @@ function AsanDispatchContent() {
                                                                             onKeyDown={focusDetailGridInput}
                                                                             data-detail-row-index={rowIdx}
                                                                             data-detail-col-index={colIdx}
-                                                                            disabled={detailChangeSaving}
+                                                                            disabled={editDisabled}
                                                                             title={isManualBkg ? '수기 입력값' : `${line.confirmedBkgSource || 'BKG1'} 선택값`}
                                                                         />
                                                                     </div>
@@ -2915,7 +2972,7 @@ function AsanDispatchContent() {
                                                         if (isDetailValue && BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
                                                             const bkgValue = getDetailBkgValue(line, header);
                                                             const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
-                                                            const isDisabledBkg = detailChangeSaving || !bkgValue;
+                                                            const isDisabledBkg = editDisabled || !bkgValue;
                                                             return (
                                                                 <td key={header} className={isSelectedBkg ? styles.detailBkgSelectedCell : ''}>
                                                                     {bkgValue ? (
@@ -2948,7 +3005,7 @@ function AsanDispatchContent() {
                                                                     values[colIdx] || ''
                                                                 ) : isManage ? (
                                                                     <span className={styles.detailChangeActions}>
-                                                                        {hasDraft && (
+                                                                        {hasDraft && !isConfirmedEvent && (
                                                                             <button
                                                                                 type="button"
                                                                                 className={styles.detailChangeActionButton}
@@ -2968,8 +3025,20 @@ function AsanDispatchContent() {
                                                                                 확인완료
                                                                             </button>
                                                                         ) : (
-                                                                            <span className={styles.detailChangeConfirmed}>완료</span>
+                                                                            <button
+                                                                                type="button"
+                                                                                className={`${styles.detailChangeActionButton} ${styles.detailChangeUnconfirmButton}`}
+                                                                                onClick={() => unconfirmDetailChangeEvents([event.id])}
+                                                                                disabled={detailChangeSaving}
+                                                                            >
+                                                                                확인취소
+                                                                            </button>
                                                                         )}
+                                                                    </span>
+                                                                ) : isChangeType ? (
+                                                                    <span className={styles.detailChangeTypeWrap}>
+                                                                        <span>{values[colIdx]}</span>
+                                                                        {(isPairedAdd || isDeletedAfterAdd) && <em>추가취소쌍</em>}
                                                                     </span>
                                                                 ) : (
                                                                     values[colIdx]
