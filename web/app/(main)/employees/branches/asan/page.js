@@ -317,6 +317,12 @@ function actorDisplayName(value = '', fallback = '') {
 function confirmationActorName(confirmation = {}, field = 'confirmed_by') {
     return actorDisplayName(confirmation?.[`${field}_name`], confirmation?.[field]);
 }
+function syncStatusPrefix(status = {}) {
+    if (status?.isError) return '오류';
+    const message = String(status?.message || '');
+    if (/(진행 중|요청 중|확인 중|저장 중|처리 중|불러오는 중|동기화 중)/.test(message)) return '진행';
+    return '완료';
+}
 function getDeletedAfterAddPairKey(event = {}) {
     const rowContext = event.before_snapshot?.rowContext
         || event.editable_payload?.rowContext
@@ -2659,7 +2665,7 @@ function AsanDispatchContent() {
                             )}
                             {syncStatus && (
                                 <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
-                                    {syncStatus.isError ? '오류' : '완료'} · {syncStatus.message}
+                                    {syncStatusPrefix(syncStatus)} · {syncStatus.message}
                                 </div>
                             )}
                         </div>

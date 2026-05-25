@@ -679,6 +679,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailStartOverrides/);
   assert.match(source, /detailBkgOverrides/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS/);
+  assert.match(source, /syncStatusPrefix/);
+  assert.match(source, /확인 중\|저장 중/);
   assert.match(source, /BKG_WEB_CELL_LOCK_FIELDS/);
   assert.match(source, /dispatchConfirmationMap/);
   assert.match(source, /getWebCellLockMessage/);

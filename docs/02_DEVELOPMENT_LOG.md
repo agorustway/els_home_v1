@@ -1,3 +1,19 @@
+## [2026-05-25] 아산 배차판 동기화 상태칩 prefix 수정 (v5.14.204)
+### 핵심
+- 상태칩이 에러가 아니면 무조건 `완료` prefix를 붙이던 표시 로직을 수정했습니다.
+- `glovis 파일 확인 중`, `NAS 동기화 요청 중`, `저장 중` 같은 진행성 메시지는 `진행 · ...`으로 표시합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js"`: 통과
+- `cd web; npm run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 배차확정 후 WEB BKG 잠금 및 변경 tooltip 보강 (v5.14.203)
 ### 핵심
 - 배차확정 이후 배차판 WEB 입력칸의 BKG1/2/3 기존값은 UI에서 회색 잠금 처리하고, 저장 API에서도 같은 조건을 다시 차단합니다.
