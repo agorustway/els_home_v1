@@ -1,3 +1,16 @@
+## [2026-05-25] 서비스 히어로 문구 정리 (v5.14.191)
+### 핵심
+- 서비스 페이지 히어로 문구에서 `및 제조 서비스` 표현을 제거했습니다.
+- 최종 문구는 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`입니다.
+### 검증
+- `cd web; npm run lint -- constants/siteLayout.js`: 통과
+- Browser local check (`http://localhost:3010/services`): 기존 `물류 및 제조 서비스` 문구 없음, 새 `맞춤형 물류 서비스` 문구 확인.
+### 변경 파일
+- `web/constants/siteLayout.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 서비스 제목 보조 라벨 제거 (v5.14.190)
 ### 핵심
 - 서비스 페이지 `주요 사업 및 운영 현황` 제목 위에 작게 표시되던 공통 `ELS` 라벨을 제거했습니다.

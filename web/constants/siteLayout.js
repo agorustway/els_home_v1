@@ -40,7 +40,7 @@ export const HERO_MAP = {
     },
     '/services': {
         title: 'Service',
-        subtitle: '고객의 가치를 최우선으로 하는 맞춤형 물류 및 제조 서비스',
+        subtitle: '고객의 가치를 최우선으로 하는 맞춤형 물류 서비스',
         bgImage: '/images/asan/KakaoTalk_20260119_110613230.jpg',
     },
     '/network': {
