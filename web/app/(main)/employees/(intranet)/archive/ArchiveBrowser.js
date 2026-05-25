@@ -432,7 +432,7 @@ export default function ArchiveBrowser() {
                 <div style={{ marginBottom: '15px', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>자료실 데이터 로딩 중...</div>
                 <div style={{ fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6' }}>
                     자료실은 NAS 내부 서버와의 연결로 로딩 속도가 느립니다.<br />
-                    잠시만 기다려 주세요. 📂
+                    잠시만 기다려 주세요.
                 </div>
             </div>
         );
@@ -490,9 +490,9 @@ export default function ArchiveBrowser() {
                             </label>
                             <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
                             {selectedPaths.size === 1 && files.find(f => f.path === Array.from(selectedPaths)[0])?.type !== 'directory' ? (
-                                <button onClick={() => handleDownloadFile(files.find(f => f.path === Array.from(selectedPaths)[0]))} className={`${styles.btn} ${styles.btnPoint}`}>💾 다운로드</button>
+                                <button onClick={() => handleDownloadFile(files.find(f => f.path === Array.from(selectedPaths)[0]))} className={`${styles.btn} ${styles.btnPoint}`}>다운로드</button>
                             ) : (
-                                <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>📦 ZIP 압축다운로드</button>
+                                <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>ZIP 압축다운로드</button>
                             )}
                             <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btn}>취소</button>
                         </div>
@@ -583,7 +583,7 @@ export default function ArchiveBrowser() {
                                             handleDownloadFile(file);
                                         }
                                     }}>
-                                        <span className={styles.icon}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                        <span className={styles.icon}>{file.type === 'directory' ? '[폴더]' : '[파일]'}</span>
                                         {file.name}
                                     </td>
                                     <td className={styles.hideMobile}>{new Date(file.lastMod).toLocaleDateString()}</td>
@@ -643,7 +643,7 @@ export default function ArchiveBrowser() {
                                     ⋮
                                 </button>
                                 <div className={styles.cardIcon}>
-                                    {isImage(file.name) ? <img src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`} className={styles.thumb} /> : (file.type === 'directory' ? '📁' : '📄')}
+                                    {isImage(file.name) ? <img src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`} className={styles.thumb} /> : (file.type === 'directory' ? '폴더' : '파일')}
                                 </div>
                                 <div className={styles.cardName}>{file.name}</div>
                             </div>
@@ -671,64 +671,64 @@ export default function ArchiveBrowser() {
                                     if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
                                     else handleDownloadFile(contextMenu.file);
                                 }}>
-                                    📁 {contextMenu.file.type === 'directory' ? '열기' : '파일열기'}
+                                    {contextMenu.file.type === 'directory' ? '열기' : '파일열기'}
                                 </div>
 
                                 {/* Selection Mode Context Actions */}
                                 {selectionMode && selectedPaths.size > 0 ? (
                                     <>
                                         <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
-                                            📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                            선택된 {selectedPaths.size}개 항목 압축 다운로드
                                         </div>
                                         <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>
-                                            🚫 선택 모드 해제
+                                            선택 모드 해제
                                         </div>
                                     </>
                                 ) : (
                                     <>
                                         {contextMenu.file.type !== 'directory' && (
                                             <div className={styles.contextItem} onClick={() => handleDownloadFile(contextMenu.file)}>
-                                                💾 이 파일 다운로드
+                                                이 파일 다운로드
                                             </div>
                                         )}
                                         {contextMenu.file.type !== 'directory' && (
                                             <div className={styles.contextItem} onClick={() => handleCopyShareLink(contextMenu.file)}>
-                                                🔗 외부 공유 링크 복사 (URL)
+                                                외부 공유 링크 복사
                                             </div>
                                         )}
                                         <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>
-                                            ✅ 다중 선택 모드 시작
+                                            다중 선택 모드 시작
                                         </div>
                                     </>
                                 )}
 
                                 <div className={styles.contextDivider}></div>
-                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>✨ 즉시 복제 (같은 폴더)</div>
+                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>즉시 복제 (같은 폴더)</div>
                                 <div className={styles.contextItem} onClick={() => {
                                     const isPartOfSelection = selectionMode && selectedPaths.has(contextMenu.file.path);
                                     const itemsToCopy = isPartOfSelection
                                         ? files.filter(f => selectedPaths.has(f.path))
                                         : [contextMenu.file];
                                     setClipboard({ type: 'copy', items: itemsToCopy });
-                                }}>📋 복사 (Copy)</div>
-                                {clipboard && <div className={styles.contextItem} onClick={handlePaste}>📥 붙여넣기</div>}
-                                <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>✏️ 이름 바꾸기</div>
+                                }}>복사</div>
+                                {clipboard && <div className={styles.contextItem} onClick={handlePaste}>붙여넣기</div>}
+                                <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>이름 바꾸기</div>
                                 <div className={styles.contextDivider}></div>
                                 <div className={`${styles.contextItem} ${styles.danger}`} onClick={() => handleDelete(contextMenu.file)}>
-                                    🗑️ {selectionMode && selectedPaths.has(contextMenu.file.path) && selectedPaths.size > 1 ? `선택한 ${selectedPaths.size}개 삭제` : '삭제하기'}
+                                    {selectionMode && selectedPaths.has(contextMenu.file.path) && selectedPaths.size > 1 ? `선택한 ${selectedPaths.size}개 삭제` : '삭제하기'}
                                 </div>
                             </>
                         ) : (
                             <>
                                 {selectionMode && selectedPaths.size > 0 && (
                                     <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
-                                        📦 선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                        선택된 {selectedPaths.size}개 항목 압축 다운로드
                                     </div>
                                 )}
-                                <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>📥 붙여넣기</div>
-                                <div className={styles.contextItem} onClick={() => handleCreateFolder()}>📁 새 폴더 만들기</div>
+                                <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>붙여넣기</div>
+                                <div className={styles.contextItem} onClick={() => handleCreateFolder()}>새 폴더 만들기</div>
                                 {selectionMode && (
-                                    <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>🚫 선택 모드 해제</div>
+                                    <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>선택 모드 해제</div>
                                 )}
                             </>
                         )}
@@ -738,7 +738,7 @@ export default function ArchiveBrowser() {
             {deleteModal.show && (
                 <div className={styles.modalOverlay} onClick={() => setDeleteModal({ show: false, fileName: '' })}>
                     <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                        <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⚠️</div>
+                        <div className={styles.modalKicker}>삭제 제한</div>
                         <h2 className={styles.modalTitle}>삭제 불가 안내</h2>
                         <p className={styles.modalDesc}>
                             보안 및 데이터 유실 방지 정책에 따라<br />

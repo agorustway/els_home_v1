@@ -104,12 +104,12 @@ export default function InternalContactEditPage() {
                             {photoUrl ? (
                                 <img src={photoUrl} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%', border: '3px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
                             ) : (
-                                <div style={{ width: 80, height: 80, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#94a3b8' }}>👤</div>
+                                <div style={{ width: 80, height: 80, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem', color: '#94a3b8', fontWeight: 800 }}>사진</div>
                             )}
                             <div style={{ flex: 1 }}>
                                 <input type="file" id="photoEditUpload" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploading} />
                                 <label htmlFor="photoEditUpload" style={{ display: 'inline-block', padding: '8px 14px', background: '#2563eb', color: '#fff', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', marginBottom: 6 }}>
-                                    📸 사진 변경하기
+                                    사진 변경하기
                                 </label>
                                 {uploading && <span style={{ marginLeft: 10, fontSize: '0.85rem', color: '#2563eb', fontWeight: 600 }}>업로드 중...</span>}
                                 {photoUrl && (

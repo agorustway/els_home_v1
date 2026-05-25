@@ -56,7 +56,7 @@ export default function NoticesPage() {
                                 {/* 전문 (펼쳤을 때) */}
                                 {isOpen && (
                                     <div className={styles.fullText}>
-                                        <div className={styles.fullTextLabel}>📄 조문 전문</div>
+                                        <div className={styles.fullTextLabel}>조문 전문</div>
                                         {sec.fullText.split('\n').map((para, i) => {
                                             const trimmed = para.trim();
                                             if (!trimmed) return <br key={i} />;

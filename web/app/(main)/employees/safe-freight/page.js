@@ -1199,7 +1199,7 @@ export default function SafeFreightPage() {
                 <div className={styles.surchargeSection}>
                   <div className={styles.surchargeGroup}>
                     <div className={styles.surchargeGroupTitle}>
-                      📦 장비/화물
+                      장비/화물
                       <span className={styles.tooltipContainer}>
                         <span className={styles.infoIcon}>?</span>
                         <div className={styles.tooltipText}>액체화물 운송을 위한 플렉시백 설치 컨테이너 할증을 선택합니다.</div>
@@ -1229,7 +1229,7 @@ export default function SafeFreightPage() {
                     </div>
                   </div>
                   <div className={styles.surchargeGroup}>
-                    <div className={styles.surchargeGroupTitle}>⚙️ 운송 환경</div>
+                    <div className={styles.surchargeGroupTitle}>운송 환경</div>
                     <div className={styles.surchargeOptionsGrid}>
                       {checkboxSurcharges.map((s) => (
                         <label key={s.id} className={styles.checkLabel}>
@@ -1244,7 +1244,7 @@ export default function SafeFreightPage() {
                     </div>
                   </div>
                   <div className={styles.surchargeGroup}>
-                    <div className={styles.surchargeGroupTitle}>⚠️ 특수 할증</div>
+                    <div className={styles.surchargeGroupTitle}>특수 할증</div>
                     <div className={styles.surchargeOptionsGrid}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <label className={styles.checkLabel} style={{ whiteSpace: 'nowrap' }}>
@@ -1269,7 +1269,7 @@ export default function SafeFreightPage() {
                     </div>
                   </div>
                   <div className={styles.surchargeGroup}>
-                    <div className={styles.surchargeGroupTitle}>💰 부대 비용</div>
+                    <div className={styles.surchargeGroupTitle}>부대 비용</div>
                     <div className={styles.surchargeOptionsGrid}>
                       {otherCostItems.map((s) => (
                         <label key={s.id} className={styles.checkLabel}>
@@ -1403,7 +1403,7 @@ export default function SafeFreightPage() {
                     <div key={idx} className={styles.mobileResultCard}>
                       <div className={styles.cardHead}>
                         <div className={styles.cardRoute}>
-                          <span>🚩</span>
+                          <span>구간</span>
                           <span>{resultAll.origin || '-'} ➔ {resultAll.destination || '-'}</span>
                         </div>
                         <span className={styles.cardPeriod}>{applied.period}</span>
@@ -1412,7 +1412,7 @@ export default function SafeFreightPage() {
                       <div className={styles.cardBody}>
                         {/* 40FT 섹션 */}
                         <div className={styles.fareBox}>
-                          <div className={styles.fareTitle}>🚛 40FT</div>
+                          <div className={styles.fareTitle}>40FT</div>
                           <div className={styles.fareLine}>
                             <span className={styles.fareLabel}>위탁</span>
                             <span className={styles.fareValue}>{format(applied.f40위탁)}</span>
@@ -1429,7 +1429,7 @@ export default function SafeFreightPage() {
 
                         {/* 20FT 섹션 */}
                         <div className={styles.fareBox}>
-                          <div className={styles.fareTitle}>🚚 20FT</div>
+                          <div className={styles.fareTitle}>20FT</div>
                           <div className={styles.fareLine}>
                             <span className={styles.fareLabel}>위탁</span>
                             <span className={styles.fareValue}>{format(applied.f20위탁)}</span>

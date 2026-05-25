@@ -112,7 +112,7 @@ export default function NewsPage() {
                             <div className={styles.statusItem}><span>상태</span><strong style={{ color: '#059669' }}>정상 작동 중</strong></div>
                         </div>
                         <div className={styles.card}>
-                            <h3 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>💡 이용 안내</h3>
+                            <h3 style={{ fontSize: '0.9rem', marginBottom: '10px' }}>이용 안내</h3>
                             <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
                                 제목을 클릭하면 상세 내용을 확인하실 수 있습니다. 실시간으로 수집되는 정보이므로 가장 최신 소식을 전해드립니다.
                             </p>
@@ -136,7 +136,7 @@ export default function NewsPage() {
                     <div style={{ background: '#fff', width: '100%', maxWidth: '1200px', height: '90vh', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
                         {/* 모달 헤더 */}
                         <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>✨ 송미관</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>송미관</h2>
                             <button type="button" onClick={() => setEasterEggOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
                         </div>
                         {/* 탭 메뉴 */}

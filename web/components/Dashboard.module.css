@@ -1,10 +1,10 @@
 .section {
-    padding: 100px 0;
+    padding: 82px 0;
     background-color: #f8fafc;
 }
 
 .header {
-    margin-bottom: 48px;
+    margin-bottom: 34px;
     text-align: center;
 }
 
@@ -15,7 +15,7 @@
     color: #475569;
     font-size: 0.85rem;
     font-weight: 800;
-    border-radius: 30px;
+    border-radius: 6px;
     margin-bottom: 12px;
 }
 
@@ -30,24 +30,31 @@
     display: grid;
     grid-template-columns: 6fr 4fr;
     gap: 12px;
-    margin-bottom: 80px;
+    margin-bottom: 52px;
 }
 
 .chartCard {
     background: #fff;
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: none;
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
 }
 
 .cardTitle {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: #1e293b;
-    margin-bottom: 32px;
+    margin-bottom: 6px;
+}
+
+.chartNote {
+    margin-bottom: 18px;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
 }
 
 .chartContainer {
@@ -90,8 +97,8 @@
 .bar {
     width: 100%;
     background: linear-gradient(to top, #1e3a8a, #3b82f6);
-    border-radius: 8px 8px 0 0;
-    box-shadow: 0 4px 15px rgba(37,99,235,0.4);
+    border-radius: 6px 6px 0 0;
+    box-shadow: none;
     transition: height 1.2s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: visible;
@@ -126,28 +133,39 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: repeat(3, 1fr);
-    gap: 16px;
+    gap: 10px;
 }
 
 .statCard {
-    background: #1e293b;
-    border-radius: 16px;
-    padding: 24px 32px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px 22px;
     display: flex;
     align-items: center;
     gap: 20px;
-    color: #fff;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: transform 0.3s;
+    color: #0f172a;
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+    transition: border-color 0.18s, background 0.18s;
 }
 
 .statCard:hover {
-    transform: translateY(-5px);
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .statIcon {
-    font-size: 2.5rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 900;
+    flex: 0 0 auto;
 }
 
 .statInfo {
@@ -156,22 +174,22 @@
 }
 
 .statValue {
-    font-size: 1.5rem;
+    font-size: 1.24rem;
     font-weight: 900;
-    color: #f8fafc;
+    color: #0f172a;
     line-height: 1.2;
 }
 
 .statLabel {
     font-size: 0.95rem;
-    color: #94a3b8;
+    color: #64748b;
     margin-top: 4px;
     font-weight: 600;
 }
 
 /* ===== Section 2: Certifications ===== */
 .certSection {
-    margin-top: 60px;
+    margin-top: 44px;
 }
 
 .certTitle {
@@ -190,7 +208,7 @@
 
 .certCard {
     background: #fff;
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 12px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 10px rgba(0,0,0,0.02);
@@ -202,8 +220,8 @@
 }
 
 .certCard:hover {
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    transform: translateY(-4px) scale(1.02);
+    box-shadow: none;
+    background: #f8fafc;
     border-color: #cbd5e1;
 }
 

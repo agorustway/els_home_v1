@@ -198,7 +198,7 @@ const LocationBlock = ({
                     >
                         <option value="">터미널 (선택없음)</option>
                         {TERMINAL_LIST.map(t => (
-                            <option key={t.key} value={t.key}>⚓ {t.name}</option>
+                            <option key={t.key} value={t.key}>{t.name}</option>
                         ))}
                     </select>
                 )}

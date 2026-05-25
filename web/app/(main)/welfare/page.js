@@ -51,17 +51,17 @@ export default function WelfarePage() {
     const satisfactionPoints = [
         {
             topic: "건강 및 삶의 질 향상",
-            icon: "💆‍♂️",
+            icon: "01",
             description: "임직원의 신체적·정신적 건강을 보호하고 업무와 삶의 균형을 이룰 수 있도록 지원하며, 개개인의 행복을 기업 경영의 근간으로 삼습니다."
         },
         {
             topic: "안전보건 의식 함양",
-            icon: "🛡️",
+            icon: "02",
             description: "전 임직원을 대상으로 실효성 있는 정기 교육을 실시하여 안전 의식을 내재화하고 산업 재해를 미연에 방지하는 예방 중심 문화를 구축합니다."
         },
         {
             topic: "쾌적한 작업 환경",
-            icon: "🏗️",
+            icon: "03",
             description: "근로자의 재해율을 철저히 모니터링하고 최신 안전 장비와 인프라를 도입하여 사고 없는 청결하고 안전한 사업장을 조성합니다."
         }
     ];
@@ -167,7 +167,7 @@ const roadmapItems = [
                                             </div>
                                         </div>
                                         <div className={styles.diagramContent}>
-                                            <div className={styles.topicBadge}>{point.icon} POINT 0{i+1}</div>
+                                            <div className={styles.topicBadge}>POINT {point.icon}</div>
                                             <h3>{point.topic}</h3>
                                             <p>{point.description}</p>
                                         </div>

@@ -4,11 +4,11 @@
 
 .headerBanner {
     background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
     margin-bottom: 8px;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: none;
 }
 
 .title {
@@ -16,7 +16,7 @@
     font-weight: 900;
     margin: 0;
     color: #0f172a;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     padding-left: 12px;
     border-left: 3px solid #2563eb;
 }
@@ -25,56 +25,56 @@
 .splitLayout {
     display: grid;
     grid-template-columns: 280px 1fr 320px;
-    gap: 16px;
+    gap: 10px;
     align-items: flex-start;
 }
 
 .column {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
 }
 
 .card {
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: none;
 }
 
 .sectionTitle {
     font-size: 0.95rem;
     font-weight: 800;
     color: #1e293b;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .sectionTitle::before {
     content: '';
-    width: 4px;
-    height: 16px;
+    width: 3px;
+    height: 14px;
     background: #2563eb;
-    border-radius: 2px;
+    border-radius: 0;
 }
 
 /* 게시글 리스트 */
 .postList {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
 }
 
 .postItem {
-    padding: 16px 20px;
+    padding: 10px 12px;
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -83,7 +83,7 @@
 .postMain {
     flex: 1;
     min-width: 0;
-    padding-right: 20px;
+    padding-right: 12px;
 }
 
 .postTitle {
@@ -99,7 +99,7 @@
 .postMeta {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     font-size: 0.85rem;
     color: #94a3b8;
     flex-shrink: 0;
@@ -112,8 +112,7 @@
 
 .postItem:hover {
     border-color: #3b82f6;
-    background: #f8fbff;
-    transform: translateX(4px);
+    background: #f8fafc;
 }
 
 /* 상세 페이지 & 에디터 디자인 */
@@ -121,33 +120,33 @@
 .editorCard {
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border-radius: 6px;
+    padding: 18px;
+    box-shadow: none;
     width: 100%;
     box-sizing: border-box;
-    transition: transform 0.3s ease;
+    transition: none;
 }
 
 .detailHeader {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #f1f5f9;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .detailTitle {
-    font-size: 1.75rem;
+    font-size: 1.35rem;
     font-weight: 900;
     color: #0f172a;
-    margin-bottom: 12px;
-    letter-spacing: -0.04em;
+    margin-bottom: 8px;
+    letter-spacing: 0;
     line-height: 1.3;
 }
 
 .detailMeta {
     display: flex;
-    gap: 12px;
-    font-size: 0.88rem;
+    gap: 8px;
+    font-size: 0.82rem;
     color: #94a3b8;
     align-items: center;
     justify-content: flex-end;
@@ -160,50 +159,50 @@
 }
 
 .contentBody {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
     color: #334155;
-    line-height: 1.8;
-    min-height: 400px;
-    padding: 10px 0;
+    line-height: 1.65;
+    min-height: 320px;
+    padding: 6px 0;
 }
 
 .actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 40px;
-    padding-top: 24px;
+    margin-top: 20px;
+    padding-top: 12px;
     border-top: 1px solid #f1f5f9;
 }
 
 .btnPrimary,
 .btnSecondary,
 .btnDelete {
-    padding: 8px 18px;
-    border-radius: 8px;
+    padding: 0 12px;
+    border-radius: 4px;
     font-weight: 800;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     font-size: 0.85rem;
-    height: 38px;
+    height: 32px;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 100px;
+    min-width: 76px;
     gap: 6px;
 }
 
 .btnPrimary {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: #2563eb;
     color: #fff;
-    border: none;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    border: 1px solid #2563eb;
+    box-shadow: none;
 }
 
 .btnPrimary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+    background: #1d4ed8;
+    border-color: #1d4ed8;
 }
 
 .btnSecondary {
@@ -226,35 +225,35 @@
 .header,
 .headerBanner {
     background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
     margin-bottom: 8px;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: none;
 }
 
 .formGroup {
-    margin-bottom: 24px;
+    margin-bottom: 14px;
 }
 
 .label {
     display: block;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: #334155;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .input,
 .textarea {
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 12px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 1rem;
+    border-radius: 4px;
+    font-size: 0.95rem;
     color: #0f172a;
-    transition: all 0.2s;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
     box-sizing: border-box;
 }
@@ -263,28 +262,27 @@
 .textarea:focus {
     border-color: #2563eb;
     background: #fff;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
 }
 
 .textarea {
-    min-height: 480px;
+    min-height: 360px;
     resize: vertical;
-    line-height: 1.6;
+    line-height: 1.55;
 }
 
 .editorActions {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-top: 32px;
-    padding-top: 24px;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
     border-top: 1px solid #f1f5f9;
 }
 
 .btnDelete:hover {
     background: #fef2f2;
     border-color: #fecaca;
-    transform: scale(0.98);
 }
 
 @media (max-width: 768px) {
@@ -298,12 +296,12 @@
 
     .detailCard,
     .editorCard {
-        padding: 24px 20px;
-        border-radius: 12px;
+        padding: 14px 12px;
+        border-radius: 6px;
     }
 
     .detailTitle {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
 
     .actions {
@@ -337,7 +335,7 @@
     }
 
     .postItem {
-        padding: 16px;
+        padding: 12px;
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
@@ -371,10 +369,10 @@
     .btnPrimary,
     .btnSecondary,
     .btnDelete {
-        height: 36px;
+        height: 32px;
         padding: 0 12px;
         font-size: 0.8rem;
-        min-width: 80px;
+        min-width: 72px;
     }
 
     .editorActions {

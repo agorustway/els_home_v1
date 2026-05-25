@@ -438,6 +438,71 @@
     display: none;
 }
 
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10020;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.62);
+}
+
+.modal {
+    width: min(420px, 100%);
+    padding: 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+    text-align: center;
+}
+
+.modalKicker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    margin-bottom: 12px;
+    padding: 3px 9px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 0.76rem;
+    font-weight: 900;
+}
+
+.modalTitle {
+    margin: 0 0 10px;
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 900;
+}
+
+.modalDesc {
+    margin: 0;
+    color: #475569;
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.65;
+}
+
+.modalBtn {
+    height: 32px;
+    margin-top: 18px;
+    padding: 0 14px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 6px;

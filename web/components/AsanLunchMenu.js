@@ -173,12 +173,12 @@ export default function AsanLunchMenu() {
         <div className={styles.container}>
             <div className={styles.header}>
                 <div className={styles.titleGroup}>
-                    <h2>🍱 아산지점 점심 식단표</h2>
+                    <h2>아산지점 점심 식단표</h2>
                     <p className={styles.subTitle}>이번 주 점심 메뉴를 확인하세요.</p>
                 </div>
                 {user && (
                     <button className={styles.uploadIconBtn} onClick={handleNewClick}>
-                        ➕ 식단 등록
+                        식단 등록
                     </button>
                 )}
             </div>
@@ -198,12 +198,12 @@ export default function AsanLunchMenu() {
                             alt="Latest Menu"
                             className={styles.heroImg}
                         />
-                        <div className={styles.zoomHint}>🔍 클릭하여 확대</div>
+                        <div className={styles.zoomHint}>클릭하여 확대</div>
                     </div>
                     {user && (
                         <div className={styles.heroActions}>
-                            <button onClick={(e) => handleEditClick(latestMenu, e)} className={styles.actionBtn}>✏️ 수정</button>
-                            <button onClick={(e) => handleDelete(latestMenu, e)} className={styles.deleteBtn}>🗑️ 삭제</button>
+                            <button onClick={(e) => handleEditClick(latestMenu, e)} className={styles.actionBtn}>수정</button>
+                            <button onClick={(e) => handleDelete(latestMenu, e)} className={styles.deleteBtn}>삭제</button>
                         </div>
                     )}
                 </div>
@@ -216,7 +216,7 @@ export default function AsanLunchMenu() {
             {/* 2. List Section (Past Menus) */}
             {pastMenus.length > 0 && (
                 <div className={styles.historySection}>
-                    <h3 className={styles.historyTitle}>📜 지난 식단표 기록</h3>
+                    <h3 className={styles.historyTitle}>지난 식단표 기록</h3>
                     <div className={styles.historyList}>
                         {pastMenus.map((menu) => (
                             <div key={menu.id} className={styles.historyItem} onClick={() => handleImageClick(menu)}>
@@ -232,8 +232,8 @@ export default function AsanLunchMenu() {
                                 </div>
                                 {user && (
                                     <div className={styles.itemActions}>
-                                        <button onClick={(e) => handleEditClick(menu, e)} className={styles.iconBtn}>✏️</button>
-                                        <button onClick={(e) => handleDelete(menu, e)} className={styles.iconBtnDanger}>🗑️</button>
+                                        <button onClick={(e) => handleEditClick(menu, e)} className={styles.iconBtn}>수정</button>
+                                        <button onClick={(e) => handleDelete(menu, e)} className={styles.iconBtnDanger}>삭제</button>
                                     </div>
                                 )}
                             </div>
@@ -258,7 +258,7 @@ export default function AsanLunchMenu() {
             {isEditing && (
                 <div className={styles.formOverlay} onClick={(e) => { if (e.target === e.currentTarget) setIsEditing(false); }}>
                     <div className={styles.formCard}>
-                        <h3>{targetMenu ? '✏️ 식단표 수정' : '📷 새 식단표 등록'}</h3>
+                        <h3>{targetMenu ? '식단표 수정' : '새 식단표 등록'}</h3>
                         <p style={{ marginBottom: '20px', color: '#64748b', fontSize: '0.9rem' }}>
                             {targetMenu ? '이미지를 변경하려면 파일을 다시 선택하세요.' : '해당 주(Week)의 시작일(월요일)을 선택하고 이미지를 업로드하세요.'}
                         </p>

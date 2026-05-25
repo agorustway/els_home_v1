@@ -111,7 +111,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     const { profile, loading } = useUserProfile();
 
@@ -153,15 +152,9 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     // 헤더 메뉴 전용 닫기 이벤트 리스너
     useEffect(() => {
         const handleCloseHeader = () => setMenuOpen(false);
-        const handlePWA = (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
         window.addEventListener('closeHeaderMenu', handleCloseHeader);
-        window.addEventListener('beforeinstallprompt', handlePWA);
         return () => {
             window.removeEventListener('closeHeaderMenu', handleCloseHeader);
-            window.removeEventListener('beforeinstallprompt', handlePWA);
         };
     }, []);
 
@@ -219,15 +212,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         }
     };
 
-    const handleLoginClick = () => {
-        router.push(`/login?next=${encodeURIComponent(pathname)}`);
-        handleLinkClick();
-    };
-
-    const handleCreateShortcut = async () => {
-        // 앱 설치는 인트라넷 헤더에서만 지원 (사용자 요청에 따라 메인 헤더 기능 제거)
-    };
-
     // Determine visual styles based on state
     const isDarkHeader = scrolled || darkVariant || isEmployees;
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
@@ -240,6 +224,21 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
 
     const renderNavLinks = (isMobile = false) => {
         const linkElements = navLinks.map((link, index) => {
+            if (link.isEmployee && !profile) {
+                return (
+                    <Link
+                        key={index}
+                        href={`/login?next=${encodeURIComponent('/employees/ask')}`}
+                        className={isMobile ? styles.mobileLink : styles.empBtn}
+                        style={{ color: isMobile ? '#333' : textColor }}
+                        onClick={handleLinkClick}
+                        prefetch={false}
+                    >
+                        인트라넷
+                    </Link>
+                );
+            }
+
             if (link.children) {
                 const isExpanded = expandedMenus.includes(link.label);
                 return (
@@ -290,36 +289,32 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
             );
         }).filter(Boolean);
 
-        // 데스크탑 전용: 프로필 썸네일 복구 (인트라넷 버튼 옆)
-        if (!isMobile && !loading) {
+        // 데스크탑 전용: 로그인 후 프로필 썸네일 표시
+        if (!isMobile && !loading && profile) {
             linkElements.push(
                 <div key="desktop-auth-profile" className={styles.desktopNavAuth}>
-                    {profile ? (
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <button onClick={(e) => toggleUserMenu(e)} title="사용자 메뉴" className={styles.googleStyleAuthBtn}>
-                                {profile?.avatar_url ? (
-                                    <img src={profile.avatar_url} alt={displayName} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', objectFit: 'cover' }} />
-                                ) : (
-                                    <span className={styles.userInitial}>{displayInitial}</span>
-                                )}
-                            </button>
-                            {userMenuOpen && (
-                                <div className={styles.userDropdownMenu}>
-                                    <div className={styles.userDropdownHeader}>
-                                        <div className={styles.userDropdownName}>
-                                            {displayName}
-                                            {(profile.rank || profile.position) && <span className={styles.userDropdownTitle}>{profile.rank}{profile.position ? `(${profile.position})` : ''}</span>}
-                                        </div>
-                                        <div className={styles.userDropdownRole}>{getRoleLabel(profile.role)}</div>
-                                    </div>
-                                    <Link href="/employees/mypage" className={styles.dropdownItem} onClick={() => setUserMenuOpen(false)}>내 정보 수정</Link>
-                                    <button onClick={handleLogout} className={styles.dropdownItem} style={{ color: '#ef4444', border: 'none', background: 'transparent', cursor: 'pointer', width: '100%', textAlign: 'left' }}>로그아웃</button>
-                                </div>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <button onClick={(e) => toggleUserMenu(e)} title="사용자 메뉴" className={styles.googleStyleAuthBtn}>
+                            {profile?.avatar_url ? (
+                                <img src={profile.avatar_url} alt={displayName} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', objectFit: 'cover' }} />
+                            ) : (
+                                <span className={styles.userInitial}>{displayInitial}</span>
                             )}
-                        </div>
-                    ) : (
-                        <Link href={`/login?next=${encodeURIComponent(pathname)}`} className={styles.googleStyleLoginLink}>로그인</Link>
-                    )}
+                        </button>
+                        {userMenuOpen && (
+                            <div className={styles.userDropdownMenu}>
+                                <div className={styles.userDropdownHeader}>
+                                    <div className={styles.userDropdownName}>
+                                        {displayName}
+                                        {(profile.rank || profile.position) && <span className={styles.userDropdownTitle}>{profile.rank}{profile.position ? `(${profile.position})` : ''}</span>}
+                                    </div>
+                                    <div className={styles.userDropdownRole}>{getRoleLabel(profile.role)}</div>
+                                </div>
+                                <Link href="/employees/mypage" className={styles.dropdownItem} onClick={() => setUserMenuOpen(false)}>내 정보 수정</Link>
+                                <button onClick={handleLogout} className={styles.dropdownItem} style={{ color: '#ef4444', border: 'none', background: 'transparent', cursor: 'pointer', width: '100%', textAlign: 'left' }}>로그아웃</button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -432,8 +427,7 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
                                 <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 400 }}>({getRoleLabel(profile.role)})</span>
                             </div>
                             <button onClick={handleLogout} className={styles.mobileAuthBtn}>로그아웃</button>
-                        </> :
-                        <button onClick={handleLoginClick} className={styles.mobileAuthBtn}>로그인</button>
+                        </> : null
                     )}
                 </div>
                 <div className={styles.mobileNavLinks}>

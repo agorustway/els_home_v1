@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { createUnavailableSupabaseClient } from '@/utils/supabase/unavailableClient';
 import { findWorkDateColumnIndex } from '@/utils/asanShippingView.mjs';
 import {
     buildMonthlyPerformanceFileSlots,
@@ -24,7 +25,7 @@ function getSupabaseAdmin() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
-        throw new Error('Supabase 관리자 환경변수가 없습니다.');
+        return createUnavailableSupabaseClient('Supabase 관리자 환경변수가 없습니다.');
     }
     adminClient = createClient(url, key, {
         auth: {

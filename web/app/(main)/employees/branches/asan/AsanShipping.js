@@ -1473,17 +1473,17 @@ export default function AsanShipping() {
                     </div>
                     <div className={styles.actionRow}>
                         <div className={styles.actionGroup}>
-                            <button className={styles.resetBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">💾 P1 저장</button>
-                            <button className={styles.resetBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">📂 P1 로드</button>
-                            <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">💾 P2 저장</button>
-                            <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">📂 P2 로드</button>
-                            <button className={styles.resetBtn} onClick={exportToExcel}>📥 엑셀</button>
+                            <button className={styles.resetBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">P1 저장</button>
+                            <button className={styles.resetBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">P1 로드</button>
+                            <button className={styles.resetBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">P2 저장</button>
+                            <button className={styles.resetBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">P2 로드</button>
+                            <button className={styles.resetBtn} onClick={exportToExcel}>엑셀</button>
                         </div>
                         <div className={`${styles.actionGroup} ${styles.primaryActions}`}>
                             <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
-                            <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                            <button className={styles.resetBtn} onClick={() => setShowSettings(true)}>설정</button>
                             <button className={styles.syncBtn} onClick={handleSync} disabled={syncing}>
-                                {syncing ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                                {syncing ? '동기화 중' : 'NAS 동기화'}
                             </button>
                             <button
                                 className={styles.lookupBtn}
@@ -1564,7 +1564,7 @@ export default function AsanShipping() {
             {/* Date Month Filter */}
             {dateColumns.length > 0 && (
                 <div className={styles.dateFilterZone}>
-                    <span className={styles.dateFilterLabel}>📅 날짜 필터</span>
+                    <span className={styles.dateFilterLabel}>날짜 필터</span>
                     <select
                         value={dateFilter.col}
                         onChange={e => setDateFilter(p => ({ ...p, col: e.target.value }))}
@@ -1794,10 +1794,10 @@ export default function AsanShipping() {
                         <p className={styles.browserPath}>{browserPath}</p>
                         <div className={styles.browserList}>
                             {browserLoading ? <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>불러오는 중...</div> : <>
-                                {browserPath !== '/' && <div className={styles.browserItem} onClick={() => loadNasFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>📁 ..</div>}
+                                {browserPath !== '/' && <div className={styles.browserItem} onClick={() => loadNasFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>상위 폴더</div>}
                                 {browserFiles.map((f, i) => (
                                     <div key={i} className={styles.browserItem} onClick={() => selectFile(f)}>
-                                        {f.type === 'directory' ? '📁' : '📄'} {f.name}
+                                        {f.type === 'directory' ? '[폴더]' : '[파일]'} {f.name}
                                     </div>
                                 ))}
                             </>}

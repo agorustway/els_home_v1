@@ -41,10 +41,10 @@ export default function SurchargePanel({ options, onChange }) {
 
     // 그룹 라벨 매핑
     const GROUP_LABELS = {
-        flexibag: '📦 플렉시백',
-        hazard: '☢️ 위험물',
-        oversize: '📐 활대품',
-        heavy: '🏋️ 중량물',
+        flexibag: '플렉시백',
+        hazard: '위험물',
+        oversize: '활대품',
+        heavy: '중량물',
     };
 
     // ── 토글 로직 ──
@@ -135,7 +135,7 @@ export default function SurchargePanel({ options, onChange }) {
                 onClick={() => setCollapsed(!collapsed)}
             >
                 <span className={styles.panelTitle}>
-                    ⚙️ 할증/부대비용
+                    할증/부대비용
                     {activeCount > 0 && (
                         <span className={styles.activeBadge}>{activeCount}개 적용</span>
                     )}
@@ -148,7 +148,7 @@ export default function SurchargePanel({ options, onChange }) {
                     {/* ── 운송 환경 (체크박스 항목) ── */}
                     {checkboxItems.length > 0 && (
                         <div className={styles.group}>
-                            <div className={styles.groupTitle}>⚙️ 운송 환경</div>
+                            <div className={styles.groupTitle}>운송 환경</div>
                             <div className={styles.optionsGrid}>
                                 {checkboxItems.map(s => (
                                     <label key={s.id} className={styles.checkLabel}>
@@ -177,7 +177,7 @@ export default function SurchargePanel({ options, onChange }) {
                     {/* ── 그룹별 드롭다운 (장비/화물, 특수 할증) ── */}
                     {Object.keys(groupedItems).length > 0 && (
                         <div className={styles.group}>
-                            <div className={styles.groupTitle}>📦 장비/화물 · 특수 할증</div>
+                            <div className={styles.groupTitle}>장비/화물 · 특수 할증</div>
                             <div className={styles.optionsGrid}>
                                 {Object.entries(groupedItems).map(([group, items]) => (
                                     <div key={group} className={styles.groupRow}>
@@ -211,7 +211,7 @@ export default function SurchargePanel({ options, onChange }) {
                     {/* ── 부대 비용 (실비) ── */}
                     {otherCostItems.length > 0 && (
                         <div className={styles.group}>
-                            <div className={styles.groupTitle}>💰 부대 비용</div>
+                            <div className={styles.groupTitle}>부대 비용</div>
                             <div className={styles.optionsGrid}>
                                 {otherCostItems.map(s => (
                                     <label key={s.id} className={styles.checkLabel}>
@@ -236,7 +236,7 @@ export default function SurchargePanel({ options, onChange }) {
                             ))}
                             {surchargeInfo.pctExcluded.length > 0 && (
                                 <div className={styles.excluded}>
-                                    ⚠️ 적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')}
+                                    적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')}
                                     <span className={styles.excludedReason}>(고시 제22조 — 최대 {regulation.maxPctCount}개)</span>
                                 </div>
                             )}

@@ -348,7 +348,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 } else {
                     setOrigin(loc);
                 }
-                showToast(`📍 ${loc.text}`);
+                showToast(loc.text);
             }
         } catch (err) {
             console.error('Reverse geocode error:', err);
@@ -725,7 +725,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             mapInstance.current.setCenter(new window.naver.maps.LatLng(DEFAULT_MAP_CENTER[1], DEFAULT_MAP_CENTER[0]));
             mapInstance.current.setZoom(7);
         }
-        showToast('🔄 모든 입력값이 초기화되었습니다.');
+        showToast('모든 입력값이 초기화되었습니다.');
     };
 
     /* ═══════════════════════════════════════════════
@@ -1414,7 +1414,7 @@ export default function RouteSearchView({ options, period, onBack }) {
             const next = [...newEntries.reverse(), ...prev];
             try {
                 sessionStorage.setItem(TEMP_RESULTS_KEY, JSON.stringify(next));
-                showToast(`✅ ${newEntries.length}개의 조회 결과가 저장되었습니다.`);
+                showToast(`${newEntries.length}개의 조회 결과가 저장되었습니다.`);
             } catch (_) {
                 showToast('저장에 실패했습니다.');
             }
@@ -1434,7 +1434,7 @@ export default function RouteSearchView({ options, period, onBack }) {
         if (!window.confirm('모든 조회 내역을 삭제하시겠습니까?')) return;
         setSavedResults([]);
         sessionStorage.removeItem(TEMP_RESULTS_KEY);
-        showToast('🗑️ 모든 내역이 삭제되었습니다.');
+        showToast('모든 내역이 삭제되었습니다.');
     };
 
     const downloadExcel = () => {
@@ -1598,7 +1598,7 @@ export default function RouteSearchView({ options, period, onBack }) {
         
         const dateStr = `${yyyy}-${MM}-${dd}`;
         XLSX.writeFile(wb, `안전운임_${dateStr}.xlsx`);
-        showToast('📄 엑셀 파일이 다운로드되었습니다.');
+        showToast('엑셀 파일이 다운로드되었습니다.');
       } catch (err) {
           console.error('Excel Export Error:', err);
           showToast('엑셀 생성 중 오류가 발생했습니다: ' + err.message);
@@ -1662,13 +1662,10 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             {/* 상단 헤더 & 정보 */}
             <div className={styles.header}>
-                <h2 className={styles.title}>
-                    <span className={styles.titleIcon}>🗺️</span>
-                    구간조회 — 네이버 지도 기반 경로 탐색
-                </h2>
+                <h2 className={styles.title}>구간조회 — 네이버 지도 기반 경로 탐색</h2>
                 <div className={styles.headerRight}>
                     <button type="button" className={styles.legalBtn} onClick={() => setShowLegalPopup(true)}>
-                        📋 관련 법규
+                        관련 법규
                     </button>
                     <button type="button" className={styles.backBtn} onClick={onBack}>
                         ← 운임조회로 돌아가기
@@ -1692,14 +1689,14 @@ export default function RouteSearchView({ options, period, onBack }) {
                             className={`${styles.timeModeBtn} ${timeMode === 'scheduled' ? styles.timeModeBtnActive : ''}`}
                             onClick={() => setTimeMode('scheduled')}
                         >
-                            ⏰ {recent0600.label}
+                            {recent0600.label}
                         </button>
                         <button
                             type="button"
                             className={`${styles.timeModeBtn} ${timeMode === 'realtime' ? styles.timeModeBtnActive : ''}`}
                             onClick={() => setTimeMode('realtime')}
                         >
-                            🔴 실시간
+                            실시간
                         </button>
                     </div>
                 </div>
@@ -1823,7 +1820,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                             className={styles.resetBtn}
                             onClick={clearAllInputs}
                         >
-                            🔄 전체 초기화
+                            전체 초기화
                         </button>
                         <button
                             type="button"
@@ -1831,7 +1828,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                             onClick={runSearch}
                             disabled={loading || (!origin.text && !origin.juso && !origin.r1) || (!destination.text && !destination.juso && !destination.r1)}
                         >
-                            {loading ? '경로 탐색 중...' : '🔍 경로 탐색 및 운임 조회'}
+                            {loading ? '경로 탐색 중...' : '경로 탐색 및 운임 조회'}
                         </button>
                     </div>
 
@@ -1850,7 +1847,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                         )}
                         {mapError && (
                             <div className={styles.mapLoading}>
-                                <span style={{ color: '#dc2626' }}>⚠️ 네이버 지도 로드 실패</span>
+                                <span style={{ color: '#dc2626' }}>네이버 지도 로드 실패</span>
                                 <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
                                     NCP 콘솔에서 URL 등록을 확인해주세요
                                 </span>
@@ -1889,7 +1886,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             <option value="gasoline">휘발유</option>
                                         </select>
                                         <span className={styles.fuelPriceBadge} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 8px', fontSize: 13 }}>
-                                            ⛽ {currentFuelPrice.toLocaleString()}원/L
+                                            경유 {currentFuelPrice.toLocaleString()}원/L
                                             <span style={{ color: currentFuelDiff > 0 ? '#ef4444' : currentFuelDiff < 0 ? '#3b82f6' : '#64748b' }}>({currentFuelDiff > 0 ? '+' : ''}{currentFuelDiff})</span>
                                             <span style={{ color: '#64748b', borderLeft: '1px solid #e2e8f0', paddingLeft: 6 }}>1주: <b style={{ color: weekDiff > 0 ? '#ef4444' : weekDiff < 0 ? '#3b82f6' : '#64748b' }}>{weekDiff > 0 ? '+' : ''}{weekDiff}</b></span>
                                         </span>
@@ -1913,9 +1910,9 @@ export default function RouteSearchView({ options, period, onBack }) {
                                                 {` (왕복 ${msToTime(r.durationOneWay * 2)})`}
                                             </span>
                                             <span className={styles.routeCosts}>
-                                                {r.tollOneWay > 0 && <>🛣️ 통행료 {r.tollOneWay.toLocaleString()}원 (왕복 {(r.tollOneWay * 2).toLocaleString()}원)</>}
+                                                {r.tollOneWay > 0 && <>통행료 {r.tollOneWay.toLocaleString()}원 (왕복 {(r.tollOneWay * 2).toLocaleString()}원)</>}
                                                 {r.tollOneWay > 0 && r.fuelCostOneWay > 0 && ' · '}
-                                                {r.fuelCostOneWay > 0 && <>⛽ 유류비 {r.fuelCostOneWay.toLocaleString()}원 (왕복 {(r.fuelCostOneWay * 2).toLocaleString()}원)</>}
+                                                {r.fuelCostOneWay > 0 && <>유류비 {r.fuelCostOneWay.toLocaleString()}원 (왕복 {(r.fuelCostOneWay * 2).toLocaleString()}원)</>}
                                             </span>
                                         </div>
                                         {selectedRouteKey === r.key && <span className={styles.routeCheck}>✓</span>}
@@ -1946,7 +1943,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                             if (!sel) return null;
                             return (
                                 <div className={styles.drivingSummary}>
-                                    <p className={styles.drivingTitle}>🚛 선택 경로 운행비용 (편도 및 왕복 정보)</p>
+                                    <p className={styles.drivingTitle}>선택 경로 운행비용 (편도 및 왕복 정보)</p>
                                     <div className={styles.drivingGrid}>
                                         <div className={styles.drivingItem}>
                                             <span className={styles.drivingLabel}>거리</span>
@@ -1960,14 +1957,14 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             </span>
                                         </div>
                                         <div className={styles.drivingItem}>
-                                            <span className={styles.drivingLabel}>🛣️ 통행료 (편도)</span>
+                                            <span className={styles.drivingLabel}>통행료 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {sel.tollOneWay > 0 ? `${sel.tollOneWay.toLocaleString()}원` : '무료'}
                                                 {sel.tollOneWay > 0 && <span className={styles.oneWayNote}> (왕복 {(sel.tollOneWay * 2).toLocaleString()}원)</span>}
                                             </span>
                                         </div>
                                         <div className={styles.drivingItem}>
-                                            <span className={styles.drivingLabel}>⛽ 유류비 (편도)</span>
+                                            <span className={styles.drivingLabel}>유류비 (편도)</span>
                                             <span className={styles.drivingValue}>
                                                 {sel.fuelCostOneWay > 0 ? `${sel.fuelCostOneWay.toLocaleString()}원` : '-'}
                                                 {sel.fuelCostOneWay > 0 && <span className={styles.oneWayNote}> (왕복 {(sel.fuelCostOneWay * 2).toLocaleString()}원)</span>}
@@ -2050,13 +2047,13 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚛 40FT</td>
+                                            <td className={styles.fareRowLabel}>40FT</td>
                                             <td>{renderFareValue(fare.f40위탁)}</td>
                                             <td>{renderFareValue(fare.f40운수자)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전)}</td>
                                         </tr>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚚 20FT</td>
+                                            <td className={styles.fareRowLabel}>20FT</td>
                                             <td>{renderFareValue(fare.f20위탁)}</td>
                                             <td>{renderFareValue(fare.f20운수자)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전)}</td>
@@ -2093,13 +2090,13 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚛 40FT</td>
+                                            <td className={styles.fareRowLabel}>40FT</td>
                                             <td>{renderFareValue(fare.f40위탁, true, true)}</td>
                                             <td>{renderFareValue(fare.f40운수자, true, true)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(fare.f40안전, true, true)}</td>
                                         </tr>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚚 20FT</td>
+                                            <td className={styles.fareRowLabel}>20FT</td>
                                             <td>{renderFareValue(fare.f20위탁, true, true)}</td>
                                             <td>{renderFareValue(fare.f20운수자, true, true)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(fare.f20안전, true, true)}</td>
@@ -2145,13 +2142,13 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚛 40FT</td>
+                                            <td className={styles.fareRowLabel}>40FT</td>
                                             <td>{renderFareValue(distFareResult.f40위탁)}</td>
                                             <td>{renderFareValue(distFareResult.f40운수자)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f40안전)}</td>
                                         </tr>
                                         <tr>
-                                            <td className={styles.fareRowLabel}>🚚 20FT</td>
+                                            <td className={styles.fareRowLabel}>20FT</td>
                                             <td>{renderFareValue(distFareResult.f20위탁)}</td>
                                             <td>{renderFareValue(distFareResult.f20운수자)}</td>
                                             <td className={styles.fareHighlight}>{renderFareValue(distFareResult.f20안전)}</td>
@@ -2167,7 +2164,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 <strong>할증 적용:</strong> {surchargeInfo.appliedLabels.join(', ')} — 위 운임에 반영됨
                                 {surchargeInfo.pctExcluded?.length > 0 && (
                                     <div style={{ marginTop: '4px', color: '#b45309' }}>
-                                        ⚠️ 적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')} (고시 제22조)
+                                        적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')} (고시 제22조)
                                     </div>
                                 )}
                             </div>
@@ -2183,19 +2180,19 @@ export default function RouteSearchView({ options, period, onBack }) {
                         {/* 터미널 안내 */}
                         {(terminalInfo.origin || terminalInfo.dest) && (
                             <div className={styles.terminalInfoBox}>
-                                <p className={styles.terminalInfoTitle}>⚓ 터미널 내 운송거리 안내</p>
+                                <p className={styles.terminalInfoTitle}>터미널 내 운송거리 안내</p>
                                 <p className={styles.terminalInfoDesc}>
                                     아래 터미널의 내부 운송거리는 <strong>안전운임 고시 거리에 이미 포함</strong>되어 있습니다.
                                     (고시 제33조, 제35조)
                                 </p>
                                 {terminalInfo.origin && (
                                     <p className={styles.terminalInfoItem}>
-                                        🔵 출발: {terminalInfo.origin.full} (내부 {terminalInfo.origin.km}km 포함)
+                                        출발: {terminalInfo.origin.full} (내부 {terminalInfo.origin.km}km 포함)
                                     </p>
                                 )}
                                 {terminalInfo.dest && (
                                     <p className={styles.terminalInfoItem}>
-                                        🔴 도착: {terminalInfo.dest.full} (내부 {terminalInfo.dest.km}km 포함)
+                                        도착: {terminalInfo.dest.full} (내부 {terminalInfo.dest.km}km 포함)
                                     </p>
                                 )}
                             </div>
@@ -2203,10 +2200,10 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                         <div className={styles.actionBtnRow}>
                             <button type="button" className={styles.saveBtn} onClick={saveResult}>
-                                💾 저장
+                                저장
                             </button>
                             <button type="button" className={styles.excelBtn} onClick={downloadExcel} disabled={!distFareResult && savedResults.length === 0}>
-                                📄 엑셀
+                                엑셀
                             </button>
                         </div>
                                 </>
@@ -2256,7 +2253,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                                         <div className={styles.sDataGrid}>
                                             <div className={styles.sCostBox}>
-                                                <div className={styles.sBoxTitle}>⛽ 실제 운행 비용 ({s.tripMode === 'round' ? '왕복' : '편도'})</div>
+                                                <div className={styles.sBoxTitle}>실제 운행 비용 ({s.tripMode === 'round' ? '왕복' : '편도'})</div>
                                                 <div className={styles.sCostTable}>
                                                     <div className={styles.sCostRow}><span>소요시간</span> <strong>{msToTime(s.duration)}</strong></div>
                                                     <div className={styles.sCostRow}><span>통행료</span> <strong>{(s.tollFare || 0).toLocaleString()}원</strong></div>
@@ -2266,7 +2263,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                                             </div>
 
                                             <div className={styles.sFareBox}>
-                                                <div className={styles.sBoxTitle}>⚖️ 고시 안전운임</div>
+                                                <div className={styles.sBoxTitle}>고시 안전운임</div>
                                                 <table className={styles.sFareTable}>
                                                     <thead>
                                                         <tr><th>구분</th><th>위탁</th><th>운수자</th><th>안전</th></tr>
@@ -2291,7 +2288,7 @@ export default function RouteSearchView({ options, period, onBack }) {
                 <div className={styles.legalOverlay} onClick={() => setShowLegalPopup(false)}>
                     <div className={styles.legalPopup} onClick={e => e.stopPropagation()}>
                         <div className={styles.legalHeader}>
-                            <h3>📋 안전운임제 관련 법규</h3>
+                            <h3>안전운임제 관련 법규</h3>
                             <button type="button" onClick={() => setShowLegalPopup(false)}>✕</button>
                         </div>
                         <div className={styles.legalBody}>

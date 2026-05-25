@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.187 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.196 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 NAS 동기화가 최근 5일 우선 반영 후 실제 reload를 실행하고, 추가 후 삭제된 변동행은 삭제 이력으로 남긴다.
+> 최신 업데이트: 실제 Next 루트 middleware도 Supabase 환경변수 없이 Preview 접근을 통과하도록 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.187
+- **웹 버전**: v5.14.196
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -55,24 +55,15 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
-- **v5.14.187**: NAS 동기화 수동 요청을 최근 5일 quick phase와 과거/잔여 rest phase로 분리했다. 최근구간 완료 후 웹은 실제 reload를 실행하고, 동기화 중/요청 후 1분 내에는 NAS 동기화 버튼을 잠근다. 확정 후 `추가` 변동행이 원본에서 다시 사라지면 inactive로 숨기지 않고 `삭제` 이벤트로 전환해 회색 행으로 남긴다.
-- **v5.14.186**: 아산 배차판 `새로고침` 버튼을 API 재조회에서 실제 `window.location.reload()`로 변경했다. reload 전 sessionStorage에 현재 보기/날짜/검색/필터/스크롤을 저장하고 복원해, F5처럼 새 코드가 반영되면서도 작업 위치를 잃지 않게 했다.
-- **v5.14.185**: 배차변동내역에서 상차지 선택과 `BKG확정`/BKG1~3 선택을 상세배차와 같은 방식으로 다시 열었다. 변동 감지 fingerprint에서는 GLAPS 파생코드를 제외해 코드 보강이나 lookup 중간상태가 변경 이벤트를 만들지 않게 했고, 확정 전 BKG 보정시간은 확정 후 `수정건`으로 표시하지 않는다.
-- **v5.14.184**: 배차변동내역의 셀 직접입력을 제거하고 상세배차와 같은 GLAPS 계산 결과를 읽기 중심으로 표시한다. 저장된 변동 row와 현재 계산값이 다르면 `계산값반영`만 제공해 파생 코드 저장을 제한하고, 원천 수정은 WEB 부킹/비고 또는 엑셀 수정 흐름에서 변동으로 감지하게 했다.
-- **v5.14.183**: 배차변동내역 행을 상세배차 line으로 재구성해 GLAPS 코드 계산을 동일하게 적용했다. 상세배차 화면의 active 변동건은 목록 하단으로 보내고 마지막 칸에 `변경건` 배지를 표시한다.
-- **v5.14.182**: 상세배차/배차변동내역의 자동 변동 동기화가 상세 상태와 GLAPS 코드 조회 완료 후 500ms 안정화된 스냅샷으로만 실행되도록 보정했다. 배차확정/취소 직후에는 상세 상태를 서버에서 다시 읽은 뒤 동기화해, 코드 컬럼이 빈 중간상태로 변동 이벤트가 생성됐다가 사라지는 현상을 막는다.
-- **v5.14.181**: 아산 배차판 `새로고침` 버튼에 상세배차 상태 refresh token을 추가해 배차확정/BKG확정/배차변동내역을 다시 조회한다. 상세/변동 화면에서는 GLAPS 코드 조회도 함께 갱신하고, 남은 draft와 변동 동기화 서명을 초기화한다.
-- **v5.14.180**: Supabase에 `branch_dispatch_detail_snapshots/change_events/change_history` 원장을 적용했다. 배차확정 시 상세라인 스냅샷을 저장하고, 이후 상세라인 변화는 `추가/삭제/변경` 이벤트로 동기화한다. 변동내역은 필터만 제공하고 SORT 없이 발생 순서를 유지하며, 개별/일괄 확인과 행 수정 이력을 저장한다.
-- **v5.14.179**: `배차변동내역`은 현재 상세라인 전체를 보여주지 않고, 확정 이후 추가/삭제/변경 이벤트만 표시하는 구조로 되돌렸다. 변동 이벤트 테이블은 필터만 허용하고 SORT는 금지하는 방향으로 설계한다.
-- **v5.14.178**: 운행기록/교육이수 탭은 `page/page_size`를 API로 전달해 20/50/100건 단위로 조회한다. API는 Supabase `count + range`로 총건수와 현재 페이지를 분리하고, 교육이수 탭은 안전교육 로그가 있는 운행만 조회한다.
-- **v5.14.177**: GLAPS 수정양식 업로드가 `WEB수정` 행을 변경/삭제하려 하면 해당 행을 스킵하고 `WEB수정 보호 N건 업로드 제외`로 알린다. 마스터 업로드/NAS 반영 시에는 기존 활성 버전의 WEB수정 행을 새 버전에 보존해 마스터 재반영으로 수기 보정값이 사라지지 않게 했다.
-- **v5.14.176**: 아산 상세배차 배차확정자 표시에서 이메일을 이름으로 치환했다. 당시 배차변동내역 임시 전체라인 표시는 v5.14.179에서 제거했다.
-- **v5.14.175**: 차량위치관제 운행기록의 `최종위치(속도)` 묶음 컬럼을 `운행거리`/`최고속도`/`최종위치`로 분리했다. 기록 API는 위치 포인트가 없거나 일부 운행만 조회돼도 기존 `distance_km`/`route_distance_km`/`max_speed` 저장값을 0으로 덮어쓰지 않는다.
-- **v5.14.174**: GLAPS코드 테이블 컬럼 필터를 텍스트 입력에서 목록 선택으로 변경했다. 각 컬럼은 현재 탭의 고유값과 `(빈값)`을 옵션으로 제공하고, `전체` 선택 시 해당 컬럼 필터를 해제한다.
-- **v5.14.173**: 차량위치관제 운행기록/교육이수 모바일 결과를 bottom sheet 팝업 대신 본문 아래 컴팩트 목록으로 표시한다. 전체 관제 페이지의 모바일 폰트/여백/통계 카드 밀도를 낮추고, 상세 지표는 평균속도 없이 운행거리와 최고속도 중심으로 정리했다.
-- **v5.14.172**: GLAPS코드 운송경로/항목매핑/원본시트 테이블에 컬럼별 필터 입력줄과 헤더 클릭 정렬을 추가했다. 정렬은 오름차순/내림차순/해제 순환이며, 필터 적용 건수와 테이블 필터해제 버튼을 함께 표시한다.
-- **v5.14.171**: 아산 배차판 현재 화면 다운로드 API(`/api/branches/asan/export/view`)를 추가했다. 일반 배차판은 현재 필터/숨김 컬럼 기준, 상세배차는 `DISPATCH_DETAIL_HEADERS` 기준으로 내려받는다. 변동내역/GLAPS 업로드 순서는 별도 단계다.
-- **v5.14.170**: 아산 배차판 상단 공통 헤더에 `새로고침` 버튼을 추가했다. 현황판/배차판/상세배차/배차변동/GLAPS코드 보기에서 현재 보기와 날짜를 유지한 채 자료를 다시 읽고, GLAPS코드 화면은 refresh token으로 내부 원장 조회를 재실행한다. 상세배차 수정필요 필터는 `입력/미도출/확인/수정` 그룹으로 묶고 버튼 밀도를 낮춰 좁은 화면에서 줄바꿈되도록 했다.
+- **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
+- **v5.14.195**: Supabase middleware에서 URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과시킨다. Preview 환경변수가 비어 있어도 외부 URL 접근 시 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
+- **v5.14.194**: 공용 Supabase server/browser client에 환경변수 누락 fallback을 추가했다. Preview 빌드처럼 Supabase URL/키가 없는 환경에서는 import/렌더 단계에서 예외를 던지지 않고, 실제 요청은 503 성격의 응답 객체로 처리한다. 아산 export/성과 DB 헬퍼도 같은 기준으로 보정했다.
+- **v5.14.193**: `/api/branches/asan/settings`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
+- **v5.14.192**: `/api/branches/asan/dispatch`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
+- **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.
+- **v5.14.190**: 서비스 페이지 `주요 사업 및 운영 현황` 제목 위의 공통 `ELS` 보조 라벨을 해당 섹션에서만 숨겨, 공개 페이지 제목부의 어색한 장식 요소를 제거했다.
+- **v5.14.189**: 공개 헤더 미로그인 상태에서 `임직원 로그인`과 `로그인`이 나란히 보이던 중복 CTA를 제거했다. 공개 내비게이션에는 `인트라넷` 단일 메뉴만 남기고, 클릭 시 기존처럼 로그인 후 임직원 홈으로 진입한다.
+- **v5.14.188**: 공개 홈페이지는 한국 사용자 기준의 직관적 카피와 노출 범위로 정리하고, 미로그인 공개 헤더에서는 인트라넷 세부 메뉴 대신 `임직원 로그인`만 노출한다. 인트라넷/아산지점/안전운임/자료실/게시판 계열은 장식성 이모지를 제거하고 버튼·카드·테이블 여백과 라운드를 아산 배차판 기준의 조밀한 톤으로 맞췄다.
 - **v5.14.169**: 차량위치관제 `실시간 로그` 버튼이 `/api/debug/view`를 열 때 NAS core에 라우트가 없어 404가 날 수 있던 문제를 수정했다. `els-core`에 `/api/debug/log` 수신과 `/api/debug/view` 텍스트 조회 라우트를 추가해 안드로이드 앱/오버레이 디버그 로그 흐름을 복구했다.
 - **v5.14.165**: 모바일 운행 상세현황을 데스크탑 우측 패널/표 기반에서 갤럭시24 기준 전체화면 상세로 재구성했다. 위치 이력과 운행 기록은 모바일에서 카드형 타임라인으로 표시하고, 기본 정보 입력·미니맵·액션 버튼은 손가락 조작 가능한 높이와 1열 레이아웃으로 보정했다.
 - **v5.14.164**: 운영 디버그 점검 중 `BKG확정`/배차확정 신규 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했다. 상세배차 화면에서 Supabase access token을 Authorization 헤더로 전달하고, API는 Bearer token 인증도 허용하게 보정했다.
@@ -85,6 +76,17 @@
 - **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 ## VERIFICATION
+- `cd web; npm run lint -- app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- `cd web; npm run lint -- constants/siteLayout.js`: 통과
+- Browser local check (`http://localhost:3010/services`): 기존 `물류 및 제조 서비스` 문구 없음, 새 `맞춤형 물류 서비스` 문구 확인.
+- `cd web; npm run lint -- components/Business.js`: 통과
+- Browser local check (`http://localhost:3010/services`): `주요 사업 및 운영 현황` 제목의 `::before` content/display가 `none`으로 확인됨.
+- `cd web; npm run lint -- components/Header.js`: 통과. 기존 `no-img-element` 경고 3건만 확인.
+- Browser local check (`http://localhost:3010/intro`): 공개 헤더가 `인트라넷` 단일 CTA만 노출하고 `로그인` 중복 없음.
+- `cd web; npm run lint`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
 - `python -m py_compile docker/els-backend/app_core.py`(Codex 번들 Python): 통과

@@ -91,7 +91,7 @@ export default function InternalContactsNewPage() {
                                 {photoUrl ? (
                                     <img src={photoUrl} alt="Profile preview" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: '50%', border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                 ) : (
-                                    <div style={{ width: 100, height: 100, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#94a3b8', border: '4px solid #fff' }}>👤</div>
+                                    <div style={{ width: 100, height: 100, background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', color: '#94a3b8', border: '4px solid #fff', fontWeight: 800 }}>사진</div>
                                 )}
                                 {uploading && (
                                     <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#2563eb' }}>
@@ -102,7 +102,7 @@ export default function InternalContactsNewPage() {
                             <div style={{ flex: 1 }}>
                                 <input type="file" id="photoUpload" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploading} />
                                 <label htmlFor="photoUpload" style={{ display: 'inline-block', padding: '10px 16px', background: '#2563eb', color: '#fff', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
-                                    📸 사진 선택하기
+                                    사진 선택하기
                                 </label>
                                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>인물 사진을 등록하면 사내 연락망에서 더욱 눈에 띕니다.</p>
                                 {photoUrl && (

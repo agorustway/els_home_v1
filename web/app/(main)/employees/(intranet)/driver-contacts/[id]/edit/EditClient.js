@@ -121,13 +121,13 @@ export default function DriverContactsEditPage() {
                             {formData.photo_driver || formData.photo_url ? (
                                 <img src={formData.photo_driver || formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                                <span style={{ fontSize: '2.5rem' }}>👤</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>사진</span>
                             )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <label className={styles.label} style={{ marginBottom: 0 }}>프로필 사진</label>
                             {formData.photo_driver && (
-                                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, marginBottom: '4px' }}>📡 앱 업로드 사진 사용 중</div>
+                                <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, marginBottom: '4px' }}>앱 업로드 사진 사용 중</div>
                             )}
                             <input type="file" onChange={handlePhotoUpload} accept="image/*" style={{ fontSize: '0.85rem' }} />
                         </div>
@@ -217,13 +217,13 @@ export default function DriverContactsEditPage() {
                     </div>
                     
                     <div className={styles.formGroup} style={{ marginTop: 30 }}>
-                        <label className={styles.label}>📎 추가 서류 (최대 10개)</label>
+                        <label className={styles.label}>추가 서류 (최대 10개)</label>
                         <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', background: '#f8fafc' }}>
                             <input type="file" multiple onChange={handleDocUpload} style={{ marginBottom: 10 }} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {attachments.map((file, idx) => (
                                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.9rem' }}>
-                                        <span>📎 {file.name}</span>
+                                        <span>{file.name}</span>
                                         <span onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))} style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕</span>
                                     </div>
                                 ))}

@@ -18,7 +18,7 @@ export default function Footer() {
 
                     <div className={styles.infoArea}>
                         <div className={styles.infoCol}>
-                            <h4 className={styles.heading}>Major Clients</h4>
+                            <h4 className={styles.heading}>주요 고객사</h4>
                             <ul className={styles.clientList}>
                                 <li>현대글로비스</li>
                                 <li>현대/기아자동차</li>
@@ -28,7 +28,7 @@ export default function Footer() {
                         </div>
 
                         <div className={styles.infoCol}>
-                            <h4 className={styles.heading}>Contact Info</h4>
+                            <h4 className={styles.heading}>문의 정보</h4>
                             <div className={styles.contactItems}>
                                 <address className={styles.footerAddress}>서울특별시 서초구 효령로 424 대명빌딩 203</address>
                                 <p className={styles.tel}>02-522-2401</p>

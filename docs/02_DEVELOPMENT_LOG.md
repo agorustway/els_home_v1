@@ -1,3 +1,135 @@
+## [2026-05-25] Vercel Preview 루트 middleware 환경변수 보정 (v5.14.196)
+### 핵심
+- 실제 Vercel 요청 진입점은 `web/middleware.js`였고, 기존 `utils/supabase/middleware.js` 보정만으로는 외부 URL의 middleware 실패가 해결되지 않는 것을 확인했습니다.
+- 루트 middleware에서 Supabase URL/anon key가 없으면 세션 갱신과 권한 조회를 생략하고 요청을 그대로 통과하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- middleware.js utils/supabase/middleware.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/middleware.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] Vercel Preview middleware 환경변수 보정 (v5.14.195)
+### 핵심
+- Vercel Preview 배포는 READY 상태가 됐지만, 외부 URL 접근 시 middleware에서 Supabase client 생성이 실패해 `MIDDLEWARE_INVOCATION_FAILED`가 발생했습니다.
+- `utils/supabase/middleware.js`에서 Supabase URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- utils/supabase/middleware.js utils/supabase/server.js utils/supabase/client.js utils/supabase/unavailableClient.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/utils/supabase/middleware.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] Vercel Preview 공용 Supabase fallback 보정 (v5.14.194)
+### 핵심
+- Vercel Preview 재빌드에서 `/api/driver-contacts/search`, `/admin/logs`, `/driver-app` 등 공용 Supabase client를 쓰는 경로가 환경변수 누락으로 빌드 중 실패하는 것을 확인했습니다.
+- `utils/supabase/server.js`, `utils/supabase/client.js`에 환경변수 누락 시 예외를 던지지 않는 fallback client를 연결했습니다.
+- fallback client는 빌드/렌더/import 단계에서는 안전하게 통과하고, 실제 DB 요청은 503 성격의 오류 응답 객체를 반환합니다.
+- 직접 Supabase admin client를 생성하던 아산 export 라우트와 아산 성과 DB 헬퍼도 같은 기준으로 보정했습니다.
+### 검증
+- `cd web; npm run lint -- utils/supabase/server.js utils/supabase/client.js utils/supabase/unavailableClient.js app/api/branches/asan/export/route.js lib/asan-branch-db.js app/api/branches/asan/settings/route.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/utils/supabase/server.js`, `web/utils/supabase/client.js`, `web/utils/supabase/unavailableClient.js`
+- `web/app/api/branches/asan/export/route.js`, `web/lib/asan-branch-db.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] Vercel Preview 아산 설정 API 초기화 보정 (v5.14.193)
+### 핵심
+- PR Preview 재빌드가 `/api/branches/asan/settings` 수집 단계에서 다시 `supabaseUrl is required`로 실패하는 것을 확인했습니다.
+- 해당 라우트도 Supabase admin client를 모듈 import 시점에 생성하고 있어, Preview 환경변수가 없는 경우 빌드 단계에서 예외가 발생했습니다.
+- Supabase admin client 생성을 GET/PATCH 요청 시점으로 늦기고, 환경변수가 없으면 실제 API 요청에서 503 JSON을 반환하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- app/api/branches/asan/settings/route.js app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/api/branches/asan/settings/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] Vercel Preview Supabase 환경변수 누락 보정 (v5.14.192)
+### 핵심
+- PR 생성 후 Vercel Preview 빌드가 `/api/branches/asan/dispatch` 수집 단계에서 `supabaseUrl is required`로 실패하는 것을 확인했습니다.
+- 원인은 API 라우트가 모듈 import 시점에 Supabase admin client를 생성해, Preview 환경변수가 없는 경우 빌드 단계에서 즉시 예외가 발생하던 구조였습니다.
+- Supabase admin client 생성을 요청 시점으로 늦기고, 환경변수가 없으면 실제 API 요청에서 503 JSON을 반환하도록 보정했습니다.
+### 검증
+- `cd web; npm run lint -- app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] 서비스 히어로 문구 정리 (v5.14.191)
+### 핵심
+- 서비스 페이지 히어로 문구에서 `및 제조 서비스` 표현을 제거했습니다.
+- 최종 문구는 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`입니다.
+### 검증
+- `cd web; npm run lint -- constants/siteLayout.js`: 통과
+- Browser local check (`http://localhost:3010/services`): 기존 `물류 및 제조 서비스` 문구 없음, 새 `맞춤형 물류 서비스` 문구 확인.
+### 변경 파일
+- `web/constants/siteLayout.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] 서비스 제목 보조 라벨 제거 (v5.14.190)
+### 핵심
+- 서비스 페이지 `주요 사업 및 운영 현황` 제목 위에 작게 표시되던 공통 `ELS` 라벨을 제거했습니다.
+- 공통 `sectionTitle` 스타일 전체를 건드리지 않고, 서비스 섹션에만 `noEyebrow` 클래스를 적용해 영향 범위를 좁혔습니다.
+### 검증
+- `cd web; npm run lint -- components/Business.js`: 통과
+- Browser local check (`http://localhost:3010/services`): 제목의 `::before` content/display가 `none`으로 확인됨.
+### 변경 파일
+- `web/components/Business.js`
+- `web/components/Business.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] 공개 헤더 CTA 중복 제거 (v5.14.189)
+### 핵심
+- 미로그인 공개 헤더에서 `임직원 로그인`과 우측 `로그인`이 동시에 보여 같은 기능 버튼이 중복 노출되던 문제를 정리했습니다.
+- 공개 내비게이션에는 `인트라넷` 단일 진입만 남기고, 클릭 시 기존처럼 로그인 후 `/employees/ask`로 이동하게 유지했습니다.
+- 모바일 메뉴에서도 미로그인 상태의 별도 `로그인` 버튼을 숨겨 같은 패턴으로 맞췄습니다.
+### 검증
+- `cd web; npm run lint -- components/Header.js`: 통과. 기존 `no-img-element` 경고 3건만 확인.
+- Browser local check (`http://localhost:3010/intro`): 헤더 텍스트가 `회사소개 / 서비스 / 실적현황 / 웹진 / 네트워크 / 문의하기 / 인트라넷`으로 표시되고 `로그인` 중복 없음.
+### 변경 파일
+- `web/components/Header.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] 공개/인트라넷 UI 톤앤매너 정리 (v5.14.188)
+### 핵심
+- 공개 홈페이지는 회사 소개, 서비스, 실적, ESG, 문의 흐름의 카피와 밀도를 한국 사용자 기준으로 정리했습니다.
+- 미로그인 공개 헤더에서는 인트라넷 세부 메뉴를 숨기고 `임직원 로그인` 진입만 남겨 외부 노출 범위를 줄였습니다.
+- 아산 배차판·선적관리·실적관리 기준에 맞춰 버튼 높이, 테이블 셀 패딩, 카드 라운드/그림자/여백을 더 조밀하고 담백하게 보정했습니다.
+- 자료실, 게시판, 연락처, 업무자료, 안전운임, 차량관제 등 인트라넷 주요 화면의 장식성 이모지를 텍스트 라벨로 치환했습니다.
+- 문의 페이지는 공개 문의 목록 노출을 제거하고 비공개 접수 안내 중심으로 정리했습니다.
+### 검증
+- `cd web; npm run lint`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
+### 변경 파일
+- `web/components/*` 공개 홈페이지/공통 헤더/인트로/대시보드/푸터/모달 톤 보정
+- `web/app/(main)/contact/*`, `web/app/(main)/welfare/page.js`, `web/app/(main)/login/page.js`
+- `web/app/(main)/employees/branches/asan/*`
+- `web/app/(main)/employees/(intranet)/**`
+- `web/app/(main)/employees/safe-freight/**`, `web/app/(main)/employees/vehicle-tracking/page.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 NAS 빠른 동기화/변동 삭제 이력화 (v5.14.187)
 ### 핵심
 - NAS 동기화 수동 요청을 `quick`/`rest` 단계로 나눴습니다.

@@ -1410,7 +1410,7 @@ class ErrorBoundary extends React.Component {
         if (this.state.hasError) {
             return (
                 <div style={{ padding: '40px', background: '#fef2f2', border: '1px solid #fca5a5', margin: '20px', borderRadius: '12px' }}>
-                    <h2 style={{ color: '#991b1b', marginBottom: '10px' }}>⚠️ 클라이언트 오류가 발생했습니다.</h2>
+                    <h2 style={{ color: '#991b1b', marginBottom: '10px' }}>클라이언트 오류가 발생했습니다.</h2>
                     <p style={{ color: '#475569', marginBottom: '20px' }}>이전 버전의 데이터(캐시) 구조가 현재 시스템과 충돌하여 페이지를 열람할 수 없습니다.</p>
                     <code style={{ display: 'block', padding: '10px', background: '#fff', color: '#ef4444', marginBottom: '20px', borderRadius: '6px' }}>{this.state.errorStr}</code>
                     <button 

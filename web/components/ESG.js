@@ -143,10 +143,9 @@ export default function ESG() {
                     initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
                 >
-                    <span className={styles.metaphorIcon}>🧭</span>
                     <p className={styles.metaphorText}>
-                        이엘에스솔루션의 ESG 경영은 정교하게 설계된 <strong>&apos;물류의 나침반&apos;</strong>과 같습니다.<br />
-                        환경과 사회라는 올바른 방향을 잃지 않고, 모든 이해관계자와 함께 지속 가능한 미래를 향해 나아가겠습니다.
+                        이엘에스솔루션은 환경과 안전, 투명한 운영 기준을 꾸준히 관리하며<br />
+                        고객과 협력사가 신뢰할 수 있는 지속 가능한 물류 체계를 만들겠습니다.
                     </p>
                     <span className={styles.metaphorHighlight}>Driving a Greener Future</span>
                 </motion.div>

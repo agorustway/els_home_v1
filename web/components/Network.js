@@ -87,9 +87,6 @@ export default function Network() {
     }, [handleLocSelect]);
 
     useEffect(() => {
-        // Debug Env Var
-        console.log("Loading Naver Map with Client ID:", process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID);
-
         // 1. 방어 코드: 이미 로드되었으면 초기화만 시도
         if (window.naver && window.naver.maps) {
             initMap();
@@ -98,11 +95,9 @@ export default function Network() {
 
         // 2. 인증 실패 콜백 정의
         window.navermap_authFailure = () => {
-            const currentUrl = window.location.origin;
-            setLoadingStatus(`네이버 지도 인증 실패 (설정 필요)`);
-            setCopyFeedback(`등록 필요 URL: ${currentUrl}`); // 잠시 토스트 메시지로 띄움
+            setLoadingStatus('지도를 불러오지 못했습니다.');
+            setCopyFeedback('잠시 후 다시 시도해 주세요.');
             setIsError(true);
-            console.error(`[Naver Map Auth Error] NCP Console에 다음 URL을 등록해야 합니다: ${currentUrl}`);
         };
 
         // 3. 스크립트 중복 방지
@@ -222,11 +217,10 @@ export default function Network() {
                                         <p>{loadingStatus}</p>
                                         {isError && (
                                             <div style={{ fontSize: '0.8rem', marginTop: '10px', color: '#ff6b6b' }}>
-                                                <p>지도 인증 오류가 발생했습니다.</p>
+                                                <p>현재 지도 서비스를 연결할 수 없습니다.</p>
                                                 <p style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', margin: '8px 0', cursor: 'pointer', color: '#fff' }} onClick={() => window.location.href = 'https://elssolution.com'}>
                                                     elssolution.com 으로 이동 ➔
                                                 </p>
-                                                <p style={{ opacity: 0.6, fontSize: '0.7rem' }}>NCP Console URL: {typeof window !== 'undefined' ? window.location.origin : ''}</p>
                                             </div>
                                         )}
                                     </div>

@@ -125,7 +125,7 @@ export default function DriverContactsNewPage() {
                             {formData.photo_url ? (
                                 <img src={formData.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                                <span style={{ fontSize: '2.5rem' }}>👤</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>사진</span>
                             )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -218,13 +218,13 @@ export default function DriverContactsNewPage() {
                     </div>
 
                     <div className={styles.formGroup} style={{ marginTop: 30 }}>
-                        <label className={styles.label}>📎 추가 서류 (최대 10개)</label>
+                        <label className={styles.label}>추가 서류 (최대 10개)</label>
                         <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', background: '#f8fafc' }}>
                             <input type="file" multiple onChange={handleDocUpload} style={{ marginBottom: '10px' }} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {attachments.map((file, idx) => (
                                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.9rem' }}>
-                                        <span>📎 {file.name}</span>
+                                        <span>{file.name}</span>
                                         <span onClick={() => removeDoc(idx)} style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕</span>
                                     </div>
                                 ))}

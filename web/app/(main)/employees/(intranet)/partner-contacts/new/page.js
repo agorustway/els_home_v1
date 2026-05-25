@@ -137,7 +137,7 @@ export default function PartnerContactsNewPage() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📎 첨부파일 (계약서, 보험, 회사소개서 등)</label>
+                        <label className={styles.label}>첨부파일 (계약서, 보험, 회사소개서 등)</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
                             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -146,7 +146,7 @@ export default function PartnerContactsNewPage() {
                         >
                             <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                                📁 <b>관리 서류 선택</b>하거나 여기로 드래그하세요
+                                <b>관리 서류 선택</b>하거나 여기로 드래그하세요
                             </label>
 
                             {uploading && <div className={styles.uploadProgress}><div className={styles.progressBar} style={{ width: '50%' }}></div></div>}
@@ -155,7 +155,7 @@ export default function PartnerContactsNewPage() {
                                 <div className={styles.uploadedList} style={{ marginTop: '15px' }}>
                                     {attachments.map((file, idx) => (
                                         <div key={idx} className={styles.uploadedFile} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderBottom: '1px solid #eee' }}>
-                                            <span style={{ fontSize: '0.9rem', flex: 1 }}>📎 {file.name}</span>
+                                            <span style={{ fontSize: '0.9rem', flex: 1 }}>{file.name}</span>
                                             <select
                                                 value={file.category}
                                                 onChange={(e) => updateFileCategory(idx, e.target.value)}

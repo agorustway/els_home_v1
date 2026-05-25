@@ -41,7 +41,7 @@ export default function PwaMigrationNotice() {
                 textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
             }}>
                 <h3 style={{ fontSize: '1.25rem', color: '#1e293b', marginBottom: '16px', fontWeight: 'bold' }}>
-                    ⚠️ 앱 업데이트 안내
+                    앱 업데이트 안내
                 </h3>
                 <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '24px', lineHeight: '1.6' }}>
                     새로운 공식 도메인(<b>{EXPECTED_DOMAIN}</b>)으로 서비스가 이전되었습니다.<br /><br />

@@ -56,7 +56,7 @@ export default function FormTemplatesPage() {
                                         <span>{item.title}</span>
                                         {item.file_name && (
                                             <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span>💾 {item.file_name}</span>
+                                                <span>{item.file_name}</span>
                                                 {item.file_size && <span style={{ color: '#94a3b8' }}>({(item.file_size / 1024).toFixed(1)} KB)</span>}
                                             </div>
                                         )}
