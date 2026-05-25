@@ -77,6 +77,9 @@
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
 - **v5.14.207**: 선적관리 모바일 테이블은 표시 행을 100건 단위로 제한하고, 바닥 근처 스크롤 시 먼저 화면 표시량을 늘린 뒤 필요할 때만 다음 서버 페이지를 조회한다. 모바일 가로 스크롤은 더 이상 다음 페이지 로딩을 트리거하지 않는다.
 ## VERIFICATION
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과, 정적 생성 후 외부 WebDAV fetch ECONNRESET 로그 3건 발생 but exit 0
 - `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 25개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" lib/asan-branch-db.js utils/asanPerformanceView.mjs scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
 - Supabase 운영 확인: monthly 2026-04 `상단이월 청구 508,098,400 / 하불 435,804,350`, `익월이월 청구 484,932,800 / 하불 410,156,300`

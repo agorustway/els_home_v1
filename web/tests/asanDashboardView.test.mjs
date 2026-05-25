@@ -710,6 +710,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /carrier: buildGlapsAliasCodeMap\(glapsDetailLookup\.aliases \|\| \[\], 'carrier'\)/);
   assert.match(source, /consignee: buildGlapsAliasCodeMap\(glapsDetailLookup\.aliases \|\| \[\], 'consignee'\)/);
   assert.match(source, /orderType: buildGlapsSheetCodeMap\(glapsDetailLookup\.sheetRows \|\| \[\], '수출입코드', '수출입구분', '코드'\)/);
+  assert.match(source, /GLAPS_TRANSPORT_SERVICE_FALLBACKS/);
+  assert.match(source, /buildGlapsTransportServiceCodeMap\(glapsDetailLookup\.sheetRows \|\| \[\]\)/);
+  assert.match(source, /inferGlapsTransportServiceCode\(glapsAliasMaps\.transportService, line\.direction\)/);
+  assert.match(source, /5010001/);
+  assert.match(source, /5020001/);
+  assert.match(source, /6032001/);
   assert.match(source, /buildGlapsShipperCodeMap/);
   assert.match(source, /getGlapsRoutePayload/);
   assert.match(source, /focusDetailGridInput/);
@@ -1242,26 +1248,26 @@ test('아산 배차 엑셀 다운로드는 오더와 배차를 숫자 셀로 쓰
     path.join(webRoot, 'app/api/branches/asan/export/view/route.js'),
     'utf8',
   );
+  const intranetExcelExport = fs.readFileSync(
+    path.join(webRoot, 'utils/intranetExcelExport.mjs'),
+    'utf8',
+  );
 
   assert.match(exportRoute, /NUMERIC_DISPATCH_EXPORT_HEADERS/);
   assert.match(exportRoute, /\['오더\(계\)', '오더', '계', '수량', '배차'\]/);
-  assert.match(exportRoute, /function normalizeDispatchExportRowForExcel\(headers = \[\], row = \[\]\)/);
-  assert.match(exportRoute, /return isNumericDispatchExportHeader\(header\) \? toDispatchExportNumber\(value\) : value;/);
-  assert.match(exportRoute, /const NUMBER_FORMAT = '#,\#\#0';/);
-  assert.match(exportRoute, /sheet\.addRow\(normalizeDispatchExportRowForExcel\(pData\.headers, rowData\)\)/);
-  assert.match(exportRoute, /r\.getCell\(colIdx\)/);
-  assert.match(exportRoute, /style: 'thin'/);
-  assert.match(exportRoute, /hRow\.eachCell\(\{ includeEmpty: true \}/);
+  assert.match(exportRoute, /addIntranetExportWorksheet\(workbook, \{/);
+  assert.match(exportRoute, /\}, \{ numericHeaders: NUMERIC_DISPATCH_EXPORT_HEADERS \}\)/);
+  assert.match(intranetExcelExport, /function createNumericHeaderSet/);
+  assert.match(intranetExcelExport, /cell\.numFmt = '#,\#\#0'/);
+  assert.match(intranetExcelExport, /style: 'thin'/);
+  assert.match(intranetExcelExport, /hRow\.eachCell\(\{ includeEmpty: true \}/);
   assert.match(viewExportRoute, /export async function POST\(request\)/);
-  assert.match(viewExportRoute, /MAX_EXPORT_ROWS = 50000/);
-  assert.match(viewExportRoute, /safeSheetName/);
-  assert.match(viewExportRoute, /uniqueSheetName/);
-  assert.match(viewExportRoute, /normalizeExportSheet/);
-  assert.match(viewExportRoute, /addExportWorksheet/);
+  assert.match(viewExportRoute, /safeExcelFileName/);
+  assert.match(viewExportRoute, /normalizeIntranetExportSheet/);
+  assert.match(viewExportRoute, /addIntranetExportWorksheet/);
   assert.match(viewExportRoute, /payload\.extraSheets/);
-  assert.match(viewExportRoute, /컨테이너 수량/);
   assert.match(viewExportRoute, /X-ELS-Export-Rows/);
-  assert.match(viewExportRoute, /sheet\.autoFilter/);
+  assert.match(intranetExcelExport, /sheet\.autoFilter/);
 });
 
 test('아산 배차 WEB 입력은 저장값 길이에 맞춰 컬럼 폭을 자동 확장한다', () => {

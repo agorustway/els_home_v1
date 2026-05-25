@@ -196,6 +196,14 @@ const DETAIL_ISSUE_GROUPS = Object.freeze([
     { key: 'check', label: '확인', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'check') },
     { key: 'modified', label: '수정', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'modified') },
 ]);
+const GLAPS_TRANSPORT_SERVICE_FALLBACKS = Object.freeze([
+    { code: '311101', name: '각강_내수(반품)', aliases: ['각강_내수(반품)', '각강 내수 반품', '반품'] },
+    { code: '5010002', name: '컨테이너_수출(보관)', aliases: ['컨테이너_수출(보관)', '컨테이너 수출 보관', '수출보관', '수출 보관'] },
+    { code: '5010001', name: '컨테이너_수출', aliases: ['컨테이너_수출', '컨테이너 수출', '수출', 'EXPORT'] },
+    { code: '5020002', name: '컨테이너_수입(보관)', aliases: ['컨테이너_수입(보관)', '컨테이너 수입 보관', '수입보관', '수입 보관'] },
+    { code: '5020001', name: '컨테이너_수입', aliases: ['컨테이너_수입', '컨테이너 수입', '수입', 'IMPORT'] },
+    { code: '6032001', name: '일반_내수_석회석', aliases: ['일반_내수_석회석', '일반 내수 석회석', '내수', '석회석'] },
+]);
 
 // ===== 헬퍼 =====
 function getTabType(dateStr) {
@@ -720,6 +728,35 @@ function buildGlapsSheetCodeMap(sheetRows = [], sheetName, nameKey, codeKey) {
             setGlapsCodeMapValue(map, code, code);
         });
     return map;
+}
+function buildGlapsTransportServiceCodeMap(sheetRows = []) {
+    const map = new Map();
+    const setService = (code, name, aliases = []) => {
+        [code, name, ...aliases].forEach(value => setGlapsCodeMapValue(map, value, code));
+    };
+    GLAPS_TRANSPORT_SERVICE_FALLBACKS.forEach(item => setService(item.code, item.name, item.aliases));
+    (sheetRows || [])
+        .filter(row => normalizeGlapsKey(row?.sheet_name || row?.sheetName || '').includes(normalizeGlapsKey('운송서비스')))
+        .forEach((row) => {
+            const payload = row.row_payload || row.rowPayload || {};
+            const code = getGlapsSheetPayloadValues(payload, ['운송서비스'])[0] || '';
+            const name = getGlapsSheetPayloadValues(payload, ['설명'])[0] || '';
+            setService(code, name);
+        });
+    return map;
+}
+function inferGlapsTransportServiceCode(map, direction = '') {
+    const direct = getGlapsAliasCode(map, direction);
+    if (direct) return direct;
+    const key = normalizeGlapsKey(direction);
+    if (!key) return '';
+    if (key.includes(normalizeGlapsKey('반품'))) return getGlapsAliasCode(map, '각강_내수(반품)');
+    if (key.includes(normalizeGlapsKey('수출')) && key.includes(normalizeGlapsKey('보관'))) return getGlapsAliasCode(map, '컨테이너_수출(보관)');
+    if (key.includes(normalizeGlapsKey('수출'))) return getGlapsAliasCode(map, '컨테이너_수출');
+    if (key.includes(normalizeGlapsKey('수입')) && key.includes(normalizeGlapsKey('보관'))) return getGlapsAliasCode(map, '컨테이너_수입(보관)');
+    if (key.includes(normalizeGlapsKey('수입'))) return getGlapsAliasCode(map, '컨테이너_수입');
+    if (key.includes(normalizeGlapsKey('내수')) || key.includes(normalizeGlapsKey('석회석'))) return getGlapsAliasCode(map, '일반_내수_석회석');
+    return '';
 }
 function getGlapsRoutePayload(route = {}, candidates = []) {
     const payload = route?.raw_payload || route?.rawPayload || {};
@@ -1810,6 +1847,7 @@ function AsanDispatchContent() {
         carrier: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'carrier'),
         consignee: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'consignee'),
         orderType: buildGlapsSheetCodeMap(glapsDetailLookup.sheetRows || [], '수출입코드', '수출입구분', '코드'),
+        transportService: buildGlapsTransportServiceCodeMap(glapsDetailLookup.sheetRows || []),
     }), [glapsDetailLookup.aliases, glapsDetailLookup.sheetRows]);
 
     const glapsShipperCodeMap = useMemo(
@@ -1834,6 +1872,7 @@ function AsanDispatchContent() {
         const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
         const glapsOrderTypeCode = getGlapsAliasCode(glapsAliasMaps.orderType, line.direction);
+        const glapsTransportServiceCode = inferGlapsTransportServiceCode(glapsAliasMaps.transportService, line.direction);
         const routeShipperCode = getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
         const glapsShipperCode = routeShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
@@ -1865,7 +1904,7 @@ function AsanDispatchContent() {
             glapsStartLocationCode,
             glapsWorkplaceCode,
             glapsDestinationCode,
-            glapsTransportServiceCode: '',
+            glapsTransportServiceCode,
             glapsConsigneeCode,
             needsRouteCodeMapping: !glapsRoute?.route_code,
             needsOrderTypeCodeMapping: Boolean(line.direction) && !glapsOrderTypeCode,

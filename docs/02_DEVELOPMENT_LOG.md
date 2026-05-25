@@ -26,7 +26,9 @@
 - 현재 확인 코드표를 fallback으로 두고, 향후 GLAPS 마스터에 `운송서비스` 시트가 들어오면 해당 시트의 `운송서비스/설명` 값을 함께 코드표로 읽습니다.
 - 도출 기준은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`입니다.
 ### 검증
-- 진행 예정
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과, 정적 생성 후 외부 WebDAV fetch ECONNRESET 로그 3건 발생 but exit 0
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/page.js`
 - `web/tests/asanDashboardView.test.mjs`
