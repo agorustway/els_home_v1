@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.196 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.197 / APK v5.11.29)
 
-> 최신 업데이트: 실제 Next 루트 middleware도 Supabase 환경변수 없이 Preview 접근을 통과하도록 보정했다.
+> 최신 업데이트: 통합 배차확정으로 생성된 배차변동내역을 글로비스/모비스 하위 탭에서도 화주 기준으로 조회·확인·수정할 수 있게 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.196
+- **웹 버전**: v5.14.197
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -42,6 +42,7 @@
 - 확정 후 추가된 변동행이 엑셀 원본에서 다시 삭제되면 이벤트를 숨기지 않고 발생일시를 갱신한 `삭제` 행으로 전환해 회색 배경으로 표시한다.
 - `GLAPS코드` 웹수정/삭제, 수정양식 업로드, NAS 마스터 반영 후 상세배차/배차변동내역의 GLAPS lookup을 즉시 다시 읽는다.
 - 확정취소는 상세배차 잠금만 해제하며 기존 변동 이벤트를 삭제하지 않는다. 활성 확정 상태에서 현재 상세라인과 스냅샷을 비교해 최종수량을 계산한다.
+- 통합현황에서 배차확정한 날짜는 변동 이벤트가 `integrated` scope에 저장된다. 글로비스/모비스 하위 탭은 별도 확정이 없으면 통합 변동 중 화주 기준 해당 이벤트만 조회하고, 확인/수정은 event id 기준으로 처리한다.
 - 아산 배차판 `엑셀` 버튼은 배차판 보기에서는 현재 필터/숨김 컬럼 기준, 상세배차에서는 상세라인 기준, 배차변동내역에서는 저장된 변동 이벤트 기준으로 내려받는다. GLAPS 업로드 전용 컬럼 순서 출력은 별도 단계로 둔다.
 - `GLAPS코드` 화면 테이블은 헤더 클릭으로 오름차순/내림차순/해제 정렬하고, 헤더 아래 목록에서 현재 탭 컬럼별 고유값 필터를 건다.
 
@@ -55,6 +56,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.197**: 배차변동내역 API가 글로비스/모비스 하위 탭에서 직접 확정 이벤트가 없으면 `integrated` 변동 이벤트를 화주 기준으로 fallback 조회한다. 하위 탭의 개별/일괄 확인과 변동행 수정은 event id 기준으로 통합 이벤트도 안전하게 처리한다.
 - **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.195**: Supabase middleware에서 URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과시킨다. Preview 환경변수가 비어 있어도 외부 URL 접근 시 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.194**: 공용 Supabase server/browser client에 환경변수 누락 fallback을 추가했다. Preview 빌드처럼 Supabase URL/키가 없는 환경에서는 import/렌더 단계에서 예외를 던지지 않고, 실제 요청은 503 성격의 응답 객체로 처리한다. 아산 export/성과 DB 헬퍼도 같은 기준으로 보정했다.
@@ -89,6 +91,7 @@
 - Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
+- `cd web; npm run build`: 통과
 - `python -m py_compile docker/els-backend/app_core.py`(Codex 번들 Python): 통과
 - `npm.cmd run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
 - Supabase migration `asan_dispatch_change_events`: 적용 완료

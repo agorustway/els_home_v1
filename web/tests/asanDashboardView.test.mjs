@@ -820,6 +820,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(changeApi, /change_type: 'delete'/);
   assert.match(changeApi, /quantity_delta: 0/);
   assert.match(changeApi, /deleted_after_add/);
+  assert.match(changeApi, /eventMatchesRequestedScope/);
+  assert.match(changeApi, /query\.in\('dispatch_type', \[payload\.dispatchType, 'integrated'\]\)/);
+  assert.match(changeApi, /\.filter\(row => eventMatchesRequestedScope\(row, payload\)\)/);
+  assert.match(source, /confirmDetailChangeEvents\(\s*\(detailChangeEvents \|\| \[\]\)/);
   assert.match(changeUtil, /diffDispatchChangeLines/);
   assert.match(changeUtil, /DISPATCH_CHANGE_HEADERS/);
   assert.match(actorNameApi, /profiles/);
@@ -1051,7 +1055,7 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(source, /window\.location\.reload\(\)/);
   assert.match(source, /현재 위치를 저장하고 페이지를 새로고침합니다\./);
   assert.match(source, /restoreState\.activeTargetDate === '__all__'/);
-  assert.match(source, /🔄 새로고침/);
+  assert.match(source, /refreshing \? '새로고침 중' : '새로고침'/);
   assert.match(source, /setInterval\(\(\) => \{/);
   assert.match(source, /}, 60000\);/);
   assert.match(source, /if \(!silent\) setLoading\(true\);/);

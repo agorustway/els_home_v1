@@ -2734,7 +2734,12 @@ function AsanDispatchContent() {
                                 <button
                                     type="button"
                                     className={styles.detailConfirmButton}
-                                    onClick={() => confirmDetailChangeEvents([], { bulk: true })}
+                                    onClick={() => confirmDetailChangeEvents(
+                                        (detailChangeEvents || [])
+                                            .filter(event => event.event_status !== 'confirmed')
+                                            .map(event => event.id),
+                                        { bulk: true },
+                                    )}
                                     disabled={detailChangeSaving}
                                 >
                                     일괄확인

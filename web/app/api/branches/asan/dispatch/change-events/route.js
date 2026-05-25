@@ -17,6 +17,31 @@ function cleanText(value = '') {
     return String(value ?? '').trim();
 }
 
+function eventSnapshotPayload(row = {}) {
+    return [row.editable_payload, row.after_snapshot, row.before_snapshot]
+        .find(payload => payload && Object.keys(payload).length > 0)
+        || {};
+}
+
+function detectEventDispatchType(row = {}) {
+    const payload = eventSnapshotPayload(row);
+    const context = payload.rowContext || {};
+    const explicitType = cleanText(context.dispatchType || context.sourceType || context.type);
+    if (VALID_TYPES.has(explicitType) && explicitType !== 'integrated') return explicitType;
+
+    const shipper = cleanText(context.shipper || '');
+    if (shipper.includes('글로비스')) return 'glovis';
+    if (shipper.includes('모비스')) return 'mobis';
+    return '';
+}
+
+function eventMatchesRequestedScope(row = {}, payload = {}) {
+    if (row.dispatch_type === payload.dispatchType) return true;
+    if (payload.dispatchType === 'integrated') return row.dispatch_type === 'integrated';
+    if (row.dispatch_type !== 'integrated') return false;
+    return detectEventDispatchType(row) === payload.dispatchType;
+}
+
 function isMissingChangeTableError(error) {
     const code = String(error?.code || '');
     const message = String(error?.message || '');
@@ -82,18 +107,28 @@ async function decorateEvent(adminSupabase, row) {
 }
 
 async function fetchEvents(adminSupabase, payload) {
-    const { data, error } = await adminSupabase
+    let query = adminSupabase
         .from('branch_dispatch_detail_change_events')
         .select('*')
         .eq('branch_id', BRANCH_ID)
-        .eq('dispatch_type', payload.dispatchType)
         .eq('target_date', payload.targetDate)
         .eq('active', true)
         .order('occurred_at', { ascending: true })
         .order('event_order', { ascending: true });
+
+    if (payload.dispatchType === 'integrated') {
+        query = query.eq('dispatch_type', payload.dispatchType);
+    } else {
+        const directConfirmation = await fetchConfirmation(adminSupabase, payload);
+        query = directConfirmation
+            ? query.eq('dispatch_type', payload.dispatchType)
+            : query.in('dispatch_type', [payload.dispatchType, 'integrated']);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     const decorated = [];
-    for (const row of data || []) {
+    for (const row of (data || []).filter(row => eventMatchesRequestedScope(row, payload))) {
         decorated.push(await decorateEvent(adminSupabase, row));
     }
     return decorated;
@@ -312,19 +347,20 @@ async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false 
         .from('branch_dispatch_detail_change_events')
         .select('*')
         .eq('branch_id', BRANCH_ID)
-        .eq('dispatch_type', payload.dispatchType)
         .eq('target_date', payload.targetDate)
         .eq('active', true)
         .eq('event_status', 'pending');
 
     if (payload.eventIds.length > 0) query = query.in('id', payload.eventIds);
     else if (payload.eventId) query = query.eq('id', payload.eventId);
+    else query = query.eq('dispatch_type', payload.dispatchType);
 
     const { data: targets, error: targetError } = await query;
     if (targetError) throw targetError;
-    if (!targets?.length) return 0;
+    const scopedTargets = (targets || []).filter(row => eventMatchesRequestedScope(row, payload));
+    if (!scopedTargets.length) return 0;
 
-    const targetIds = targets.map(row => row.id);
+    const targetIds = scopedTargets.map(row => row.id);
     const { data: updatedRows, error: updateError } = await adminSupabase
         .from('branch_dispatch_detail_change_events')
         .update({
@@ -339,7 +375,7 @@ async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false 
     if (updateError) throw updateError;
 
     const updatedById = new Map((updatedRows || []).map(row => [row.id, row]));
-    for (const oldRow of targets) {
+    for (const oldRow of scopedTargets) {
         const newRow = updatedById.get(oldRow.id);
         await insertHistory(adminSupabase, newRow, null, bulk ? 'bulk_confirmed' : 'confirmed', actor, now, oldRow, newRow);
     }
@@ -363,11 +399,10 @@ async function updateEventPayload(adminSupabase, payload, actor, now) {
         .select('*')
         .eq('id', payload.eventId)
         .eq('branch_id', BRANCH_ID)
-        .eq('dispatch_type', payload.dispatchType)
         .eq('target_date', payload.targetDate)
         .maybeSingle();
     if (existingError) throw existingError;
-    if (!existing) throw new Error('변동 이벤트를 찾을 수 없습니다.');
+    if (!existing || !eventMatchesRequestedScope(existing, payload)) throw new Error('변동 이벤트를 찾을 수 없습니다.');
 
     const { data, error } = await adminSupabase
         .from('branch_dispatch_detail_change_events')

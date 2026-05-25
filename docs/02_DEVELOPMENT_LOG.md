@@ -1,3 +1,20 @@
+## [2026-05-25] 아산 배차변동 하위 탭 통합 이벤트 조회 보정 (v5.14.197)
+### 핵심
+- 2026-05-25 배차변동 DB를 확인한 결과, 배차확정과 변동 이벤트가 `integrated` scope에만 저장되어 글로비스 하위 탭의 `dispatch_type=glovis` 조회에서는 보이지 않는 것을 확인했습니다.
+- `change-events` API는 글로비스/모비스 직접 확정이 없는 경우 `integrated` 변동 이벤트를 함께 조회하고, snapshot의 화주 값으로 해당 탭 이벤트만 필터링합니다.
+- 하위 탭에서 보이는 통합 변동 이벤트도 event id 기준으로 개별/일괄 확인 및 변동행 수정이 가능하도록 확인/수정 쿼리의 scope 검증을 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] Vercel Preview 루트 middleware 환경변수 보정 (v5.14.196)
 ### 핵심
 - 실제 Vercel 요청 진입점은 `web/middleware.js`였고, 기존 `utils/supabase/middleware.js` 보정만으로는 외부 URL의 middleware 실패가 해결되지 않는 것을 확인했습니다.
