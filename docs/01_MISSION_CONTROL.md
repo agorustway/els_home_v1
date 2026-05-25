@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.188 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.189 / APK v5.11.29)
 
-> 최신 업데이트: 공개 페이지와 인트라넷 UI 톤앤매너를 아산 배차판 기준의 담백한 밀도와 텍스트 중심 라벨로 정리했다.
+> 최신 업데이트: 공개 헤더의 중복 로그인 CTA를 제거하고, 미로그인 상태에서는 `인트라넷` 단일 진입만 노출한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.188
+- **웹 버전**: v5.14.189
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -55,6 +55,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.189**: 공개 헤더 미로그인 상태에서 `임직원 로그인`과 `로그인`이 나란히 보이던 중복 CTA를 제거했다. 공개 내비게이션에는 `인트라넷` 단일 메뉴만 남기고, 클릭 시 기존처럼 로그인 후 임직원 홈으로 진입한다.
 - **v5.14.188**: 공개 홈페이지는 한국 사용자 기준의 직관적 카피와 노출 범위로 정리하고, 미로그인 공개 헤더에서는 인트라넷 세부 메뉴 대신 `임직원 로그인`만 노출한다. 인트라넷/아산지점/안전운임/자료실/게시판 계열은 장식성 이모지를 제거하고 버튼·카드·테이블 여백과 라운드를 아산 배차판 기준의 조밀한 톤으로 맞췄다.
 - **v5.14.187**: NAS 동기화 수동 요청을 최근 5일 quick phase와 과거/잔여 rest phase로 분리했다. 최근구간 완료 후 웹은 실제 reload를 실행하고, 동기화 중/요청 후 1분 내에는 NAS 동기화 버튼을 잠근다. 확정 후 `추가` 변동행이 원본에서 다시 사라지면 inactive로 숨기지 않고 `삭제` 이벤트로 전환해 회색 행으로 남긴다.
 - **v5.14.186**: 아산 배차판 `새로고침` 버튼을 API 재조회에서 실제 `window.location.reload()`로 변경했다. reload 전 sessionStorage에 현재 보기/날짜/검색/필터/스크롤을 저장하고 복원해, F5처럼 새 코드가 반영되면서도 작업 위치를 잃지 않게 했다.
@@ -86,6 +87,8 @@
 - **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
 - **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 ## VERIFICATION
+- `cd web; npm run lint -- components/Header.js`: 통과. 기존 `no-img-element` 경고 3건만 확인.
+- Browser local check (`http://localhost:3010/intro`): 공개 헤더가 `인트라넷` 단일 CTA만 노출하고 `로그인` 중복 없음.
 - `cd web; npm run lint`: 통과
 - `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
 - Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
