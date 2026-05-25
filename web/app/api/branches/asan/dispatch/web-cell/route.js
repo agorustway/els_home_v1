@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
 import {
+    ASAN_DISPATCH_WEB_CELL_FIELDS,
     getDispatchWebCellFieldLabel,
     normalizeDispatchWebCellFieldKey,
+    normalizeDispatchWebCellValue,
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
 
@@ -11,6 +13,11 @@ export const revalidate = 0;
 
 const BRANCH_ID = 'asan';
 const VALID_TYPES = new Set(['glovis', 'mobis']);
+const BKG_LOCK_FIELDS = new Set([
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG2,
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG3,
+]);
 
 function isMissingWebCellTableError(error) {
     const code = String(error?.code || '');
@@ -36,6 +43,7 @@ function normalizePayload(body = {}) {
         fieldKey,
         rowIndex,
         rowContext: body.rowContext || body.row_context || {},
+        previousValue: normalizeDispatchWebCellValue(body.previousValue || body.previous_value || ''),
         value: body.value,
     };
 }
@@ -49,6 +57,18 @@ async function readWebCellSettings(adminSupabase) {
 
     if (error) throw error;
     return data;
+}
+
+async function hasActiveDispatchConfirmation(adminSupabase, payload) {
+    const { data, error } = await adminSupabase
+        .from('branch_dispatch_confirmations')
+        .select('id, dispatch_type, active')
+        .eq('branch_id', BRANCH_ID)
+        .eq('target_date', payload.targetDate)
+        .eq('active', true)
+        .in('dispatch_type', [payload.dispatchType, 'integrated']);
+    if (error) throw error;
+    return (data || []).length > 0;
 }
 
 export async function POST(request) {
@@ -129,6 +149,17 @@ export async function POST(request) {
 
         const existing = signatureExisting || rowIndexExisting;
         const oldValue = existing?.value ?? '';
+        const existingLockValue = normalizeDispatchWebCellValue(existing?.value || payload.previousValue || '');
+        if (
+            BKG_LOCK_FIELDS.has(payload.fieldKey)
+            && existingLockValue
+            && validation.value !== existingLockValue
+            && await hasActiveDispatchConfirmation(adminSupabase, payload)
+        ) {
+            return NextResponse.json({
+                error: '배차확정 이후 기존 BKG 값은 수정할 수 없습니다. 빈 BKG2/3 칸만 추가 입력할 수 있습니다.',
+            }, { status: 409 });
+        }
         const metadataChanged = Boolean(existing && (
             existing.row_signature !== payload.rowSignature
             || Number(existing.row_index ?? -1) !== Number(payload.rowIndex ?? -1)

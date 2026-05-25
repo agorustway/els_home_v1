@@ -1,3 +1,23 @@
+## [2026-05-25] 배차확정 후 WEB BKG 잠금 및 변경 tooltip 보강 (v5.14.203)
+### 핵심
+- 배차확정 이후 배차판 WEB 입력칸의 BKG1/2/3 기존값은 UI에서 회색 잠금 처리하고, 저장 API에서도 같은 조건을 다시 차단합니다.
+- 비어 있던 BKG2/3 등 후속 부킹 칸은 확정 후에도 추가 입력할 수 있게 두어, 뒤늦게 확정된 부킹번호를 상세배차/배차변동 코드 도출에 반영할 수 있게 했습니다.
+- TARGET VESSEL과 비고는 운영 메모 성격으로 확정 이후에도 계속 수정 가능하게 유지했습니다.
+- 상세배차의 `변경건` 표시와 배차변동의 `변동구분`에 마우스를 올리면 변경 전/후 값을 볼 수 있게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/web-cell/route.js"`: 통과
+- `cd web; npm run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/web-cell/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 배차변동 추가/삭제 이력 보존 및 확인취소 잠금 정책 (v5.14.202)
 ### 핵심
 - 배차확정 후 추가된 상세라인이 다시 삭제될 때 기존 `추가` 이벤트를 `삭제`로 덮어쓰지 않고, `delete-after-add:*` 별도 삭제 이벤트를 아래에 추가하도록 변경했습니다.

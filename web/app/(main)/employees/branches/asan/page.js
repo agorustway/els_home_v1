@@ -5,6 +5,7 @@ import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
 import { buildAsanDashboardScope, getActualDispatchQty } from '@/utils/asanDashboardView.mjs';
 import {
+    ASAN_DISPATCH_WEB_CELL_FIELDS,
     getDispatchWebCellFieldLabel,
     isDispatchWebCellField,
     normalizeDispatchWebCellFieldKey,
@@ -157,6 +158,15 @@ const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
+const BKG_WEB_CELL_LOCK_FIELDS = new Set([
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG2,
+    ASAN_DISPATCH_WEB_CELL_FIELDS.BKG3,
+]);
+const ALWAYS_EDITABLE_WEB_CELL_FIELDS = new Set([
+    ASAN_DISPATCH_WEB_CELL_FIELDS.TARGET_VESSEL,
+    ASAN_DISPATCH_WEB_CELL_FIELDS.NOTE,
+]);
 const DETAIL_CHANGE_STATUS_FILTERS = Object.freeze([
     { key: '', label: '전체' },
     { key: 'pending', label: '미확인' },
@@ -322,6 +332,48 @@ function buildDeletedAfterAddPairKeySet(events = []) {
         if (pairKey) keys.add(pairKey);
     });
     return keys;
+}
+function dispatchConfirmationMapKey(targetDate = '', dispatchType = '') {
+    return `${targetDate || ''}:${dispatchType || ''}`;
+}
+function hasActiveDispatchConfirmationForWebCell(meta = {}, confirmationMap = {}) {
+    const targetDate = meta?.targetDate || '';
+    const sourceType = meta?.sourceType || '';
+    return Boolean(
+        confirmationMap[dispatchConfirmationMapKey(targetDate, 'integrated')]?.active
+        || confirmationMap[dispatchConfirmationMapKey(targetDate, sourceType)]?.active
+    );
+}
+function getWebCellLockMessage(meta = {}, fieldKey = '', value = '', confirmationMap = {}) {
+    const normalizedField = normalizeDispatchWebCellFieldKey(fieldKey);
+    if (!BKG_WEB_CELL_LOCK_FIELDS.has(normalizedField)) return '';
+    if (ALWAYS_EDITABLE_WEB_CELL_FIELDS.has(normalizedField)) return '';
+    if (!String(value ?? '').trim()) return '';
+    if (!hasActiveDispatchConfirmationForWebCell(meta, confirmationMap)) return '';
+    return '배차확정 이후 기존 BKG 값은 잠금됩니다. 빈 BKG2/3 칸만 추가 입력할 수 있습니다.';
+}
+function snapshotRowValues(snapshot = {}) {
+    return snapshot?.rowValues || snapshot?.row_values?.values || snapshot?.row_values || [];
+}
+function changeTooltipValue(value = '') {
+    const text = String(value ?? '').trim();
+    return text || '(공란)';
+}
+function buildDispatchChangeDiffTooltip(event = {}) {
+    const label = formatDispatchChangeType(event.change_type);
+    if (event.change_type === 'add') return `${label}\n확정 이후 추가된 상세라인입니다.`;
+    if (event.change_type === 'delete') return `${label}\n확정 이후 삭제된 상세라인입니다.`;
+    const beforeValues = snapshotRowValues(event.before_snapshot);
+    const afterValues = snapshotRowValues(event.after_snapshot || event.editable_payload);
+    const changed = DISPATCH_DETAIL_HEADERS
+        .map((header, idx) => {
+            const beforeValue = String(beforeValues[idx] ?? '').trim();
+            const afterValue = String(afterValues[idx] ?? '').trim();
+            if (beforeValue === afterValue) return '';
+            return `${header}: ${changeTooltipValue(beforeValue)} -> ${changeTooltipValue(afterValue)}`;
+        })
+        .filter(Boolean);
+    return changed.length > 0 ? `${label}\n${changed.join('\n')}` : label;
 }
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
@@ -882,6 +934,7 @@ function AsanDispatchContent() {
     const [syncGate, setSyncGate] = useState({ running: false, cooldownUntil: null, quickDone: false, message: '' });
     const [syncGateNowMs, setSyncGateNowMs] = useState(() => Date.now());
     const [webCellStatus, setWebCellStatus] = useState({});
+    const [dispatchConfirmationMap, setDispatchConfirmationMap] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
     const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
     const [detailOverrideSetupRequired, setDetailOverrideSetupRequired] = useState(false);
@@ -1492,6 +1545,36 @@ function AsanDispatchContent() {
         return () => { cancelled = true; };
     }, [detailScope, detailStateRefreshToken, getDetailAuthHeaders, mainView]);
 
+    useEffect(() => {
+        if (!activeItem?.target_date || isAllTab) {
+            setDispatchConfirmationMap({});
+            return undefined;
+        }
+
+        let cancelled = false;
+        const targetDate = activeItem.target_date;
+        const loadDispatchConfirmations = async () => {
+            try {
+                const authHeaders = await getDetailAuthHeaders();
+                const rows = await Promise.all(ASAN_DISPATCH_VIEW_TYPES.map(async (dispatchType) => {
+                    const params = new URLSearchParams({ dispatchType, targetDate });
+                    const response = await fetch(`/api/branches/asan/dispatch/confirmation?${params.toString()}`, {
+                        cache: 'no-store',
+                        headers: authHeaders,
+                    });
+                    const payload = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(payload.error || '배차확정 상태 조회 실패');
+                    return [dispatchConfirmationMapKey(targetDate, dispatchType), payload.data || null];
+                }));
+                if (!cancelled) setDispatchConfirmationMap(Object.fromEntries(rows));
+            } catch {
+                if (!cancelled) setDispatchConfirmationMap({});
+            }
+        };
+        loadDispatchConfirmations();
+        return () => { cancelled = true; };
+    }, [activeItem?.target_date, detailStateRefreshToken, getDetailAuthHeaders, isAllTab]);
+
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {
         const fileTs = isAllTab 
@@ -2052,6 +2135,7 @@ function AsanDispatchContent() {
                     rowSignature: meta.rowSignature,
                     rowIndex: meta.sourceRowIndex,
                     fieldKey,
+                    previousValue,
                     value: validation.value,
                     rowContext: meta.rowContext || {},
                 }),
@@ -2785,9 +2869,10 @@ function AsanDispatchContent() {
                                                         );
                                                     }
                                                     if (header === '수정일시' && changeEvent) {
+                                                        const changeTooltip = buildDispatchChangeDiffTooltip(changeEvent);
                                                         return (
                                                             <td key={header}>
-                                                                <span className={styles.detailChangeMarker} title={formatDispatchChangeType(changeEvent.change_type)}>
+                                                                <span className={styles.detailChangeMarker} title={changeTooltip}>
                                                                     변경건
                                                                 </span>
                                                                 {rowValues[colIdx] ? <span className={styles.detailChangeMarkerText}>{rowValues[colIdx]}</span> : null}
@@ -3036,7 +3121,7 @@ function AsanDispatchContent() {
                                                                         )}
                                                                     </span>
                                                                 ) : isChangeType ? (
-                                                                    <span className={styles.detailChangeTypeWrap}>
+                                                                    <span className={styles.detailChangeTypeWrap} title={buildDispatchChangeDiffTooltip(event)}>
                                                                         <span>{values[colIdx]}</span>
                                                                         {(isPairedAdd || isDeletedAfterAdd) && <em>추가취소쌍</em>}
                                                                     </span>
@@ -3196,9 +3281,13 @@ function AsanDispatchContent() {
                                                 const webCellKey = makeWebCellClientKey(webCellMeta, fieldKey);
                                                 const cellStatus = webCellKey ? webCellStatus[webCellKey] : null;
                                                 const isWebEditable = Boolean(fieldKey && webCellMeta?.rowSignature);
+                                                const webCellLockMessage = isWebEditable
+                                                    ? getWebCellLockMessage(webCellMeta, fieldKey, row[ci], dispatchConfirmationMap)
+                                                    : '';
+                                                const isWebLocked = Boolean(webCellLockMessage);
                                                 return (
                                                     <td key={ci}
-                                                        className={`${centerCols.has(ci) ? styles.centerCell : ''} ${hc ? styles.hasComment : ''} ${isWebEditable ? styles.webCellEditableTd : ''} ${cellStatus?.state === 'error' ? styles.webCellErrorTd : ''}`}
+                                                        className={`${centerCols.has(ci) ? styles.centerCell : ''} ${hc ? styles.hasComment : ''} ${isWebEditable ? styles.webCellEditableTd : ''} ${isWebLocked ? styles.webCellLockedTd : ''} ${cellStatus?.state === 'error' ? styles.webCellErrorTd : ''}`}
                                                         style={widthStyle ? { ...widthStyle, overflow: 'hidden', textOverflow: 'ellipsis' } : undefined}
                                                         onMouseEnter={hc ? (e) => showTooltip(e, comments[ck]) : undefined}
                                                         onMouseLeave={hc ? () => setTooltip(null) : undefined}>
@@ -3208,7 +3297,8 @@ function AsanDispatchContent() {
                                                                     key={`${webCellKey}:${row[ci] ?? ''}`}
                                                                     className={styles.webCellInput}
                                                                     defaultValue={row[ci] ?? ''}
-                                                                    title={cellStatus?.message || `${getDispatchWebCellFieldLabel(fieldKey)} WEB 저장값`}
+                                                                    disabled={isWebLocked}
+                                                                    title={cellStatus?.message || webCellLockMessage || `${getDispatchWebCellFieldLabel(fieldKey)} WEB 저장값`}
                                                                     onClick={(e) => e.stopPropagation()}
                                                                     onChange={() => {
                                                                         if (cellStatus?.state === 'error') {

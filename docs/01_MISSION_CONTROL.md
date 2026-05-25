@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.202 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.203 / APK v5.11.29)
 
-> 최신 업데이트: 배차변동내역의 추가 후 삭제 이벤트를 별도 이력으로 보존하고 확인완료 행 잠금/확인취소를 적용했다.
+> 최신 업데이트: 배차확정 후 배차판 WEB BKG 기존값 잠금과 빈 BKG 추가 입력 정책을 적용했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.202
+- **웹 버전**: v5.14.203
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -36,6 +36,8 @@
 - GLAPS 마스터 코드시트의 `ELS코드1~N` 수기 컬럼은 위치와 무관하게 헤더명으로 읽고, 셀 안 쉼표/줄바꿈/세미콜론 다중값은 각각 별칭으로 분리한다.
 - GLAPS 수정양식/웹에서 회색 음영 칸은 GLAPS 실제 업로드/원장 기준값이므로 일반 보정 대상이 아니다. 항목매핑의 배차판 입력값 컬럼명은 `배차판 매칭용`으로 쓴다.
 - 상세배차 `BKG확정`은 기본 `BKG1`이며, BKG1/2/3 셀 클릭 또는 수기 입력을 WEB 보정값으로 저장한다. 선택된 BKG 셀은 색으로 표시하고, 배차확정된 일자는 상세배차 기본 보정 입력을 잠근다.
+- 배차확정 후 배차판 WEB BKG1/2/3의 기존값은 잠근다. 단, 비어 있던 BKG2/3 같은 후속 부킹 칸은 추가 입력할 수 있고 저장 후 상세배차/변동내역 코드 도출에 반영한다.
+- TARGET VESSEL과 비고는 확정 이후에도 운영 메모로 계속 수정 가능하다. 확정 후 변경된 BKG/TARGET VESSEL/비고 등은 상세배차/배차변동의 변경 표시 마우스오버에서 전후 값을 확인한다.
 - 상세배차 `BKG확정`/배차확정 API는 서버 쿠키와 클라이언트 Supabase 세션 Bearer 토큰을 모두 인증 경로로 인정한다.
 - 상세배차 배차확정자/보정 수정자는 `profiles.full_name` 또는 `user_roles.name`을 우선 표시하고, 이메일 전체는 화면에 노출하지 않는다.
 - `배차변동내역` 탭은 확정 당시 스냅샷 대비 추가/삭제/변경 이벤트만 발생 순서대로 표시한다. 개별/일괄 확인과 변동행 수정은 모두 이력에 남긴다.
@@ -63,6 +65,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.203**: 배차확정 후 배차판 WEB BKG 기존값을 UI/API 양쪽에서 잠그고, 비어 있던 BKG 칸은 추가 입력만 허용한다. TARGET VESSEL/비고는 계속 수정 가능하게 두며, 상세배차/배차변동 변경 표시 tooltip에 확정 후 변경된 전후 값을 노출한다.
 - **v5.14.202**: 배차변동에서 추가분 삭제 시 기존 추가 이벤트를 삭제로 덮어쓰지 않고 `delete-after-add:*` 삭제 이벤트를 별도 생성한다. 추가/삭제 쌍은 회색 `추가취소쌍`으로 표시하고, 확인완료 행은 잠금 처리하며 `확인취소`로만 재수정하게 했다. 최종수량은 현재 상세라인 수량을 기준으로 표시해 delta 이중계산을 막았다.
 - **v5.14.201**: NAS 배차판 수동 동기화를 1순위(오늘, 없으면 오늘 이후 첫 작업일) -> 2순위(1순위 기준 전/후 작업일) -> 3순위(나머지) 순으로 변경했다. 1순위 완료 즉시 웹 새로고침이 가능하고, 백그라운드 중 재요청 시 1분 쿨다운 후 기존 배경 작업을 중단하고 1순위부터 다시 시작한다.
 - **v5.14.200**: 아산 예하페이지 버튼 순서를 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 변경했다. `/api/branches/asan/dispatch`에 `mode=meta/date/full` 조회를 추가하고, 화면은 메타/선택일 상세를 먼저 그린 뒤 전체 원장을 백그라운드로 병합해 초기 배차판 체감 부하를 줄인다.
@@ -75,7 +78,7 @@
 ## VERIFICATION
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
 - Export API 메모리 검증: `상세배차내역`, `GLAPS_업로드` 2개 시트 생성, GLAPS 헤더 62개, 부킹번호/컨테이너 수량 위치 확인.
-- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/web-cell/route.js"`: 통과
 - `cd web; npm run build`: 통과.
 - `git diff --check`: 통과
 - NAS deploy 검증: 2026-05-25 `els-gateway`, `els-core`, `els-bot` 재생성 후 `/api/branches/asan/sync` gateway/core 응답 확인.

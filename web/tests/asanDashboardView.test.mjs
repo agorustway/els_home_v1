@@ -652,6 +652,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
     path.join(webRoot, 'app/api/branches/asan/dispatch/detail-override/route.js'),
     'utf8',
   );
+  const webCellApi = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/web-cell/route.js'),
+    'utf8',
+  );
   const actorNameApi = fs.readFileSync(
     path.join(webRoot, 'app/api/branches/asan/dispatch/actorName.js'),
     'utf8',
@@ -675,6 +679,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailStartOverrides/);
   assert.match(source, /detailBkgOverrides/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS/);
+  assert.match(source, /BKG_WEB_CELL_LOCK_FIELDS/);
+  assert.match(source, /dispatchConfirmationMap/);
+  assert.match(source, /getWebCellLockMessage/);
+  assert.match(source, /previousValue/);
+  assert.match(source, /buildDispatchChangeDiffTooltip/);
+  assert.match(source, /빈 BKG2\/3 칸만 추가 입력/);
   assert.match(source, /createBrowserSupabaseClient/);
   assert.match(source, /getDetailAuthHeaders/);
   assert.match(source, /Authorization: `Bearer \$\{session\.access_token\}`/);
@@ -799,6 +809,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangePairedRow td\s*{[\s\S]*background: #eef2f7 !important;/);
   assert.match(css, /\.detailChangeTypeWrap/);
   assert.match(css, /\.detailChangeUnconfirmButton/);
+  assert.match(css, /\.webCellLockedTd/);
   assert.match(css, /\.detailChangeInput/);
   assert.match(css, /\.detailChangeInlinePanel/);
   assert.match(css, /\.detailIssueGroup\s*{/);
@@ -820,6 +831,11 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(detailOverrideApi, /confirmed_bkg/);
   assert.match(detailOverrideApi, /bearerToken/);
   assert.match(detailOverrideApi, /getUser\(bearerToken\)/);
+  assert.match(webCellApi, /branch_dispatch_confirmations/);
+  assert.match(webCellApi, /hasActiveDispatchConfirmation/);
+  assert.match(webCellApi, /previousValue/);
+  assert.match(webCellApi, /BKG_LOCK_FIELDS/);
+  assert.match(webCellApi, /배차확정 이후 기존 BKG 값은 수정할 수 없습니다/);
   assert.match(changeApi, /branch_dispatch_detail_change_events/);
   assert.match(changeApi, /branch_dispatch_detail_change_history/);
   assert.match(changeApi, /diffDispatchChangeLines/);
