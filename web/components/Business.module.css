@@ -12,6 +12,11 @@
     width: 100%;
 }
 
+.noEyebrow::before {
+    content: none;
+    display: none;
+}
+
 .backBtn {
     position: absolute;
     right: 0;

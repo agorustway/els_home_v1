@@ -1,3 +1,17 @@
+## [2026-05-25] 서비스 제목 보조 라벨 제거 (v5.14.190)
+### 핵심
+- 서비스 페이지 `주요 사업 및 운영 현황` 제목 위에 작게 표시되던 공통 `ELS` 라벨을 제거했습니다.
+- 공통 `sectionTitle` 스타일 전체를 건드리지 않고, 서비스 섹션에만 `noEyebrow` 클래스를 적용해 영향 범위를 좁혔습니다.
+### 검증
+- `cd web; npm run lint -- components/Business.js`: 통과
+- Browser local check (`http://localhost:3010/services`): 제목의 `::before` content/display가 `none`으로 확인됨.
+### 변경 파일
+- `web/components/Business.js`
+- `web/components/Business.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 공개 헤더 CTA 중복 제거 (v5.14.189)
 ### 핵심
 - 미로그인 공개 헤더에서 `임직원 로그인`과 우측 `로그인`이 동시에 보여 같은 기능 버튼이 중복 노출되던 문제를 정리했습니다.

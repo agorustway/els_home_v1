@@ -97,7 +97,7 @@ export default function Business() {
         <section id="business" className={styles.businessSection}>
             <div className="container">
                 <div className={styles.header}>
-                    <h2 className="sectionTitle">주요 사업 및 운영 현황</h2>
+                    <h2 className={`sectionTitle ${styles.noEyebrow}`}>주요 사업 및 운영 현황</h2>
                     {selectedIdx !== null && (
                         <button className={styles.backBtn} onClick={() => setSelectedIdx(null)}>
                             ← 목록으로 돌아가기
