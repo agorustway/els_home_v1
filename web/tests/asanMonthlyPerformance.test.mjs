@@ -215,6 +215,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   const component = read('web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js');
   const page = read('web/app/(main)/employees/branches/asan/page.js');
   const dbReader = read('web/lib/asan-branch-db.js');
+  const exportUtil = read('web/utils/asanPerformanceTableExport.mjs');
   assert.match(page, /const loadAsanMonthlyPerformance = \(\) => import\('\.\/AsanMonthlyPerformance'\);/);
   assert.match(page, /const AsanMonthlyPerformance = dynamic\(loadAsanMonthlyPerformance/);
   assert.match(page, /activePerformanceTab === 'monthly-performance' && \(\s*<AsanMonthlyPerformance/);
@@ -397,6 +398,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /buildMonthlyPerformanceFileSlots/);
   const css = read('web/app/(main)/employees/branches/asan/annualPerformance.module.css');
   assert.match(css, /\.tableArea\s*{[\s\S]*height: clamp\(260px, calc\(100dvh - 290px\), 700px\)/);
+  assert.match(css, /\.tableBusyNotice/);
   assert.match(css, /\.tableArea\s*{[\s\S]*overflow: hidden/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*overflow-x: auto/);
   assert.match(css, /\.tableScroll\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
@@ -408,6 +410,16 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(css, /\.carryoverClientRows\s*{[\s\S]*scrollbar-gutter: stable both-edges/);
   assert.match(css, /\.dataTable\s*{[\s\S]*width: max-content/);
   assert.match(component, /placeholder="검색어 또는 금액 \(\, ; 로 조건 추가\)"/);
+  assert.match(component, /downloadPerformanceTableExcel/);
+  assert.match(component, /tableLoading/);
+  assert.match(component, /조회중 \(빅데이터 검색 느림\)/);
+  assert.match(component, /엑셀 생성중/);
+  assert.match(component, /title: '아산 월간실적 테이블'/);
+  assert.match(dbReader, /function isPerformanceExportRequest/);
+  assert.match(dbReader, /exportRequested \? 50000 : 5000/);
+  assert.match(dbReader, /maxSortRows: exportRequested \? 49999 : 19999/);
+  assert.match(exportUtil, /PERFORMANCE_TABLE_EXPORT_PAGE_SIZE = 50000/);
+  assert.match(exportUtil, /\/api\/branches\/asan\/export\/view/);
   assert.match(component, /하나라도 포함/);
   assert.match(component, /모두 포함/);
   assert.match(component, /title="클릭하여 정렬"/);

@@ -1,3 +1,38 @@
+## [2026-05-26] 실적 화면 원가율 표기 통일 (v5.14.216)
+### 핵심
+- 종합실적, 연간실적, 월간실적 화면과 실적관리 RAG 문맥에서 원가율 표시를 통일했습니다.
+- 과거 개발 로그와 `docs/11_ASAN_PERFORMANCE_PIPELINE.md`의 분석 축 설명까지 함께 검색해 구형 표현이 남지 않도록 정리했습니다.
+- v5.14.215에서 추가한 연간/월간 테이블 검색 안내와 상세배차 톤 엑셀 다운로드도 같은 배포 묶음에 포함됩니다.
+### 검증
+- `rg -n "<구형 원가율 표현>" web docs --glob "!node_modules"`: 남은 표기 없음
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanPerformanceRag.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" utils/asanPerformanceTableExport.mjs utils/asanPerformanceRag.mjs utils/asanPerformanceSummary.mjs tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs tests/asanPerformanceRag.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `AsanSummaryPerformance.js`
+- `web/utils/asanPerformanceRag.mjs`, `web/utils/asanPerformanceSummary.mjs`
+- `web/tests/asanSummaryPerformance.test.mjs`, `web/tests/asanPerformanceRag.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
+## [2026-05-26] 연간/월간 실적 테이블 검색 안내와 엑셀 다운로드 (v5.14.215)
+### 핵심
+- 연간/월간 실적 테이블 검색·정렬 조회 중 기존 데이터를 지우지 않고 `조회중 (빅데이터 검색 느림)` 안내를 표시하도록 보강했습니다.
+- 테이블 툴바에 `엑셀` 버튼을 추가해 현재 검색어, 검색 조건, 정렬, 표시 컬럼 기준으로 결과를 내려받습니다.
+- 엑셀 생성은 상세배차가 쓰는 `/api/branches/asan/export/view` 라우트를 재사용해 제목/생성정보/파란 헤더/테두리/필터/고정행 톤앤매너를 맞췄습니다.
+- 다운로드 조회는 `export=1`일 때 최대 50,000행까지 허용해 검색 결과를 한 번에 담도록 했습니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 20개 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" utils/asanPerformanceTableExport.mjs tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `AsanMonthlyPerformance.js`, `annualPerformance.module.css`
+- `web/utils/asanPerformanceTableExport.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 연간/월간 실적 검색 배치 스캔 보강 (v5.14.214)
 ### 핵심
 - 연간/월간 실적 검색 스캐너가 Supabase 조회 쿼리를 1,000행 배치마다 새로 만들어 뒤쪽 원장 행까지 안정적으로 훑도록 수정했습니다.
@@ -2706,7 +2741,7 @@
 
 ## [2026-05-19] 아산 종합실적 범위 선택형 경영 대시보드 보강 (v5.14.60)
 ### 핵심
-- 종합실적에 `전체/연도별/월별/일별` 선택 컨트롤을 추가하고, 선택마다 매출·손익·손익률·매입률·원장 신뢰도·연간/월간 기여도를 같은 범위로 재계산하게 했습니다.
+- 종합실적에 `전체/연도별/월별/일별` 선택 컨트롤을 추가하고, 선택마다 매출·손익·손익률·원가율·원장 신뢰도·연간/월간 기여도를 같은 범위로 재계산하게 했습니다.
 - 최근월 흐름은 청록 매출 막대와 파란 손익선을 설명형 라벨, 최고 매출, 최저 손익 포인트로 보강해 작은 그래프만 보고도 의미가 읽히게 했습니다.
 - 계약/차량 집중도는 `ELS직계약차량`을 왼쪽 우선, `외부/타운송사`를 오른쪽에 같은 폭으로 배치하고 각 축의 주요 거래처/작업지·차량 TOP을 함께 보여줍니다.
 - 원장 신뢰도 `annual/monthly` 영문 노출을 한글 라벨로 고정하고, 진행 중인 연도는 `2026년 5월까지`처럼 집계 완료 월을 표시합니다.
@@ -2776,7 +2811,7 @@
 ### 핵심
 - `종합실적` placeholder를 실제 운영판으로 교체하고, `/api/branches/asan/performance/summary` 라우트를 추가했습니다.
 - API는 Supabase `annual` current summary와 `monthly` diff-current summary를 `page_size=1`로 조회해 통합 매출/매입/손익, 월별·연도별 시리즈, 계약/차량 집중도, 경영 판단 신호를 생성합니다.
-- 화면은 사장 관점으로 `통합 매출`, `통합 손익`, `손익률`, `매입률`, `최근월`을 최상단에 두고, 합산 흐름도·최근 12개월 차트·연도 매트릭스·원장 신뢰도를 압축 배치했습니다.
+- 화면은 사장 관점으로 `통합 매출`, `통합 손익`, `손익률`, `원가율`, `최근월`을 최상단에 두고, 합산 흐름도·최근 12개월 차트·연도 매트릭스·원장 신뢰도를 압축 배치했습니다.
 - 원본 annual/monthly summary 전체를 응답에 싣던 payload를 제거해 실데이터 응답을 약 34.6KB로 줄였습니다.
 ### 검증
 - `node --test web/tests/asanMonthlyPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 22개 통과
@@ -4076,7 +4111,7 @@
 ### 핵심
 - 연간실적 메타 summary에 `currentSnapshotId`를 저장하고 웹 조회는 해당 스냅샷만 읽도록 보강했습니다. 여러 current 스냅샷이 남아 같은 row_index가 반복 표시되는 상황을 차단합니다.
 - importer summary에 월별/구분별 breakdown을 확장해 작업지·운송사·노선·구분·청구처·지급처 등 주요 축별 매출/매입/손익 집계를 남기도록 했습니다.
-- 연간실적 분석 화면에 건당 매출/건당 손익/매입률/최고 손익월, 월별 추세, 구분별 상위 분석 패널을 추가했습니다.
+- 연간실적 분석 화면에 건당 매출/건당 손익/원가율/최고 손익월, 월별 추세, 구분별 상위 분석 패널을 추가했습니다.
 ### 검증
 - `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
 - `npm.cmd run lint -- "scripts/import-asan-annual-performance.mjs" "utils/asanPerformanceView.mjs" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js"`: 0 errors

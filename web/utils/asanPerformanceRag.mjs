@@ -197,7 +197,7 @@ export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}
   let text = `\n\n## 아산지점 실적관리\n`;
   text += `[시스템: 실적관리 화면 도출항목 재사용 / 메뉴 ${targetMenuLabel(intent.menu)} / 범위 ${scope.label || scope.mode || '전체'} / 원천 Supabase branch_performance_files·dashboard_snapshots]\n`;
   text += `- 예하 메뉴 연결: 종합실적, 월간실적, 연간실적\n`;
-  text += `- 합계: 매출 ${formatMoney(summary.totalRevenue)} / 매입 ${formatMoney(summary.totalPurchase)} / 손익 ${formatMoney(summary.totalProfit)} / 손익률 ${formatRate(summary.profitRate)} / 매입률 ${formatRate(summary.purchaseRate)}\n`;
+  text += `- 합계: 매출 ${formatMoney(summary.totalRevenue)} / 매입 ${formatMoney(summary.totalPurchase)} / 손익 ${formatMoney(summary.totalProfit)} / 손익률 ${formatRate(summary.profitRate)} / 원가율 ${formatRate(summary.purchaseRate)}\n`;
   text += `- 기간/원장: ${summary.periodStart || '-'} ~ ${summary.periodEnd || '-'} / 행 ${Number(summary.rowCount || 0).toLocaleString('ko-KR')}건 / 파일 ${Number(summary.fileCount || 0).toLocaleString('ko-KR')}개 / 동기화 ${summary.syncedAt || '-'}\n`;
   if (latestMonth?.period) {
     text += `- 최신월 ${latestMonth.period}: ${metricText(latestMonth)}\n`;

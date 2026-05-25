@@ -11,6 +11,7 @@ import {
     normalizePerformanceColumnOrder,
     reconcilePerformanceLayoutPrefs,
 } from '@/utils/asanPerformanceView.mjs';
+import { downloadPerformanceTableExcel } from '@/utils/asanPerformanceTableExport.mjs';
 import styles from './annualPerformance.module.css';
 
 const PREFS_KEY = 'asan_annual_performance_prefs';
@@ -359,7 +360,7 @@ function buildExecutiveNotes({ profitRate, purchaseRate, latestMonth, previousMo
     if (latestMonth && previousMonth) {
         notes.push(`최근월 매출은 전월 대비 ${formatSignedAmount(safeNumber(latestMonth.revenue) - safeNumber(previousMonth.revenue))}, 손익은 ${formatSignedAmount(safeNumber(latestMonth.profit) - safeNumber(previousMonth.profit))}입니다.`);
     }
-    notes.push(`전체 손익률은 ${formatPercent(profitRate)}이고 매입률은 ${formatPercent(purchaseRate)}입니다.`);
+    notes.push(`전체 손익률은 ${formatPercent(profitRate)}이고 원가율은 ${formatPercent(purchaseRate)}입니다.`);
     if (topSegment) {
         notes.push(`최대 기여 항목은 ${topSegment.name || '미분류'}이며 매출 비중 ${formatPercent(topSegment.revenueShare)}입니다.`);
     }
@@ -861,6 +862,8 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
     const [payload, setPayload] = useState(null);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [syncStatus, setSyncStatus] = useState(null);
     const [notice, setNotice] = useState('');
@@ -961,6 +964,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         const page = options.page || 1;
         const append = Boolean(options.append);
         const quiet = Boolean(options.quiet);
+        const tableRequest = !append && (activeTab === 'table' || Boolean(options.search) || Boolean(options.sortKey));
         const requestId = append ? requestIdRef.current : requestIdRef.current + 1;
         if (!append) requestIdRef.current = requestId;
 
@@ -969,6 +973,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         } else if (!quiet) {
             setLoading(true);
         }
+        if (tableRequest) setTableLoading(true);
         setError('');
         if (!append) setNotice('');
 
@@ -1009,6 +1014,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         } finally {
             setLoading(false);
             setLoadingMore(false);
+            if (tableRequest) setTableLoading(false);
         }
     }, [activeTab, selectedPath, sheetName, headerRow, searchTerm, searchMode, sortConfig, applyPayload]);
 
@@ -1284,6 +1290,48 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         fetchData({ page: nextPage, append: true });
     };
 
+    const downloadTableExcel = async () => {
+        if (!headers.length || !visibleColumns.length) {
+            setError('다운로드할 컬럼이 없습니다.');
+            return;
+        }
+        setExporting(true);
+        setError('');
+        setNotice('');
+        try {
+            const params = new URLSearchParams({
+                path: normalizePerformancePath(selectedPath),
+                sheet_name: sheetName || DEFAULT_ANNUAL_PERFORMANCE_SHEET,
+                aggregate: 'all',
+            });
+            if (headerRow) params.set('header_row', String(headerRow));
+            if (searchTerm) {
+                params.set('search', searchTerm);
+                params.set('search_mode', searchMode || 'or');
+            }
+            if (sortConfig.key) {
+                params.set('sort_key', sortConfig.key);
+                params.set('sort_dir', sortConfig.direction || 'asc');
+            }
+            const result = await downloadPerformanceTableExcel({
+                endpoint: '/api/branches/asan/performance/annual',
+                params,
+                headers,
+                visibleColumns,
+                title: '아산 연간실적 테이블',
+                sheetName: '연간실적',
+                fileNamePrefix: '아산_연간실적_테이블',
+                searchTerm,
+                searchMode,
+            });
+            setNotice(`엑셀 다운로드 완료: ${result.exportedRows.toLocaleString('ko-KR')}건${result.capped ? ' (최대 50,000건)' : ''}`);
+        } catch (err) {
+            setError(err.message || '연간실적 엑셀 다운로드 실패');
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const requestSort = (col) => {
         const next = sortConfig.key === col && sortConfig.direction === 'asc'
             ? { key: col, direction: 'desc' }
@@ -1449,7 +1497,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>조사범위 매입</span>
                             <strong>{formatPerformanceAmount(scopedTotals.purchase)}</strong>
-                            <em>매입률 {formatPercent(purchaseRate)}</em>
+                            <em>원가율 {formatPercent(purchaseRate)}</em>
                         </div>
                         <div className={styles.kpi}>
                             <span className={styles.kpiLabel}>손익</span>
@@ -1800,8 +1848,18 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                             {searchMode === 'and' ? '모두 포함' : '하나라도 포함'}
                         </button>
                         <button className={styles.ghostBtn} onClick={() => setShowColPanel(prev => !prev)}>컬럼</button>
+                        <button className={styles.ghostBtn} onClick={downloadTableExcel} disabled={exporting || tableLoading || !rows.length}>
+                            {exporting ? '엑셀 생성중' : '엑셀'}
+                        </button>
                         <span className={styles.rowCount}>조회 {loadedRows.toLocaleString()} / 전체 {totalRowsLabel}</span>
                     </div>
+
+                    {(tableLoading || exporting) && (
+                        <div className={styles.tableBusyNotice}>
+                            <strong>{tableLoading ? '조회중 (빅데이터 검색 느림)' : '엑셀 생성중'}</strong>
+                            <span>{tableLoading ? '원장 전체에서 조건을 확인하고 있습니다.' : '상세배차와 같은 형식으로 파일을 만들고 있습니다.'}</span>
+                        </div>
+                    )}
 
                     {showColPanel && (
                         <div className={styles.columnPanel}>

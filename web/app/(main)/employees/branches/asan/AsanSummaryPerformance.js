@@ -725,7 +725,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
                 tone: metricTone(summary.profitRate),
             },
             {
-                label: '매입률',
+                label: '원가율',
                 value: formatPercent(summary.purchaseRate, 2),
                 sub: `${safeNumber(summary.rowCount).toLocaleString('ko-KR')}행 · ${safeNumber(summary.fileCount).toLocaleString('ko-KR')}개 원장`,
                 tone: safeNumber(summary.purchaseRate) <= 85 ? 'good' : 'watch',

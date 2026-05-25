@@ -388,7 +388,7 @@ function buildExecutiveSignals({
     {
       title: '이익률',
       value: `${profitRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%`,
-      detail: `매입률 ${purchaseRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%`,
+      detail: `원가율 ${purchaseRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%`,
       tone: signalTone(profitRate, 10, 5),
     },
     {

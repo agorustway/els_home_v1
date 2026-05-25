@@ -3009,6 +3009,28 @@
     font-weight: 900;
 }
 
+.tableBusyNotice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    background: #f0f9ff;
+    color: #075985;
+    font-size: 0.74rem;
+    font-weight: 850;
+}
+
+.tableBusyNotice strong {
+    color: #0f766e;
+    font-weight: 950;
+}
+
+.tableBusyNotice span {
+    color: #475569;
+}
+
 .columnPanel {
     display: flex;
     flex-wrap: wrap;

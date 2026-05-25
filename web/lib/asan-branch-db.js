@@ -210,6 +210,11 @@ function parsePositiveInt(value, fallback, max) {
     return Math.min(parsed, max);
 }
 
+function isPerformanceExportRequest(searchParams) {
+    const value = String(searchParams.get('export') || searchParams.get('download') || '').toLowerCase();
+    return ['1', 'true', 'yes', 'y', 'excel'].includes(value);
+}
+
 function searchTerms(search) {
     return String(search || '').split(/[;,，；]+/).map(term => term.trim()).filter(Boolean);
 }
@@ -1395,8 +1400,9 @@ export async function queryAsanAnnualPerformanceDashboardFromSupabase(searchPara
 
 async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
     const supabase = getSupabaseAdmin();
+    const exportRequested = isPerformanceExportRequest(searchParams);
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
-    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
+    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, exportRequested ? 50000 : 5000);
     const search = (searchParams.get('search') || '').trim();
     const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
     const sortKey = (searchParams.get('sort_key') || '').trim();
@@ -1473,7 +1479,7 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         pageSize,
         sortKey,
         sortDir,
-        maxSortRows: 19999,
+        maxSortRows: exportRequested ? 49999 : 19999,
         fallbackTotal,
         orderBySnapshot: allMetasHaveSnapshot,
         search,
@@ -1508,8 +1514,9 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
     const supabase = getSupabaseAdmin();
     const normalizedPath = normalizePerformancePath(searchParams.get('path'));
     const sheetName = searchParams.get('sheet_name') || DEFAULT_ASAN_ANNUAL_PERFORMANCE_SHEET;
+    const exportRequested = isPerformanceExportRequest(searchParams);
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
-    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
+    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, exportRequested ? 50000 : 5000);
     const search = (searchParams.get('search') || '').trim();
     const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
     const sortKey = (searchParams.get('sort_key') || '').trim();
@@ -1562,7 +1569,7 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
         pageSize,
         sortKey,
         sortDir,
-        maxSortRows: 19999,
+        maxSortRows: exportRequested ? 49999 : 19999,
         fallbackTotal: search ? 0 : meta.current_row_count || meta.row_count || 0,
         search,
         searchMode,
@@ -2057,8 +2064,9 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const defaultYear = new Date().getFullYear();
     const baseYear = parsePositiveInt(searchParams.get('year'), defaultYear, 2100);
     const extraMonths = parsePositiveInt(searchParams.get('extra_months'), 3, 12);
+    const exportRequested = isPerformanceExportRequest(searchParams);
     const page = parsePositiveInt(searchParams.get('page'), 1, 1000000);
-    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, 5000);
+    const pageSize = parsePositiveInt(searchParams.get('page_size'), 500, exportRequested ? 50000 : 5000);
     const search = (searchParams.get('search') || '').trim();
     const searchMode = (searchParams.get('search_mode') || 'or').trim().toLowerCase();
     const sortKey = (searchParams.get('sort_key') || '').trim();
@@ -2126,7 +2134,7 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         pageSize,
         sortKey,
         sortDir,
-        maxSortRows: 19999,
+        maxSortRows: exportRequested ? 49999 : 19999,
         fallbackTotal,
         search,
         searchMode,
