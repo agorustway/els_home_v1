@@ -364,12 +364,12 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         if (activeTable === 'routes') {
             return [
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
-                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.protectedCell },
-                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
-                { key: 'route_key', label: '연결키', value: routeMatchKey },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name },
+                { key: 'route_key', label: '연결키', value: routeMatchKey },
+                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
+                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.protectedCell },
                 { key: 'review_note', label: '검수메모', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
@@ -502,7 +502,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 <div className={styles.queryArrow}>→</div>
                 <div className={styles.queryNode}>
                     <strong>운송경로</strong>
-                    <span>운송경로코드 · 운송경로명 · 매칭상태</span>
+                    <span>상차지 · 경유지(ELS) · 하차지 · 원장 운송경로</span>
                 </div>
             </div>
 

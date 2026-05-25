@@ -2,12 +2,12 @@ export const DEFAULT_GLAPS_BRANCH_ID = 'asan';
 
 export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
   'ID',
-  '운송경로코드',
-  '운송경로명',
   '상차지',
-  '경유지',
   '경유지(ELS)',
   '하차지(선적)',
+  '경유지',
+  '운송경로명',
+  '운송경로코드',
   '매칭상태',
   '검수메모',
   '수정출처',

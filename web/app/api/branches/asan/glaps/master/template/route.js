@@ -207,12 +207,12 @@ function reviewStatusLabel(status = '') {
 function routeToTemplateRow(row = {}) {
   return [
     row.id || '',
-    row.route_code || '',
-    row.route_name || '',
     row.start_location_name || '',
-    row.waypoint_name || '',
     row.waypoint_els_name || '',
     row.destination_name || '',
+    row.waypoint_name || '',
+    row.route_name || '',
+    row.route_code || '',
     reviewStatusLabel(row.review_status),
     row.review_note || '',
     editSourceLabel(row.updated_by),

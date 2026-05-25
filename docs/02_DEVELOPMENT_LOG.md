@@ -1,3 +1,20 @@
+## [2026-05-25] GLAPS 운송경로 보호 컬럼 우측 배치 (v5.14.208)
+### 핵심
+- 운송경로 탭에서 `운송경로코드/운송경로명` 회색 보호 컬럼이 왼쪽에 있어 항목매핑 탭과 시선 흐름이 달랐던 문제를 정리했습니다.
+- 화면 테이블은 `상차지 -> 경유지(ELS) -> 하차지 -> 연결키 -> 운송경로명 -> 운송경로코드` 순서로 바꿔, 입력/매칭값을 먼저 보고 원장 보호값은 오른쪽에서 확인하게 했습니다.
+- 운송경로 수정양식도 같은 흐름으로 `상차지/경유지(ELS)/하차지`를 먼저 두고, 보호값 `경유지/운송경로명/운송경로코드`를 오른쪽에 배치했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/template/route.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/utils/glapsMasterData.mjs`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 선적관리 모바일 목록 100건 단위 렌더링 제한 (v5.14.207)
 ### 핵심
 - 모바일 선적관리 테이블이 `processedData` 전체를 한 번에 렌더링하지 않고 100건 단위로만 화면에 표시되도록 제한했습니다.
