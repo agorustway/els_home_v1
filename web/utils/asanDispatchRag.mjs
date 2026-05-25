@@ -2,6 +2,11 @@ import {
   buildDispatchDetailLines,
   summarizeDispatchDetailLines,
 } from './asanDispatchDetailLines.mjs';
+import {
+  buildGlapsDispatchRouteFingerprints,
+  buildGlapsRouteFingerprint,
+  normalizeGlapsKey,
+} from './glapsMasterData.mjs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -16,7 +21,7 @@ const DISPATCH_TRIGGER_WORDS = [
 
 const DETAIL_TRIGGER_WORDS = [
   '상세배차', '상세 배차', '상세라인', '상세 라인',
-  'bkg', '부킹', 'glaps', '운송경로코드', '상세현황',
+  'bkg', '부킹', 'glaps', '운송경로코드', '운송경로', '경로확인', '상세현황',
 ];
 
 const STRUCTURE_TRIGGER_WORDS = [
@@ -69,13 +74,15 @@ const IGNORE_TERMS = new Set([
   '오늘', '내일', '모레', '내일모레', '글피', '그글피', '어제', '그제', '이번주', '다음주', '지난주', '금주',
   '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일',
   '월', '화', '수', '목', '금', '토', '일',
-  '작업지', '작업지는', '작업지야', '화주', '담당자', '고객사', '포트',
+  '작업', '작업지', '작업지는', '작업지야', '화주', '담당자', '고객사', '포트',
   '도착항', '상차지', '상차', '배차정보', '특이사항', '비고',
   '업체', '업체별', '운송사', '운송사별', '실행사', '실행사별',
   '지역별', '상차지별', '상차지역별', '픽업지역별', '상차지별수량',
   '상차지별배차', '지역별수량', '지역별배차',
   '상세배차', '상세라인', '상세현황', 'glaps', 'glaps코드', '코드',
   '운송경로코드', '최종코드', '부킹', 'bkg',
+  '경로', '운송경로', '경로확인', '안되는', '안됨', '안돼', '안되',
+  '누락', '미도출', '미확인', '조정필요',
 ]);
 
 const WEEKDAYS = [
@@ -304,6 +311,27 @@ function detectGroupBy(text) {
   return groups;
 }
 
+function detectDetailIssueFilters(text) {
+  const compact = normalizeCompact(text);
+  const hasMissingIntent = /(안되|안돼|안됨|안잡|안나|누락|미도출|미확인|조정필요|없는|없음|안되는)/.test(compact);
+  const filters = [];
+  if ((compact.includes('운송경로') || compact.includes('경로확인') || compact.includes('경로')) && hasMissingIntent) {
+    filters.push('route');
+  }
+  if (compact.includes('상차지') && hasMissingIntent) filters.push('start');
+  if ((compact.includes('포트') || compact.includes('도착항')) && hasMissingIntent) filters.push('port');
+  if ((compact.includes('선사') || compact.includes('라인')) && hasMissingIntent) filters.push('line');
+  if ((compact.includes('타입') || compact.includes('규격')) && hasMissingIntent) filters.push('type');
+  if ((compact.includes('운송사') || compact.includes('업체')) && hasMissingIntent) filters.push('carrier');
+  if ((compact.includes('컨샤이니') || compact.includes('consignee')) && hasMissingIntent) filters.push('consignee');
+  if ((compact.includes('화주사') || compact.includes('화주')) && hasMissingIntent) filters.push('shipper');
+  if ((compact.includes('오더구분') || compact.includes('수출입')) && hasMissingIntent) filters.push('orderType');
+  if (compact.includes('glaps') && hasMissingIntent && filters.length === 0) {
+    filters.push('route', 'port', 'line', 'type', 'carrier', 'consignee', 'shipper', 'orderType');
+  }
+  return [...new Set(filters)];
+}
+
 function isTypeTerm(compact) {
   return Object.values(TYPE_ALIASES)
     .flat()
@@ -379,6 +407,7 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
   const typeFilters = detectTypeFilters(text);
   const quantityMetric = detectQuantityMetric(text);
   const groupBy = detectGroupBy(text);
+  const detailIssueFilters = detectDetailIssueFilters(text);
   const specificKeywords = buildSpecificKeywords(text, options.searchTerms || []);
   const hasDispatchTrigger = hasAnyWord(compact, DISPATCH_TRIGGER_WORDS);
   const hasStructureTrigger = hasAnyWord(compact, STRUCTURE_TRIGGER_WORDS);
@@ -399,6 +428,7 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
     typeFilters,
     quantityMetric,
     groupBy,
+    detailIssueFilters,
     specificKeywords,
     hasDispatchTrigger,
     hasStructureTrigger,
@@ -763,7 +793,8 @@ function rowMatchesIntent(rowInfo, intent) {
 function hasActiveIntentFilters(intent = {}) {
   return Boolean(intent.filterHour)
     || Boolean(intent.typeFilters?.length)
-    || Boolean(intent.specificKeywords?.length);
+    || Boolean(intent.specificKeywords?.length)
+    || Boolean(intent.detailIssueFilters?.length);
 }
 
 function buildAnswerSummaryText(summary, intent = {}, scopeLabel = '조회 범위 전체') {
@@ -965,6 +996,194 @@ function detailLineMatchesIntent(line, intent) {
   return typeMatch && keywordMatch;
 }
 
+function detailLineMatchesIssueFilters(line, filters = []) {
+  if (!filters?.length) return true;
+  return filters.some((filterKey) => {
+    if (filterKey === 'start') return Boolean(line.needsStartLocationSelection);
+    if (filterKey === 'route') return Boolean(line.needsRouteCodeMapping);
+    if (filterKey === 'orderType') return Boolean(line.needsOrderTypeCodeMapping);
+    if (filterKey === 'shipper') return Boolean(line.needsShipperCodeMapping);
+    if (filterKey === 'routePart') return Boolean(line.needsRoutePartCodeMapping);
+    if (filterKey === 'port') return Boolean(line.needsPortCodeMapping);
+    if (filterKey === 'line') return Boolean(line.needsLineCodeMapping);
+    if (filterKey === 'type') return Boolean(line.needsTypeCodeMapping);
+    if (filterKey === 'carrier') return Boolean(line.needsCarrierCodeMapping);
+    if (filterKey === 'consignee') return Boolean(line.needsConsigneeCodeMapping);
+    return false;
+  });
+}
+
+function buildCodeMap(entries = [], pickValues) {
+  const map = new Map();
+  for (const entry of entries || []) {
+    const code = String(entry?.glaps_code || entry?.glapsCode || '').trim();
+    if (!code) continue;
+    for (const value of pickValues(entry)) {
+      const key = normalizeGlapsKey(value);
+      if (key && !map.has(key)) map.set(key, code);
+    }
+  }
+  return map;
+}
+
+function getCode(map, value) {
+  return map?.get(normalizeGlapsKey(value)) || '';
+}
+
+function buildRouteMap(routes = []) {
+  const map = new Map();
+  for (const route of routes || []) {
+    const keys = [
+      route.route_fingerprint || route.routeFingerprint || '',
+      buildGlapsRouteFingerprint({
+        startLocationName: route.start_location_name || route.startLocationName || '',
+        waypointElsName: route.waypoint_els_name || route.waypointElsName || '',
+        waypointName: route.waypoint_name || route.waypointName || '',
+        destinationName: route.destination_name || route.destinationName || '',
+      }),
+      ...buildGlapsDispatchRouteFingerprints({
+        startLocationName: route.start_location_name || route.startLocationName || '',
+        waypointElsName: route.waypoint_els_name || route.waypointElsName || '',
+        waypointName: route.waypoint_name || route.waypointName || '',
+        destinationName: route.destination_name || route.destinationName || '',
+      }),
+    ];
+    keys.filter(Boolean).forEach((key) => {
+      if (!map.has(key)) map.set(key, route);
+    });
+  }
+  return map;
+}
+
+function getRoutePayload(route = {}, candidates = []) {
+  const payload = route?.raw_payload || route?.rawPayload || {};
+  for (const candidate of candidates) {
+    const direct = payload[candidate];
+    if (direct) return String(direct).trim();
+    const found = Object.entries(payload).find(([key]) => normalizeGlapsKey(key) === normalizeGlapsKey(candidate));
+    if (found?.[1]) return String(found[1]).trim();
+  }
+  return '';
+}
+
+function enrichDetailLinesWithGlaps(lines = [], glapsLookup = null) {
+  if (!glapsLookup?.routes?.length && !glapsLookup?.aliases?.length) return lines;
+
+  const routeMap = buildRouteMap(glapsLookup.routes || []);
+  const aliases = glapsLookup.aliases || [];
+  const codeMap = (aliasType) => buildCodeMap(
+    aliases.filter((alias) => alias?.alias_type === aliasType),
+    (alias) => [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code],
+  );
+  const maps = {
+    port: codeMap('port'),
+    line: codeMap('line'),
+    type: codeMap('container_type'),
+    carrier: codeMap('carrier'),
+    consignee: codeMap('consignee'),
+  };
+
+  return lines.map((line) => {
+    const routeKeys = buildGlapsDispatchRouteFingerprints({
+      startLocationName: line.startLocation || '',
+      waypointElsName: line.workplace || '',
+      destinationName: line.destination || '',
+    });
+    const glapsRoute = routeKeys.map((key) => routeMap.get(key)).find(Boolean) || null;
+    const carrierCode = getCode(maps.carrier, 'ELS');
+    const glapsPortCode = getCode(maps.port, line.port);
+    const glapsLineCode = getCode(maps.line, line.line);
+    const glapsTypeCode = getCode(maps.type, line.containerType);
+    const glapsConsigneeCode = getCode(maps.consignee, line.customer);
+    const glapsShipperCode = getRoutePayload(glapsRoute, ['화주사코드', '화주사']);
+    const glapsWorkplaceCode = getRoutePayload(glapsRoute, ['경유지코드']);
+    const glapsStartLocationCode = getRoutePayload(glapsRoute, ['반출지코드', '출발지코드', '상차지코드'])
+      || glapsRoute?.start_location_code
+      || glapsRoute?.startLocationCode
+      || glapsRoute?.start_location_name
+      || glapsRoute?.startLocationName
+      || '';
+    const glapsDestinationCode = getRoutePayload(glapsRoute, ['반입지코드', '도착지코드', '하차지코드'])
+      || glapsRoute?.destination_code
+      || glapsRoute?.destinationCode
+      || glapsRoute?.destination_name
+      || glapsRoute?.destinationName
+      || '';
+    const glapsRouteCode = glapsRoute?.route_code || glapsRoute?.routeCode || '';
+    return {
+      ...line,
+      glapsRouteName: glapsRoute?.route_name || glapsRoute?.routeName || '',
+      glapsRouteCode,
+      glapsPortCode,
+      glapsLineCode,
+      glapsTypeCode,
+      glapsCarrierBpCode: carrierCode,
+      glapsConsigneeCode,
+      glapsShipperCode,
+      glapsStartLocationCode,
+      glapsWorkplaceCode,
+      glapsDestinationCode,
+      needsRouteCodeMapping: !glapsRouteCode,
+      needsRoutePartCodeMapping: Boolean(glapsRouteCode)
+        && (!glapsStartLocationCode || !glapsWorkplaceCode || !glapsDestinationCode),
+      needsPortCodeMapping: Boolean(line.port) && !glapsPortCode,
+      needsLineCodeMapping: Boolean(line.line) && !glapsLineCode,
+      needsTypeCodeMapping: Boolean(line.containerType) && !glapsTypeCode,
+      needsCarrierCodeMapping: !carrierCode,
+      needsConsigneeCodeMapping: Boolean(line.customer) && !glapsConsigneeCode,
+      needsShipperCodeMapping: Boolean(line.shipper) && !glapsShipperCode,
+    };
+  });
+}
+
+function formatIssueFilters(filters = []) {
+  const labels = {
+    start: '상차지 미선택',
+    route: '운송경로 미도출',
+    orderType: '오더구분 코드 누락',
+    shipper: '화주사 코드 누락',
+    routePart: '경로부품 코드 누락',
+    port: '포트 코드 누락',
+    line: '선사 코드 누락',
+    type: '타입 코드 누락',
+    carrier: '운송사 코드 누락',
+    consignee: '컨샤이니 코드 누락',
+  };
+  return filters.map((filter) => labels[filter] || filter).join(', ');
+}
+
+function buildWorkplaceIssueSummary(lines = []) {
+  const byWorkplace = {};
+  for (const line of lines) {
+    const key = line.workplace || '작업지미상';
+    if (!byWorkplace[key]) {
+      byWorkplace[key] = {
+        count: 0,
+        starts: new Set(),
+        destinations: new Set(),
+        shippers: new Set(),
+        companies: new Set(),
+      };
+    }
+    const bucket = byWorkplace[key];
+    bucket.count += 1;
+    if (line.startLocation || line.startRegion) bucket.starts.add(line.startLocation || line.startRegion);
+    if (line.destination) bucket.destinations.add(line.destination);
+    if (line.shipper) bucket.shippers.add(line.shipper);
+    if (line.company) bucket.companies.add(line.company);
+  }
+  return Object.entries(byWorkplace)
+    .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0], 'ko-KR'))
+    .map(([workplace, bucket]) => ({
+      workplace,
+      count: bucket.count,
+      starts: [...bucket.starts],
+      destinations: [...bucket.destinations],
+      shippers: [...bucket.shippers],
+      companies: [...bucket.companies],
+    }));
+}
+
 export function buildAsanDispatchDetailRagText(records = [], intent, options = {}) {
   const maxDetailRows = options.maxDetailRows || 120;
   const sortedRecords = [...(records || [])].sort((a, b) => String(a.target_date).localeCompare(String(b.target_date)));
@@ -985,12 +1204,17 @@ export function buildAsanDispatchDetailRagText(records = [], intent, options = {
     }
   }
 
-  const matchedLines = allLines.filter((line) => detailLineMatchesIntent(line, intent));
-  const targetLines = hasActiveIntentFilters(intent) ? matchedLines : allLines;
+  const enrichedLines = enrichDetailLinesWithGlaps(allLines, options.glapsLookup);
+  const matchedLines = enrichedLines.filter((line) => detailLineMatchesIntent(line, intent));
+  const issueMatchedLines = matchedLines.filter((line) => detailLineMatchesIssueFilters(line, intent.detailIssueFilters || []));
+  const targetLines = intent.detailIssueFilters?.length
+    ? issueMatchedLines
+    : (hasActiveIntentFilters(intent) ? matchedLines : enrichedLines);
   const summary = summarizeDispatchDetailLines(targetLines);
   const byCompany = {};
   const byStart = {};
   const byDestination = {};
+  const issueWorkplaces = buildWorkplaceIssueSummary(targetLines);
 
   targetLines.forEach((line) => {
     addMapCount(byCompany, line.company || '업체미상', 1);
@@ -1013,13 +1237,24 @@ export function buildAsanDispatchDetailRagText(records = [], intent, options = {
   text += `- 업체별: ${topMapText(byCompany)}\n`;
   text += `- 하차지(선적)별: ${topMapText(byDestination)}\n`;
   text += `- 보정 필요 요약: 상차지수동 ${formatCount(summary.manualStartLocationCount)}건 / 운송경로 ${formatCount(summary.routeMissingCount)}건 / 포트 ${formatCount(summary.portMissingCount)}건 / 선사 ${formatCount(summary.lineMissingCount)}건 / 타입 ${formatCount(summary.typeMissingCount)}건\n`;
+  if (intent.detailIssueFilters?.length) {
+    text += `- 누락 조건: ${formatIssueFilters(intent.detailIssueFilters)}\n`;
+  }
   text += `> [해석 규칙] 상세배차는 배차판 지역 셀의 업체+수량을 1대 단위 라인으로 펼친 자료다. CODE/Nomi/함축 같은 설명 컬럼을 배차 수량으로 계산하지 마라.\n`;
+  text += `> [해석 규칙] "GLAPS 경로확인 안됨/안되는/미도출"은 상세배차의 운송경로코드 미도출(needsRouteCodeMapping) 조건이다. 단순 키워드 검색으로 0건 처리하지 마라.\n`;
 
   if (targetLines.length > 0) {
+    if (intent.detailIssueFilters?.includes('route')) {
+      text += `### GLAPS 경로 미도출 작업지\n`;
+      issueWorkplaces.slice(0, 30).forEach((item) => {
+        text += `- ${item.workplace}: ${formatCount(item.count)}대 / 상차 ${item.starts.join(', ') || '-'} / 선적 ${item.destinations.join(', ') || '-'} / 업체 ${item.companies.join(', ') || '-'}\n`;
+      });
+    }
     text += `### 상세배차 라인 샘플\n`;
     targetLines.slice(0, maxDetailRows).forEach((line) => {
       const typeLabel = line.type === 'mobis' ? '모비스' : (line.type === 'glovis' ? '글로비스' : line.type);
-      text += `- [${line.targetDate} ${typeLabel} #${line.lineNo}] ${line.shipper || '-'} / ${line.startLocation || line.startRegion || '상차지미정'} -> ${line.workplace || '-'} -> ${line.destination || '-'} / ${line.company || '업체미상'} / ${line.containerType || '-'} / BKG ${line.bkg1 || '-'} ${line.bkg2 || ''} ${line.bkg3 || ''}\n`;
+      const route = line.glapsRouteCode ? ` / 운송경로 ${line.glapsRouteCode}` : ' / 운송경로 미도출';
+      text += `- [${line.targetDate} ${typeLabel} #${line.lineNo}] ${line.shipper || '-'} / ${line.startLocation || line.startRegion || '상차지미정'} -> ${line.workplace || '-'} -> ${line.destination || '-'} / ${line.company || '업체미상'} / ${line.containerType || '-'} / BKG ${line.bkg1 || '-'} ${line.bkg2 || ''} ${line.bkg3 || ''}${route}\n`;
     });
     if (targetLines.length > maxDetailRows) {
       text += `- 상세 라인은 ${maxDetailRows}건까지만 주입됨. 실제 매칭은 ${targetLines.length}건이다.\n`;
@@ -1033,8 +1268,44 @@ export function buildAsanDispatchDetailRagText(records = [], intent, options = {
     hasMatches: targetLines.length > 0,
     loadedDates,
     total: targetLines.length,
-    allTotal: allLines.length,
+    allTotal: enrichedLines.length,
     summary,
+  };
+}
+
+async function fetchGlapsDetailLookup(supabase) {
+  const { data: versions, error: versionError } = await supabase
+    .from('glaps_master_versions')
+    .select('id,source_name,imported_at')
+    .eq('branch_id', 'asan')
+    .eq('active', true)
+    .order('imported_at', { ascending: false })
+    .limit(1);
+  if (versionError || !versions?.length) {
+    return { version: null, routes: [], aliases: [], error: versionError || null };
+  }
+
+  const version = versions[0];
+  const [routesRes, aliasesRes] = await Promise.all([
+    supabase
+      .from('glaps_transport_routes')
+      .select('route_code,route_name,start_location_name,waypoint_name,waypoint_els_name,destination_name,route_fingerprint,raw_payload')
+      .eq('version_id', version.id)
+      .eq('active', true)
+      .limit(5000),
+    supabase
+      .from('glaps_master_aliases')
+      .select('alias_type,source_name,els_name,glaps_name,glaps_code')
+      .eq('version_id', version.id)
+      .eq('active', true)
+      .limit(5000),
+  ]);
+
+  return {
+    version,
+    routes: routesRes.data || [],
+    aliases: aliasesRes.data || [],
+    error: routesRes.error || aliasesRes.error || null,
   };
 }
 
@@ -1097,7 +1368,8 @@ export async function buildAsanDispatchDetailRagContext({
     };
   }
 
-  const rag = buildAsanDispatchDetailRagText(data, intent, { maxDetailRows });
+  const glapsLookup = await fetchGlapsDetailLookup(supabase);
+  const rag = buildAsanDispatchDetailRagText(data, intent, { maxDetailRows, glapsLookup });
   return {
     shouldQuery: true,
     success: true,

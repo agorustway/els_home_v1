@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.210 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.211 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운영 DB RAG가 배차판·상세배차·선적관리·배차변동내역·GLAPS코드를 함께 읽고, 총 배차/상차지 컬럼 추론을 보정했다.
+> 최신 업데이트: AI RAG가 GLAPS 경로확인 안됨을 상세배차 운송경로 미도출로 해석하고, 실적관리 화면 도출항목/요약 스냅샷까지 읽는다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.210
+- **웹 버전**: v5.14.211
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -66,7 +66,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
-- **v5.14.210**: 배차판/상세배차/배차변동의 수정 입력칸을 셀과 붙는 투명 입력으로 정리했다. AI는 아산 배차판·상세배차·선적관리·배차변동내역·GLAPS코드를 DB 기준으로 읽고, `CODE/Nomi/함축` 설명 컬럼을 상차지로 오인하지 않는다.
+- **v5.14.211**: AI는 `GLAPS 경로확인 안되는 작업지`를 운송경로 미도출 조건으로 읽고, 실적관리 예하 `종합실적/월간실적/연간실적` 화면 도출항목과 요약 스냅샷을 DB 기준으로 주입한다. 채팅 예시 컨테이너는 정상 선적 이력 샘플 `CMAU7631738`로 교체했다.
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
 - **v5.14.207**: 선적관리 모바일 테이블은 표시 행을 100건 단위로 제한하고, 바닥 근처 스크롤 시 먼저 화면 표시량을 늘린 뒤 필요할 때만 다음 서버 페이지를 조회한다. 모바일 가로 스크롤은 더 이상 다음 페이지 로딩을 트리거하지 않는다.
@@ -75,7 +75,7 @@
 - **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
 - **v5.14.203**: 배차확정 후 배차판 WEB BKG 기존값을 UI/API 양쪽에서 잠그고, 비어 있던 BKG 칸은 추가 입력만 허용한다. TARGET VESSEL/비고는 계속 수정 가능하게 두며, 상세배차/배차변동 변경 표시 tooltip에 확정 후 변경된 전후 값을 노출한다.
 ## VERIFICATION
-- `node --test web/tests/asanDispatchRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 17개 통과
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 24개 통과 / Supabase 2026-05-26 상세배차 81라인 중 GLAPS 운송경로 미도출 44건 조회
 - `node --test web/tests/vehicleTrackingMobileDetail.test.mjs`: 통과
 - `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과

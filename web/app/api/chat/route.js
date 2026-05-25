@@ -9,6 +9,7 @@ import {
     buildAsanChangeEventsRagContext,
     buildAsanGlapsRagContext,
 } from '@/utils/asanOpsRag.mjs';
+import { buildAsanPerformanceRagContext } from '@/utils/asanPerformanceRag.mjs';
 import { buildAsanShippingRagContext } from '@/utils/asanShippingRag.mjs';
 import path from 'path';
 import fs from 'fs';
@@ -1584,7 +1585,7 @@ export async function POST(req) {
             console.error('[ELS-AI] 아산 배차판 RAG 오류:', e);
         }
 
-        // ─── 8. 아산 운영 DB RAG (상세배차/선적관리/변동내역/GLAPS) ───────────────
+        // ─── 8. 아산 운영 DB RAG (상세배차/선적관리/변동내역/GLAPS/실적관리) ───────────────
         // 화면에 이미 DB화된 운영 테이블을 질문 의도에 따라 추가 주입한다.
         try {
             const [
@@ -1592,6 +1593,7 @@ export async function POST(req) {
                 asanShippingContext,
                 asanChangeContext,
                 asanGlapsContext,
+                asanPerformanceContext,
             ] = await Promise.all([
                 buildAsanDispatchDetailRagContext({
                     supabase,
@@ -1616,6 +1618,10 @@ export async function POST(req) {
                     userText: lastUserText,
                     searchTerms,
                 }),
+                buildAsanPerformanceRagContext({
+                    userText: lastUserText,
+                    now: new Date(),
+                }),
             ]);
 
             for (const context of [
@@ -1623,6 +1629,7 @@ export async function POST(req) {
                 ['asanShipping', '아산 선적관리', asanShippingContext],
                 ['asanChange', '아산 배차변동내역', asanChangeContext],
                 ['asanGlaps', '아산 GLAPS코드', asanGlapsContext],
+                ['asanPerformance', '아산 실적관리', asanPerformanceContext],
             ]) {
                 const [key, label, ragContext] = context;
                 if (!ragContext?.shouldQuery) continue;

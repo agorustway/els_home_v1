@@ -1,3 +1,21 @@
+## [2026-05-25] GLAPS 경로미도출/실적관리 RAG 보정 (v5.14.211)
+### 핵심
+- `내일 GLAPS 경로확인 안되는 작업지 어디야?` 같은 질문을 단순 키워드 검색이 아니라 상세배차의 `운송경로 미도출` 조건으로 해석하도록 보정했습니다.
+- 상세배차 RAG가 GLAPS 활성 원장의 운송경로/항목매핑을 함께 읽어 `needsRouteCodeMapping`을 계산하고, 작업지별 미도출 수량을 먼저 주입합니다.
+- 실적관리 RAG를 추가해 `종합실적/월간실적/연간실적` 화면의 도출항목과 요약 스냅샷을 재사용합니다. 원장 전체 행을 프롬프트에 직접 넣지 않아 대용량 마감자료 부담을 피합니다.
+- AI 가이드/빠른질문은 실제 가능 업무 기준으로 갱신하고, 오류 컨테이너 예시 대신 운영 선적 이력 정상 샘플 `CMAU7631738`을 사용합니다.
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 24개 통과
+- `cd web; npm.cmd run lint -- "utils/asanDispatchRag.mjs" "utils/asanPerformanceRag.mjs" "utils/aiAssistantMeta.mjs" "tests/asanDispatchRag.test.mjs" "tests/asanPerformanceRag.test.mjs" "tests/aiAssistantMeta.test.mjs" "app/api/chat/route.js"`: 통과
+- Supabase 읽기 전용 검증: 2026-05-26 상세배차 81라인 중 `GLAPS 경로확인 안되는` 조건 44건 조회
+### 변경 파일
+- `web/utils/asanDispatchRag.mjs`, `web/utils/asanPerformanceRag.mjs`
+- `web/app/api/chat/route.js`, `web/utils/aiAssistantMeta.mjs`
+- `web/tests/asanDispatchRag.test.mjs`, `web/tests/asanPerformanceRag.test.mjs`, `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 운영 DB RAG 범위 확장 및 총 배차 집계 보정 (v5.14.210)
 ### 핵심
 - 모비스 배차판의 `CODE`, `Nomi,구간`, `함축` 같은 설명 컬럼을 상차지/운송사 수량으로 오인해 실제 배차가 부풀던 문제를 수정했습니다.
