@@ -863,6 +863,7 @@ function AsanDispatchContent() {
     const dataRef = useRef([]);
     const activeTabRef = useRef(-1);
     const detailChangeSyncRef = useRef('');
+    const glapsLookupLoadedTokenRef = useRef(null);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
@@ -905,11 +906,16 @@ function AsanDispatchContent() {
             setGlapsLookupLoading(false);
             return undefined;
         }
+        const lookupToken = String(glapsMasterRefreshToken);
+        if (glapsLookupLoadedTokenRef.current === lookupToken) {
+            setGlapsLookupLoading(false);
+            return undefined;
+        }
         let cancelled = false;
         setGlapsLookupLoading(true);
         const loadGlapsLookup = async () => {
             try {
-                const response = await fetch(`/api/branches/asan/glaps/master?t=${Date.now()}`, { cache: 'no-store' });
+                const response = await fetch(`/api/branches/asan/glaps/master?mode=lookup&t=${Date.now()}`, { cache: 'no-store' });
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok || payload.setupRequired) {
                     if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
@@ -921,9 +927,13 @@ function AsanDispatchContent() {
                         aliases: payload.aliases || [],
                         sheetRows: payload.sheetRows || [],
                     });
+                    glapsLookupLoadedTokenRef.current = lookupToken;
                 }
             } catch {
-                if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
+                if (!cancelled) {
+                    setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
+                    glapsLookupLoadedTokenRef.current = null;
+                }
             } finally {
                 if (!cancelled) setGlapsLookupLoading(false);
             }

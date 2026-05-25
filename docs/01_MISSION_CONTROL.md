@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.197 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.198 / APK v5.11.29)
 
-> 최신 업데이트: 통합 배차확정으로 생성된 배차변동내역을 글로비스/모비스 하위 탭에서도 화주 기준으로 조회·확인·수정할 수 있게 보정했다.
+> 최신 업데이트: 상세배차/배차변동내역의 GLAPS 코드 도출용 조회를 경량 lookup API로 분리해 화면 진입 부하를 줄였다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.197
+- **웹 버전**: v5.14.198
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -45,6 +45,7 @@
 - 통합현황에서 배차확정한 날짜는 변동 이벤트가 `integrated` scope에 저장된다. 글로비스/모비스 하위 탭은 별도 확정이 없으면 통합 변동 중 화주 기준 해당 이벤트만 조회하고, 확인/수정은 event id 기준으로 처리한다.
 - 아산 배차판 `엑셀` 버튼은 배차판 보기에서는 현재 필터/숨김 컬럼 기준, 상세배차에서는 상세라인 기준, 배차변동내역에서는 저장된 변동 이벤트 기준으로 내려받는다. GLAPS 업로드 전용 컬럼 순서 출력은 별도 단계로 둔다.
 - `GLAPS코드` 화면 테이블은 헤더 클릭으로 오름차순/내림차순/해제 정렬하고, 헤더 아래 목록에서 현재 탭 컬럼별 고유값 필터를 건다.
+- 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다. 전체 원장/수정 화면은 `GLAPS코드` 탭의 기존 전체 조회를 사용한다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -56,6 +57,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.198**: GLAPS 마스터 API에 `mode=lookup`을 추가해 상세배차/배차변동내역 코드 도출에 필요한 운송경로, 포트/라인/컨테이너/운송사/컨샤이니 alias, 컨테이너규격/수출입코드 원본행만 내려준다. 실측 기준 상세 lookup payload는 약 3.2MB에서 약 738KB로 줄고, 같은 refresh token 안에서는 중복 fetch를 생략한다.
 - **v5.14.197**: 배차변동내역 API가 글로비스/모비스 하위 탭에서 직접 확정 이벤트가 없으면 `integrated` 변동 이벤트를 화주 기준으로 fallback 조회한다. 하위 탭의 개별/일괄 확인과 변동행 수정은 event id 기준으로 통합 이벤트도 안전하게 처리한다.
 - **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.195**: Supabase middleware에서 URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과시킨다. Preview 환경변수가 비어 있어도 외부 URL 접근 시 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
@@ -63,37 +65,12 @@
 - **v5.14.193**: `/api/branches/asan/settings`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.192**: `/api/branches/asan/dispatch`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.
-- **v5.14.190**: 서비스 페이지 `주요 사업 및 운영 현황` 제목 위의 공통 `ELS` 보조 라벨을 해당 섹션에서만 숨겨, 공개 페이지 제목부의 어색한 장식 요소를 제거했다.
-- **v5.14.189**: 공개 헤더 미로그인 상태에서 `임직원 로그인`과 `로그인`이 나란히 보이던 중복 CTA를 제거했다. 공개 내비게이션에는 `인트라넷` 단일 메뉴만 남기고, 클릭 시 기존처럼 로그인 후 임직원 홈으로 진입한다.
-- **v5.14.188**: 공개 홈페이지는 한국 사용자 기준의 직관적 카피와 노출 범위로 정리하고, 미로그인 공개 헤더에서는 인트라넷 세부 메뉴 대신 `임직원 로그인`만 노출한다. 인트라넷/아산지점/안전운임/자료실/게시판 계열은 장식성 이모지를 제거하고 버튼·카드·테이블 여백과 라운드를 아산 배차판 기준의 조밀한 톤으로 맞췄다.
-- **v5.14.169**: 차량위치관제 `실시간 로그` 버튼이 `/api/debug/view`를 열 때 NAS core에 라우트가 없어 404가 날 수 있던 문제를 수정했다. `els-core`에 `/api/debug/log` 수신과 `/api/debug/view` 텍스트 조회 라우트를 추가해 안드로이드 앱/오버레이 디버그 로그 흐름을 복구했다.
-- **v5.14.165**: 모바일 운행 상세현황을 데스크탑 우측 패널/표 기반에서 갤럭시24 기준 전체화면 상세로 재구성했다. 위치 이력과 운행 기록은 모바일에서 카드형 타임라인으로 표시하고, 기본 정보 입력·미니맵·액션 버튼은 손가락 조작 가능한 높이와 1열 레이아웃으로 보정했다.
-- **v5.14.164**: 운영 디버그 점검 중 `BKG확정`/배차확정 신규 API가 서버 쿠키 세션만 보고 401을 반환하는 문제를 확인했다. 상세배차 화면에서 Supabase access token을 Authorization 헤더로 전달하고, API는 Bearer token 인증도 허용하게 보정했다.
 - **v5.14.163**: 상세배차 `업체명` 뒤에 `BKG확정` 컬럼을 추가했다. `BKG1~3` 선택 흔적과 수기 입력값은 상세라인 보정 테이블로 분리 저장하며, 배차확정/확정취소 API와 이력 테이블, `배차변동내역` 탭 기반을 추가했다. 화주사코드는 매칭된 운송경로 원장 payload의 값을 우선 사용한다.
-- **v5.14.162**: GLAPS 수정양식 설명서를 다시 점검해 회색 음영 칸 의미를 명시했다. 운송경로/항목매핑의 GLAPS 원장 기준값은 엑셀과 웹에서 회색으로 표시하고, 항목매핑 `원본명` 라벨은 `배차판 매칭용`으로 바꿨다. 항목매핑 웹 목록에서도 운송경로 파생 alias는 제외했다.
-- **v5.14.161**: 아산 배차판 RAG에서 `모레/내일모레/글피`를 날짜로 정규화하고, `13:00` 같은 콜론 시간과 배차정보 `09 10` 공백형 시간을 시간 필터로 매칭한다. `부산배차`처럼 지역+배차가 붙은 질문은 지역 키워드만 남기도록 보정했다.
-- **v5.14.160**: GLAPS `항목매핑_수정양식`에서 운송경로 원장으로부터 자동 생성된 `start/waypoint/destination` 보조 alias와 `운송경로코드` 컬럼을 제외해, 경로 수정은 `운송경로_수정양식` 한 곳에서만 하도록 정리했다.
-- **v5.14.159**: GLAPS 수정양식 업로드 시 기존 ID 행은 DB 값과 비교해 실제 변경이 있는 행만 update하고, 값이 같은 행은 `업로드수정` 이력 오염 없이 건너뛰도록 했다.
-- **v5.14.158**: GLAPS 수정양식의 운송경로/항목매핑 `매칭상태` 다운로드 값을 `확정 / 조정필요 / 코드없음`으로 바꾸고, 설명서에 행 삭제는 삭제로 처리하지 않고 `삭제(Y)` 값만 삭제로 본다는 규칙을 명시했다.
-- **v5.14.157**: AI 어시스턴트 화면의 버전/소개/가이드/빠른질문을 `aiAssistantMeta` 함수로 통합하고, 낡은 이미지·NAS 원본 파싱 예시를 제거했다. 채팅 API는 웹 첨부문서 `web_attachment` 색인과 Supabase DB 기준으로 출처를 표시하며, 최근 웹자료 조회와 KST 기준시각 주입을 보강했다.
-- **v5.14.156**: GLAPS 수정양식 작업 시트의 제목/설명/헤더 색상을 실제 컬럼 범위에만 적용하고, 고정행 아래 A4를 활성 셀로 지정해 엑셀이 M열 이후 빈 영역에서 열리는 문제를 보정했다.
 ## VERIFICATION
-- `cd web; npm run lint -- app/api/branches/asan/dispatch/route.js constants/siteLayout.js`: 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 49개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js"`: 통과
 - `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
-- `cd web; npm run lint -- constants/siteLayout.js`: 통과
-- Browser local check (`http://localhost:3010/services`): 기존 `물류 및 제조 서비스` 문구 없음, 새 `맞춤형 물류 서비스` 문구 확인.
-- `cd web; npm run lint -- components/Business.js`: 통과
-- Browser local check (`http://localhost:3010/services`): `주요 사업 및 운영 현황` 제목의 `::before` content/display가 `none`으로 확인됨.
-- `cd web; npm run lint -- components/Header.js`: 통과. 기존 `no-img-element` 경고 3건만 확인.
-- Browser local check (`http://localhost:3010/intro`): 공개 헤더가 `인트라넷` 단일 CTA만 노출하고 `로그인` 중복 없음.
-- `cd web; npm run lint`: 통과
-- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
-- Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 42개 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js"`: 통과
-- `cd web; npm run build`: 통과
-- `python -m py_compile docker/els-backend/app_core.py`(Codex 번들 Python): 통과
-- `npm.cmd run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- NAS deploy 검증: 2026-05-25 `els-gateway`, `els-core`, `els-bot` 재생성 후 `/api/branches/asan/sync` gateway/core 응답 확인.
 - Supabase migration `asan_dispatch_change_events`: 적용 완료
 
 ## IN-PROGRESS

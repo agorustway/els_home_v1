@@ -21,6 +21,8 @@ const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터�
 const PAGE_SIZE = 1000;
 const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic']);
 const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
+const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['port', 'line', 'container_type', 'carrier', 'consignee']);
+const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -627,6 +629,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const branchId = searchParams.get('branchId') || DEFAULT_GLAPS_BRANCH_ID;
   const kind = searchParams.get('kind') || 'routes';
+  const mode = String(searchParams.get('mode') || '').trim();
   const search = String(searchParams.get('q') || '').trim().toLowerCase();
   const status = String(searchParams.get('status') || '').trim();
 
@@ -641,6 +644,46 @@ export async function GET(request) {
         sheetRows: [],
         sheetSummary: [],
         summary: summarizeGlapsRoutes([]),
+        matchQuery: getGlapsRouteMatchQuery(),
+      });
+    }
+
+    if (mode === 'lookup') {
+      const [routeRows, aliasRows, sheetRows] = await Promise.all([
+        fetchPagedGlapsRows(() => access.adminSupabase
+          .from('glaps_transport_routes')
+          .select('id, route_code, route_name, start_location_name, waypoint_name, waypoint_els_name, destination_name, route_fingerprint, raw_payload')
+          .eq('version_id', version.id)
+          .eq('active', true)
+          .order('route_code', { ascending: true })),
+        fetchPagedGlapsRows(() => access.adminSupabase
+          .from('glaps_master_aliases')
+          .select('id, alias_type, source_name, els_name, glaps_name, glaps_code')
+          .eq('version_id', version.id)
+          .eq('active', true)
+          .in('alias_type', GLAPS_LOOKUP_ALIAS_TYPES)
+          .order('alias_type', { ascending: true })
+          .order('source_name', { ascending: true })),
+        fetchPagedGlapsRows(() => access.adminSupabase
+          .from('glaps_master_sheet_rows')
+          .select('id, sheet_name, row_values, row_payload')
+          .eq('version_id', version.id)
+          .in('sheet_name', GLAPS_LOOKUP_SHEET_NAMES)
+          .order('sheet_name', { ascending: true })
+          .order('row_number', { ascending: true })),
+      ]);
+
+      return NextResponse.json({
+        setupRequired: false,
+        mode,
+        version: {
+          id: version.id,
+          source_name: version.source_name,
+          imported_at: version.imported_at,
+        },
+        routes: routeRows || [],
+        aliases: aliasRows || [],
+        sheetRows: sheetRows || [],
         matchQuery: getGlapsRouteMatchQuery(),
       });
     }

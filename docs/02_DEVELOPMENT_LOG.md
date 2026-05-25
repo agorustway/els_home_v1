@@ -1,3 +1,25 @@
+## [2026-05-25] 아산 배차판 GLAPS lookup 경량화 1차 (v5.14.198)
+### 핵심
+- 아산 배차판이 상세배차/배차변동내역 진입 시 전체 GLAPS 마스터를 다시 읽어 화면 체감 부하가 커지는 지점을 우선 계측했습니다.
+- GLAPS 활성 원장 기준 전체 응답은 운송경로 540건, 항목매핑 2,923건, 원본시트 1,177건으로 상세 코드 도출에는 과한 구조였습니다.
+- `/api/branches/asan/glaps/master?mode=lookup`을 추가해 상세 코드 도출에 필요한 운송경로, 포트/라인/컨테이너/운송사/컨샤이니 alias, `컨테이너규격`/`수출입코드` 원본행만 내려주게 했습니다.
+- 실측 기준 상세 lookup payload는 약 3.2MB에서 약 738KB로 줄었고, 같은 GLAPS refresh token 안에서는 상세배차와 배차변동내역 간 중복 fetch를 생략합니다.
+### 다음 최적화 후보
+- 배차 원본 API는 아직 화주별 112일치 원장을 한 번에 가져옵니다. 날짜 목록 메타와 선택 날짜 상세를 분리하면 초기 배차판 payload를 추가로 줄일 수 있습니다.
+- `page.js`는 3,300줄대 단일 컴포넌트라 상세/변동/GLAPS hook 분리가 다음 유지보수 병목입니다.
+- `전체 표시` 상태의 대형 표는 행 수가 늘면 DOM 부하가 커지므로 필요 시 row virtualization을 도입합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 49개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js"`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차변동 하위 탭 통합 이벤트 조회 보정 (v5.14.197)
 ### 핵심
 - 2026-05-25 배차변동 DB를 확인한 결과, 배차확정과 변동 이벤트가 `integrated` scope에만 저장되어 글로비스 하위 탭의 `dispatch_type=glovis` 조회에서는 보이지 않는 것을 확인했습니다.
