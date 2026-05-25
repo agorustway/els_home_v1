@@ -451,7 +451,15 @@ function ExecutiveSourceTable({ summary, onOpenAnnual, onOpenMonthly }) {
     );
 }
 
-function ExecutiveSignals({ signals = [] }) {
+function executiveSignalSearch(signal = {}) {
+    const title = String(signal.title || '');
+    const value = String(signal.value || '').trim();
+    if (!value || value === '-') return null;
+    if (!title.includes('청구처') && !title.includes('지급처')) return null;
+    return { search: value, searchMode: 'and' };
+}
+
+function ExecutiveSignals({ signals = [], openMonthly }) {
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
@@ -463,12 +471,20 @@ function ExecutiveSignals({ signals = [] }) {
             <div className={styles.summarySignalGrid}>
                 {signals.map((rawSignal, index) => {
                     const signal = normalizeExecutiveSignal(rawSignal);
+                    const handoff = executiveSignalSearch(signal);
+                    const SignalTag = handoff ? 'button' : 'div';
                     return (
-                        <div className={`${styles.summarySignal} ${styles[`summaryTone_${signal.tone}`] || ''}`} key={`${signal.title}-${index}`}>
+                        <SignalTag
+                            type={handoff ? 'button' : undefined}
+                            className={`${styles.summarySignal} ${handoff ? styles.summarySignalButton : ''} ${styles[`summaryTone_${signal.tone}`] || ''}`}
+                            key={`${signal.title}-${index}`}
+                            onClick={handoff ? () => openMonthly?.(handoff) : undefined}
+                            title={handoff ? '월간실적 테이블에서 해당 값을 검색합니다.' : undefined}
+                        >
                             <span>{signal.title}</span>
                             <strong>{signal.value}</strong>
                             <em>{signal.detail}</em>
-                        </div>
+                        </SignalTag>
                     );
                 })}
             </div>
@@ -768,7 +784,7 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
 
                     <div className={styles.summaryMainGrid}>
                         <ExecutiveFlowDiagram summary={summary} />
-                        <ExecutiveSignals signals={summary.executiveSignals || []} />
+                        <ExecutiveSignals signals={summary.executiveSignals || []} openMonthly={openMonthly} />
                         <ExecutiveTrendChart summary={summary} />
                         <ExecutiveYearMatrix yearly={baseSummary?.yearly || []} periodEnd={baseSummary?.periodEnd} activeYear={selectedYear} onOpenAnnual={openAnnual} />
                         <TopConcentration summary={summary} openMonthly={openMonthly} />

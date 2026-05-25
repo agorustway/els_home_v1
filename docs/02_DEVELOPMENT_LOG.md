@@ -1,3 +1,21 @@
+## [2026-05-26] 연간/월간 실적 검색 배치 스캔 보강 (v5.14.214)
+### 핵심
+- 연간/월간 실적 검색 스캐너가 Supabase 조회 쿼리를 1,000행 배치마다 새로 만들어 뒤쪽 원장 행까지 안정적으로 훑도록 수정했습니다.
+- 운영 확인 결과 월간 2026-05 원장 뒤쪽에 `글로비스(RSB수입건)` 4행이 있었고, 기존 검색 API는 앞쪽 배치만 보고 0건으로 응답하던 문제를 확인했습니다.
+- 종합실적의 경영 신호 중 청구처/지급처 카드는 클릭 시 월간실적 테이블로 이동하며 해당 값을 `모두 포함` 검색으로 바로 넣도록 연결했습니다.
+- 연간실적 화면도 외부 검색 전달값을 받으면 테이블 탭으로 전환해 같은 검색 흐름을 사용합니다. 단, 현재 연간 원장에 없는 2026 월간 전용 값은 검색 실패가 아니라 원천 범위 차이입니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`, `AsanMonthlyPerformance.js`, `AsanSummaryPerformance.js`, `annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 연간/월간 실적 테이블 검색 원본값 포함 보정 (v5.14.213)
 ### 핵심
 - 연간/월간 실적 테이블 검색이 화면에 매핑된 컬럼값만 보지 않고, Supabase 원장 원본 `row_data`, `row_values`, 파일/시트/기간 메타까지 함께 훑도록 확장했습니다.

@@ -219,7 +219,7 @@ function searchFilterValue(term) {
 }
 
 const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원]/g;
-const PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 5000;
+const PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 1000;
 const PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000;
 
 function normalizePerformanceSearchText(value) {
@@ -285,6 +285,7 @@ function rowMatchesPerformanceSearch(values = [], search = '', mode = 'or') {
 
 async function scanPerformanceSearchRows({
     baseOrdered,
+    buildOrderedQuery,
     mapRow,
     search = '',
     searchMode = 'or',
@@ -303,7 +304,8 @@ async function scanPerformanceSearchRows({
 
     for (let offset = 0; offset < maxScanRows; offset += batchSize) {
         const rangeEnd = Math.min(offset + batchSize - 1, maxScanRows - 1);
-        const { data, error } = await baseOrdered.range(offset, rangeEnd);
+        const orderedQuery = buildOrderedQuery ? buildOrderedQuery() : baseOrdered;
+        const { data, error } = await orderedQuery.range(offset, rangeEnd);
         if (error) throw new Error(error.message);
         const rows = data || [];
         if (!rows.length) {
@@ -533,9 +535,8 @@ async function getPagedRows({ buildQuery, headers, page, pageSize, sortKey, sort
     const shouldFilter = searchTerms(search).length > 0;
 
     if (shouldFilter) {
-        const { query } = buildQuery();
         const scanned = await scanPerformanceSearchRows({
-            baseOrdered: query.order('row_index', { ascending: true }),
+            buildOrderedQuery: () => buildQuery().query.order('row_index', { ascending: true }),
             mapRow: item => ({ ...item, mapped_values: item.row_values || [] }),
             search,
             searchMode,
@@ -1125,19 +1126,21 @@ function annualRowToValues(row, headers) {
     });
 }
 
-async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false, search = '', searchMode = 'or' }) {
+async function getAnnualPagedRows({ query, buildQuery, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
-    const baseOrdered = orderBySnapshot
-        ? query
+    const orderQuery = rowsQuery => (orderBySnapshot
+        ? rowsQuery
             .order('snapshot_id', { ascending: true })
             .order('row_index', { ascending: true })
-        : query
+        : rowsQuery
             .order('file_path', { ascending: true })
             .order('sheet_name', { ascending: true })
-            .order('row_index', { ascending: true });
+            .order('row_index', { ascending: true }));
+    const baseOrdered = orderQuery(query);
+    const buildBaseOrdered = buildQuery ? () => orderQuery(buildQuery()) : null;
     const attachHeaders = row => ({
         ...row,
         source_headers: metaBySnapshot.get(row.snapshot_id)?.headers || metaBySnapshot.get(`${row.file_path}::${row.sheet_name}`)?.headers || [],
@@ -1147,6 +1150,7 @@ async function getAnnualPagedRows({ query, headers, metaBySnapshot, page, pageSi
     if (shouldFilter) {
         const scanned = await scanPerformanceSearchRows({
             baseOrdered,
+            buildOrderedQuery: buildBaseOrdered,
             mapRow: item => {
                 const row = attachHeaders(item);
                 const mapped = annualRowToValues(row, headers);
@@ -1446,18 +1450,23 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         metaBySnapshot.set(`${meta.file_path}::${meta.sheet_name}`, meta);
     }
     const fallbackTotal = search ? 0 : metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
-    let query = supabase
-        .from('branch_performance_rows')
-        .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
-        .eq('branch_id', 'asan')
-        .eq('dataset_type', 'annual');
-    if (allMetasHaveSnapshot) {
-        query = query.in('snapshot_id', snapshotIds);
-    } else {
-        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
-    }
+    const buildRowsQuery = () => {
+        let rowsQuery = supabase
+            .from('branch_performance_rows')
+            .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
+            .eq('branch_id', 'asan')
+            .eq('dataset_type', 'annual');
+        if (allMetasHaveSnapshot) {
+            rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
+        } else {
+            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+        }
+        return rowsQuery;
+    };
+    const query = buildRowsQuery();
     const paged = await getAnnualPagedRows({
         query,
+        buildQuery: buildRowsQuery,
         headers,
         metaBySnapshot,
         page,
@@ -1790,20 +1799,23 @@ function monthlyRowToValues(row, headers) {
     });
 }
 
-async function getMonthlyPagedRows({ query, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or' }) {
+async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
-    const baseOrdered = query
+    const orderQuery = rowsQuery => rowsQuery
         .order('year_value', { ascending: true })
         .order('month_value', { ascending: true })
         .order('row_index', { ascending: true });
+    const baseOrdered = orderQuery(query);
+    const buildBaseOrdered = buildQuery ? () => orderQuery(buildQuery()) : null;
     const shouldFilter = searchTerms(search).length > 0;
 
     if (shouldFilter) {
         const scanned = await scanPerformanceSearchRows({
             baseOrdered,
+            buildOrderedQuery: buildBaseOrdered,
             mapRow: item => ({ ...item, mapped_values: monthlyRowToValues(item, headers) }),
             search,
             searchMode,
@@ -2090,20 +2102,25 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         meta.summary?.importMode === 'diff-current' || meta.summary?.currentSelectionMode === 'is_current'
     ));
     const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
-    let query = supabase
-        .from('branch_performance_rows')
-        .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
-        .eq('branch_id', 'asan')
-        .eq('dataset_type', 'monthly');
-    if (usesDiffCurrent) {
-        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
-    } else if (snapshotIds.length) {
-        query = query.in('snapshot_id', snapshotIds);
-    } else {
-        query = query.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
-    }
+    const buildRowsQuery = () => {
+        let rowsQuery = supabase
+            .from('branch_performance_rows')
+            .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
+            .eq('branch_id', 'asan')
+            .eq('dataset_type', 'monthly');
+        if (usesDiffCurrent) {
+            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+        } else if (snapshotIds.length) {
+            rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
+        } else {
+            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+        }
+        return rowsQuery;
+    };
+    const query = buildRowsQuery();
     const paged = await getMonthlyPagedRows({
         query,
+        buildQuery: buildRowsQuery,
         headers,
         page,
         pageSize,

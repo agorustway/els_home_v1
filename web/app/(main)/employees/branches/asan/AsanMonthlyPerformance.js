@@ -923,7 +923,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = 'ë§
     );
 }
 
-export default function AsanMonthlyPerformance() {
+export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const [baseYear, setBaseYear] = useState(DEFAULT_MONTHLY_BASE_YEAR);
     const [extraMonths, setExtraMonths] = useState(DEFAULT_MONTHLY_PERFORMANCE_EXTRA_MONTHS);
     const [fileSlots, setFileSlots] = useState(() => buildMonthlyPerformanceFileSlots(DEFAULT_MONTHLY_BASE_YEAR));
@@ -958,6 +958,7 @@ export default function AsanMonthlyPerformance() {
     const requestIdRef = useRef(0);
     const syncWasRunningRef = useRef(false);
     const searchEffectReadyRef = useRef(false);
+    const appliedSearchHandoffRef = useRef(null);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -1072,6 +1073,21 @@ export default function AsanMonthlyPerformance() {
     useEffect(() => {
         fetchData();
     }, [baseYear, extraMonths, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        const query = String(searchHandoff?.search || '').trim();
+        if (!query) return;
+        const key = searchHandoff?.id || `${query}:${searchHandoff?.searchMode || 'or'}`;
+        if (appliedSearchHandoffRef.current === key) return;
+        appliedSearchHandoffRef.current = key;
+        const mode = searchHandoff?.searchMode || 'or';
+        searchEffectReadyRef.current = true;
+        setActiveTab('table');
+        setSearchInput(query);
+        setSearchTerm(query);
+        setSearchMode(mode);
+        fetchData({ page: 1, search: query, searchMode: mode, quiet: Boolean(payload) });
+    }, [searchHandoff?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const timer = setTimeout(() => setSearchTerm(searchInput.trim()), SEARCH_DEBOUNCE_MS);

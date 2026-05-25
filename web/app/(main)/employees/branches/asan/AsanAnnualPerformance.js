@@ -854,7 +854,7 @@ function SegmentEvidenceTable({ label, items = [], filterTerms = [], onOpen }) {
     );
 }
 
-export default function AsanAnnualPerformance() {
+export default function AsanAnnualPerformance({ searchHandoff = null }) {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
     const [headerRow, setHeaderRow] = useState('');
@@ -888,6 +888,7 @@ export default function AsanAnnualPerformance() {
     const requestIdRef = useRef(0);
     const syncWasRunningRef = useRef(false);
     const searchEffectReadyRef = useRef(false);
+    const appliedSearchHandoffRef = useRef(null);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -1015,6 +1016,21 @@ export default function AsanAnnualPerformance() {
         if (!selectedPath) return;
         fetchData();
     }, [selectedPath, sheetName, headerRow, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        const query = String(searchHandoff?.search || '').trim();
+        if (!query) return;
+        const key = searchHandoff?.id || `${query}:${searchHandoff?.searchMode || 'or'}`;
+        if (appliedSearchHandoffRef.current === key) return;
+        appliedSearchHandoffRef.current = key;
+        const mode = searchHandoff?.searchMode || 'or';
+        searchEffectReadyRef.current = true;
+        setActiveTab('table');
+        setSearchInput(query);
+        setSearchTerm(query);
+        setSearchMode(mode);
+        fetchData({ page: 1, search: query, searchMode: mode, quiet: Boolean(payload) });
+    }, [searchHandoff?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchSyncStatus = useCallback(async () => {
         if (!selectedPath) return null;

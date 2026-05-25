@@ -544,6 +544,21 @@
     border-top-width: 3px;
 }
 
+.summarySignalButton {
+    width: 100%;
+    border-color: #bfdbfe;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.summarySignalButton:hover,
+.summarySignalButton:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 1px;
+}
+
 .summarySignal strong {
     min-width: 0;
     color: #0f172a;
