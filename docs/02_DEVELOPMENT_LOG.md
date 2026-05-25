@@ -1,3 +1,42 @@
+## [2026-05-25] 아산 운영 DB RAG 범위 확장 및 총 배차 집계 보정 (v5.14.210)
+### 핵심
+- 모비스 배차판의 `CODE`, `Nomi,구간`, `함축` 같은 설명 컬럼을 상차지/운송사 수량으로 오인해 실제 배차가 부풀던 문제를 수정했습니다.
+- `배차예정` 이후부터 `배차/검증/특이사항` 전까지를 지역 컬럼 블록으로 우선 추론하고, 블록이 없는 경우에만 셀 패턴 fallback을 사용합니다.
+- `총 몇 대 배차` 질문은 오더 수량이 아니라 실제 배차 수량을 즉답용 집계로 주입하며, 오더는 참고값으로 분리합니다.
+- AI 채팅 RAG가 아산 상세배차, 선적관리, 배차변동내역, GLAPS코드를 각각 Supabase 운영 DB에서 읽도록 연결했습니다.
+- 실제 DB 기준 2026-05-26 아산 배차는 오더 83대, 실제 배차 81대로 계산됨을 확인했습니다.
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 21개 통과
+- `cd web; npm.cmd run lint -- "utils/asanDispatchRag.mjs" "utils/asanShippingRag.mjs" "utils/asanOpsRag.mjs" "utils/aiAssistantMeta.mjs" "tests/asanDispatchRag.test.mjs" "tests/asanOpsRag.test.mjs" "tests/aiAssistantMeta.test.mjs" "app/api/chat/route.js"`: 통과
+- `cd web; npm.cmd run build`: 통과
+- Supabase 읽기 전용 검증: 선적관리 1,343행, 2026-05-26 상세배차 81라인, GLAPS 검색 성공, 해당일 배차변동 0건 정상 응답
+### 변경 파일
+- `web/utils/asanDispatchRag.mjs`
+- `web/utils/asanShippingRag.mjs`, `web/utils/asanOpsRag.mjs`
+- `web/app/api/chat/route.js`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/tests/asanDispatchRag.test.mjs`, `web/tests/asanOpsRag.test.mjs`, `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-25] 테이블 수정칸 직접 편집화 (v5.14.210)
+### 핵심
+- 배차판 WEB 입력칸, 상세배차 상차지/BKG확정, 배차변동 상차지/BKG확정 입력이 셀 안에 별도 네모 박스로 떠 보이지 않도록 투명 테이블 입력 스타일로 정리했습니다.
+- 선택된 BKG와 포커스 상태는 셀 배경/인셋 라인으로만 표시해 테이블 흐름이 유지되게 했습니다.
+- GLAPS코드 화면의 추가/수정은 별도 편집 카드 대신 테이블 행이 바로 입력행으로 바뀌도록 변경했습니다. `Enter` 저장, `Esc` 취소도 지원합니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 43개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 차량관제 모바일 기록/상세 표시 안정화 (v5.14.209)
 ### 핵심
 - 모바일 운행기록 카드에서 `구분` 값을 한 줄로 표시하고, 날짜 라벨 아래에 생기던 큰 여백을 줄였습니다.

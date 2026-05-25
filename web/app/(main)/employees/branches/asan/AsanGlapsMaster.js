@@ -280,7 +280,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     };
 
     const submitEditor = async (event) => {
-        event.preventDefault();
+        event?.preventDefault?.();
         if (!editor) return;
         setSaving(true);
         try {
@@ -304,6 +304,18 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             setMessage({ type: 'error', text: error.message });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleInlineEditorKeyDown = (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            setEditor(null);
+            return;
+        }
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            submitEditor(event);
         }
     };
 
@@ -457,6 +469,117 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         });
     }, [activeSort.direction, activeSort.key, activeTableFilters, tableColumns, tableRows]);
 
+    const inlineEditorFieldForColumn = (columnKey) => {
+        if (editor?.mode === 'routes') {
+            return ({
+                status: 'reviewStatus',
+                start_location_name: 'startLocationName',
+                waypoint_els_name: 'waypointElsName',
+                destination_name: 'destinationName',
+                route_name: 'routeName',
+                route_code: 'routeCode',
+                review_note: 'reviewNote',
+            })[columnKey] || '';
+        }
+        if (editor?.mode === 'aliases') {
+            return ({
+                status: 'reviewStatus',
+                alias_type: 'aliasType',
+                source_name: 'sourceName',
+                els_name: 'elsName',
+                glaps_name: 'glapsName',
+                glaps_code: 'glapsCode',
+                review_note: 'reviewNote',
+            })[columnKey] || '';
+        }
+        return '';
+    };
+
+    const renderInlineEditorCell = (column, { autoFocus = false } = {}) => {
+        if (!editor) return '';
+        if (column.key === 'actions') {
+            return (
+                <div className={styles.rowActions}>
+                    <button type="button" className={styles.inlineSaveButton} onClick={submitEditor} disabled={saving}>저장</button>
+                    <button type="button" onClick={() => setEditor(null)} disabled={saving}>취소</button>
+                </div>
+            );
+        }
+        if (column.key === 'source') {
+            return <span className={`${styles.sourceBadge} ${styles.sourceWeb}`}>웹수정</span>;
+        }
+        if (column.key === 'route_key') {
+            return routeMatchKey({
+                start_location_name: editor.values.startLocationName,
+                waypoint_els_name: editor.values.waypointElsName,
+                waypoint_name: editor.values.waypointName,
+                destination_name: editor.values.destinationName,
+            });
+        }
+        const field = inlineEditorFieldForColumn(column.key);
+        if (!field) return '';
+        if (field === 'reviewStatus') {
+            return (
+                <select
+                    className={styles.inlineEditInput}
+                    value={editor.values.reviewStatus}
+                    onChange={(event) => updateEditorValue('reviewStatus', event.target.value)}
+                    onKeyDown={handleInlineEditorKeyDown}
+                    autoFocus={autoFocus}
+                    disabled={saving}
+                    aria-label="매칭상태"
+                >
+                    {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+            );
+        }
+        if (field === 'aliasType') {
+            return (
+                <select
+                    className={styles.inlineEditInput}
+                    value={editor.values.aliasType}
+                    onChange={(event) => updateEditorValue('aliasType', event.target.value)}
+                    onKeyDown={handleInlineEditorKeyDown}
+                    autoFocus={autoFocus}
+                    disabled={saving}
+                    aria-label="매핑항목"
+                >
+                    {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+            );
+        }
+        return (
+            <input
+                className={styles.inlineEditInput}
+                value={editor.values[field] || ''}
+                onChange={(event) => updateEditorValue(field, event.target.value)}
+                onKeyDown={handleInlineEditorKeyDown}
+                autoFocus={autoFocus}
+                disabled={saving}
+                aria-label={column.label}
+            />
+        );
+    };
+
+    const renderInlineEditorRow = (key) => {
+        if (!editor || editor.mode !== activeTable) return null;
+        let didAutoFocus = false;
+        return (
+            <tr key={key} className={styles.inlineEditRow}>
+                {tableColumns.map((column) => {
+                    const field = inlineEditorFieldForColumn(column.key);
+                    const shouldAutoFocus = !didAutoFocus && Boolean(field);
+                    if (shouldAutoFocus) didAutoFocus = true;
+                    return (
+                        <td key={column.key} className={`${column.className || ''} ${field ? styles.inlineEditCell : ''}`}>
+                            {renderInlineEditorCell(column, { autoFocus: shouldAutoFocus })}
+                        </td>
+                    );
+                })}
+            </tr>
+        );
+    };
+
     return (
         <div className={styles.shell}>
             <div className={styles.topPanel}>
@@ -535,88 +658,6 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 )}
             </div>
 
-            {editor && (
-                <form className={styles.editorPanel} onSubmit={submitEditor}>
-                    {editor.mode === 'routes' ? (
-                        <div className={styles.editorGrid}>
-                            <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>운송경로코드</span>
-                                <input value={editor.values.routeCode} onChange={(event) => updateEditorValue('routeCode', event.target.value)} autoFocus />
-                            </label>
-                            <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>운송경로명</span>
-                                <input value={editor.values.routeName} onChange={(event) => updateEditorValue('routeName', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>상차지</span>
-                                <input value={editor.values.startLocationName} onChange={(event) => updateEditorValue('startLocationName', event.target.value)} />
-                            </label>
-                            <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>경유지</span>
-                                <input value={editor.values.waypointName} onChange={(event) => updateEditorValue('waypointName', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>경유지(ELS)</span>
-                                <input value={editor.values.waypointElsName} onChange={(event) => updateEditorValue('waypointElsName', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>하차지(선적)</span>
-                                <input value={editor.values.destinationName} onChange={(event) => updateEditorValue('destinationName', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>매칭상태</span>
-                                <select value={editor.values.reviewStatus} onChange={(event) => updateEditorValue('reviewStatus', event.target.value)}>
-                                    {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                </select>
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>검수메모</span>
-                                <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
-                            </label>
-                        </div>
-                    ) : (
-                        <div className={styles.editorGrid}>
-                            <label className={styles.editorField}>
-                                <span>매핑항목</span>
-                                <select value={editor.values.aliasType} onChange={(event) => updateEditorValue('aliasType', event.target.value)} autoFocus>
-                                    {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                </select>
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>ELS 매치코드</span>
-                                <input value={editor.values.sourceName} onChange={(event) => updateEditorValue('sourceName', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>ELS 디스크립션(설명)</span>
-                                <input value={editor.values.elsName} onChange={(event) => updateEditorValue('elsName', event.target.value)} />
-                            </label>
-                            <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>GLAPS 디스크립션(설명)</span>
-                                <input value={editor.values.glapsName} onChange={(event) => updateEditorValue('glapsName', event.target.value)} />
-                            </label>
-                            <label className={`${styles.editorField} ${styles.protectedField}`}>
-                                <span>최종코드(BP)</span>
-                                <input value={editor.values.glapsCode} onChange={(event) => updateEditorValue('glapsCode', event.target.value)} />
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>매칭상태</span>
-                                <select value={editor.values.reviewStatus} onChange={(event) => updateEditorValue('reviewStatus', event.target.value)}>
-                                    {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                                </select>
-                            </label>
-                            <label className={styles.editorField}>
-                                <span>검수메모</span>
-                                <input value={editor.values.reviewNote} onChange={(event) => updateEditorValue('reviewNote', event.target.value)} />
-                            </label>
-                        </div>
-                    )}
-                    <div className={styles.editorActions}>
-                        <button type="submit" disabled={saving}>저장</button>
-                        <button type="button" onClick={() => setEditor(null)} disabled={saving}>취소</button>
-                    </div>
-                </form>
-            )}
-
             <div className={styles.tableWrap}>
                 {loading ? (
                     <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
@@ -668,14 +709,19 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                             </tr>
                         </thead>
                         <tbody>
+                            {editor?.mode === activeTable && !editor.id && renderInlineEditorRow(`${activeTable}-new-editor`)}
                             {visibleTableRows.map((row, rowIndex) => (
-                                <tr key={row.id || `${activeTable}-${rowIndex}`}>
-                                    {tableColumns.map(column => (
-                                        <td key={column.key} className={column.className || ''}>
-                                            {column.render ? column.render(row) : tableText(column.value?.(row))}
-                                        </td>
-                                    ))}
-                                </tr>
+                                editor?.mode === activeTable && editor.id === row.id
+                                    ? renderInlineEditorRow(row.id || `${activeTable}-${rowIndex}-editor`)
+                                    : (
+                                        <tr key={row.id || `${activeTable}-${rowIndex}`}>
+                                            {tableColumns.map(column => (
+                                                <td key={column.key} className={column.className || ''}>
+                                                    {column.render ? column.render(row) : tableText(column.value?.(row))}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    )
                             ))}
                         </tbody>
                     </table>

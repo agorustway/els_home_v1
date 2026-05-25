@@ -888,22 +888,23 @@
 
 .detailBkgConfirmCell {
     min-width: 180px;
+    padding: 0 !important;
 }
 
 .detailBkgConfirmControl {
     display: grid;
     grid-template-columns: 44px minmax(120px, 1fr);
-    gap: 4px;
+    gap: 0;
     align-items: center;
 }
 
 .detailBkgSourceBadge,
 .detailBkgConfirmInput {
-    height: 26px;
+    height: 30px;
     min-width: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 5px;
-    background: #ffffff;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
     color: #0f172a;
     font-size: 0.72rem;
     font-weight: 800;
@@ -915,7 +916,7 @@
     align-items: center;
     justify-content: center;
     background: #e0f2fe;
-    border-color: #7dd3fc;
+    border-color: transparent;
     color: #075985;
 }
 
@@ -927,16 +928,16 @@
 
 .detailBkgConfirmInput:disabled,
 .detailComboInput:disabled {
-    background: #e5e7eb;
+    background: transparent;
     color: #64748b;
     cursor: default;
 }
 
 .detailBkgPickButton {
     width: 100%;
-    min-height: 26px;
+    min-height: 30px;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 0;
     background: transparent;
     color: #334155;
     font: inherit;
@@ -948,9 +949,10 @@
 
 .detailBkgPickButton:hover:not(:disabled),
 .detailBkgPickButton:focus-visible {
-    border-color: #38bdf8;
-    background: #ecfeff;
+    border-color: #2563eb;
+    background: rgba(236, 254, 255, 0.72);
     outline: none;
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 
 .detailBkgPickButton:disabled {
@@ -962,8 +964,8 @@
 }
 
 .detailBkgPickButtonActive {
-    border-color: #22c55e;
-    background: #bbf7d0;
+    border-color: transparent;
+    background: transparent;
     color: #14532d;
     font-weight: 800;
 }
@@ -1017,10 +1019,10 @@
 .detailChangeInput {
     width: 100%;
     min-width: 72px;
-    height: 24px;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    background: #ffffff;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
     color: #0f172a;
     font-size: 0.72rem;
     font-weight: 700;
@@ -1029,8 +1031,10 @@
 }
 
 .detailChangeInput:focus {
-    outline: 2px solid #93c5fd;
     border-color: #2563eb;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #2563eb;
+    outline: none;
 }
 
 .detailChangeActions {
@@ -1623,21 +1627,22 @@
 .detailComboInput {
     width: 100%;
     min-width: 132px;
-    height: 24px;
-    border: 1px solid #cbd5e1;
-    border-radius: 5px;
-    background: #fff;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
     color: #0f172a;
     font: inherit;
     font-weight: 800;
-    padding: 2px 6px;
+    padding: 0 6px;
 }
 
 .detailSelect:focus,
 .detailComboInput:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 
 .detailManualRow {
@@ -1649,7 +1654,7 @@
 }
 
 .webCellEditableTd {
-    padding: 2px 4px !important;
+    padding: 0 !important;
     background: #f8fbff;
 }
 
@@ -1678,9 +1683,9 @@
 .webCellInput {
     width: 100%;
     min-width: 70px;
-    height: 24px;
+    height: 30px;
     border: 1px solid transparent;
-    border-radius: 5px;
+    border-radius: 0;
     background: transparent;
     color: #0f172a;
     font: inherit;
@@ -1697,7 +1702,7 @@
 .webCellInput:focus {
     border-color: #2563eb;
     background: #fff;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 
 .webCellState {

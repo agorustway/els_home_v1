@@ -1,11 +1,22 @@
+import {
+  buildDispatchDetailLines,
+  summarizeDispatchDetailLines,
+} from './asanDispatchDetailLines.mjs';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DEFAULT_MAX_DETAIL_ROWS = 600;
 
 const DISPATCH_TRIGGER_WORDS = [
   '배차', '배차판', '매차', '오늘배차', '아산배차',
+  '상세배차', '상세 배차', '상세라인', '상세 라인',
   '몇대', '몇 대', '대수', '대 예정', '대예정',
   '오더', '상차', '도착시간', '도착 시간',
+];
+
+const DETAIL_TRIGGER_WORDS = [
+  '상세배차', '상세 배차', '상세라인', '상세 라인',
+  'bkg', '부킹', 'glaps', '운송경로코드', '상세현황',
 ];
 
 const STRUCTURE_TRIGGER_WORDS = [
@@ -35,6 +46,12 @@ const NON_REGION_HEADERS = new Set([
   '구분', '작업', '고객사', '선적', '라인', '선사', '선사명', '배차예정',
   '배차', '검증', 'bkg1', 'bkg2', 'bkg3', 'targetvessel', 'target vessel',
   '차량번호', '고객사(국가)', '포트(도착항)', '특이사항(nomi,구간)',
+  'code', 'nomi,구간', 'nomi구간', 'bookingno/invoiceno', 'bookingno',
+  'invoiceno', '추가', '툭이사항', '함축', 'a', 'b',
+]);
+
+const REGION_BLOCK_TERMINATORS = new Set([
+  '배차', '검증', '비고', '특이사항', '툭이사항', '함축',
 ]);
 
 const NON_CARRIER_WORDS = [
@@ -47,7 +64,7 @@ const IGNORE_TERMS = new Set([
   '아산지점', '아산배차', '배차', '배차판', '매차', '도착', '도착시간',
   '시간', '몇시', '몇대', '대수', '총대수', '주차별', '오더', '개수',
   '건수', '알려줘', '알려줘요', '어디야', '어디지', '어디냐', '정보',
-  '어디', '어느', '좀', '부탁', '부탁해',
+  '어디', '어느', '좀', '부탁', '부탁해', '확인해줘', '확인해',
   '총', '합계', '전체', '수량', '현황', '몇', '내역', '확인', '조회',
   '오늘', '내일', '모레', '내일모레', '글피', '그글피', '어제', '그제', '이번주', '다음주', '지난주', '금주',
   '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일',
@@ -57,6 +74,8 @@ const IGNORE_TERMS = new Set([
   '업체', '업체별', '운송사', '운송사별', '실행사', '실행사별',
   '지역별', '상차지별', '상차지역별', '픽업지역별', '상차지별수량',
   '상차지별배차', '지역별수량', '지역별배차',
+  '상세배차', '상세라인', '상세현황', 'glaps', 'glaps코드', '코드',
+  '운송경로코드', '최종코드', '부킹', 'bkg',
 ]);
 
 const WEEKDAYS = [
@@ -268,6 +287,23 @@ function detectTypeFilters(text) {
     .map(([type]) => type);
 }
 
+function detectQuantityMetric(text) {
+  const compact = normalizeCompact(text);
+  const asksOrder = compact.includes('오더') || compact.includes('주문');
+  const asksDispatch = compact.includes('배차') || compact.includes('매차') || compact.includes('상차');
+  if (asksOrder && asksDispatch) return 'both';
+  if (asksOrder) return 'order';
+  return 'dispatch';
+}
+
+function detectGroupBy(text) {
+  const compact = normalizeCompact(text);
+  const groups = [];
+  if (/(상차지|상차지역|픽업지역|지역)별/.test(compact)) groups.push('region');
+  if (/(업체|운송사|실행사)별/.test(compact)) groups.push('carrier');
+  return groups;
+}
+
 function isTypeTerm(compact) {
   return Object.values(TYPE_ALIASES)
     .flat()
@@ -341,6 +377,8 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
   const dateScope = parseDateScope(text, options.now || new Date());
   const filterHour = extractFilterHour(text);
   const typeFilters = detectTypeFilters(text);
+  const quantityMetric = detectQuantityMetric(text);
+  const groupBy = detectGroupBy(text);
   const specificKeywords = buildSpecificKeywords(text, options.searchTerms || []);
   const hasDispatchTrigger = hasAnyWord(compact, DISPATCH_TRIGGER_WORDS);
   const hasStructureTrigger = hasAnyWord(compact, STRUCTURE_TRIGGER_WORDS);
@@ -359,6 +397,8 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
     dateScope,
     filterHour,
     typeFilters,
+    quantityMetric,
+    groupBy,
     specificKeywords,
     hasDispatchTrigger,
     hasStructureTrigger,
@@ -402,6 +442,27 @@ function shouldTreatAsKnownRegionHeader(header) {
   return REGION_WORDS.some((region) => normalized.includes(normalizeHeader(region)));
 }
 
+function isRegionBlockTerminator(header) {
+  const normalized = normalizeHeader(header);
+  return REGION_BLOCK_TERMINATORS.has(normalized);
+}
+
+function findRegionColumnBlock(headers = []) {
+  const startAnchor = headers.findIndex((header) => normalizeHeader(header) === '배차예정');
+  if (startAnchor < 0) return null;
+
+  let end = headers.length;
+  for (let idx = startAnchor + 1; idx < headers.length; idx += 1) {
+    const raw = String(headers[idx] || '').trim();
+    if (/^col_\d+$/i.test(raw) || isRegionBlockTerminator(raw)) {
+      end = idx;
+      break;
+    }
+  }
+
+  return { start: startAnchor + 1, end };
+}
+
 function looksLikeCarrierCell(cell) {
   const value = String(cell || '').trim();
   if (!value || ['0', 'nan', 'none', '-'].includes(value.toLowerCase())) return false;
@@ -413,11 +474,15 @@ function looksLikeCarrierCell(cell) {
 }
 
 function inferRegionColumns(headers, rows = []) {
+  const regionBlock = findRegionColumnBlock(headers);
   return headers
     .map((header, idx) => ({ name: String(header || '').trim(), index: idx }))
     .filter(({ name, index }) => {
       const normalized = normalizeHeader(name);
-      if (!normalized || /^col_\d+$/i.test(name) || NON_REGION_HEADERS.has(normalized)) return false;
+      if (!normalized || /^col_\d+$/i.test(name) || NON_REGION_HEADERS.has(normalized) || isRegionBlockTerminator(name)) {
+        return false;
+      }
+      if (regionBlock && (index < regionBlock.start || index >= regionBlock.end)) return false;
       if (shouldTreatAsKnownRegionHeader(name)) return true;
 
       let carrierLikeCells = 0;
@@ -695,6 +760,39 @@ function rowMatchesIntent(rowInfo, intent) {
   return typeMatch && keywordMatch && hourMatch;
 }
 
+function hasActiveIntentFilters(intent = {}) {
+  return Boolean(intent.filterHour)
+    || Boolean(intent.typeFilters?.length)
+    || Boolean(intent.specificKeywords?.length);
+}
+
+function buildAnswerSummaryText(summary, intent = {}, scopeLabel = '조회 범위 전체') {
+  const metric = intent.quantityMetric || 'dispatch';
+  const order = formatCount(summary.orderCount);
+  const dispatch = formatCount(summary.dispatchCount);
+  let text = `### 질문 즉답용 집계\n`;
+  text += `- 기준: ${scopeLabel}\n`;
+
+  if (metric === 'order') {
+    text += `- 정답 후보: 오더 ${order}대 (실제 배차 ${dispatch}대)\n`;
+  } else if (metric === 'both') {
+    text += `- 정답 후보: 실제 배차 ${dispatch}대 / 오더 ${order}대\n`;
+  } else {
+    text += `- 정답 후보: 실제 배차 ${dispatch}대 (오더 ${order}대)\n`;
+  }
+
+  text += `- 지시: "총 몇 대 배차" 또는 "배차 몇 대" 질문은 실제 배차 ${dispatch}대를 첫 문장으로 답하라. 오더와 배차를 더하거나 섞지 마라.\n`;
+
+  if (intent.groupBy?.includes('region')) {
+    text += `- 상차지별 답변 자료: ${topMapText(summary.byRegion)}\n`;
+  }
+  if (intent.groupBy?.includes('carrier')) {
+    text += `- 운송사별 답변 자료: ${topMapText(summary.byCarrier)}\n`;
+  }
+
+  return text;
+}
+
 function queryBuilderForIntent(supabase, intent) {
   let query = supabase
     .from('branch_dispatch')
@@ -752,9 +850,13 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
     intent.filterHour ? `${intent.filterHour}시` : '',
     ...intent.specificKeywords,
   ].filter(Boolean).join(', ') || '전체';
+  const hasActiveFilters = hasActiveIntentFilters(intent);
+  const answerSummary = hasActiveFilters ? matchedSummary : overallSummary;
+  const answerScopeLabel = hasActiveFilters ? `질문 조건(${filterLabel}) 매칭` : '조회 범위 전체';
 
   let text = `\n\n## 아산지점 배차판\n`;
   text += `[시스템: Supabase branch_dispatch / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
+  text += buildAnswerSummaryText(answerSummary, intent, answerScopeLabel);
   text += `### 도표형 스키마(동적 추론)\n`;
   for (const profile of schemaProfile) {
     const typeLabel = profile.type === 'mobis' ? '모비스' : (profile.type === 'glovis' ? '글로비스' : profile.type);
@@ -780,7 +882,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
   text += `- **상차지별 전체**: ${topMapText(overallSummary.byRegion)}\n`;
 
   text += `### 질문 조건 매칭 현황\n`;
-  if (intent.typeFilters?.length > 0 || intent.specificKeywords.length > 0 || intent.filterHour) {
+  if (hasActiveFilters) {
     text += `- 조건: ${filterLabel}\n`;
     text += `- 매칭 행: ${matchedSummary.rowCount}건 / 오더 ${formatCount(matchedSummary.orderCount)}대 / 실제 배차 ${formatCount(matchedSummary.dispatchCount)}대\n`;
     text += `- 매칭 운송사: ${topMapText(matchedSummary.byCarrier)}\n`;
@@ -818,10 +920,121 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
 
   return {
     text,
-    hasMatches: matchedRows.length > 0 || (intent.specificKeywords.length === 0 && !intent.filterHour && overallSummary.rowCount > 0),
+    hasMatches: matchedRows.length > 0 || (!hasActiveFilters && overallSummary.rowCount > 0),
     loadedDates,
     overallSummary,
     matchedSummary,
+  };
+}
+
+function shouldQueryDispatchDetail(userText = '') {
+  const compact = normalizeCompact(userText);
+  return DETAIL_TRIGGER_WORDS.some((word) => compact.includes(normalizeCompact(word)));
+}
+
+function detailLineSearchText(line = {}) {
+  return [
+    line.targetDate,
+    line.type,
+    line.workDate,
+    line.direction,
+    line.shipper,
+    line.startLocation,
+    line.startRegion,
+    line.workplace,
+    line.destination,
+    line.customer,
+    line.port,
+    line.line,
+    line.containerType,
+    line.company,
+    line.bkg1,
+    line.bkg2,
+    line.bkg3,
+    line.targetVessel,
+    line.note,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function detailLineMatchesIntent(line, intent) {
+  const typeMatch = !intent.typeFilters?.length
+    || intent.typeFilters.includes(String(line.type || '').toLowerCase());
+  const haystack = detailLineSearchText(line);
+  const keywordMatch = intent.specificKeywords.length === 0
+    || intent.specificKeywords.every((kwd) => haystack.includes(String(kwd).toLowerCase()));
+  return typeMatch && keywordMatch;
+}
+
+export function buildAsanDispatchDetailRagText(records = [], intent, options = {}) {
+  const maxDetailRows = options.maxDetailRows || 120;
+  const sortedRecords = [...(records || [])].sort((a, b) => String(a.target_date).localeCompare(String(b.target_date)));
+  const allLines = [];
+
+  for (const record of sortedRecords) {
+    const lines = buildDispatchDetailLines({
+      headers: normalizeHeaders(record.headers || [], record.type || ''),
+      rows: record.data || [],
+      workDate: record.target_date || '',
+    });
+    for (const line of lines) {
+      allLines.push({
+        ...line,
+        targetDate: record.target_date,
+        type: record.type || '',
+      });
+    }
+  }
+
+  const matchedLines = allLines.filter((line) => detailLineMatchesIntent(line, intent));
+  const targetLines = hasActiveIntentFilters(intent) ? matchedLines : allLines;
+  const summary = summarizeDispatchDetailLines(targetLines);
+  const byCompany = {};
+  const byStart = {};
+  const byDestination = {};
+
+  targetLines.forEach((line) => {
+    addMapCount(byCompany, line.company || '업체미상', 1);
+    addMapCount(byStart, line.startLocation || line.startRegion || '상차지미정', 1);
+    addMapCount(byDestination, line.destination || '선적미상', 1);
+  });
+
+  const loadedDates = [...new Set(sortedRecords.map((record) => record.target_date))].sort();
+  const filterLabel = [
+    ...(intent.typeFilters || []).map((type) => (type === 'mobis' ? '모비스' : (type === 'glovis' ? '글로비스' : type))),
+    ...intent.specificKeywords,
+  ].filter(Boolean).join(', ') || '전체';
+
+  let text = `\n\n## 아산지점 상세배차\n`;
+  text += `[시스템: Supabase branch_dispatch 원장 -> 상세배차 라인 변환 / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
+  text += `- 상세배차 라인 총 ${formatCount(targetLines.length)}대`;
+  if (hasActiveIntentFilters(intent)) text += ` (전체 ${formatCount(allLines.length)}대 중 조건 매칭)`;
+  text += `\n`;
+  text += `- 상차지별: ${topMapText(byStart)}\n`;
+  text += `- 업체별: ${topMapText(byCompany)}\n`;
+  text += `- 하차지(선적)별: ${topMapText(byDestination)}\n`;
+  text += `- 보정 필요 요약: 상차지수동 ${formatCount(summary.manualStartLocationCount)}건 / 운송경로 ${formatCount(summary.routeMissingCount)}건 / 포트 ${formatCount(summary.portMissingCount)}건 / 선사 ${formatCount(summary.lineMissingCount)}건 / 타입 ${formatCount(summary.typeMissingCount)}건\n`;
+  text += `> [해석 규칙] 상세배차는 배차판 지역 셀의 업체+수량을 1대 단위 라인으로 펼친 자료다. CODE/Nomi/함축 같은 설명 컬럼을 배차 수량으로 계산하지 마라.\n`;
+
+  if (targetLines.length > 0) {
+    text += `### 상세배차 라인 샘플\n`;
+    targetLines.slice(0, maxDetailRows).forEach((line) => {
+      const typeLabel = line.type === 'mobis' ? '모비스' : (line.type === 'glovis' ? '글로비스' : line.type);
+      text += `- [${line.targetDate} ${typeLabel} #${line.lineNo}] ${line.shipper || '-'} / ${line.startLocation || line.startRegion || '상차지미정'} -> ${line.workplace || '-'} -> ${line.destination || '-'} / ${line.company || '업체미상'} / ${line.containerType || '-'} / BKG ${line.bkg1 || '-'} ${line.bkg2 || ''} ${line.bkg3 || ''}\n`;
+    });
+    if (targetLines.length > maxDetailRows) {
+      text += `- 상세 라인은 ${maxDetailRows}건까지만 주입됨. 실제 매칭은 ${targetLines.length}건이다.\n`;
+    }
+  } else {
+    text += `> [조회 완료] ${filterLabel} 조건에 일치하는 상세배차 라인이 없습니다. 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+  }
+
+  return {
+    text,
+    hasMatches: targetLines.length > 0,
+    loadedDates,
+    total: targetLines.length,
+    allTotal: allLines.length,
+    summary,
   };
 }
 
@@ -851,6 +1064,40 @@ export async function buildAsanDispatchRagContext({
   }
 
   const rag = buildAsanDispatchRagText(data, intent, { maxDetailRows });
+  return {
+    shouldQuery: true,
+    success: true,
+    intent,
+    ...rag,
+  };
+}
+
+export async function buildAsanDispatchDetailRagContext({
+  supabase,
+  userText = '',
+  userKwd = '',
+  searchTerms = [],
+  now = new Date(),
+  maxDetailRows = 120,
+} = {}) {
+  const intent = parseAsanDispatchIntent(userText, { userKwd, searchTerms, now });
+  if (!shouldQueryDispatchDetail(userText)) {
+    return { shouldQuery: false, success: false, text: '', intent };
+  }
+
+  const { data, error } = await queryBuilderForIntent(supabase, intent);
+  if (error || !data || data.length === 0) {
+    const detail = error ? `(에러: ${error.code || 'unknown'} - ${error.message})` : '(조회 레코드 0개)';
+    return {
+      shouldQuery: true,
+      success: false,
+      text: `\n\n## 아산지점 상세배차 (${intent.dateScope.label})\n> [DB 미동기화/데이터 없음] ${detail}\n> 상세배차는 branch_dispatch 원장 기반으로 생성되지만 해당 범위 데이터가 없습니다.`,
+      intent,
+      error,
+    };
+  }
+
+  const rag = buildAsanDispatchDetailRagText(data, intent, { maxDetailRows });
   return {
     shouldQuery: true,
     success: true,

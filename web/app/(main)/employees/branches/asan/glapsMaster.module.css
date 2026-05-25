@@ -194,67 +194,11 @@
     color: #fff !important;
 }
 
-.editorPanel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid #cfe2f3;
-    border-radius: 8px;
-    background: #f8fbff;
-}
-
-.editorGrid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap: 8px;
-}
-
-.editorField {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.editorField span {
-    color: #475569;
-    font-size: 0.72rem;
-    font-weight: 900;
-}
-
-.editorField input,
-.editorField select {
-    height: 32px;
-    min-width: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #fff;
-    color: #0f172a;
-    font-size: 0.78rem;
-    font-weight: 800;
-    padding: 0 9px;
-}
-
-.protectedField span {
-    color: #334155;
-}
-
-.protectedField input,
-.protectedField select {
-    background: #e5e7eb;
-    border-color: #cbd5e1;
-    color: #475569;
-}
-
-.editorActions,
 .rowActions {
     display: inline-flex;
     gap: 6px;
 }
 
-.editorActions button,
 .rowActions button {
     height: 30px;
     border: 1px solid #cbd5e1;
@@ -265,12 +209,6 @@
     font-weight: 900;
     padding: 0 9px;
     white-space: nowrap;
-}
-
-.editorActions button:first-child {
-    background: #0f766e;
-    border-color: #0f766e;
-    color: #fff;
 }
 
 .sourceBadge {
@@ -404,6 +342,55 @@
     font-weight: 800;
 }
 
+.inlineEditRow td {
+    background: #f8fbff;
+}
+
+.inlineEditRow td.protectedCell {
+    background: #e5e7eb !important;
+}
+
+.table td.inlineEditCell {
+    padding: 0;
+}
+
+.inlineEditInput {
+    display: block;
+    width: 100%;
+    min-width: 92px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 800;
+    padding: 0 9px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.inlineEditInput:hover {
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.inlineEditInput:focus {
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+.inlineEditInput:disabled {
+    color: #64748b;
+    cursor: default;
+}
+
+.inlineSaveButton {
+    background: #0f766e !important;
+    border-color: #0f766e !important;
+    color: #fff !important;
+}
+
 .table tbody tr:nth-child(odd) {
     background: #f8fafc;
 }
@@ -472,18 +459,6 @@
     .toolbar {
         align-items: stretch;
         flex-direction: column;
-    }
-
-    .editorPanel {
-        grid-template-columns: 1fr;
-    }
-
-    .editorGrid {
-        grid-template-columns: 1fr;
-    }
-
-    .editorActions {
-        justify-content: flex-end;
     }
 
     .segmented,
