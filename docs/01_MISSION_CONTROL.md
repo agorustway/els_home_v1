@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.199 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.200 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동내역 엑셀 다운로드에 GLAPS 업로드 62컬럼 시트를 함께 출력한다.
+> 최신 업데이트: 아산 배차판 버튼 순서를 정리하고 배차 원장 조회를 메타 -> 선택일 -> 전체 백그라운드 방식으로 2차 경량화했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.199
+- **웹 버전**: v5.14.200
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -20,6 +20,7 @@
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
 - 상세배차 수정필요 필터는 상차지, 운송경로, 오더구분, 화주사, 경로세부코드, 포트, 라인, 타입, 운송사, 컨샤이니, 수정건 항목별로 토글한다.
 - 아산 배차판 작업 중 화면/배포 반영 확인은 브라우저 F5 대신 상단 `새로고침` 버튼을 사용한다. 버튼은 현재 보기, 배차 구분, 선택 날짜/전체 기간, 검색/필터를 저장한 뒤 실제 페이지를 다시 불러온다.
+- 아산 예하페이지 우측 작업 버튼 순서는 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 고정한다.
 - NAS 동기화 버튼은 수동 요청 시 글로비스/모비스 모두 오늘 기준 -2일~+2일 최근 5일을 먼저 반영한다. 최근구간 완료 신호를 받으면 상단 `새로고침`과 같은 실제 reload를 실행하고, 과거/잔여 날짜는 백그라운드에서 이어 처리한다.
 - 동기화 진행 중이거나 최근 요청 후 1분이 지나지 않았으면 NAS 동기화 버튼은 잠그고 `새로고침`만 허용한다.
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
@@ -48,6 +49,7 @@
 - `GLAPS_업로드` 시트는 동일 부킹/운송경로/선사/규격을 컨테이너 수량으로 묶고, 삭제 변동건은 신규 업로드 양식으로 표현할 수 없으므로 우리 기준 시트에만 남긴다.
 - `GLAPS코드` 화면 테이블은 헤더 클릭으로 오름차순/내림차순/해제 정렬하고, 헤더 아래 목록에서 현재 탭 컬럼별 고유값 필터를 건다.
 - 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다. 전체 원장/수정 화면은 `GLAPS코드` 탭의 기존 전체 조회를 사용한다.
+- 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채워 첫 표시 payload/render 부하를 줄인다.
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -59,26 +61,25 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.200**: 아산 예하페이지 버튼 순서를 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 변경했다. `/api/branches/asan/dispatch`에 `mode=meta/date/full` 조회를 추가하고, 화면은 메타/선택일 상세를 먼저 그린 뒤 전체 원장을 백그라운드로 병합해 초기 배차판 체감 부하를 줄인다.
 - **v5.14.199**: 상세배차/배차변동내역 엑셀 다운로드에 `GLAPS_업로드` 시트를 추가했다. NAS `GLAPS_업로드.xlsx` 첫 시트 62컬럼을 기준으로 오더구분, 선사코드, 화주사 코드, 출발/작업지/도착 코드, 운송경로 코드, 운송서비스/운송사 코드, 부킹번호, POD/최종목적지, 컨테이너 규격/수량, 컨사이니를 매핑한다.
 - **v5.14.198**: GLAPS 마스터 API에 `mode=lookup`을 추가해 상세배차/배차변동내역 코드 도출에 필요한 운송경로, 포트/라인/컨테이너/운송사/컨샤이니 alias, 컨테이너규격/수출입코드 원본행만 내려준다. 실측 기준 상세 lookup payload는 약 3.2MB에서 약 738KB로 줄고, 같은 refresh token 안에서는 중복 fetch를 생략한다.
 - **v5.14.197**: 배차변동내역 API가 글로비스/모비스 하위 탭에서 직접 확정 이벤트가 없으면 `integrated` 변동 이벤트를 화주 기준으로 fallback 조회한다. 하위 탭의 개별/일괄 확인과 변동행 수정은 event id 기준으로 통합 이벤트도 안전하게 처리한다.
 - **v5.14.196**: 실제 요청 진입점인 `web/middleware.js`에 Supabase URL/anon key 누락 guard를 추가했다. Preview 환경변수가 비어 있어도 공개 페이지 접근 시 루트 middleware에서 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
 - **v5.14.195**: Supabase middleware에서 URL/anon key가 없으면 세션 갱신을 생략하고 요청을 그대로 통과시킨다. Preview 환경변수가 비어 있어도 외부 URL 접근 시 `MIDDLEWARE_INVOCATION_FAILED`가 발생하지 않게 했다.
-- **v5.14.194**: 공용 Supabase server/browser client에 환경변수 누락 fallback을 추가했다. Preview 빌드처럼 Supabase URL/키가 없는 환경에서는 import/렌더 단계에서 예외를 던지지 않고, 실제 요청은 503 성격의 응답 객체로 처리한다. 아산 export/성과 DB 헬퍼도 같은 기준으로 보정했다.
-- **v5.14.193**: `/api/branches/asan/settings`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
-- **v5.14.192**: `/api/branches/asan/dispatch`의 Supabase admin client 생성을 모듈 import 시점에서 요청 시점으로 이동했다. Preview 환경에 Supabase URL/서비스키가 없더라도 빌드 수집 단계에서 실패하지 않고, 실제 요청 시 503 JSON으로 안내한다.
 - **v5.14.191**: 서비스 페이지 히어로 문구를 `고객의 가치를 최우선으로 하는 맞춤형 물류 서비스`로 정리해, 공개 페이지 서비스 소개를 물류 중심으로 맞췄다.
 - **v5.14.163**: 상세배차 `업체명` 뒤에 `BKG확정` 컬럼을 추가했다. `BKG1~3` 선택 흔적과 수기 입력값은 상세라인 보정 테이블로 분리 저장하며, 배차확정/확정취소 API와 이력 테이블, `배차변동내역` 탭 기반을 추가했다. 화주사코드는 매칭된 운송경로 원장 payload의 값을 우선 사용한다.
 ## VERIFICATION
-- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
 - Export API 메모리 검증: `상세배차내역`, `GLAPS_업로드` 2개 시트 생성, GLAPS 헤더 62개, 부킹번호/컨테이너 수량 위치 확인.
-- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/view/route.js" "utils/asanGlapsUploadExport.mjs"`: 통과
-- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js"`: 통과
+- `cd web; npm run build`: 통과.
 - NAS deploy 검증: 2026-05-25 `els-gateway`, `els-core`, `els-bot` 재생성 후 `/api/branches/asan/sync` gateway/core 응답 확인.
 - Supabase migration `asan_dispatch_change_events`: 적용 완료
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식을 설계한다.
+- 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta`의 서버 내부 원장 스캔까지 줄인다.
 - 배차판 WEB 전용 셀 DB 적용 대기: `web/supabase_sql/20260522_asan_dispatch_web_cells.sql` 적용 후 `cd web; node scripts/backfill-asan-dispatch-web-cells.mjs` 1회 실행.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
 

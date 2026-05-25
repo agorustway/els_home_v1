@@ -12,6 +12,8 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // [v5.10.22] 데이터 부정합 문제로 캐시 완전 비활성화 (정확성 우선)
 
+const DISPATCH_QUERY_MODES = new Set(['full', 'meta', 'date']);
+
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,6 +23,30 @@ function getSupabaseAdminClient() {
     }
 
     return createClient(supabaseUrl, serviceRoleKey);
+}
+
+function getDispatchQueryMode(value) {
+    const mode = String(value || 'full').trim().toLowerCase();
+    return DISPATCH_QUERY_MODES.has(mode) ? mode : 'full';
+}
+
+function countValidDispatchRows(item = {}) {
+    return (item.data || []).filter(row => shouldIncludeDispatchRow(item.headers || [], row, item.type)).length;
+}
+
+function makeMetaDispatchItem(item = {}, headers = item.headers || [], validRowCount = countValidDispatchRows(item)) {
+    const publicItem = { ...item };
+    delete publicItem.webCellLegacyHeaders;
+    return {
+        ...publicItem,
+        headers,
+        data: [],
+        comments: {},
+        webCellRows: [],
+        valid_row_count: validRowCount,
+        row_count: validRowCount,
+        meta_only: true,
+    };
 }
 
 export async function GET(request) {
@@ -34,6 +60,12 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'glovis';
+    const mode = getDispatchQueryMode(searchParams.get('mode'));
+    const targetDate = String(searchParams.get('date') || '').trim();
+
+    if (mode === 'date' && !targetDate) {
+        return NextResponse.json({ error: 'date required' }, { status: 400 });
+    }
 
     let query = supabase
         .from('branch_dispatch')
@@ -44,12 +76,14 @@ export async function GET(request) {
     if (type !== 'integrated') {
         query = query.eq('type', type);
     }
+    if (mode === 'date') {
+        query = query.eq('target_date', targetDate);
+    }
 
     const { data, error } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const records = (data || []).map(normalizeDispatchRecordHeaders);
-    const webCellState = await loadDispatchWebCellState(supabase, records);
 
     if (type === 'integrated') {
         const unifiedHeaders = [
@@ -59,6 +93,37 @@ export async function GET(request) {
         ];
 
         const byDate = {};
+
+        if (mode === 'meta') {
+            for (const item of records) {
+                if (!byDate[item.target_date]) {
+                    byDate[item.target_date] = {
+                        id: `integ_${item.target_date}`,
+                        branch_id: 'asan',
+                        type: 'integrated',
+                        target_date: item.target_date,
+                        headers: unifiedHeaders,
+                        data: [],
+                        comments: {},
+                        webCellRows: [],
+                        file_modified_at: item.file_modified_at,
+                        valid_row_count: 0,
+                        row_count: 0,
+                        meta_only: true,
+                    };
+                }
+                if (new Date(item.file_modified_at) > new Date(byDate[item.target_date].file_modified_at)) {
+                    byDate[item.target_date].file_modified_at = item.file_modified_at;
+                }
+                const count = countValidDispatchRows(item);
+                byDate[item.target_date].valid_row_count += count;
+                byDate[item.target_date].row_count += count;
+            }
+            const integratedMeta = Object.values(byDate).sort((a, b) => a.target_date.localeCompare(b.target_date));
+            return NextResponse.json({ data: integratedMeta, mode });
+        }
+
+        const webCellState = await loadDispatchWebCellState(supabase, records);
         
         for (const item of records) {
             if (!byDate[item.target_date]) {
@@ -192,10 +257,25 @@ export async function GET(request) {
         }
 
         const integratedData = Object.values(byDate).sort((a, b) => a.target_date.localeCompare(b.target_date));
-        return NextResponse.json({ data: integratedData });
+        return NextResponse.json({ data: integratedData, mode });
     }
 
     if (type !== 'integrated') {
+        if (mode === 'meta') {
+            const metaData = records.map(item => {
+                const sourceHeaders = item.headers.filter((h) => {
+                    const trimmed = (h || '').trim();
+                    const isJunk = (/^(col_\d+)$/i.test(trimmed) || ['A', 'B', '함축'].includes(trimmed)) &&
+                                   !(trimmed.includes('BKG') || trimmed.includes('TARGET'));
+                    return !isJunk;
+                });
+                const newHeaders = ensureDispatchWebCellHeaders(sourceHeaders);
+                return makeMetaDispatchItem(item, newHeaders);
+            });
+            return NextResponse.json({ data: metaData, mode });
+        }
+
+        const webCellState = await loadDispatchWebCellState(supabase, records);
         // Filter out junk columns for specific views (e.g. col_31, A, B...)
         const filteredData = records.map(item => {
             const validIndices = [];
@@ -283,6 +363,6 @@ export async function GET(request) {
                 webCellRows
             };
         });
-        return NextResponse.json({ data: filteredData });
+        return NextResponse.json({ data: filteredData, mode });
     }
 }

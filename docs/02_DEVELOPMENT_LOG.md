@@ -1,3 +1,24 @@
+## [2026-05-25] 아산 배차판 조회 2차 경량화 및 버튼 순서 정리 (v5.14.200)
+### 핵심
+- 아산 예하페이지 우측 작업 버튼 순서를 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 변경했습니다.
+- `/api/branches/asan/dispatch`에 `mode=meta/date/full` 조회를 추가했습니다.
+- 화면은 먼저 날짜별 메타와 선택일 상세만 받아 초기 표/탭을 표시하고, 전체 원장은 백그라운드에서 채워 넣습니다.
+- 빠른 화면 전환 중 이전 백그라운드 조회가 새 화면 데이터를 덮지 않도록 load sequence guard를 추가했습니다.
+### 다음 최적화 후보
+- 현재 `mode=meta`는 브라우저 payload/render 부하를 줄이는 단계입니다. 서버 내부 DB 스캔까지 줄이려면 날짜별 유효행 수 요약 컬럼 또는 summary 테이블을 두는 방식이 다음 후보입니다.
+- 아산 `page.js`는 계속 커지고 있어 상세배차/변동내역/GLAPS hook 분리가 유지보수 최적화 후보입니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 상세/변동 엑셀 다운로드 GLAPS 업로드 시트 추가 (v5.14.199)
 ### 핵심
 - NAS `/volume2/아산지점/A_운송실무/GLAPS_업로드.xlsx` 첫 시트(`오더 엑셀업로드`)의 실제 헤더를 확인했습니다.

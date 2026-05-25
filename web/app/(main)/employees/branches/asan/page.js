@@ -379,6 +379,8 @@ function calcSummary(headers, data, viewType) {
     }
 }
 function hasValidOrderRows(item, viewType) {
+    const explicitCount = Number(item?.valid_row_count ?? item?.validRowCount ?? item?.row_count);
+    if ((!Array.isArray(item?.data) || item.data.length === 0) && Number.isFinite(explicitCount)) return explicitCount > 0;
     if (!Array.isArray(item?.data) || item.data.length === 0) return false;
     const summaryOrder = calcSummary(item.headers || [], item.data || [], viewType)?.order || 0;
     if (summaryOrder <= 0) return false;
@@ -409,6 +411,25 @@ function findDefaultValidTabIndex(items = [], viewType, today = getTodayKey()) {
     }
 
     return ti;
+}
+function mergeDispatchDateItems(baseItems = [], loadedItems = []) {
+    if (!Array.isArray(loadedItems) || loadedItems.length === 0) return baseItems;
+    const loadedByDate = new Map(loadedItems.map(item => [item.target_date, item]));
+    const merged = (baseItems || []).map(item => loadedByDate.get(item.target_date) || item);
+    loadedItems.forEach((item) => {
+        if (!merged.some(existing => existing.target_date === item.target_date)) merged.push(item);
+    });
+    return merged.sort((a, b) => String(a.target_date || '').localeCompare(String(b.target_date || '')));
+}
+function makeDispatchDataUrl(type, params = {}) {
+    const searchParams = new URLSearchParams({
+        type,
+        t: String(Date.now()),
+    });
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') searchParams.set(key, String(value));
+    });
+    return `/api/branches/asan/dispatch?${searchParams.toString()}`;
 }
 function doSearch(data, headers, term) {
     if (!term || !data) return { indices: null, summary: '' };
@@ -869,6 +890,7 @@ function AsanDispatchContent() {
     const activeTabRef = useRef(-1);
     const detailChangeSyncRef = useRef('');
     const glapsLookupLoadedTokenRef = useRef(null);
+    const dispatchLoadSeqRef = useRef(0);
     const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
@@ -962,29 +984,67 @@ function AsanDispatchContent() {
         const previousTargetDate = previousIndex === previousItems.length
             ? '__all__'
             : previousItems[previousIndex]?.target_date;
-
-        if (!silent) setLoading(true);
-        try {
-            const r = await fetch(`/api/branches/asan/dispatch?type=${type}&t=${Date.now()}`, { cache: 'no-store' }); 
+        const loadSeq = dispatchLoadSeqRef.current + 1;
+        dispatchLoadSeqRef.current = loadSeq;
+        const isCurrentLoad = () => dispatchLoadSeqRef.current === loadSeq;
+        const requestDispatchItems = async (params = {}) => {
+            const r = await fetch(makeDispatchDataUrl(type, params), { cache: 'no-store' });
             const j = await r.json();
             if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
-            const items = j.data || []; setData(items);
+            return j.data || [];
+        };
+        const pickActiveIndex = (items = [], preferredTargetDate = '') => {
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            if (preserveActiveDate && previousTargetDate === '__all__') {
-                setActiveTab(items.length);
-            } else if (preserveActiveDate && previousTargetDate) {
-                const nextIndex = items.findIndex(item => item.target_date === previousTargetDate);
-                setActiveTab(nextIndex >= 0 ? nextIndex : findDefaultValidTabIndex(items, type, today));
-            } else {
-                setActiveTab(findDefaultValidTabIndex(items, type, today));
+            if (preserveActiveDate && preferredTargetDate === '__all__') return items.length;
+            if (preserveActiveDate && preferredTargetDate) {
+                const nextIndex = items.findIndex(item => item.target_date === preferredTargetDate);
+                if (nextIndex >= 0) return nextIndex;
             }
+            return findDefaultValidTabIndex(items, type, today);
+        };
+
+        if (!silent) setLoading(true);
+        let initialLoaded = false;
+        try {
+            const metaItems = await requestDispatchItems({ mode: 'meta' });
+            let nextItems = metaItems;
+            let nextActiveIndex = pickActiveIndex(nextItems, previousTargetDate);
+            if (nextActiveIndex >= 0 && nextActiveIndex < nextItems.length) {
+                const activeDate = nextItems[nextActiveIndex]?.target_date;
+                if (activeDate) {
+                    const dateItems = await requestDispatchItems({ mode: 'date', date: activeDate });
+                    nextItems = mergeDispatchDateItems(nextItems, dateItems);
+                    nextActiveIndex = pickActiveIndex(nextItems, activeDate);
+                }
+            }
+            if (!isCurrentLoad()) return false;
+            setData(nextItems);
+            setActiveTab(nextActiveIndex);
+            initialLoaded = true;
+            if (!silent) setLoading(false);
+
+            setTimeout(async () => {
+                try {
+                    const fullItems = await requestDispatchItems({ mode: 'full' });
+                    if (!isCurrentLoad()) return;
+                    const currentItems = dataRef.current || [];
+                    const currentIndex = activeTabRef.current;
+                    const currentTargetDate = currentIndex === currentItems.length
+                        ? '__all__'
+                        : currentItems[currentIndex]?.target_date || previousTargetDate;
+                    setData(fullItems);
+                    setActiveTab(pickActiveIndex(fullItems, currentTargetDate));
+                } catch {
+                    // 첫 화면 표시 이후 전체 데이터 보강 실패는 다음 새로고침/자동갱신에서 복구한다.
+                }
+            }, 50);
             return true;
         } catch {
             if (!silent) setData([]);
             return false;
         } finally {
-            if (!silent) setLoading(false);
+            if (!silent && !initialLoaded) setLoading(false);
         }
     }, []);
     const updateSyncGateFromStatus = useCallback((status = {}) => {
@@ -2462,11 +2522,11 @@ function AsanDispatchContent() {
                             )}
                         </div>
                         <div className={styles.headerButtons}>
+                            <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
+                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
                             <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
                                 {refreshing ? '새로고침 중' : '새로고침'}
                             </button>
-                            <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
-                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
                             <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncActionBlocked}>
                                 {(syncing || syncGate.running) ? '동기화 중' : 'NAS 동기화'}
                             </button>
