@@ -214,7 +214,7 @@ export default function WorkSitesNewPage() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📍 약도 및 관련 서류 업로드</label>
+                        <label className={styles.label}>약도 및 관련 서류 업로드</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
                             onDragOver={handleDragOver}
@@ -224,7 +224,7 @@ export default function WorkSitesNewPage() {
                         >
                             <input type="file" id="fileUpload" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요 (약도 이미지 포함)
+                                <b>파일을 선택</b>하거나 여기로 드래그하세요 (약도 이미지 포함)
                             </label>
 
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
@@ -239,7 +239,7 @@ export default function WorkSitesNewPage() {
                                 <div className={styles.uploadedList}>
                                     {attachments.map((file, idx) => (
                                         <div key={idx} className={styles.uploadedFile}>
-                                            <span>📎 {file.name}</span>
+                                            <span>{file.name}</span>
                                             <span className={styles.removeFile} onClick={() => removeAttachment(idx)}>✕</span>
                                         </div>
                                     ))}

@@ -16,7 +16,7 @@ export default function ApprovalModal({ isOpen, onClose }) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 >
-                    <span className={styles.modalIcon}>📢</span>
+                    <span className={styles.modalIcon}>승인</span>
                     <h2 className={styles.modalTitle}>권한 승인 대기 안내</h2>
                     <p className={styles.modalDesc}>
                         현재 소속 지점 및 권한이 배정되지 않았습니다.<br />

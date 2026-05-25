@@ -69,17 +69,17 @@ export default function WebzineList() {
     return (
         <main className={styles.main}>
             <div className={styles.contentContainer}>
-                <div className={styles.headerBanner}>
-                    <h1 className={styles.title}>ELS 웹진</h1>
-                    <Link href="/employees/webzine/new" className={styles.writeBtn} style={{ background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
-                        ✍️ 글쓰기
+                <div className={styles.headerBanner} style={{ padding: '8px 12px', borderRadius: '6px', boxShadow: 'none' }}>
+                    <h1 className={styles.title} style={{ letterSpacing: 0 }}>ELS 웹진</h1>
+                    <Link href="/employees/webzine/new" className={styles.writeBtn} style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: '4px', padding: '0 12px', height: '32px', display: 'inline-flex', alignItems: 'center', transform: 'none', transition: 'background-color 0.15s ease, border-color 0.15s ease' }}>
+                        글쓰기
                     </Link>
                 </div>
 
-                <div className={styles.actionHeader}>
+                <div className={styles.actionHeader} style={{ marginBottom: '12px' }}>
                     {recentPosts.length > 0 && (
-                        <button onClick={scrollToRecent} className={styles.navBtn}>
-                            ↓ 지난 이야기 보기
+                        <button onClick={scrollToRecent} className={styles.navBtn} style={{ padding: '0 12px', height: '32px', borderRadius: '4px', marginRight: 0, transform: 'none', transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease' }}>
+                            지난 이야기 보기
                         </button>
                     )}
                 </div>
@@ -87,10 +87,10 @@ export default function WebzineList() {
                 {posts.length > 0 ? (
                     <>
                         {featuredPost && (
-                            <div className={styles.featuredWrapper}>
-                                <div className={styles.featuredHeader}>
-                                    <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
-                                    <div className={styles.featuredMeta}>
+                            <div className={styles.featuredWrapper} style={{ marginBottom: '36px' }}>
+                                <div className={styles.featuredHeader} style={{ padding: '0 0 12px 0', borderBottom: '1px solid #334155', marginBottom: '16px' }}>
+                                    <h2 className={styles.featuredTitle} style={{ fontSize: '1.35rem', letterSpacing: 0, marginBottom: '8px' }}>{featuredPost.title}</h2>
+                                    <div className={styles.featuredMeta} style={{ gap: '12px', fontSize: '0.88rem' }}>
                                         <span>작성자: {featuredPost.author_email?.split('@')[0] || featuredPost.author?.name || '관리자'}</span>
                                         <span>날짜: {new Date(featuredPost.created_at).toLocaleDateString()}</span>
                                         <span>조회수: {featuredPost.view_count || 0}</span>
@@ -98,13 +98,14 @@ export default function WebzineList() {
                                 </div>
 
                                 {featuredPost.thumbnail_url && getThumbnailSrc(featuredPost) && (
-                                    <div className={styles.featuredImageWrapper}>
+                                    <div className={styles.featuredImageWrapper} style={{ marginBottom: '20px', borderRadius: '6px' }}>
                                         <Image
                                             src={getThumbnailSrc(featuredPost)}
                                             alt={featuredPost.title}
                                             width={1200}
                                             height={675}
                                             className={styles.featuredImage}
+                                            style={{ borderRadius: '6px' }}
                                             priority
                                             unoptimized
                                             onError={(e) => {
@@ -114,15 +115,15 @@ export default function WebzineList() {
                                                 if (fallback) fallback.style.display = 'flex';
                                             }}
                                         />
-                                        <div className={styles.noThumbnail} style={{ height: '400px', fontSize: '5rem', borderRadius: '12px', display: 'none' }}>
-                                            📰
+                                        <div className={styles.noThumbnail} style={{ height: '360px', fontSize: '0.95rem', borderRadius: '6px', display: 'none' }}>
+                                            이미지 없음
                                         </div>
                                     </div>
                                 )}
 
-                                <div className={styles.featuredContent}>
+                                <div className={styles.featuredContent} style={{ fontSize: '1rem', lineHeight: 1.65 }}>
                                     <div dangerouslySetInnerHTML={{ __html: featuredPost.content.replace(/\n/g, '<br/>') }} />
-                                    <div style={{ marginTop: '30px', textAlign: 'right' }}>
+                                    <div style={{ marginTop: '16px', textAlign: 'right' }}>
                                         <Link href={`/employees/webzine/${featuredPost.id}`} style={{ color: '#0056b3', fontWeight: 'bold' }}>
                                             상세보기 / 수정 &rarr;
                                         </Link>
@@ -133,18 +134,18 @@ export default function WebzineList() {
 
                         {recentPosts.length > 0 && (
                             <>
-                                <h3 id="recent-posts" className={styles.sectionTitle}>지난 이야기</h3>
-                                <div className={styles.grid}>
+                                <h3 id="recent-posts" className={styles.sectionTitle} style={{ fontSize: '1.1rem', marginBottom: '12px', paddingLeft: '8px', borderLeft: '3px solid #2563eb', letterSpacing: 0 }}>지난 이야기</h3>
+                                <div className={styles.grid} style={{ gap: '12px' }}>
                                     {recentPosts.map(post => (
-                                        <Link href={`/employees/webzine/${post.id}`} key={post.id} className={styles.card}>
-                                            <div className={styles.thumbnailWrapper} style={{ position: 'relative' }}>
+                                        <Link href={`/employees/webzine/${post.id}`} key={post.id} className={styles.card} style={{ borderRadius: '6px', boxShadow: 'none', transition: 'border-color 0.15s ease, background-color 0.15s ease', transform: 'none' }}>
+                                            <div className={styles.thumbnailWrapper} style={{ position: 'relative', height: '160px' }}>
                                                 {getThumbnailSrc(post) ? (
                                                     <Image
                                                         src={getThumbnailSrc(post)}
                                                         alt={post.title}
                                                         fill
                                                         className={styles.thumbnail}
-                                                        style={{ objectFit: 'cover' }}
+                                                        style={{ objectFit: 'cover', transition: 'none', transform: 'none' }}
                                                         sizes="(max-width: 768px) 100vw, 33vw"
                                                         unoptimized
                                                         onError={(e) => {
@@ -157,12 +158,12 @@ export default function WebzineList() {
                                                         }}
                                                     />
                                                 ) : null}
-                                                <div className={styles.noThumbnail} style={{ display: post.thumbnail_url ? 'none' : 'flex' }}>
-                                                    📰
+                                                <div className={styles.noThumbnail} style={{ display: post.thumbnail_url ? 'none' : 'flex', fontSize: '0.9rem', color: '#64748b' }}>
+                                                    이미지 없음
                                                 </div>
                                             </div>
-                                            <div className={styles.cardContent}>
-                                                <h2 className={styles.cardTitle}>{post.title}</h2>
+                                            <div className={styles.cardContent} style={{ padding: '12px' }}>
+                                                <h2 className={styles.cardTitle} style={{ fontSize: '1rem', marginBottom: '8px' }}>{post.title}</h2>
                                                 <p className={styles.excerpt}>
                                                     {getExcerpt(post.content)}
                                                 </p>

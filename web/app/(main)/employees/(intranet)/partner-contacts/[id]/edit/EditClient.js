@@ -124,12 +124,12 @@ export default function PartnerContactsEditPage() {
                     </div>
                     <div className={styles.formGroup}><label className={styles.label}>비고</label><textarea name="memo" className={styles.textarea} value={formData.memo} onChange={handleInputChange} style={{ minHeight: 80 }} /></div>
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📎 첨부파일</label>
+                        <label className={styles.label}>첨부파일</label>
                         <input type="file" multiple onChange={handleFileUpload} />
                         <div className={styles.uploadedList} style={{ marginTop: '10px' }}>
                             {attachments.map((file, idx) => (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 0' }}>
-                                    <span style={{ flex: 1 }}>📎 {file.name}</span>
+                                    <span style={{ flex: 1 }}>{file.name}</span>
                                     <select value={file.category} onChange={(e) => updateFileCategory(idx, e.target.value)} style={{ padding: '2px 5px', borderRadius: '4px' }}>
                                         <option value="기타">기타</option>
                                         <option value="계약서">계약서</option>

@@ -1,3 +1,24 @@
+## [2026-05-25] 공개/인트라넷 UI 톤앤매너 정리 (v5.14.188)
+### 핵심
+- 공개 홈페이지는 회사 소개, 서비스, 실적, ESG, 문의 흐름의 카피와 밀도를 한국 사용자 기준으로 정리했습니다.
+- 미로그인 공개 헤더에서는 인트라넷 세부 메뉴를 숨기고 `임직원 로그인` 진입만 남겨 외부 노출 범위를 줄였습니다.
+- 아산 배차판·선적관리·실적관리 기준에 맞춰 버튼 높이, 테이블 셀 패딩, 카드 라운드/그림자/여백을 더 조밀하고 담백하게 보정했습니다.
+- 자료실, 게시판, 연락처, 업무자료, 안전운임, 차량관제 등 인트라넷 주요 화면의 장식성 이모지를 텍스트 라벨로 치환했습니다.
+- 문의 페이지는 공개 문의 목록 노출을 제거하고 비공개 접수 안내 중심으로 정리했습니다.
+### 검증
+- `cd web; npm run lint`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+- Browser local check (`http://localhost:3010`): `/intro`, `/contact`, `/employees/branches/asan`, `/employees/safe-freight` 진입 및 콘솔 오류 없음. 캡처 저장은 브라우저 런타임 타임아웃으로 생략.
+### 변경 파일
+- `web/components/*` 공개 홈페이지/공통 헤더/인트로/대시보드/푸터/모달 톤 보정
+- `web/app/(main)/contact/*`, `web/app/(main)/welfare/page.js`, `web/app/(main)/login/page.js`
+- `web/app/(main)/employees/branches/asan/*`
+- `web/app/(main)/employees/(intranet)/**`
+- `web/app/(main)/employees/safe-freight/**`, `web/app/(main)/employees/vehicle-tracking/page.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 NAS 빠른 동기화/변동 삭제 이력화 (v5.14.187)
 ### 핵심
 - NAS 동기화 수동 요청을 `quick`/`rest` 단계로 나눴습니다.

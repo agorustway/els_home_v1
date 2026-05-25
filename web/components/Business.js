@@ -134,7 +134,7 @@ export default function Business() {
                                     <span className={styles.number}>0{idx + 1}</span>
                                     <h3>{service.title}</h3>
                                     <p>{service.desc.substring(0, 100)}...</p>
-                                    <span className={styles.more}>자세히 보기 +</span>
+                                    <span className={styles.more}>자세히 보기</span>
                                 </div>
                             </motion.div>
                         ))}
@@ -167,10 +167,10 @@ export default function Business() {
 
                                     {br.advantages && (
                                         <div className={styles.advantagesCompact}>
-                                            <h4>■ 주요 장점</h4>
+                                            <h4>주요 장점</h4>
                                             <ul>
                                                 {br.advantages.map((adv, j) => (
-                                                    <li key={j}>• {adv}</li>
+                                                    <li key={j}>{adv}</li>
                                                 ))}
                                             </ul>
                                         </div>
@@ -183,7 +183,7 @@ export default function Business() {
                                                 {br.specs.map((spec, j) => (
                                                     <tr key={j}>
                                                         <th>{spec.label}</th>
-                                                        <td>• {spec.value}</td>
+                                                        <td>{spec.value}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

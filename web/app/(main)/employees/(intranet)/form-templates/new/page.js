@@ -162,7 +162,7 @@ export default function FormTemplatesNewPage() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📎 서식 파일 업로드</label>
+                        <label className={styles.label}>서식 파일 업로드</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
                             onDragEnter={handleDragEnter}
@@ -173,7 +173,7 @@ export default function FormTemplatesNewPage() {
                         >
                             <input type="file" id="fileUpload" onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                                <b>파일을 선택</b>하거나 여기로 드래그하세요
                             </label>
 
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
@@ -187,7 +187,7 @@ export default function FormTemplatesNewPage() {
                             {fileName && (
                                 <div className={styles.uploadedList}>
                                     <div className={styles.uploadedFile}>
-                                        <span>📎 {fileName}</span>
+                                        <span>{fileName}</span>
                                         {fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
                                             <span
                                                 className={styles.insertImgBtn}

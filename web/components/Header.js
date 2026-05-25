@@ -111,7 +111,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     const [menuOpen, setMenuOpen] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     const { profile, loading } = useUserProfile();
 
@@ -153,15 +152,9 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
     // 헤더 메뉴 전용 닫기 이벤트 리스너
     useEffect(() => {
         const handleCloseHeader = () => setMenuOpen(false);
-        const handlePWA = (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
         window.addEventListener('closeHeaderMenu', handleCloseHeader);
-        window.addEventListener('beforeinstallprompt', handlePWA);
         return () => {
             window.removeEventListener('closeHeaderMenu', handleCloseHeader);
-            window.removeEventListener('beforeinstallprompt', handlePWA);
         };
     }, []);
 
@@ -224,10 +217,6 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
         handleLinkClick();
     };
 
-    const handleCreateShortcut = async () => {
-        // 앱 설치는 인트라넷 헤더에서만 지원 (사용자 요청에 따라 메인 헤더 기능 제거)
-    };
-
     // Determine visual styles based on state
     const isDarkHeader = scrolled || darkVariant || isEmployees;
     const headerBg = isDarkHeader ? '#ffffff' : 'transparent';
@@ -240,6 +229,21 @@ export default function Header({ darkVariant = false, isEmployees = false, isSid
 
     const renderNavLinks = (isMobile = false) => {
         const linkElements = navLinks.map((link, index) => {
+            if (link.isEmployee && !profile) {
+                return (
+                    <Link
+                        key={index}
+                        href={`/login?next=${encodeURIComponent('/employees/ask')}`}
+                        className={isMobile ? styles.mobileLink : styles.empBtn}
+                        style={{ color: isMobile ? '#333' : textColor }}
+                        onClick={handleLinkClick}
+                        prefetch={false}
+                    >
+                        임직원 로그인
+                    </Link>
+                );
+            }
+
             if (link.children) {
                 const isExpanded = expandedMenus.includes(link.label);
                 return (

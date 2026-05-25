@@ -1,6 +1,7 @@
 .hero {
     position: relative;
-    height: 100vh;
+    height: 92vh;
+    min-height: 680px;
     width: 100%;
     overflow: hidden;
     background: #000;
@@ -24,22 +25,38 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.4));
+    background: linear-gradient(90deg, rgba(5, 18, 34, 0.72) 0%, rgba(15, 23, 42, 0.52) 48%, rgba(15, 23, 42, 0.2) 100%);
 }
 
 .content {
     position: relative;
     z-index: 10;
     color: var(--white);
-    max-width: 800px;
+    max-width: 760px;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    margin-bottom: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.28);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0;
 }
 
 .title {
-    font-size: 5rem;
-    font-weight: 800;
-    line-height: 1.1;
-    margin-bottom: 20px;
-    text-transform: uppercase;
+    font-size: clamp(3.4rem, 6vw, 5.6rem);
+    font-weight: 900;
+    line-height: 1.05;
+    margin-bottom: 22px;
+    letter-spacing: 0;
+    word-break: keep-all;
 }
 
 .highlight {
@@ -48,10 +65,12 @@
 }
 
 .subtitle {
-    font-size: 1.8rem;
-    font-weight: 300;
-    color: #ecf0f1;
-    letter-spacing: 1px;
+    max-width: 660px;
+    font-size: clamp(1.12rem, 1.6vw, 1.42rem);
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.88);
+    letter-spacing: 0;
+    word-break: keep-all;
 }
 
 .scrollIndicator {
@@ -80,41 +99,41 @@
 }
 
 .bar {
-    width: 40px;
-    height: 4px;
+    width: 36px;
+    height: 3px;
     background: rgba(255, 255, 255, 0.3);
     cursor: pointer;
     transition: background 0.3s;
 }
 
 .bar.active {
-    background: #3498db;
-    width: 60px;
+    background: #60a5fa;
+    width: 54px;
 }
 
 @media (max-width: 768px) {
+    .hero {
+        height: 86vh;
+        min-height: 620px;
+    }
+
     .title {
-        font-size: 3rem;
+        font-size: 2.55rem;
     }
 
     .subtitle {
-        font-size: 1.2rem;
+        font-size: 1.02rem;
+    }
+
+    .progress {
+        bottom: 28px;
+        right: 18px;
     }
 }
 
 /* CRT Effect Styles */
 .scanlines {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
-        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-    background-size: 100% 4px, 3px 100%;
-    pointer-events: none;
-    z-index: 2;
-    animation: flicker 0.15s infinite;
+    display: none;
 }
 
 .vignette {
@@ -123,7 +142,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.5) 100%);
+    background: radial-gradient(circle at 70% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.38) 100%);
     pointer-events: none;
     z-index: 3;
 }

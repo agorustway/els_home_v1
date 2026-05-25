@@ -126,7 +126,8 @@
 }
 
 .headerBtn {
-    padding: 6px 12px;
+    height: 30px;
+    padding: 0 11px;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
     background: #f8fafc;
@@ -696,12 +697,13 @@
 }
 
 .colBtnSm {
-    padding: 5px 12px;
+    height: 26px;
+    padding: 0 10px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: #fff;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.74rem;
+    font-weight: 800;
     cursor: pointer;
     color: #475569;
     white-space: nowrap;
@@ -712,11 +714,13 @@
 }
 
 .resetBtnSm {
-    padding: 5px 10px;
+    height: 26px;
+    padding: 0 9px;
     border: 1px solid #fecaca;
     border-radius: 6px;
     background: #fff5f5;
-    font-size: 0.85rem;
+    font-size: 0.74rem;
+    font-weight: 800;
     cursor: pointer;
     color: #dc2626;
     line-height: 1;
@@ -2035,7 +2039,8 @@
     }
 
     .headerBtn {
-        padding: 6px 2px;
+        height: 30px;
+        padding: 0 2px;
         font-size: 0.68rem;
     }
 

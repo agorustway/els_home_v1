@@ -1,8 +1,8 @@
 .contactPage {
     background-color: #f8fafc;
     min-height: 100vh;
-    padding-bottom: 80px;
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    padding-bottom: 56px;
+    font-family: inherit;
 }
 
 .mainContent {
@@ -13,20 +13,20 @@
 
 /* Header */
 .compactHeader {
-    padding: 60px 0 40px;
-    text-align: center;
+    padding: 42px 0 26px;
+    text-align: left;
 }
 
 .pageTitle {
     font-size: clamp(2rem, 5vw, 2.8rem);
     font-weight: 900;
     color: #0f172a;
-    letter-spacing: -0.04em;
+    letter-spacing: 0;
     margin-bottom: 12px;
 }
 
 .pageDesc {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #64748b;
     font-weight: 500;
 }
@@ -35,29 +35,27 @@
 .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 32px;
-    align-items: start;
-    margin-top: 20px;
+    gap: 16px;
+    align-items: stretch;
+    margin-top: 14px;
 }
 
 /* Glass Card Base */
 .glassCard {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 32px;
-    padding: 40px;
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.05);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: none;
 }
 
 .formTitle,
 .boardTitle {
-    font-size: 1.5rem;
+    font-size: 1.12rem;
     font-weight: 800;
     color: #0f172a;
-    margin-bottom: 32px;
-    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+    letter-spacing: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -68,7 +66,7 @@
     background: #f1f5f9;
     color: #475569;
     padding: 4px 12px;
-    border-radius: 100px;
+    border-radius: 6px;
     font-weight: 700;
 }
 
@@ -76,7 +74,7 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 14px;
 }
 
 .inputGroup {
@@ -95,11 +93,11 @@
 .input,
 .textarea {
     width: 100%;
-    padding: 16px 20px;
-    border-radius: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
     border: 1px solid #e2e8f0;
     background: #fff;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #0f172a;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: inherit;
@@ -114,12 +112,11 @@
 .textarea:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-    transform: translateY(-1px);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 .textarea {
-    min-height: 180px;
+    min-height: 150px;
     resize: none;
     line-height: 1.6;
 }
@@ -127,9 +124,9 @@
 .submitBtn {
     background: #0f172a;
     color: #fff;
-    padding: 18px;
-    border-radius: 16px;
-    font-size: 1rem;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
     font-weight: 700;
     border: none;
     cursor: pointer;
@@ -139,8 +136,6 @@
 
 .submitBtn:hover:not(:disabled) {
     background: #1e293b;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
 }
 
 .submitBtn:disabled {
@@ -152,13 +147,13 @@
 .postList {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
 }
 
 .postCard {
     background: #fff;
-    padding: 24px;
-    border-radius: 20px;
+    padding: 14px;
+    border-radius: 8px;
     border: 1px solid #f1f5f9;
     cursor: pointer;
     transition: all 0.2s;
@@ -166,7 +161,6 @@
 
 .postCard:hover {
     border-color: #2563eb;
-    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.05);
     background: #f8faff;
 }
 
@@ -205,10 +199,10 @@
 .loginRequired,
 .emptyState {
     text-align: center;
-    padding: 60px 40px;
-    background: rgba(248, 250, 252, 0.5);
-    border-radius: 24px;
-    border: 2px dashed #e2e8f0;
+    padding: 34px 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
 }
 
 .loginRequired p,
@@ -222,8 +216,8 @@
 .loginBtn {
     background: #2563eb;
     color: #fff;
-    padding: 14px 28px;
-    border-radius: 12px;
+    padding: 10px 18px;
+    border-radius: 8px;
     font-weight: 700;
     border: none;
     cursor: pointer;
@@ -232,25 +226,45 @@
 
 .loginBtn:hover {
     background: #1d4ed8;
-    transform: translateY(-2px);
+}
+
+.publicNotice {
+    display: grid;
+    gap: 8px;
+    padding: 18px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #334155;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.publicNotice strong {
+    color: #0f172a;
+    font-size: 0.98rem;
+}
+
+.publicNotice p {
+    margin: 0;
 }
 
 /* Whistleblowing Section */
 .reportContainer {
-    margin-top: 40px;
-    padding: 80px 40px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    border-radius: 48px;
+    margin-top: 18px;
+    padding: 42px 28px;
+    background: #0f172a;
+    border-radius: 10px;
     color: #fff;
     text-align: center;
-    box-shadow: 0 40px 80px rgba(15, 23, 42, 0.2);
+    box-shadow: none;
 }
 
 .reportBadge {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
     padding: 6px 16px;
-    border-radius: 100px;
+    border-radius: 6px;
     font-size: 0.8rem;
     font-weight: 800;
     margin-bottom: 24px;
@@ -262,7 +276,7 @@
     font-size: clamp(1.8rem, 4vw, 2.4rem);
     font-weight: 900;
     margin-bottom: 16px;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
 }
 
 .reportDesc {
@@ -286,8 +300,8 @@
 .reportTextarea {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 24px;
+    border-radius: 8px;
+    padding: 16px;
     color: #fff;
     font-size: 1.05rem;
     min-height: 160px;
@@ -304,8 +318,8 @@
 .reportSubmit {
     background: #ef4444;
     color: #fff;
-    padding: 20px;
-    border-radius: 20px;
+    padding: 14px;
+    border-radius: 8px;
     font-weight: 800;
     font-size: 1.1rem;
     border: none;
@@ -315,8 +329,6 @@
 
 .reportSubmit:hover {
     background: #dc2626;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
 }
 
 /* Modal Styling */
@@ -338,8 +350,8 @@
     background: #fff;
     width: 95%;
     max-width: 640px;
-    border-radius: 32px;
-    padding: 40px;
+    border-radius: 10px;
+    padding: 28px;
     position: relative;
     max-height: 90vh;
     overflow-y: auto;
@@ -370,7 +382,7 @@
     white-space: pre-wrap;
     background: #f8fafc;
     padding: 24px;
-    border-radius: 20px;
+    border-radius: 8px;
     margin-bottom: 32px;
 }
 
@@ -383,8 +395,8 @@
 }
 
 .btnAction {
-    padding: 12px 24px;
-    border-radius: 12px;
+    padding: 9px 16px;
+    border-radius: 8px;
     font-weight: 700;
     font-size: 0.95rem;
     cursor: pointer;
@@ -415,7 +427,7 @@
     border: none;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -458,8 +470,8 @@
     }
 
     .glassCard {
-        padding: 30px 20px;
-        border-radius: 24px;
+        padding: 18px;
+        border-radius: 8px;
     }
 
     .modal {
@@ -467,8 +479,8 @@
     }
 
     .reportContainer {
-        border-radius: 32px;
-        padding: 60px 20px;
+        border-radius: 8px;
+        padding: 34px 18px;
     }
 
     /* Mobile specific list layout */

@@ -133,7 +133,7 @@ export default function MyPage() {
                                 <input
                                     type="text"
                                     className={styles.input}
-                                    value="🛡️ 관리자 (최고 권한)"
+                                    value="관리자 (최고 권한)"
                                     disabled
                                     style={{ backgroundColor: '#f0f9ff', color: '#0369a1', fontWeight: 'bold', cursor: 'default', border: '1px solid #bae6fd' }}
                                 />
@@ -160,11 +160,11 @@ export default function MyPage() {
                                         }}
                                         title="권한 정보 새로고침"
                                     >
-                                        🔄
+                                        새로고침
                                     </button>
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: '6px' }}>
-                                    ⚠️ 소속 지점은 관리자에게 문의하여 배정받을 수 있습니다.
+                                    소속 지점은 관리자에게 문의하여 배정받을 수 있습니다.
                                 </div>
                             </>
                         ) : (
@@ -184,7 +184,7 @@ export default function MyPage() {
                         )}
                         {requestedRole && requestedRole !== user?.role && (
                             <div style={{ fontSize: '0.8rem', color: '#d97706', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                ⏳ 변경 요청 대기 중: <strong>{getRoleLabel(requestedRole)}</strong> (관리자 승인 필요)
+                                변경 요청 대기 중: <strong>{getRoleLabel(requestedRole)}</strong> (관리자 승인 필요)
                             </div>
                         )}
                         {user.role !== 'visitor' && (

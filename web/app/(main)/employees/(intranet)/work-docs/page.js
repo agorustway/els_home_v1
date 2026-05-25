@@ -57,7 +57,7 @@ export default function WorkDocsPage() {
                                         <span>{item.title}</span>
                                         {item.attachments && item.attachments.length > 0 && (
                                             <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span>📎 {item.attachments[0].name}</span>
+                                                <span>{item.attachments[0].name}</span>
                                                 <span style={{ color: '#94a3b8' }}>({(item.attachments[0].size / 1024).toFixed(1)} KB)</span>
                                                 {item.attachments.length > 1 && (
                                                     <span style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>

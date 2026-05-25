@@ -68,12 +68,12 @@ export default function FreeBoardPage() {
 
                     <div className={styles.card}>
                         <h2 className={styles.sectionTitle}>게시판 통계</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', textAlign: 'center' }}>
-                            <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: 'center' }}>
+                            <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>전체 글</div>
                                 <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{posts.length}</div>
                             </div>
-                            <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '10px' }}>
+                            <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>오늘의 새 글</div>
                                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: todayCount > 0 ? '#e11d48' : '#64748b' }}>{todayCount}</div>
                             </div>
@@ -82,14 +82,14 @@ export default function FreeBoardPage() {
 
                     <div className={styles.card}>
                         <h2 className={styles.sectionTitle}>명예의 전당</h2>
-                        <div className={styles.honorList} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div className={styles.honorList} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {topContributors.length > 0 ? topContributors.map(([name, count], i) => (
-                                <div key={i} className={styles.honorItem} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem' }}>
+                                <div key={i} className={styles.honorItem} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
                                     <span className={styles.honorRank} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', background: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#e2e8f0', color: i <= 2 ? '#fff' : '#64748b', borderRadius: '50%', fontSize: '0.75rem', fontWeight: 800 }}>{i + 1}</span>
                                     <span style={{ fontWeight: 700, color: '#1e293b' }}>{name}</span>
-                                    <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#475569', fontWeight: 600, background: '#f1f5f9', padding: '2px 8px', borderRadius: '12px' }}>{count}개</span>
+                                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#475569', fontWeight: 600, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{count}개</span>
                                 </div>
-                            )) : <div className={styles.emptyHistory} style={{fontSize:'0.85rem', color:'#94a3b8', textAlign:'center', padding:'10px'}}>활동 내역 없음</div>}
+                            )) : <div className={styles.emptyHistory} style={{fontSize:'0.85rem', color:'#94a3b8', textAlign:'center', padding:'8px'}}>활동 내역 없음</div>}
                         </div>
                     </div>
                 </aside>
@@ -137,7 +137,7 @@ export default function FreeBoardPage() {
                     </div>
 
                     <div className={styles.card}>
-                        <h2 className={styles.sectionTitle}>🔥 인기 게시글 (TOP 5)</h2>
+                        <h2 className={styles.sectionTitle}>인기 게시글 TOP 5</h2>
                         <ul style={{ padding: 0, listStyle: 'none', margin: 0 }}>
                             {popularPosts.length > 0 ? popularPosts.map((post, i) => (
                                 <li key={post.id} style={{ padding: '10px 0', fontSize: '0.85rem', borderBottom: i === popularPosts.length - 1 ? 'none' : '1px solid #f1f5f9' }}>

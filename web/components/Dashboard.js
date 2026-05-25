@@ -27,6 +27,7 @@ export default function Dashboard() {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, margin: '-100px' });
     const [selectedCert, setSelectedCert] = useState(null);
+    const visibleCerts = certs.filter((cert) => cert.img);
 
     return (
         <section id="dashboard" className={styles.section} ref={ref}>
@@ -46,6 +47,7 @@ export default function Dashboard() {
                         transition={{ duration: 0.6 }}
                     >
                         <div className={styles.cardTitle}>연도별 매출 성장 (단위: 억 원)</div>
+                        <div className={styles.chartNote}>그래프는 550억 원 이상 구간을 기준으로 표시합니다.</div>
                         <div className={styles.chartContainer}>
                             {chartData.map((item, idx) => {
                                 // 550 아래는 자르고, 차이를 시각적으로 과장하기 위해 나머지 값만 15%~100% 범위로 스케일링
@@ -74,7 +76,7 @@ export default function Dashboard() {
                             animate={isInView ? { opacity: 1, x: 0 } : {}}
                             transition={{ duration: 0.6, delay: 0.2 }}
                         >
-                            <div className={styles.statIcon}>🏢</div>
+                            <div className={styles.statIcon}>거점</div>
                             <div className={styles.statInfo}>
                                 <div className={styles.statValue}>아산, 중부, 예산, 당진</div>
                                 <div className={styles.statLabel}>충청권 주요 거점 및 통합 DEPOT 운영</div>
@@ -87,7 +89,7 @@ export default function Dashboard() {
                             animate={isInView ? { opacity: 1, x: 0 } : {}}
                             transition={{ duration: 0.6, delay: 0.3 }}
                         >
-                            <div className={styles.statIcon}>👥</div>
+                            <div className={styles.statIcon}>인력</div>
                             <div className={styles.statInfo}>
                                 <div className={styles.statValue}>총 임직원 25명</div>
                             </div>
@@ -99,7 +101,7 @@ export default function Dashboard() {
                             animate={isInView ? { opacity: 1, x: 0 } : {}}
                             transition={{ duration: 0.6, delay: 0.4 }}
                         >
-                            <div className={styles.statIcon}>📦</div>
+                            <div className={styles.statIcon}>물동</div>
                             <div className={styles.statInfo}>
                                 <div className={styles.statValue}>월 3,000 FEU</div>
                                 <div className={styles.statLabel}>컨테이너 수송 및 KD포장 실적</div>
@@ -109,34 +111,30 @@ export default function Dashboard() {
                 </div>
 
                 {/* Section 2: Certifications Gallery */}
-                <motion.div
-                    className={styles.certSection}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.6, delay: 0.5 }}
-                >
-                    <div className={styles.certTitle}>Certifications & Licenses</div>
-                    <div className={styles.certGrid}>
-                        {certs.map((cert) => (
-                            <div
-                                key={cert.id}
-                                className={styles.certCard}
-                                onClick={() => setSelectedCert(cert)}
-                            >
-                                <div className={styles.certImgBox}>
-                                    {cert.img ? (
+                {visibleCerts.length > 0 && (
+                    <motion.div
+                        className={styles.certSection}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={isInView ? { opacity: 1, y: 0 } : {}}
+                        transition={{ duration: 0.6, delay: 0.5 }}
+                    >
+                        <div className={styles.certTitle}>인증 및 허가 현황</div>
+                        <div className={styles.certGrid}>
+                            {visibleCerts.map((cert) => (
+                                <div
+                                    key={cert.id}
+                                    className={styles.certCard}
+                                    onClick={() => setSelectedCert(cert)}
+                                >
+                                    <div className={styles.certImgBox}>
                                         <img src={cert.img} alt={cert.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        <div className={styles.certPlaceholder}>
-                                            Image<br />Placeholder
-                                        </div>
-                                    )}
+                                    </div>
+                                    <div className={styles.certName}>{cert.name}</div>
                                 </div>
-                                <div className={styles.certName}>{cert.name}</div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
             {/* Modal */}

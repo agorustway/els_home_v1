@@ -148,14 +148,14 @@ export default function NewPostPage() {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                📁 파일 선택하기
+                                파일 선택하기
                             </label>
                             {uploading && <span style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600 }}>업로드 중...</span>}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '16px' }}>
                             {attachments.map((file, i) => (
                                 <div key={i} style={{ background: '#eff6ff', padding: '8px 16px', borderRadius: '20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #dbeafe', color: '#1e40af', fontWeight: 600 }}>
-                                    📎 {file.name}
+                                    {file.name}
                                     <button type="button" onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>×</button>
                                 </div>
                             ))}

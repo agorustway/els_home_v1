@@ -1,5 +1,4 @@
 'use client';
-import Image from 'next/image';
 import styles from './Intro.module.css';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
@@ -7,12 +6,8 @@ import { useState, useEffect } from 'react';
 export default function Intro() {
     const [isMounted, setIsMounted] = useState(false);
 
-    const [isIos, setIsIos] = useState(false);
-
     useEffect(() => {
         setIsMounted(true);
-        const ua = navigator.userAgent.toLowerCase();
-        setIsIos(/iphone|ipad|ipod/.test(ua));
     }, []);
 
     const handleDriverAppClick = (e) => {
@@ -76,13 +71,12 @@ export default function Intro() {
                             </p>
                         </div>
 
-                        {/* 🚛 운전원 앱 다운로드 섹션 */}
                         <div className={styles.appDownloadSection}>
                             <div className={styles.appDownloadTitle}>
-                                📱 ELS 차량용 앱 (안드로이드)
+                                ELS 차량용 앱 안내
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <a href="/apk/els_driver.apk" className={styles.appButton} style={{ flex: 1 }} download>
+                            <div className={styles.appButtonRow}>
+                                <a href="/apk/els_driver.apk" className={styles.appButton} download>
                                     <div className={styles.appBtnIcon}>
                                         <img src="/favicon.png" alt="" className={styles.appIconImg} />
                                     </div>
@@ -102,20 +96,19 @@ export default function Intro() {
                                     className={styles.copyButton}
                                     title="주소 복사"
                                 >
-                                    <span style={{ fontSize: '1.2rem', marginBottom: '2px' }}>🔗</span>
-                                    <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>주소 복사</span>
+                                    주소 복사
                                 </button>
                             </div>
                             <div className={styles.appInstallGuide}>
-                                <h4>✅ 안드로이드 설치 방법 (APK)</h4>
+                                <h4>안드로이드 설치 방법</h4>
                                 <ul>
                                     <li>1. 위 버튼을 눌러 <strong>[els_driver.apk]</strong> 파일을 다운로드합니다.</li>
                                     <li>2. 완료 후 실행 시 &apos;출처를 알 수 없는 앱&apos; 혹은 &lt;보안 메시지&gt;가 뜨면 <strong>[무시하고 설치]</strong> 또는 <strong>[설정]</strong>을 누릅니다.</li>
                                     <li>3. (배포용 앱 안내) <strong>[더보기]</strong> 또는 <strong>[세부정보 보기]</strong>를 한 번 더 눌러 <strong>&apos;무시하고 설치&apos;</strong>를 완료합니다.</li>
                                     <li>4. 화면 하단의 <strong>[설치]</strong> 버튼을 눌러 완료합니다.</li>
                                 </ul>
-                                <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.8, color: '#f85149', fontWeight: '800'}}>* 안드로이드 14~16 버전은 Play 프로텍트 경고 시 &apos;무시하고 설치&apos;를 선택해야 합니다.</p>
-                                <p style={{marginTop: '10px', fontSize: '0.8rem', opacity: 0.7}}>* 이 앱은 구글 플레이스토어가 아닌 사내 전용 배포 파일로 설치됩니다.</p>
+                                <p className={styles.installWarning}>* 안드로이드 14~16 버전은 Play 프로텍트 경고 시 &apos;무시하고 설치&apos;를 선택해야 합니다.</p>
+                                <p className={styles.installNote}>* 이 앱은 구글 플레이스토어가 아닌 사내 전용 배포 파일로 설치됩니다.</p>
                             </div>
                         </div>
                     </motion.div>

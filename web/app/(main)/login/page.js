@@ -111,7 +111,7 @@ function LoginForm() {
                 {isInAppBrowser && (
                     <div className={styles.inAppBanner}>
                         <div className={styles.inAppHeader}>
-                            <strong>⚠️ 보안 브라우저 안내</strong>
+                            <strong>보안 브라우저 안내</strong>
                         </div>
                         <p>현재 브라우저(네이버/카카오 등)에서는 구글 로그인이 차단될 수 있습니다.</p>
 

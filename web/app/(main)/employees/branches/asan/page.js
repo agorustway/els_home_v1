@@ -2371,7 +2371,7 @@ function AsanDispatchContent() {
                         className={`${styles.dateTab} ${styles.tab_all} ${periodMode === 'total' ? styles.dateTabActive : ''}`}
                         onClick={selectTotalPeriod}
                     >
-                        <span className={styles.tabMonth}>📊 전체</span>
+                        <span className={styles.tabMonth}>전체</span>
                     </button>
                 )}
                 {data.length > visibleDateTabs.length && (
@@ -2390,10 +2390,10 @@ function AsanDispatchContent() {
                     <div className={styles.topBarLeft}>
                         <div className={styles.viewSwitch}>
                             <button className={`${styles.funcBtn} ${mainView === 'dashboard' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('dashboard')}>
-                                📊 현황판
+                                현황판
                             </button>
                             <button className={`${styles.funcBtn} ${mainView === 'grid' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('grid')}>
-                                📋 배차판
+                                배차판
                             </button>
                             <button className={`${styles.funcBtn} ${styles.mobileHiddenFuncBtn} ${mainView === 'detail' ? styles.funcBtnActive : ''}`} onClick={() => setMainView('detail')}>
                                 상세배차내역
@@ -2415,7 +2415,7 @@ function AsanDispatchContent() {
                         </div>
                         {dateInfo && (
                             <div className={`${styles.headerBadge} ${dateInfo.isRed ? styles.headerBadgeRed : ''}`} style={{ marginLeft: '8px' }}>
-                                {isAllTab ? '📊' : '📅'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
+                                {isAllTab ? '전체' : '선택일'} {dateInfo.label} {!isAllTab && `(${dateInfo.type})`}
                             </div>
                         )}
                     </div>
@@ -2431,18 +2431,18 @@ function AsanDispatchContent() {
                             )}
                             {syncStatus && (
                                 <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
-                                    {syncStatus.isError ? '❌' : '✅'} {syncStatus.message}
+                                    {syncStatus.isError ? '오류' : '완료'} · {syncStatus.message}
                                 </div>
                             )}
                         </div>
                         <div className={styles.headerButtons}>
                             <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
-                                {refreshing ? '⏳ 새로고침' : '🔄 새로고침'}
+                                {refreshing ? '새로고침 중' : '새로고침'}
                             </button>
-                            <button className={styles.headerBtn} onClick={handleDownload}>📥 엑셀</button>
-                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>⚙️ 설정</button>
+                            <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
+                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
                             <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={handleSync} disabled={syncActionBlocked}>
-                                {(syncing || syncGate.running) ? '⏳ 동기화' : '🚀 NAS 동기화'}
+                                {(syncing || syncGate.running) ? '동기화 중' : 'NAS 동기화'}
                             </button>
                         </div>
                     </div>
@@ -2463,7 +2463,7 @@ function AsanDispatchContent() {
             ) : loading ? (
                 <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
             ) : !currentView ? (
-                <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;🔄 NAS 동기화&apos; 버튼을 누르세요.</div>
+                <div className={styles.emptyState}>데이터가 없습니다. 상단 &apos;NAS 동기화&apos; 버튼을 누르세요.</div>
             ) : mainView === 'dashboard' ? (
                 <AsanDashboard
                     data={allData}
@@ -2935,7 +2935,7 @@ function AsanDispatchContent() {
                             <div className={styles.summaryRight}>
                                 <div style={{ position: 'relative' }}>
                                     <button className={styles.colBtnSm} onClick={(e) => { e.stopPropagation(); setShowColPanel(p => !p); }}>
-                                        📋 컬럼 {hiddenCols.size > 0 && <span className={styles.hiddenBadge}>{hiddenCols.size}</span>}
+                                        컬럼 {hiddenCols.size > 0 && <span className={styles.hiddenBadge}>{hiddenCols.size}</span>}
                                     </button>
                                     {showColPanel && (
                                         <div className={styles.colPanel} onClick={e => e.stopPropagation()}>
@@ -2958,8 +2958,8 @@ function AsanDispatchContent() {
                                     <button className={styles.resetBtnSm} onClick={resetPrefs}>↩️</button>
                                 )}
                                 <div className={styles.colorFilters}>
-                                    <button className={`${styles.colorFilterBtn} ${colorFilter === 'warn' ? styles.colorFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'warn' ? null : 'warn')}>🚨 언매치</button>
-                                    <button className={`${styles.otherFilterBtn} ${colorFilter === 'other_category' ? styles.otherFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'other_category' ? null : 'other_category')}>🚨 특이구분</button>
+                                    <button className={`${styles.colorFilterBtn} ${colorFilter === 'warn' ? styles.colorFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'warn' ? null : 'warn')}>언매치</button>
+                                    <button className={`${styles.otherFilterBtn} ${colorFilter === 'other_category' ? styles.otherFilterBtnActive : ''}`} onClick={() => setColorFilter(p => p === 'other_category' ? null : 'other_category')}>특이구분</button>
                                 </div>
                             </div>
                         </div>
@@ -2967,7 +2967,7 @@ function AsanDispatchContent() {
 
                     {/* 검색 결과 + 필터 배지 */}
                     {searchTerm && searchResult.summary && (
-                        <div className={styles.searchResult}>🔍 {searchResult.summary} ({searchResult.indices?.length || 0}행)
+                        <div className={styles.searchResult}>검색 결과 · {searchResult.summary} ({searchResult.indices?.length || 0}행)
                             {Object.keys(columnFilters).length > 0 && <button className={styles.clearFilters} onClick={() => setColumnFilters({})}>필터 초기화</button>}
                         </div>
                     )}
@@ -3005,7 +3005,7 @@ function AsanDispatchContent() {
                                                                     onClick={() => applyFilter(ci, v)}>{v}</div>
                                                             ))}
                                                             <div className={styles.dropdownDivider} />
-                                                            <div className={styles.dropdownItem} style={{ color: '#ef4444' }} onClick={() => hideCol(h)}>🚫 이 열 숨기기</div>
+                                                            <div className={styles.dropdownItem} style={{ color: '#ef4444' }} onClick={() => hideCol(h)}>이 열 숨기기</div>
                                                         </div>
                                                     )}
                                                 </th>
@@ -3139,10 +3139,10 @@ function AsanDispatchContent() {
                         <p className={styles.browserPath}>{browserPath}</p>
                         <div className={styles.browserList}>
                             {browserLoading ? <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>불러오는 중...</div> : <>
-                                {browserPath !== '/' && <div className={styles.browserItem} onClick={() => loadFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>📁 ..</div>}
+                                {browserPath !== '/' && <div className={styles.browserItem} onClick={() => loadFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>상위 폴더</div>}
                                 {browserFiles.map((f, i) => (
                                     <div key={i} className={styles.browserItem} onClick={() => selectFile(f)}>
-                                        {f.type === 'directory' ? '📁' : '📄'} {f.name}
+                                        {f.type === 'directory' ? '[폴더]' : '[파일]'} {f.name}
                                     </div>
                                 ))}
                             </>}

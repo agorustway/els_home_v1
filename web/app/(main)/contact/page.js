@@ -32,27 +32,11 @@ export default function ContactPage() {
             if (profile) {
                 fetchInquiries(profile.id);
             } else {
-                fetchPublicInquiries();
+                setInquiries([]);
+                setLoading(false);
             }
         }
     }, [profile, profileLoading]);
-
-    const fetchPublicInquiries = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('inquiries')
-                .select('id, subject, created_at')
-                .order('created_at', { ascending: false })
-                .limit(10);
-
-            if (error) throw error;
-            setInquiries(data || []);
-        } catch (error) {
-            console.error('Error fetching public inquiries:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchInquiries = async (userId) => {
         try {
@@ -343,17 +327,18 @@ export default function ContactPage() {
                         viewport={{ once: true }}
                     >
                         <h3 className={styles.boardTitle}>
-                            <span>{profile ? '내 문의 내역' : '전체 문의 현황'}</span>
-                            <span className={styles.boardCount}>{inquiries.length}</span>
+                            <span>{profile ? '내 문의 내역' : '문의 처리 안내'}</span>
+                            {profile && <span className={styles.boardCount}>{inquiries.length}</span>}
                         </h3>
 
                         {!profile && !profileLoading && (
-                            <div className={styles.publicNotice} style={{ marginBottom: 20, textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-                                로그인하시면 본인이 작성한 문의의 상세 내용을 확인할 수 있습니다.
+                            <div className={styles.publicNotice}>
+                                <strong>비공개 접수 원칙</strong>
+                                <p>고객 문의와 제보 내역은 작성자 본인과 담당자만 확인할 수 있습니다. 로그인 후 문의를 남기시면 처리 상태를 이 화면에서 확인할 수 있습니다.</p>
                             </div>
                         )}
 
-                        {loading ? (
+                        {!profile && !profileLoading ? null : loading ? (
                             <div className={styles.emptyState}>
                                 <p>내역을 불러오고 있습니다...</p>
                             </div>

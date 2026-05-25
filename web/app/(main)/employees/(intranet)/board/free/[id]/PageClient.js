@@ -88,7 +88,7 @@ export default function PostDetailPage() {
 
                     {post.attachments && post.attachments.length > 0 && (
                         <div style={{ marginTop: '50px', borderTop: '1px solid #f1f5f9', paddingTop: '30px' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '800', fontSize: '1rem' }}>📎 첨부파일 ({post.attachments.length})</h4>
+                            <h4 style={{ marginBottom: '15px', color: '#1e293b', fontWeight: '800', fontSize: '1rem' }}>첨부파일 ({post.attachments.length})</h4>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {post.attachments.map((file, idx) => {
                                     const getSafeUrl = (file) => {

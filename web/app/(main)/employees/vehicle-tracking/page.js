@@ -1617,11 +1617,11 @@ export default function VehicleTrackingPage() {
                                         </>)}
                                     </td>
                                     <td data-label="점검" className={styles.checkCell}>
-                                        <span title="브레이크" style={{ marginRight: 2 }}>{trip.chk_brake ? '✅' : '❌'}</span>
-                                        <span title="타이어" style={{ marginRight: 2 }}>{trip.chk_tire ? '✅' : '❌'}</span>
-                                        <span title="경광등/램프" style={{ marginRight: 2 }}>{trip.chk_lamp ? '✅' : '❌'}</span>
-                                        <span title="적재물" style={{ marginRight: 2 }}>{trip.chk_cargo ? '✅' : '❌'}</span>
-                                        <span title="기사숙지">{trip.chk_driver ? '✅' : '❌'}</span>
+                                        <span title="브레이크" style={{ marginRight: 2 }}>{trip.chk_brake ? 'OK' : '-'}</span>
+                                        <span title="타이어" style={{ marginRight: 2 }}>{trip.chk_tire ? 'OK' : '-'}</span>
+                                        <span title="경광등/램프" style={{ marginRight: 2 }}>{trip.chk_lamp ? 'OK' : '-'}</span>
+                                        <span title="적재물" style={{ marginRight: 2 }}>{trip.chk_cargo ? 'OK' : '-'}</span>
+                                        <span title="기사숙지">{trip.chk_driver ? 'OK' : '-'}</span>
                                     </td>
                                     <td data-label="일보/메모" style={{ fontSize: '0.75rem', maxWidth: '160px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${trip.transport_type || '왕복'} / ${trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') + '원' : '-'} / ${trip.work_site || '-'} / ${trip.special_notes || '-'}`} onClick={(e) => e.stopPropagation()}>
                                         <div>{trip.transport_type || '왕복'} · <input defaultValue={trip.billing_amount ? Number(trip.billing_amount).toLocaleString('ko-KR') : ''} placeholder="금액" onBlur={(e) => saveBillingAmount(trip, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} style={{ width: 86, border: '1px solid #dbeafe', borderRadius: 4, padding: '2px 4px', color: (trip.admin_edited_fields || []).includes('billing_amount') ? '#2563eb' : '#1e293b', fontWeight: (trip.admin_edited_fields || []).includes('billing_amount') ? 800 : 600, textAlign: 'right' }} />원</div>

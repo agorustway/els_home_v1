@@ -6,26 +6,30 @@ import styles from './Hero.module.css';
 const slides = [
     {
         image: '/images/asan/KakaoTalk_20260119_110613230.jpg',
-        title: 'Strategic CY Operations',
-        subtitle: '아산,중부DEPOT (CY/ICD) 운영을 통한 물류인프라',
+        eyebrow: 'CY / ICD 운영',
+        title: '이엘에스솔루션',
+        subtitle: '아산과 중부 거점을 기반으로 항만, 공장, 현장을 안정적으로 연결합니다.',
         pos: 'center 85%'
     },
     {
         image: '/images/joogbu/KakaoTalk_20260313_161417917_01.jpg',
-        title: 'Total Logistics Network',
-        subtitle: '물류거점을 잇는 최적화된 운송망',
+        eyebrow: '내륙 운송 네트워크',
+        title: '현장에 강한 물류 파트너',
+        subtitle: '주요 항만과 충청권 거점을 잇는 운송망으로 물동량 변화에 유연하게 대응합니다.',
         pos: 'center 75%'
     },
     {
         image: '/images/yesan/KakaoTalk_20260317_165413697.jpg',
-        title: 'Integrated SCM Partner',
-        subtitle: '신속하고 안전한 벌크 카고 및 컨테이너 통합물류서비스',
+        eyebrow: '카고 / 컨테이너 통합 운영',
+        title: '신속하고 안전한 운송 품질',
+        subtitle: '자동차 부품, 철강, 컨테이너 운송을 현장 중심의 운영 체계로 수행합니다.',
         pos: 'center 80%'
     },
     {
         image: '/images/office_intro.png',
-        title: 'Precision Logistics Solution',
-        subtitle: '최상의 운송품질과 전문적인 물류서비스를 제공합니다',
+        eyebrow: 'ELS Operation Standard',
+        title: '정확한 관리, 꾸준한 신뢰',
+        subtitle: '운송 품질과 안전 기준을 지속적으로 개선하며 고객의 업무 흐름을 함께 지킵니다.',
         pos: 'center 30%'
     }
 ];
@@ -69,10 +73,9 @@ export default function Hero() {
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.5, duration: 0.8 }}
                     >
+                        <span className={styles.eyebrow}>{slides[current].eyebrow}</span>
                         <h1 className={styles.title}>
-                            {slides[current].title.split(' ').map((word, i) => (
-                                <span key={i} className={i === 1 ? styles.highlight : ''}>{word} </span>
-                            ))}
+                            {slides[current].title}
                         </h1>
                         <p className={styles.subtitle}>{slides[current].subtitle}</p>
                     </motion.div>

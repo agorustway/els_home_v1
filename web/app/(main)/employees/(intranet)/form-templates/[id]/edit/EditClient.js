@@ -181,7 +181,7 @@ export default function FormTemplateEditPage() {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>📎 파일 업로드 (교체)</label>
+                        <label className={styles.label}>파일 업로드 (교체)</label>
                         <div
                             className={`${styles.uploadZone} ${isDragging ? styles.dragging : ''}`}
                             onDragEnter={handleDragEnter}
@@ -192,7 +192,7 @@ export default function FormTemplateEditPage() {
                         >
                             <input type="file" id="fileUpload" onChange={handleFileUpload} style={{ display: 'none' }} />
                             <label htmlFor="fileUpload" className={styles.uploadLabel}>
-                                📁 <b>파일을 선택</b>하거나 여기로 드래그하세요
+                                <b>파일을 선택</b>하거나 여기로 드래그하세요
                             </label>
 
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: isDragging ? 'auto' : 'none' }}></div>
@@ -206,7 +206,7 @@ export default function FormTemplateEditPage() {
                             {fileName && (
                                 <div className={styles.uploadedList}>
                                     <div className={styles.uploadedFile}>
-                                        <span>📎 {fileName}</span>
+                                        <span>{fileName}</span>
                                         <span className={styles.removeFile} onClick={() => { setFileName(''); setFileUrl(''); }}>✕</span>
                                     </div>
                                 </div>
