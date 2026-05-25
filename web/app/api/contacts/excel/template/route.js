@@ -1,6 +1,10 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import {
+    applyIntranetExcelBodyCell,
+    applyIntranetExcelHeaderCell,
+} from '@/utils/intranetExcelExport.mjs';
 
 export async function GET(request) {
     const supabase = await createClient();
@@ -15,18 +19,6 @@ export async function GET(request) {
     workbook.created = new Date();
     workbook.modified = new Date();
 
-    const headerStyle = {
-        font: { bold: true, color: { argb: 'FF000000' }, size: 10 },
-        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }, // Slate-100 (옅은 회색)
-        alignment: { vertical: 'middle', horizontal: 'center' },
-        border: {
-            top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            left: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            right: { style: 'thin', color: { argb: 'FF94A3B8' } }
-        }
-    };
-
     const setupSheet = (sheetName, columns, data) => {
         const sheet = workbook.addWorksheet(sheetName);
         sheet.columns = columns;
@@ -34,10 +26,7 @@ export async function GET(request) {
         // 헤더 스타일 및 틀 고정
         sheet.getRow(1).height = 25;
         sheet.getRow(1).eachCell((cell) => {
-            cell.font = headerStyle.font;
-            cell.fill = headerStyle.fill;
-            cell.alignment = headerStyle.alignment;
-            cell.border = headerStyle.border;
+            applyIntranetExcelHeaderCell(cell);
         });
 
         // 1행 고정 (틀 고정)
@@ -67,13 +56,7 @@ export async function GET(request) {
         sheet.eachRow((row, rowNumber) => {
             if (rowNumber > 1) {
                 row.eachCell((cell) => {
-                    cell.border = {
-                        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-                    };
-                    cell.alignment = { vertical: 'middle' };
+                    applyIntranetExcelBodyCell(cell);
                 });
             }
         });

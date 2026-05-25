@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import ExcelJS from 'exceljs';
+import { addIntranetExportWorksheet } from '@/utils/intranetExcelExport.mjs';
 import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
@@ -58,26 +59,6 @@ function mapDispatchExportRow(row = [], sourceHeaders = [], targetHeaders = []) 
 const NUMERIC_DISPATCH_EXPORT_HEADERS = new Set(
     ['오더(계)', '오더', '계', '수량', '배차'].map(normalizeDispatchHeader)
 );
-
-function isNumericDispatchExportHeader(header) {
-    return NUMERIC_DISPATCH_EXPORT_HEADERS.has(normalizeDispatchHeader(header));
-}
-
-function toDispatchExportNumber(value) {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : '';
-    const text = String(value ?? '').replace(/,/g, '').trim();
-    if (!text) return '';
-    if (!/^-?\d+(?:\.\d+)?$/.test(text)) return value ?? '';
-    const numberValue = Number(text);
-    return Number.isFinite(numberValue) ? numberValue : value ?? '';
-}
-
-function normalizeDispatchExportRowForExcel(headers = [], row = []) {
-    return headers.map((header, idx) => {
-        const value = row[idx] ?? '';
-        return isNumericDispatchExportHeader(header) ? toDispatchExportNumber(value) : value;
-    });
-}
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -306,67 +287,14 @@ export async function GET(request) {
     }
 
     const workbook = new ExcelJS.Workbook();
-    // 옅은 회색 배경 (D3D3D3)
-    const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-    const HEADER_FONT = { bold: true, size: 10, name: '맑은 고딕' };
-    const HEADER_BORDER = {
-        top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-        bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
-    };
-    const DEFAULT_CELL_FONT = { size: 10, name: '맑은 고딕' };
-    const CELL_BORDER = {
-        top: { style: 'thin', color: { argb: 'FFD7DEE8' } },
-        bottom: { style: 'thin', color: { argb: 'FFD7DEE8' } },
-        left: { style: 'thin', color: { argb: 'FFD7DEE8' } },
-        right: { style: 'thin', color: { argb: 'FFD7DEE8' } }
-    };
-    const NUMBER_FORMAT = '#,##0';
-
+    workbook.creator = 'ELS Solution';
+    workbook.created = new Date();
     processedData.forEach(pData => {
-        const sheet = workbook.addWorksheet(pData.sheetName);
-        const hRow = sheet.addRow(pData.headers);
-
-        hRow.eachCell({ includeEmpty: true }, cell => {
-            cell.fill = HEADER_FILL;
-            cell.font = HEADER_FONT;
-            cell.border = HEADER_BORDER;
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-
-        pData.rows.forEach(rowData => {
-            const r = sheet.addRow(normalizeDispatchExportRowForExcel(pData.headers, rowData));
-            for (let colIdx = 1; colIdx <= pData.headers.length; colIdx += 1) {
-                const cell = r.getCell(colIdx);
-                const numeric = isNumericDispatchExportHeader(pData.headers[colIdx - 1]);
-                cell.border = CELL_BORDER;
-                cell.font = DEFAULT_CELL_FONT;
-                cell.alignment = { vertical: 'middle', horizontal: numeric ? 'right' : 'left' };
-                if (numeric) cell.numFmt = NUMBER_FORMAT;
-            }
-        });
-
-        // 틀고정
-        sheet.views = [{ state: 'frozen', ySplit: 1 }];
-
-        // 자동 필터
-        sheet.autoFilter = { from: 'A1', to: { row: 1, column: pData.headers.length } };
-
-        // 칼럼 너비 자동 조절 (내용 중 가장 긴 길이 기준)
-        sheet.columns.forEach(col => {
-            let maxLen = 8;
-            col.eachCell({ includeEmpty: true }, (cell, rowNum) => {
-                const val = cell.value ? String(cell.value) : '';
-                let len = 0;
-                for (let i = 0; i < val.length; i++) {
-                    // 한글 2, 영문/숫자 1.1 가중치
-                    len += val.charCodeAt(i) > 127 ? 2.1 : 1.1;
-                }
-                if (len > maxLen) maxLen = len;
-            });
-            col.width = Math.min(Math.ceil(maxLen) + 2, 80);
-        });
+        addIntranetExportWorksheet(workbook, {
+            sheetName: pData.sheetName,
+            headers: pData.headers,
+            rows: pData.rows,
+        }, { numericHeaders: NUMERIC_DISPATCH_EXPORT_HEADERS });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();

@@ -1449,28 +1449,49 @@ export default function RouteSearchView({ options, period, onBack }) {
 
             const wb = XLSX.utils.book_new();
 
-            // 헤더용 스타일 핼퍼 함수 (xlsx-js-style 전용)
-            const baseStyle = { font: { size: 10, name: '맑은 고딕' }, alignment: { vertical: 'center' } };
+            const cellBorder = {
+                top: { style: 'thin', color: { rgb: 'D7DEE8' } },
+                left: { style: 'thin', color: { rgb: 'D7DEE8' } },
+                bottom: { style: 'thin', color: { rgb: 'D7DEE8' } },
+                right: { style: 'thin', color: { rgb: 'D7DEE8' } }
+            };
+            const baseStyle = {
+                font: { sz: 10, name: '맑은 고딕', color: { rgb: '0F172A' } },
+                alignment: { vertical: 'center' },
+                border: cellBorder
+            };
             const headerStyle = {
                 ...baseStyle,
-                fill: { fgColor: { rgb: "1D4ED8" } }, // 파란색 테마
-                font: { bold: true, size: 10, color: { rgb: "FFFFFF" }, name: '맑은 고딕' },
+                fill: { fgColor: { rgb: "1F5673" } },
+                font: { bold: true, sz: 10, color: { rgb: "FFFFFF" }, name: '맑은 고딕' },
                 alignment: { horizontal: "center", vertical: "center" },
                 border: {
-                    top: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                    left: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                    bottom: { style: 'thin', color: { rgb: 'BFDBFE' } },
-                    right: { style: 'thin', color: { rgb: 'BFDBFE' } }
+                    top: { style: 'thin', color: { rgb: '16445C' } },
+                    left: { style: 'thin', color: { rgb: '6BA4BC' } },
+                    bottom: { style: 'thin', color: { rgb: '16445C' } },
+                    right: { style: 'thin', color: { rgb: '6BA4BC' } }
                 }
             };
             const titleStyle = {
-                font: { bold: true, sz: 12, color: { rgb: "2563EB" }, name: '맑은 고딕' },
+                font: { bold: true, sz: 13, color: { rgb: "0F172A" }, name: '맑은 고딕' },
+                alignment: { horizontal: "left", vertical: "center" },
             };
+            const metaStyle = {
+                font: { sz: 9, color: { rgb: "64748B" }, name: '맑은 고딕' },
+                alignment: { horizontal: "left", vertical: "center" },
+            };
+            const labelStyle = {
+                ...baseStyle,
+                font: { bold: true, sz: 10, color: { rgb: "0F172A" }, name: '맑은 고딕' },
+                fill: { fgColor: { rgb: "F8FAFC" } },
+            };
+            const downloadMeta = `다운로드 ${new Date().toLocaleString('ko-KR')} / 구간조회 보고서`;
 
             // Sheet 1: 현재 운임 조회 결과
             if (distFareResult) {
                 const fareRows = [
                     ['안전운임 구간조회 결과'],
+                    [downloadMeta],
                     [],
                     ['항목', '값'],
                     ['출발지', origin.text || '-'],
@@ -1529,6 +1550,14 @@ export default function RouteSearchView({ options, period, onBack }) {
 
                 const ws1 = XLSX.utils.aoa_to_sheet(fareRows);
                 ws1['!cols'] = [{ wch: 25 }, { wch: 45 }, { wch: 15 }, { wch: 15 }];
+                ws1['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+                    ...fareRows
+                        .map((row, idx) => ({ row, idx }))
+                        .filter(({ row, idx }) => idx > 3 && row.length === 1 && String(row[0] || '').startsWith('['))
+                        .map(({ idx }) => ({ s: { r: idx, c: 0 }, e: { r: idx, c: 3 } })),
+                ];
 
                 // 스타일 및 틀고정 적용
                 const r1 = XLSX.utils.decode_range(ws1['!ref']);
@@ -1538,18 +1567,18 @@ export default function RouteSearchView({ options, period, onBack }) {
                         if (!ws1[ref]) ws1[ref] = { v: '', t: 's' };
                         ws1[ref].s = { ...baseStyle };
                         if (r === 0) ws1[ref].s = titleStyle;
+                        if (r === 1) ws1[ref].s = metaStyle;
                         const firstCol = fareRows[r]?.[0]?.toString() || '';
                         if (firstCol.startsWith('[') || firstCol === '항목' || firstCol === '구분') {
                             ws1[ref].s = headerStyle;
                         }
                         // 기점/행선지 강조
                         if (firstCol === '기점' || firstCol === '행선지' || firstCol === '고시 거리 / 기간') {
-                            ws1[ref].s = { ...baseStyle, font: { bold: true, name: '맑은 고딕' }, fill: { fgColor: { rgb: "F1F5F9" } } };
+                            ws1[ref].s = labelStyle;
                         }
                     }
                 }
-                ws1['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
-                ws1['!autofilter'] = { ref: 'A3:D3' };
+                ws1['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 4, topLeftCell: 'A5', activePane: 'bottomLeft' }];
 
                 XLSX.utils.book_append_sheet(wb, ws1, '운임조회');
             }
@@ -1557,8 +1586,8 @@ export default function RouteSearchView({ options, period, onBack }) {
         // Sheet 2: 이전 조회 내역 (History)
         if (savedResults.length > 0) {
             const historyRows = [
-                ['이전 조회 내역 (임시보존)'],
-                [],
+                ['안전운임 저장운임'],
+                [`다운로드 ${new Date().toLocaleString('ko-KR')} / ${savedResults.length.toLocaleString('ko-KR')}건`],
                 ['순번', '저장시각', '구분', '유형', '적용기간', '구간', '구간(KM)', '왕복(KM)', '40FT위탁', '40FT운수자', '40FT안전', '20FT위탁', '20FT운수자', '20FT안전'],
                 ...savedResults.map((s, idx) => [
                     savedResults.length - idx,
@@ -1575,6 +1604,10 @@ export default function RouteSearchView({ options, period, onBack }) {
             ];
             const wsHistory = XLSX.utils.aoa_to_sheet(historyRows);
             wsHistory['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 50 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+            wsHistory['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 13 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 13 } },
+            ];
 
             const rh = XLSX.utils.decode_range(wsHistory['!ref']);
             for (let r = 0; r <= rh.e.r; r++) {
@@ -1582,6 +1615,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                     const ref = XLSX.utils.encode_cell({ r, c });
                     if (!wsHistory[ref]) wsHistory[ref] = { v: '', t: 's' };
                     wsHistory[ref].s = { ...baseStyle };
+                    if (r === 0) wsHistory[ref].s = titleStyle;
+                    if (r === 1) wsHistory[ref].s = metaStyle;
                     if (r === 2) wsHistory[ref].s = headerStyle;
                 }
             }

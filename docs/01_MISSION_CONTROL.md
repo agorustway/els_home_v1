@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.216 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.217 / APK v5.11.29)
 
-> 최신 업데이트: 종합/월간/연간 실적 화면과 RAG 문맥의 원가율 표기를 통일하고, 연간/월간 테이블 엑셀 다운로드를 지원한다.
+> 최신 업데이트: 인트라넷 엑셀 다운로드를 아산 상세배차내역 기준 톤앤매너로 공통화하고, 안전운임 구간조회는 보고서형 시트로 정리한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.216
+- **웹 버전**: v5.14.217
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -66,6 +66,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.217**: 인트라넷 엑셀 산출물 공통 유틸을 추가하고, 안전운임/차량관제/아산 선적관리/연락처 양식/컨테이너 이력 fallback의 헤더, 제목, 생성정보, 자동너비 톤앤매너를 상세배차내역 기준으로 맞췄다. 안전운임 구간조회는 일반 표가 아니라 경로·운임·운행비 섹션을 가진 보고서형 시트로 유지한다.
 - **v5.14.216**: 종합/월간/연간 실적 화면과 RAG의 원가율 표기를 통일하고, 연간/월간 테이블은 검색 안내와 상세배차 톤의 엑셀 다운로드를 제공한다.
 - **v5.14.211**: AI는 `GLAPS 경로확인 안되는 작업지`를 운송경로 미도출 조건으로 읽고, 실적관리 예하 `종합실적/월간실적/연간실적` 화면 도출항목과 요약 스냅샷을 DB 기준으로 주입한다. 채팅 예시 컨테이너는 정상 선적 이력 샘플 `CMAU7631738`로 교체했다.
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
@@ -75,6 +76,9 @@
 - **v5.14.205**: GLAPS 항목매핑 화면/수정양식 라벨을 `ELS 매치코드`, `ELS 디스크립션(설명)`, `GLAPS 디스크립션(설명)`, `최종코드(BP)`로 정리했다. 매핑항목은 한글 표시/업로드를 지원하고 구형 영문/기존 헤더도 계속 파싱한다.
 - **v5.14.204**: 동기화 상태칩이 `glovis 파일 확인 중` 같은 진행 메시지 앞에도 `완료`를 붙이던 표시 오류를 수정했다. 진행성 문구는 `진행 · ...`으로 표시한다.
 ## VERIFICATION
+- `node --test web/tests/intranetExcelExport.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- utils/intranetExcelExport.mjs ...`: 통과, 기존 `container-history`/`RouteSearchView` hook 및 img 경고 11건 유지
+- `git diff --check`: 통과
 - `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/asanPerformanceRag.test.mjs`: 통과
 - `cd web; npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" utils/asanPerformanceTableExport.mjs utils/asanPerformanceRag.mjs utils/asanPerformanceSummary.mjs tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs tests/asanPerformanceRag.test.mjs`: 통과
 - `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 24개 통과 / Supabase 2026-05-26 상세배차 81라인 중 GLAPS 운송경로 미도출 44건 조회

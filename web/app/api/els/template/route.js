@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { proxyToBackend } from '../proxyToBackend';
+import { applyIntranetExcelHeaderCell } from '@/utils/intranetExcelExport.mjs';
 
 const TEMPLATE_FILENAME = 'container_list_양식.xlsx';
 
@@ -15,15 +16,7 @@ export async function GET(req) {
         const hRow = sheet.addRow(headers);
         hRow.height = 25;
         hRow.eachCell(cell => {
-            cell.font = { bold: true, size: 10 };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-                left: { style: 'thin', color: { argb: 'FF94A3B8' } },
-                bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-                right: { style: 'thin', color: { argb: 'FF94A3B8' } }
-            };
+            applyIntranetExcelHeaderCell(cell);
         });
 
         sheet.getColumn(1).width = 25;

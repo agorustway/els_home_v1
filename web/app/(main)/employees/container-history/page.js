@@ -721,8 +721,13 @@ function ContainerHistoryInner() {
         });
 
         // 2. 워크시트 생성 보조 함수 (스타일링 보강)
-        const createSheet = (rows) => {
-            const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
+        const createSheet = (rows, title) => {
+            const generatedAt = `다운로드 ${new Date().toLocaleString('ko-KR')} / ${rows.length.toLocaleString('ko-KR')}건`;
+            const ws = XLSX.utils.aoa_to_sheet([[title], [generatedAt], HEADERS, ...rows]);
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: HEADERS.length - 1 } },
+            ];
 
             // 자동 열 너비 계산
             const range = XLSX.utils.decode_range(ws['!ref']);
@@ -734,7 +739,7 @@ function ContainerHistoryInner() {
                 }
                 maxLen += 2;
 
-                for (let r = 1; r <= range.e.r; r++) {
+                for (let r = 3; r <= range.e.r; r++) {
                     const cell = ws[XLSX.utils.encode_cell({ r, c: i })];
                     if (cell && cell.v) {
                         const val = String(cell.v);
@@ -754,16 +759,16 @@ function ContainerHistoryInner() {
                 {
                     state: 'frozen',
                     xSplit: 0,
-                    ySplit: 1,
-                    topLeftCell: 'A2',
+                    ySplit: 3,
+                    topLeftCell: 'A4',
                     activePane: 'bottomLeft'
                 }
             ];
             // [최종 병기] !freeze 속성 중첩 적용 (일부 구버전/특이 환경 대응)
-            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+            ws['!freeze'] = { xSplit: 0, ySplit: 3 };
             
             // 자동 필터
-            ws['!autofilter'] = { ref: range };
+            ws['!autofilter'] = { ref: `A3:${XLSX.utils.encode_col(HEADERS.length - 1)}3` };
 
             // [핵심] 제목 회색, 수입 빨강, 반입 파랑 스타일 적용
             // 주의: 기본 SheetJS(xlsx)는 스타일을 지원하지 않지만, 
@@ -789,20 +794,36 @@ function ContainerHistoryInner() {
                         }
                     };
 
-                    // 제목 행 (회색)
                     if (r === 0) {
                         cell.s = {
-                            fill: { fgColor: { rgb: "F2F2F2" } },
-                            font: { bold: true, size: 10, name: '맑은 고딕' },
+                            font: { bold: true, sz: 13, color: { rgb: "0F172A" }, name: '맑은 고딕' },
+                            alignment: { horizontal: "left", vertical: "center" }
+                        };
+                        continue;
+                    }
+
+                    if (r === 1) {
+                        cell.s = {
+                            font: { sz: 9, color: { rgb: "64748B" }, name: '맑은 고딕' },
+                            alignment: { horizontal: "left", vertical: "center" }
+                        };
+                        continue;
+                    }
+
+                    // 제목 행 (아산 상세배차내역 기준)
+                    if (r === 2) {
+                        cell.s = {
+                            fill: { fgColor: { rgb: "1F5673" } },
+                            font: { bold: true, sz: 10, color: { rgb: "FFFFFF" }, name: '맑은 고딕' },
                             alignment: { horizontal: "center", vertical: "center" },
                             border: {
-                                top: { style: "thin", color: { rgb: "94A3B8" } },
-                                left: { style: "thin", color: { rgb: "94A3B8" } },
-                                bottom: { style: "thin", color: { rgb: "94A3B8" } },
-                                right: { style: "thin", color: { rgb: "94A3B8" } }
+                                top: { style: "thin", color: { rgb: "16445C" } },
+                                left: { style: "thin", color: { rgb: "6BA4BC" } },
+                                bottom: { style: "thin", color: { rgb: "16445C" } },
+                                right: { style: "thin", color: { rgb: "6BA4BC" } }
                             }
                         };
-                    } else {
+                    } else if (r > 2) {
                         // 조건부 컬러링 (수입: 옅은 빨강, 반입: 옅은 파랑)
                         const cellValue = String(cell.v || "");
                         if (cellValue.includes("수입")) {
@@ -817,15 +838,15 @@ function ContainerHistoryInner() {
             }
 
             // [최종 병기] !freeze 속성 중첩 적용 (일부 구버전/특이 환경 대응)
-            ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+            ws['!freeze'] = { xSplit: 0, ySplit: 3 };
             // 자동 필터
-            ws['!autofilter'] = { ref: ws['!ref'] };
+            ws['!autofilter'] = { ref: `A3:${XLSX.utils.encode_col(HEADERS.length - 1)}3` };
 
             return ws;
         };
 
-        const wsLatest = createSheet(latestRows);
-        const wsAll = createSheet(allRowsSorted);
+        const wsLatest = createSheet(latestRows, '컨테이너 이력 최신이력');
+        const wsAll = createSheet(allRowsSorted, '컨테이너 이력 전체이력');
 
         XLSX.utils.book_append_sheet(wb, wsLatest, '최신이력_No1');
         XLSX.utils.book_append_sheet(wb, wsAll, '전체이력');

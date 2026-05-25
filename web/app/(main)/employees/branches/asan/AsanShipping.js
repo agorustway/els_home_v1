@@ -847,26 +847,47 @@ export default function AsanShipping() {
             alert('다운로드할 데이터가 없습니다.');
             return;
         }
-        const XLSX = await import('xlsx');
-        
+
         // Use the rendered column order so container history stays at the right edge.
         const exportHeaders = orderedVisibleColumns;
-        
-        // Map rows based on colOrder
-        const exportRows = processedData.map(row => {
-            const mappedRow = {};
-            exportHeaders.forEach(col => {
-                mappedRow[col] = getDisplayCellRawValue(row, col);
-            });
-            return mappedRow;
-        });
-
-        const ws = XLSX.utils.json_to_sheet(exportRows, { header: exportHeaders });
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "선적관리");
-        
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-        XLSX.writeFile(wb, `선적관리_${timestamp}.xlsx`);
+        const exportRows = processedData.map(row => (
+            exportHeaders.map(col => getDisplayCellRawValue(row, col))
+        ));
+        const fileName = `선적관리_${timestamp}.xlsx`;
+
+        try {
+            const response = await fetch('/api/branches/asan/export/view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: '아산 선적관리',
+                    generatedAt: `다운로드 ${new Date().toLocaleString('ko-KR')} / ${exportRows.length.toLocaleString('ko-KR')}건`,
+                    sheetName: '선적관리',
+                    fileName,
+                    headers: exportHeaders,
+                    rows: exportRows,
+                }),
+            });
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload.error || '엑셀 생성 실패');
+            }
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            const downloadName = encodedMatch?.[1] ? decodeURIComponent(encodedMatch[1]) : fileName;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = downloadName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            alert(`엑셀 다운로드 실패: ${error.message}`);
+        }
     };
 
     const resetLayout = () => {

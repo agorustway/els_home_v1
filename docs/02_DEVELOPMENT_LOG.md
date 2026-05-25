@@ -1,3 +1,23 @@
+## [2026-05-26] 인트라넷 엑셀 다운로드 톤앤매너 공통화 (v5.14.217)
+### 핵심
+- 아산 상세배차내역 엑셀의 제목, 생성정보, 남색 헤더, 본문 테두리, 자동너비 규격을 `web/utils/intranetExcelExport.mjs` 공통 유틸로 분리했습니다.
+- 안전운임 일반조회, 차량관제 운행기록, 아산 기존 export, 아산 선적관리, 연락처/작업지 양식, 컨테이너 이력 fallback 엑셀 스타일을 같은 기준으로 맞췄습니다.
+- 안전운임 구간조회는 지도 경로, 고시 운임, 구간별 운임, 운행비가 섞인 보고서형 데이터라 일반 테이블로 평탄화하지 않고 섹션형 시트로 정리했습니다.
+- 엑셀 산출물 기준은 `docs/04_MASTER_ARCHITECTURE.md`와 `docs/05_DESIGN_SYSTEM.md`에 기록했습니다.
+### 검증
+- `node --test web/tests/intranetExcelExport.test.mjs web/tests/vehicleTrackingExport.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- utils/intranetExcelExport.mjs ...`: 통과, 기존 hook/img 경고 11건 유지
+- `git diff --check`: 통과
+### 변경 파일
+- `web/utils/intranetExcelExport.mjs`, `web/tests/intranetExcelExport.test.mjs`
+- `web/app/api/branches/asan/export/view/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/app/api/safe-freight/download-excel/route.js`, `web/app/(main)/employees/safe-freight/route-search/RouteSearchView.js`
+- `web/app/api/vehicle-tracking/export/excel/route.js`, `web/app/(main)/employees/branches/asan/AsanShipping.js`, `web/app/(main)/employees/container-history/page.js`
+- `web/app/api/contacts/excel/template/route.js`, `web/app/api/els/template/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/04_MASTER_ARCHITECTURE.md`, `docs/05_DESIGN_SYSTEM.md`
+
+---
+
 ## [2026-05-26] 실적 화면 원가율 표기 통일 (v5.14.216)
 ### 핵심
 - 종합실적, 연간실적, 월간실적 화면과 실적관리 RAG 문맥에서 원가율 표시를 통일했습니다.
