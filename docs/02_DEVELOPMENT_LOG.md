@@ -1,3 +1,23 @@
+## [2026-05-25] 상세/변동 엑셀 다운로드 GLAPS 업로드 시트 추가 (v5.14.199)
+### 핵심
+- NAS `/volume2/아산지점/A_운송실무/GLAPS_업로드.xlsx` 첫 시트(`오더 엑셀업로드`)의 실제 헤더를 확인했습니다.
+- 첫 시트는 62컬럼이며, 상세배차/배차변동내역 다운로드 시 기존 우리 기준 시트와 별도로 `GLAPS_업로드` 시트를 함께 생성합니다.
+- GLAPS 시트에는 오더구분, 선사코드, 화주사 코드, 반출지/작업지/반입지 코드, 운송경로 코드, 운송서비스/운송사 코드, 부킹번호, POD/최종목적지, 컨테이너 규격/수량, 컨사이니를 매핑합니다.
+- 같은 부킹번호/운송경로/선사/컨테이너 규격은 `컨테이너 수량`으로 묶습니다. 삭제 변동건은 GLAPS 신규 업로드 양식으로 표현할 수 없으므로 우리 기준 시트에는 남기고 `GLAPS_업로드` 시트에서는 제외합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 44개 통과
+- Export API 메모리 검증: `상세배차내역`, `GLAPS_업로드` 2개 시트 생성, GLAPS 헤더 62개, 부킹번호/컨테이너 수량 위치 확인
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/export/view/route.js" "utils/asanGlapsUploadExport.mjs"`: 통과
+- `cd web; npm run build`: 통과. NODE_TLS_REJECT_UNAUTHORIZED 경고만 확인.
+### 변경 파일
+- `web/utils/asanGlapsUploadExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/export/view/route.js`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] 아산 배차판 GLAPS lookup 경량화 1차 (v5.14.198)
 ### 핵심
 - 아산 배차판이 상세배차/배차변동내역 진입 시 전체 GLAPS 마스터를 다시 읽어 화면 체감 부하가 커지는 지점을 우선 계측했습니다.

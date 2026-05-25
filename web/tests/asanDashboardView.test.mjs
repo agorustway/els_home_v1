@@ -735,9 +735,14 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /수정건/);
   assert.match(source, /downloadCurrentScreenWorkbook/);
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
+  assert.match(source, /buildGlapsUploadRowsFromDetailRows/);
+  assert.match(source, /GLAPS_UPLOAD_HEADERS/);
+  assert.match(source, /GLAPS_UPLOAD_SHEET_NAME/);
+  assert.match(source, /extraSheets: \[\{/);
   assert.match(source, /mainView === 'detail' \? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS/);
   assert.match(source, /detailRowsForDisplay\.map\(\(\{ line \}\) => detailLineToRow\(line\)\)/);
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
+  assert.match(source, /skipDeleted: mainView === 'detail-change'/);
   assert.match(source, /detailLineFromChangeValues/);
   assert.match(source, /buildDetailChangeDisplayValues/);
   assert.match(source, /updateDetailChangeDraft/);
@@ -1172,6 +1177,11 @@ test('아산 배차 엑셀 다운로드는 오더와 배차를 숫자 셀로 쓰
   assert.match(viewExportRoute, /export async function POST\(request\)/);
   assert.match(viewExportRoute, /MAX_EXPORT_ROWS = 50000/);
   assert.match(viewExportRoute, /safeSheetName/);
+  assert.match(viewExportRoute, /uniqueSheetName/);
+  assert.match(viewExportRoute, /normalizeExportSheet/);
+  assert.match(viewExportRoute, /addExportWorksheet/);
+  assert.match(viewExportRoute, /payload\.extraSheets/);
+  assert.match(viewExportRoute, /컨테이너 수량/);
   assert.match(viewExportRoute, /X-ELS-Export-Rows/);
   assert.match(viewExportRoute, /sheet\.autoFilter/);
 });

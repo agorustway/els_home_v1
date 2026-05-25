@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 
 const MAX_EXPORT_ROWS = 50000;
 const NUMERIC_VIEW_EXPORT_HEADERS = new Set(
-    ['오더(계)', '오더', '계', '수량', '배차', '상세배차수량'].map(normalizeHeader)
+    ['오더(계)', '오더', '계', '수량', '배차', '상세배차수량', '컨테이너 수량'].map(normalizeHeader)
 );
 
 function normalizeHeader(value) {
@@ -17,6 +17,17 @@ function cleanText(value) {
 function safeSheetName(value) {
     const text = cleanText(value || '다운로드').replace(/[\\/?*[\]:]/g, ' ').slice(0, 31).trim();
     return text || '다운로드';
+}
+
+function uniqueSheetName(workbook, value) {
+    const base = safeSheetName(value);
+    if (!workbook.getWorksheet(base)) return base;
+    const trimmedBase = base.slice(0, 27).trim() || '다운로드';
+    for (let idx = 2; idx < 100; idx += 1) {
+        const name = `${trimmedBase}_${idx}`.slice(0, 31);
+        if (!workbook.getWorksheet(name)) return name;
+    }
+    return `${trimmedBase}_${Date.now()}`.slice(0, 31);
 }
 
 function safeFileName(value) {
@@ -42,22 +53,24 @@ function normalizeRows(headers = [], rows = []) {
     });
 }
 
-export async function POST(request) {
-    const payload = await request.json().catch(() => ({}));
-    const headers = Array.isArray(payload.headers) ? payload.headers.map(cleanText).filter(Boolean) : [];
-    const sourceRows = Array.isArray(payload.rows) ? payload.rows : [];
-    if (headers.length === 0) {
-        return Response.json({ error: 'headers required' }, { status: 400 });
-    }
+function normalizeExportSheet(input = {}) {
+    const headers = Array.isArray(input.headers) ? input.headers.map(cleanText).filter(Boolean) : [];
+    const sourceRows = Array.isArray(input.rows) ? input.rows : [];
+    return {
+        title: cleanText(input.title),
+        generatedAt: cleanText(input.generatedAt),
+        sheetName: cleanText(input.sheetName || input.title || '다운로드'),
+        headers,
+        rows: normalizeRows(headers, sourceRows),
+    };
+}
 
-    const rows = normalizeRows(headers, sourceRows);
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'ELS Solution';
-    workbook.created = new Date();
-
-    const sheet = workbook.addWorksheet(safeSheetName(payload.sheetName || payload.title));
-    const title = cleanText(payload.title);
-    const generatedAt = cleanText(payload.generatedAt);
+function addExportWorksheet(workbook, exportSheet = {}) {
+    const sheet = workbook.addWorksheet(uniqueSheetName(workbook, exportSheet.sheetName || exportSheet.title));
+    const title = cleanText(exportSheet.title);
+    const generatedAt = cleanText(exportSheet.generatedAt);
+    const headers = exportSheet.headers || [];
+    const rows = exportSheet.rows || [];
     let headerRowNumber = 1;
 
     if (title) {
@@ -128,12 +141,34 @@ export async function POST(request) {
         col.width = Math.min(Math.ceil(maxLen) + 2, 80);
     });
 
+    return sheet;
+}
+
+export async function POST(request) {
+    const payload = await request.json().catch(() => ({}));
+    const primarySheet = normalizeExportSheet(payload);
+    const headers = primarySheet.headers;
+    if (headers.length === 0) {
+        return Response.json({ error: 'headers required' }, { status: 400 });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'ELS Solution';
+    workbook.created = new Date();
+
+    addExportWorksheet(workbook, primarySheet);
+    const extraSheets = Array.isArray(payload.extraSheets) ? payload.extraSheets : [];
+    extraSheets.forEach((sheetPayload) => {
+        const extraSheet = normalizeExportSheet(sheetPayload);
+        if (extraSheet.headers.length > 0) addExportWorksheet(workbook, extraSheet);
+    });
+
     const buffer = await workbook.xlsx.writeBuffer();
     return new Response(buffer, {
         headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(safeFileName(payload.fileName))}`,
-            'X-ELS-Export-Rows': String(rows.length),
+            'X-ELS-Export-Rows': String(primarySheet.rows.length),
         },
     });
 }

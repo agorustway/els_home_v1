@@ -25,6 +25,11 @@ import {
     makeDispatchChangeSnapshotLine,
 } from '@/utils/asanDispatchChangeEvents.mjs';
 import {
+    GLAPS_UPLOAD_HEADERS,
+    GLAPS_UPLOAD_SHEET_NAME,
+    buildGlapsUploadRowsFromDetailRows,
+} from '@/utils/asanGlapsUploadExport.mjs';
+import {
     buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
     normalizeGlapsKey,
@@ -1428,7 +1433,7 @@ function AsanDispatchContent() {
         return () => clearInterval(iv);
     }, [activeItem?.file_modified_at, isAllTab, data]);
 
-    const downloadCurrentScreenWorkbook = async ({ title, sheetName, fileName, headers: exportHeaders, rows }) => {
+    const downloadCurrentScreenWorkbook = async ({ title, sheetName, fileName, headers: exportHeaders, rows, extraSheets = [] }) => {
         if (!exportHeaders?.length) return;
         const response = await fetch('/api/branches/asan/export/view', {
             method: 'POST',
@@ -1439,6 +1444,7 @@ function AsanDispatchContent() {
                 fileName,
                 headers: exportHeaders,
                 rows,
+                extraSheets,
                 generatedAt: `다운로드 ${fmtShortTs(new Date().toISOString())} / ${rows.length.toLocaleString()}건`,
             }),
         });
@@ -1464,12 +1470,22 @@ function AsanDispatchContent() {
                 const exportRows = mainView === 'detail'
                     ? detailRowsForDisplay.map(({ line }) => detailLineToRow(line))
                     : detailChangeRows.map(({ values }) => values);
+                const glapsUploadRows = buildGlapsUploadRowsFromDetailRows({
+                    headers: exportHeaders,
+                    rows: exportRows,
+                    skipDeleted: mainView === 'detail-change',
+                });
                 await downloadCurrentScreenWorkbook({
                     title: `아산 ${baseName} ${detailModeName} ${datePart}`,
                     sheetName: detailModeName,
                     fileName: `아산_${baseName}_${detailModeName}_${datePart}.xlsx`,
                     headers: exportHeaders,
                     rows: exportRows,
+                    extraSheets: [{
+                        sheetName: GLAPS_UPLOAD_SHEET_NAME,
+                        headers: GLAPS_UPLOAD_HEADERS,
+                        rows: glapsUploadRows,
+                    }],
                 });
                 return;
             }

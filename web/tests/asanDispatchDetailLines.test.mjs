@@ -10,9 +10,14 @@ import {
   summarizeDispatchDetailLines,
 } from '../utils/asanDispatchDetailLines.mjs';
 import {
+  DISPATCH_CHANGE_HEADERS,
   diffDispatchChangeLines,
   makeDispatchChangeSnapshotLine,
 } from '../utils/asanDispatchChangeEvents.mjs';
+import {
+  GLAPS_UPLOAD_HEADERS,
+  buildGlapsUploadRowsFromDetailRows,
+} from '../utils/asanGlapsUploadExport.mjs';
 
 test('상세배차는 지역칸 업체수량을 1건 단위 라인으로 분해하고 BKG 값을 반복한다', () => {
   const headers = [
@@ -223,6 +228,102 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
     'GA0196',
     '2026-05-24 13:20',
   ]);
+});
+
+test('상세배차 행은 GLAPS 업로드 첫 시트 양식으로 변환하고 같은 부킹은 수량으로 묶는다', () => {
+  assert.deepEqual(GLAPS_UPLOAD_HEADERS.slice(0, 16), [
+    '오더구분',
+    '선사코드',
+    '선사명',
+    '화주사 코드',
+    '화주사명',
+    '반출지(출발)코드 ',
+    '작업지(하차지)코드',
+    '반입지(도착)코드',
+    '운송경로 코드',
+    '운송서비스 코드 ',
+    '운송서비스명',
+    '배차요청일자',
+    '배차요청시간',
+    '운송사 코드',
+    '운송사명',
+    '부킹번호',
+  ]);
+  assert.equal(GLAPS_UPLOAD_HEADERS.length, 62);
+
+  const detailRow = detailLineToRow({
+    workDate: '2026-05-25',
+    direction: '수출',
+    shipper: '글로비스',
+    startLocation: '부산신항',
+    workplace: 'KCC글라스',
+    destination: '부산신항',
+    glapsRouteName: '부산신항KCC글라스부산신항',
+    glapsRouteCode: 'GLC00035',
+    customer: 'HMMA',
+    port: 'USMOB',
+    glapsPortCode: 'USMOB',
+    line: 'ONE',
+    glapsLineCode: 'ONE',
+    containerType: '40HC',
+    glapsTypeCode: '4510',
+    company: '자차',
+    confirmedBkg: 'SELG43226600',
+    bkg1: 'SELG43226600',
+    targetVessel: 'TV',
+    note: 'N',
+    glapsOrderTypeCode: '20',
+    glapsShipperCode: 'KR10',
+    glapsStartLocationCode: 'KRBNP',
+    glapsWorkplaceCode: 'H000_KC',
+    glapsDestinationCode: 'KRBNP',
+    glapsTransportServiceCode: '5010001',
+    glapsCarrierBpCode: 'B000005273',
+    glapsConsigneeCode: 'UH03',
+  });
+  const rows = buildGlapsUploadRowsFromDetailRows({
+    headers: DISPATCH_DETAIL_HEADERS,
+    rows: [detailRow, detailRow],
+  });
+  const byHeader = Object.fromEntries(GLAPS_UPLOAD_HEADERS.map((header, idx) => [header, rows[0][idx]]));
+
+  assert.equal(rows.length, 1);
+  assert.equal(byHeader['오더구분'], '20');
+  assert.equal(byHeader['선사코드'], 'ONE');
+  assert.equal(byHeader['화주사 코드'], 'KR10');
+  assert.equal(byHeader['반출지(출발)코드 '], 'KRBNP');
+  assert.equal(byHeader['작업지(하차지)코드'], 'H000_KC');
+  assert.equal(byHeader['반입지(도착)코드'], 'KRBNP');
+  assert.equal(byHeader['운송경로 코드'], 'GLC00035');
+  assert.equal(byHeader['운송서비스 코드 '], '5010001');
+  assert.equal(byHeader['운송사 코드'], 'B000005273');
+  assert.equal(byHeader['부킹번호'], 'SELG43226600');
+  assert.equal(byHeader.POD, 'USMOB');
+  assert.equal(byHeader['최종목적지'], 'USMOB');
+  assert.equal(byHeader['컨테이너 규격'], '4510');
+  assert.equal(byHeader['컨테이너 수량'], 2);
+  assert.equal(byHeader['컨사이니'], 'UH03');
+});
+
+test('배차변동 GLAPS 업로드 양식은 삭제 변동건을 신규 업로드 대상에서 제외한다', () => {
+  const baseRow = detailLineToRow({
+    direction: '수출',
+    glapsRouteCode: 'GLC00035',
+    glapsLineCode: 'ONE',
+    glapsTypeCode: '4510',
+    confirmedBkg: 'BKG-1',
+  });
+  const addRow = [...baseRow, '추가', '미확인', '2026-05-25 09:00', '', ''];
+  const deleteRow = [...baseRow, '삭제', '미확인', '2026-05-25 09:01', '', ''];
+
+  const rows = buildGlapsUploadRowsFromDetailRows({
+    headers: DISPATCH_CHANGE_HEADERS,
+    rows: [addRow, deleteRow],
+    skipDeleted: true,
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0][GLAPS_UPLOAD_HEADERS.indexOf('부킹번호')], 'BKG-1');
 });
 
 test('배차변동 비교는 수량 감소를 삭제 이벤트로 감지한다', () => {
