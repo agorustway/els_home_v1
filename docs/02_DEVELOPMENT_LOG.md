@@ -1,3 +1,21 @@
+## [2026-05-26] 종합실적 빠른 뷰와 풀네임 검색 보정 (v5.14.218)
+### 핵심
+- 종합실적의 경영 신호, 연도 매트릭스, 당사/협력사 비교, 원장 신뢰도 영역에서 월간/연간 테이블 검색으로 넘어가는 클릭 동작을 제거했습니다.
+- 원장 신뢰도 표의 헤더 정렬을 본문 값과 맞춰 매출, 이익률, 행/파일, 동기화 위치가 어긋나 보이지 않게 했습니다.
+- 실적관리 탭 전환부의 `performanceSearchHandoff`를 제거해 테이블 검색은 사용자가 월간/연간 테이블 검색창에서 직접 실행할 때만 동작하도록 정리했습니다.
+- 연간/월간 테이블 검색은 괄호, 따옴표, 구분점, 슬래시 같은 구두점을 공백/제거 양쪽으로 정규화하고, 풀네임 입력은 토큰 단위로도 매칭합니다.
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs web/tests/asanSummaryPerformance.test.mjs`: 24개 통과
+- `cd web; npm.cmd run lint -- lib/asan-branch-db.js "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" tests/asanAnnualPerformance.test.mjs tests/asanMonthlyPerformance.test.mjs tests/asanSummaryPerformance.test.mjs`: 통과
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`, `annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`, `web/tests/asanMonthlyPerformance.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 인트라넷 엑셀 다운로드 톤앤매너 공통화 (v5.14.217)
 ### 핵심
 - 아산 상세배차내역 엑셀의 제목, 생성정보, 남색 헤더, 본문 테두리, 자동너비 규격을 `web/utils/intranetExcelExport.mjs` 공통 유틸로 분리했습니다.

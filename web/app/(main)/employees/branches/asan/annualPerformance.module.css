@@ -544,21 +544,6 @@
     border-top-width: 3px;
 }
 
-.summarySignalButton {
-    width: 100%;
-    border-color: #bfdbfe;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.summarySignalButton:hover,
-.summarySignalButton:focus-visible {
-    outline: 2px solid #38bdf8;
-    outline-offset: 1px;
-}
-
 .summarySignal strong {
     min-width: 0;
     color: #0f172a;
@@ -670,7 +655,7 @@
     gap: 6px;
 }
 
-.summaryYearMatrix button {
+.summaryYearCard {
     min-width: 0;
     min-height: 84px;
     padding: 8px;
@@ -679,7 +664,7 @@
     background: #f8fafc;
     font-family: inherit;
     text-align: left;
-    cursor: pointer;
+    cursor: default;
 }
 
 .summaryYearActive {
@@ -798,7 +783,7 @@
     gap: 5px;
 }
 
-.summaryMiniRows button {
+.summaryMiniRow {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 86px 48px;
     align-items: center;
@@ -809,7 +794,7 @@
     border-radius: 6px;
     background: #fff;
     font-family: inherit;
-    cursor: pointer;
+    cursor: default;
 }
 
 .summaryMiniRows strong,
@@ -913,6 +898,10 @@
     font-weight: 950;
 }
 
+.summarySourceHead span:not(:first-child) {
+    text-align: right;
+}
+
 .summarySourceRow {
     min-height: 33px;
     padding: 5px 7px;
@@ -920,7 +909,7 @@
     border-radius: 6px;
     background: #fff;
     font-family: inherit;
-    cursor: pointer;
+    cursor: default;
 }
 
 .summarySourceRow span,

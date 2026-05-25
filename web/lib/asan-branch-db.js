@@ -223,15 +223,27 @@ function searchFilterValue(term) {
     return String(term || '').replace(/[;,，；\\]/g, ' ');
 }
 
-const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원]/g;
+const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원()[\]{}<>·ㆍ\-_/\\'"`´“”‘’:：;；.]/g;
 const PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 1000;
 const PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000;
 
 function normalizePerformanceSearchText(value) {
     const raw = String(value ?? '').trim().toLocaleLowerCase('ko-KR');
     if (!raw) return '';
+    const spaced = raw.replace(PERFORMANCE_SEARCH_COMPACT_RE, ' ').replace(/\s+/g, ' ').trim();
     const compact = raw.replace(PERFORMANCE_SEARCH_COMPACT_RE, '');
-    return compact && compact !== raw ? `${raw} ${compact}` : raw;
+    return Array.from(new Set([raw, spaced, compact].filter(Boolean))).join(' ');
+}
+
+function performanceSearchTermParts(term) {
+    const raw = String(term ?? '').trim().toLocaleLowerCase('ko-KR');
+    if (!raw) return { alternatives: [], tokens: [] };
+    const spaced = raw.replace(PERFORMANCE_SEARCH_COMPACT_RE, ' ').replace(/\s+/g, ' ').trim();
+    const compact = raw.replace(PERFORMANCE_SEARCH_COMPACT_RE, '');
+    return {
+        alternatives: Array.from(new Set([raw, compact].filter(Boolean))),
+        tokens: Array.from(new Set(spaced.split(/\s+/).filter(Boolean))),
+    };
 }
 
 function collectPerformanceSearchValues(value, bucket) {
@@ -279,9 +291,11 @@ function rowMatchesPerformanceSearch(values = [], search = '', mode = 'or') {
     if (!terms.length) return true;
     const haystack = rowPerformanceSearchText(values);
     const matches = term => {
-        const normalized = normalizePerformanceSearchText(term);
-        if (!normalized) return true;
-        return normalized.split(/\s+/).some(piece => piece && haystack.includes(piece));
+        const { alternatives, tokens } = performanceSearchTermParts(term);
+        if (!alternatives.length && !tokens.length) return true;
+        if (alternatives.some(piece => haystack.includes(piece))) return true;
+        if (tokens.length > 1) return tokens.every(piece => haystack.includes(piece));
+        return tokens.some(piece => haystack.includes(piece));
     };
     return String(mode || '').toLowerCase() === 'and'
         ? terms.every(matches)

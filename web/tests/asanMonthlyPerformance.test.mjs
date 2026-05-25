@@ -219,7 +219,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(page, /const loadAsanMonthlyPerformance = \(\) => import\('\.\/AsanMonthlyPerformance'\);/);
   assert.match(page, /const AsanMonthlyPerformance = dynamic\(loadAsanMonthlyPerformance/);
   assert.match(page, /activePerformanceTab === 'monthly-performance' && \(\s*<AsanMonthlyPerformance/);
-  assert.match(page, /searchHandoff=\{performanceSearchHandoff\?\.target === 'monthly-performance' \? performanceSearchHandoff : null\}/);
+  assert.doesNotMatch(page, /searchHandoff=\{performanceSearchHandoff\?\.target === 'monthly-performance'/);
   assert.match(component, /월간실적/);
   assert.match(component, /\/api\/branches\/asan\/performance\/monthly/);
   assert.match(component, /params\.set\('dashboard', '1'\)/);
@@ -435,6 +435,8 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(dbReader, /if \(shouldFilter\) \{[\s\S]*scanPerformanceSearchRows/);
   assert.match(dbReader, /total: paged\.total \?\? fallbackTotal/);
   assert.match(dbReader, /replace\(PERFORMANCE_SEARCH_COMPACT_RE/g);
+  assert.match(dbReader, /function performanceSearchTermParts/);
+  assert.match(dbReader, /tokens\.length > 1\) return tokens\.every/);
   assert.match(css, /\.analytics\s*{[\s\S]*grid-template-columns: repeat\(auto-fit/);
   assert.match(css, /minmax\(min\(100%, 640px\), 1fr\)/);
   assert.doesNotMatch(css, /\.dailyTreeHead/);

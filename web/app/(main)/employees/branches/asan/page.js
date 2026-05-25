@@ -3421,7 +3421,6 @@ function AsanDispatchContent() {
 
 function AsanPerformanceManagement() {
     const [activePerformanceTab, setActivePerformanceTab] = useState(null);
-    const [performanceSearchHandoff, setPerformanceSearchHandoff] = useState(null);
 
     useEffect(() => {
         try {
@@ -3447,18 +3446,6 @@ function AsanPerformanceManagement() {
         try {
             localStorage.setItem(ASAN_PERFORMANCE_TAB_KEY, tab);
         } catch { /* ignore */ }
-    };
-
-    const openPerformanceSearchTab = (tab, handoff = null) => {
-        if (handoff?.search) {
-            setPerformanceSearchHandoff({
-                id: Date.now(),
-                target: tab,
-                search: String(handoff.search || '').trim(),
-                searchMode: handoff.searchMode || 'or',
-            });
-        }
-        switchPerformanceTab(tab);
     };
 
     const prefetchPerformanceTab = (tab) => {
@@ -3500,20 +3487,13 @@ function AsanPerformanceManagement() {
             <div className={styles.performanceContent}>
                 {!activePerformanceTab && <AsanModuleLoading />}
                 {activePerformanceTab === 'summary-performance' && (
-                    <AsanSummaryPerformance
-                        onOpenAnnual={(handoff) => openPerformanceSearchTab('annual-performance', handoff)}
-                        onOpenMonthly={(handoff) => openPerformanceSearchTab('monthly-performance', handoff)}
-                    />
+                    <AsanSummaryPerformance />
                 )}
                 {activePerformanceTab === 'monthly-performance' && (
-                    <AsanMonthlyPerformance
-                        searchHandoff={performanceSearchHandoff?.target === 'monthly-performance' ? performanceSearchHandoff : null}
-                    />
+                    <AsanMonthlyPerformance />
                 )}
                 {activePerformanceTab === 'annual-performance' && (
-                    <AsanAnnualPerformance
-                        searchHandoff={performanceSearchHandoff?.target === 'annual-performance' ? performanceSearchHandoff : null}
-                    />
+                    <AsanAnnualPerformance />
                 )}
             </div>
         </div>

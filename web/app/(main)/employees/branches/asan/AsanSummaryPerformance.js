@@ -388,7 +388,7 @@ function yearProgressLabel(item = {}, periodEnd = '') {
     return `${year}년`;
 }
 
-function ExecutiveYearMatrix({ yearly = [], periodEnd, activeYear, onOpenAnnual }) {
+function ExecutiveYearMatrix({ yearly = [], periodEnd, activeYear }) {
     const maxRevenue = Math.max(1, ...yearly.map(item => Math.abs(safeNumber(item.revenue))));
     return (
         <section className={styles.summaryPanel}>
@@ -397,18 +397,17 @@ function ExecutiveYearMatrix({ yearly = [], periodEnd, activeYear, onOpenAnnual 
                     <h3>연도 선택 매트릭스</h3>
                     <span>2026년처럼 진행 중인 연도는 집계 완료 월까지 표시</span>
                 </div>
-                <button type="button" className={styles.smallBtn} onClick={onOpenAnnual}>연간실적 보기</button>
             </div>
             <div className={styles.summaryYearMatrix}>
                 {yearly.slice(-8).map(item => {
                     const isActive = String(item.year) === String(activeYear);
                     return (
-                        <button type="button" key={item.year} onClick={onOpenAnnual} className={isActive ? styles.summaryYearActive : ''}>
+                        <div key={item.year} className={`${styles.summaryYearCard} ${isActive ? styles.summaryYearActive : ''}`}>
                             <span>{yearProgressLabel(item, periodEnd)}</span>
                             <strong>{formatPerformanceAmount(item.revenue)}</strong>
                             <em className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(item.profit)} · {formatPercent(item.profitRate, 1)}</em>
                             <i style={{ width: `${Math.max(4, Math.min(100, Math.abs(safeNumber(item.revenue)) / maxRevenue * 100))}%` }} />
-                        </button>
+                        </div>
                     );
                 })}
             </div>
@@ -416,17 +415,17 @@ function ExecutiveYearMatrix({ yearly = [], periodEnd, activeYear, onOpenAnnual 
     );
 }
 
-function ExecutiveSourceTable({ summary, onOpenAnnual, onOpenMonthly }) {
+function ExecutiveSourceTable({ summary }) {
     const rows = [
-        { ...(summary?.sourceMix?.annual || {}), label: '연간실적', action: onOpenAnnual },
-        { ...(summary?.sourceMix?.monthly || {}), label: '월간실적', action: onOpenMonthly },
+        { ...(summary?.sourceMix?.annual || {}), label: '연간실적' },
+        { ...(summary?.sourceMix?.monthly || {}), label: '월간실적' },
     ];
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
                 <div>
                     <h3>원장 신뢰도</h3>
-                    <span>{summary?.scope?.label || '전체'} 기준 · 상세는 월간실적·연간실적 탭에서 확인</span>
+                    <span>{summary?.scope?.label || '전체'} 기준 · 원장 확인은 월간실적·연간실적 탭 기준</span>
                 </div>
             </div>
             <div className={styles.summarySourceRows}>
@@ -438,28 +437,20 @@ function ExecutiveSourceTable({ summary, onOpenAnnual, onOpenMonthly }) {
                     <span>동기화</span>
                 </div>
                 {rows.map(row => (
-                    <button type="button" className={styles.summarySourceRow} key={row.label} onClick={row.action}>
+                    <div className={styles.summarySourceRow} key={row.label}>
                         <span>{row.label}</span>
                         <strong>{formatPerformanceAmount(row.revenue)}</strong>
                         <em>{formatPercent(row.profitRate, 1)}</em>
                         <b>{safeNumber(row.rowCount).toLocaleString('ko-KR')}행 · {safeNumber(row.fileCount).toLocaleString('ko-KR')}개</b>
                         <small>{fmtTs(row.syncedAt)}</small>
-                    </button>
+                    </div>
                 ))}
             </div>
         </section>
     );
 }
 
-function executiveSignalSearch(signal = {}) {
-    const title = String(signal.title || '');
-    const value = String(signal.value || '').trim();
-    if (!value || value === '-') return null;
-    if (!title.includes('청구처') && !title.includes('지급처')) return null;
-    return { search: value, searchMode: 'and' };
-}
-
-function ExecutiveSignals({ signals = [], openMonthly }) {
+function ExecutiveSignals({ signals = [] }) {
     return (
         <section className={styles.summaryPanel}>
             <div className={styles.summaryPanelHead}>
@@ -471,20 +462,15 @@ function ExecutiveSignals({ signals = [], openMonthly }) {
             <div className={styles.summarySignalGrid}>
                 {signals.map((rawSignal, index) => {
                     const signal = normalizeExecutiveSignal(rawSignal);
-                    const handoff = executiveSignalSearch(signal);
-                    const SignalTag = handoff ? 'button' : 'div';
                     return (
-                        <SignalTag
-                            type={handoff ? 'button' : undefined}
-                            className={`${styles.summarySignal} ${handoff ? styles.summarySignalButton : ''} ${styles[`summaryTone_${signal.tone}`] || ''}`}
+                        <div
+                            className={`${styles.summarySignal} ${styles[`summaryTone_${signal.tone}`] || ''}`}
                             key={`${signal.title}-${index}`}
-                            onClick={handoff ? () => openMonthly?.(handoff) : undefined}
-                            title={handoff ? '월간실적 테이블에서 해당 값을 검색합니다.' : undefined}
                         >
                             <span>{signal.title}</span>
                             <strong>{signal.value}</strong>
                             <em>{signal.detail}</em>
-                        </SignalTag>
+                        </div>
                     );
                 })}
             </div>
@@ -492,7 +478,7 @@ function ExecutiveSignals({ signals = [], openMonthly }) {
     );
 }
 
-function SegmentMiniRows({ title, items = [], openMonthly }) {
+function SegmentMiniRows({ title, items = [] }) {
     const rows = items.slice(0, 4);
     return (
         <div className={styles.summaryMiniRows}>
@@ -500,17 +486,17 @@ function SegmentMiniRows({ title, items = [], openMonthly }) {
             {rows.length === 0 ? (
                 <em>선택 범위 세부 항목 없음</em>
             ) : rows.map((item, idx) => (
-                <button type="button" key={item.key || item.name || idx} onClick={openMonthly}>
+                <div className={styles.summaryMiniRow} key={item.key || item.name || idx}>
                     <strong>{idx + 1}. {item.label || item.name || item.vehicleNo || '-'}</strong>
                     <b>{formatPerformanceAmount(item.revenue)}</b>
                     <small className={safeNumber(item.profit) < 0 ? styles.negative : styles.positive}>{formatPercent(item.profitRate, 1)}</small>
-                </button>
+                </div>
             ))}
         </div>
     );
 }
 
-function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicles, openMonthly, tone, countTotal = 0 }) {
+function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicles, tone, countTotal = 0 }) {
     const evidence = evidenceItems?.length ? evidenceItems : vehicles;
     const rowCount = safeNumber(segment?.rowCount);
     const countShare = countTotal > 0 ? (rowCount / countTotal) * 100 : 0;
@@ -533,12 +519,12 @@ function SegmentFocusCard({ title, segment, evidenceTitle, evidenceItems, vehicl
                     <em>{formatPercent(countShare, 1)} · {rowCount.toLocaleString('ko-KR')}건</em>
                 </div>
             </div>
-            <SegmentMiniRows title={evidenceTitle} items={evidence || []} openMonthly={openMonthly} />
+            <SegmentMiniRows title={evidenceTitle} items={evidence || []} />
         </div>
     );
 }
 
-function TopConcentration({ summary, openMonthly }) {
+function TopConcentration({ summary }) {
     const segments = summary?.strategicSegments || [];
     const own = segments.find(item => item.key === 'own_direct') || { label: 'ELS직계약차량' };
     const external = segments.find(item => item.key === 'external_carrier') || { label: '외부/타운송사' };
@@ -551,7 +537,6 @@ function TopConcentration({ summary, openMonthly }) {
                     <h3>당사 / 협력사 비교</h3>
                     <span>ELS직계약차량을 먼저 보고 외부/타운송사를 같은 폭으로 비교</span>
                 </div>
-                <button type="button" className={styles.smallBtn} onClick={openMonthly}>상세는 월간실적</button>
             </div>
             <div className={styles.summarySegmentSplitGrid}>
                 <SegmentFocusCard
@@ -559,7 +544,6 @@ function TopConcentration({ summary, openMonthly }) {
                     segment={own}
                     evidenceTitle="ELS 주요 거래처/작업지"
                     evidenceItems={(own.topClients || []).length ? own.topClients : own.topWorkSites}
-                    openMonthly={openMonthly}
                     tone="own"
                     countTotal={segmentCountTotal}
                 />
@@ -569,7 +553,6 @@ function TopConcentration({ summary, openMonthly }) {
                     evidenceTitle="외부 대표 차량 TOP"
                     evidenceItems={(external.topClients || []).length ? external.topClients : external.topWorkSites}
                     vehicles={vehicles}
-                    openMonthly={openMonthly}
                     tone="external"
                     countTotal={segmentCountTotal}
                 />
@@ -578,7 +561,7 @@ function TopConcentration({ summary, openMonthly }) {
     );
 }
 
-export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) {
+export default function AsanSummaryPerformance() {
     const [payload, setPayload] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -741,9 +724,6 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
         ];
     }, [summary]);
 
-    const openAnnual = onOpenAnnual || (() => {});
-    const openMonthly = onOpenMonthly || (() => {});
-
     return (
         <div className={`${styles.container} ${styles.summaryExecutive}`}>
             <div className={styles.topBar}>
@@ -784,11 +764,11 @@ export default function AsanSummaryPerformance({ onOpenAnnual, onOpenMonthly }) 
 
                     <div className={styles.summaryMainGrid}>
                         <ExecutiveFlowDiagram summary={summary} />
-                        <ExecutiveSignals signals={summary.executiveSignals || []} openMonthly={openMonthly} />
+                        <ExecutiveSignals signals={summary.executiveSignals || []} />
                         <ExecutiveTrendChart summary={summary} />
-                        <ExecutiveYearMatrix yearly={baseSummary?.yearly || []} periodEnd={baseSummary?.periodEnd} activeYear={selectedYear} onOpenAnnual={openAnnual} />
-                        <TopConcentration summary={summary} openMonthly={openMonthly} />
-                        <ExecutiveSourceTable summary={summary} onOpenAnnual={openAnnual} onOpenMonthly={openMonthly} />
+                        <ExecutiveYearMatrix yearly={baseSummary?.yearly || []} periodEnd={baseSummary?.periodEnd} activeYear={selectedYear} />
+                        <TopConcentration summary={summary} />
+                        <ExecutiveSourceTable summary={summary} />
                     </div>
                 </div>
             )}
