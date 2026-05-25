@@ -1472,6 +1472,7 @@ function AsanDispatchContent() {
             fileModStr: fmtTs(activeItem.file_modified_at)
         };
     }, [activeItem, isAllTab, data]);
+    const hasHeaderStatus = Boolean(dateInfo?.fileModStr || elapsed || syncStatus);
     const detailScope = useMemo(() => {
         if (isAllTab || !activeItem?.target_date) return null;
         return {
@@ -2655,20 +2656,22 @@ function AsanDispatchContent() {
                     </div>
                     
                     <div className={styles.headerStatusArea}>
-                        <div className={styles.statusInfo}>
-                            {(dateInfo?.fileModStr || elapsed) && (
-                                <div className={styles.fileMod}>
-                                    <span className={styles.label}>저장:</span>
-                                    <span className={styles.time}>{dateInfo?.fileModStr}</span>
-                                    {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
-                                </div>
-                            )}
-                            {syncStatus && (
-                                <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
-                                    {syncStatusPrefix(syncStatus)} · {syncStatus.message}
-                                </div>
-                            )}
-                        </div>
+                        {hasHeaderStatus && (
+                            <div className={styles.statusInfo}>
+                                {(dateInfo?.fileModStr || elapsed) && (
+                                    <div className={styles.fileMod}>
+                                        <span className={styles.label}>저장:</span>
+                                        <span className={styles.time}>{dateInfo?.fileModStr}</span>
+                                        {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
+                                    </div>
+                                )}
+                                {syncStatus && (
+                                    <div className={`${styles.syncMsg} ${syncStatus.isError ? styles.syncMsgError : ''}`}>
+                                        {syncStatusPrefix(syncStatus)} · {syncStatus.message}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className={styles.headerButtons}>
                             <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
                             <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>

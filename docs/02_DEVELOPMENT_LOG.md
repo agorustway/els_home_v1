@@ -1,3 +1,18 @@
+## [2026-05-25] 아산 배차판 모바일 상단 여백 제거 (v5.14.206)
+### 핵심
+- 모바일에서 아산 배차판 상단 상태/작업 버튼 영역이 데스크톱용 `flex-basis: 520px`와 `justify-content: flex-end`를 유지해 선택일 배지 아래에 큰 빈 여백이 생기던 문제를 수정했습니다.
+- 모바일 상태영역은 자동 높이로 초기화하고 위쪽부터 배치되게 했습니다.
+- 저장/동기화 상태가 없을 때는 빈 상태 박스를 렌더링하지 않도록 정리했습니다.
+### 검증
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js"`: 통과
+- `node --test web/tests/asanDashboardView.test.mjs`: 34개 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-25] GLAPS 항목매핑 라벨/BP 노출 정리 (v5.14.205)
 ### 핵심
 - 항목매핑 화면과 수정양식의 `배차판 매칭용`을 `ELS 매치코드`, `ELS명`을 `ELS 디스크립션(설명)`, `GLAPS명`을 `GLAPS 디스크립션(설명)`, `GLAPS코드`를 `최종코드(BP)`로 바꿨습니다.

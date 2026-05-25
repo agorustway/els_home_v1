@@ -2061,6 +2061,9 @@
     .headerStatusArea {
         flex-direction: column;
         align-items: stretch;
+        justify-content: flex-start;
+        flex: 0 0 auto;
+        min-height: 0;
         gap: 4px;
         order: 2; /* Move below title and buttons if needed */
     }
