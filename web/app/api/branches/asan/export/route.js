@@ -5,6 +5,7 @@ import {
     applyDispatchWebCellOverlay,
     createDispatchRowMetaBuilder,
     ensureDispatchWebCellHeaders,
+    formatMobisCountryPortLabel,
     loadDispatchWebCellState,
     normalizeDispatchRecordHeaders,
     shouldIncludeDispatchRow,
@@ -188,7 +189,11 @@ export async function GET(request) {
                 return shouldIncludeDispatchRow(item.headers || [], row, itemType);
             }).map((row, rowIndex) => {
                 const rowMeta = buildRowMeta(row, rowIndex);
+                const mobisCustomerLabel = itemType === 'mobis'
+                    ? formatMobisCountryPortLabel(row, item.headers || [])
+                    : '';
                 const mappedRow = headers.map(h => {
+                    if (h === '고객사(국가)' && mobisCustomerLabel) return mobisCustomerLabel;
                     const cIdx = mapCols[h];
                     return cIdx >= 0 ? row[cIdx] : '';
                 });

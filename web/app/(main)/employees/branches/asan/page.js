@@ -918,6 +918,20 @@ function isMobisCountryDisplayHeader(value) {
     const normalized = normalizeDispatchHeaderForMerge(value);
     return ['국가', '국가명'].map(normalizeDispatchHeaderForMerge).includes(normalized);
 }
+function findDispatchSourceHeaderIndex(headers = [], candidates = []) {
+    const targets = candidates.map(normalizeDispatchHeaderForMerge);
+    return headers.findIndex(header => targets.includes(normalizeDispatchHeaderForMerge(header)));
+}
+function formatMobisCountryPortDisplay(row = [], sourceHeaders = []) {
+    const countryIdx = findDispatchSourceHeaderIndex(sourceHeaders, ['국가', '국가명']);
+    const destinationIdx = findDispatchSourceHeaderIndex(sourceHeaders, ['도착항', '포트(도착항)', '도착지']);
+    const country = countryIdx >= 0 ? String(row[countryIdx] || '').trim() : '';
+    const destination = destinationIdx >= 0 ? String(row[destinationIdx] || '').trim() : '';
+    if (!country) return destination;
+    if (!destination) return country;
+    if (normalizeDispatchHeaderForMerge(country).includes(normalizeDispatchHeaderForMerge(destination))) return country;
+    return `${country} ${destination}`;
+}
 function findMergedHeaderIndex(headers = [], target) {
     const normalizedTarget = getDispatchHeaderMergeKey(target);
     return headers.findIndex(header => getDispatchHeaderMergeKey(header) === normalizedTarget);
@@ -940,6 +954,10 @@ function mergeDispatchHeaders(items = []) {
 }
 function mapDispatchRowToHeaders(row = [], sourceHeaders = [], targetHeaders = []) {
     return targetHeaders.map(header => {
+        if (normalizeDispatchHeaderForMerge(header) === normalizeDispatchHeaderForMerge('고객사(국가)')) {
+            const mobisCustomerLabel = formatMobisCountryPortDisplay(row, sourceHeaders);
+            if (mobisCustomerLabel) return mobisCustomerLabel;
+        }
         const sourceIdx = findMergedHeaderIndex(sourceHeaders, header);
         return sourceIdx >= 0 ? row[sourceIdx] : '';
     });

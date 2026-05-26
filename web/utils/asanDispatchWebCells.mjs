@@ -55,6 +55,17 @@ export function findDispatchHeaderIndex(headers = [], candidates = []) {
   return -1;
 }
 
+export function formatMobisCountryPortLabel(row = [], headers = []) {
+  const countryIdx = findDispatchHeaderIndex(headers, ['국가', '국가명']);
+  const destinationIdx = findDispatchHeaderIndex(headers, ['도착항', '포트(도착항)', '도착지']);
+  const country = countryIdx >= 0 ? normalizeDispatchCell(row[countryIdx]) : '';
+  const destination = destinationIdx >= 0 ? normalizeDispatchCell(row[destinationIdx]) : '';
+  if (!country) return destination;
+  if (!destination) return country;
+  if (normalizeDispatchHeader(country).includes(normalizeDispatchHeader(destination))) return country;
+  return `${country} ${destination}`;
+}
+
 export function normalizeDispatchHeadersForType(headers = [], dispatchType = '') {
   const nextHeaders = [...(headers || [])];
   const normalizedType = String(dispatchType || '').trim().toLowerCase();

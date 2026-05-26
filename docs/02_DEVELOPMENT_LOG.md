@@ -1,3 +1,20 @@
+## [2026-05-26] 모비스 통합현황 고객사 국가·도착항 병기 (v5.14.227)
+### 핵심
+- 모비스 원본의 `국가/국가명`과 `도착항`을 조합해 통합현황/전체/엑셀의 `고객사(국가)` 칸에 `호주 시드니`처럼 표시하도록 했습니다.
+- 현황판 고객사 점유율/구분표 집계는 기존처럼 국가 기준을 유지해 국가별 합산이 흐트러지지 않게 했습니다.
+- 클라이언트 전체 탭 병합도 같은 표시 규칙을 적용해 서버 통합자료와 화면 병합자료가 다르게 보이지 않도록 했습니다.
+### 검증
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 54개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDispatchWebCells.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 배차판 필터 상태 WEB BKG 저장 밀림 방지 (v5.14.226)
 ### 핵심
 - 원인: WEB 셀 저장 API가 현재 `row_signature`와 매칭되지 않을 때 같은 `row_index`의 기존 셀을 바로 갱신했습니다. 필터/정렬 상태에서 입력하거나 행 서명이 흔들린 상황에서는 같은 행번호의 다른 BKG 기록을 새 행으로 재귀속할 위험이 있었습니다.

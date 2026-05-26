@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.226 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.227 / APK v5.11.29)
 
-> 최신 업데이트: WEB BKG 저장 문맥 검증과 GLAPS 테이블 높이 잠금 해제를 반영했다.
+> 최신 업데이트: 모비스 통합현황 고객사 표시는 `국가 도착항`으로 병기하고 현황판 집계는 국가 기준을 유지한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.226
+- **웹 버전**: v5.14.227
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -15,7 +15,7 @@
 - GLAPS 업로드용 코드는 새로 만들지 않는다. 마스터 원장의 기존 코드를 도출하기 위해 ELS 별칭만 보강한다.
 - 운송사코드는 `운송사코드` 시트의 `GLAPS 코드`가 아니라 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
 - 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
-- 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. `검수메모` 기본표시 행을 기본값으로 쓰고 상세배차/배차변동에서 행별 선택한다. 모비스는 CODE를 통합 `포트(CODE)`, 상세/변동 `포트(DIST)`로 쓰며 상세/변동 고객사는 `국가 도착항`으로 표시한다.
+- 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. `검수메모` 기본표시 행을 기본값으로 쓰고 상세배차/배차변동에서 행별 선택한다. 모비스는 CODE를 통합 `포트(CODE)`, 상세/변동 `포트(DIST)`로 쓰며 배차판/상세/변동 고객사는 `국가 도착항`으로 표시한다.
 - 이번 마스터 보강 확인값: `ELS -> B000005273`, `CMA -> CMA`, `MAE -> MAE`, `40HC -> 4510`, `INKAT/USMOB -> 동일 코드`, `KIN -> GA0196`, `HMMA -> UH03`.
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
@@ -69,16 +69,16 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.227**: 모비스 통합현황/전체/엑셀의 `고객사(국가)` 표시값을 `국가 도착항`으로 병기한다. 현황판 고객사 집계는 기존처럼 `국가/국가명` 기준을 유지한다.
 - **v5.14.226**: 배차판 컬럼 필터/정렬 상태에서 BKG를 입력할 때 같은 row_index의 다른 행 WEB 셀이 갱신되지 않도록 서버 row_index fallback에 row_context 호환 검사를 추가했다.
 - **v5.14.225**: 모비스 `CODE`를 글로비스 포트 축과 합쳐 통합현황에는 `포트(CODE)`, 상세배차/배차변동/RAG에는 `포트(DIST)`로 노출한다. 모비스 개별 화면의 국가는 유지하고, 상세/변동 고객사 컬럼에는 `국가 도착항`을 표시해 CODE 입력/검수 공간을 분리했다.
 - **v5.14.224**: 상세배차/배차변동/GLAPS코드 화면의 데스크탑 높이 고정과 내부 세로 스크롤을 해제해 테이블 하단이 페이지 스크롤로 보이게 했고, GLAPS코드 원장 테이블은 100건 단위 더보기/전체 표시로 렌더링 부담을 줄였다.
 - **v5.14.223**: GLAPS 포트 항목매핑에서 동일 ELS 매치값의 복수 GLAPS 코드를 후보로 유지하고, 검수메모 기본표시 행을 기본값으로 적용하며 상세배차/배차변동에서 행별 포트코드를 선택 저장하게 했다. 상차지 입력칸 폭도 줄였다.
 - **v5.14.222**: 선적관리 날짜 필터 옆 빠른 필터에 `확정모선` 버튼을 추가했다. `KD선적확정모선` 또는 `AS선적확정모선` 등 선적확정모선 계열 컬럼 중 하나라도 값이 있으면 조회 대상에 남긴다.
 - **v5.14.221**: GLAPS 상세배차/변동내역의 `운송서비스코드`를 배차판 `구분` 기준으로 자동 도출하고, 마스터 `운송서비스` 시트가 들어오면 해당 시트 값을 코드표로 읽는다.
-- **v5.14.220**: 월간실적 importer와 dashboard summary에 이월 순환 기준을 추가했다. `청구/하불`은 마감월 반영 금액으로 유지하고, 첫 컬럼 `이월` 행은 청구이월 반영분, `이월구분 + 청구_1/하불_1`은 익월이월 발생분으로 분리한다. 운영 Supabase monthly 메타도 2026-01~05 current 원장 기준으로 백필했다.
 ## VERIFICATION
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchWebCells.test.mjs web/tests/asanDispatchRag.test.mjs`: 68개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "app/api/branches/asan/dispatch/web-cell/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
+- `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 54개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과
