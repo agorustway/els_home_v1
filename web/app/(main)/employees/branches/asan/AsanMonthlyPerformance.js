@@ -1775,7 +1775,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                             </div>
                             <div className={styles.monthlyInfoCard}>
                                 <MetricDonut value={incomingCarryoverRevenue} max={scopeRevenue || diagramMax} tone="carryover" />
-                                <span>상단이월</span>
+                                <span>청구이월</span>
                                 <strong>{formatPerformanceAmount(incomingCarryoverRevenue)}</strong>
                                 <em>마감 반영 {formatPercent(incomingCarryoverRate, 1)}</em>
                                 <i style={{ width: metricWidth(incomingCarryoverRevenue, diagramMax) }} />
@@ -1960,7 +1960,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(scopeProfit) / diagramMax * 100))}%` }} />
                             </div>
                             <div>
-                                <span>상단이월</span>
+                                <span>청구이월</span>
                                 <strong>{formatPerformanceAmount(incomingCarryoverRevenue)}</strong>
                                 <i style={{ width: `${Math.max(3, Math.min(100, Math.abs(incomingCarryoverRevenue) / diagramMax * 100))}%` }} />
                             </div>

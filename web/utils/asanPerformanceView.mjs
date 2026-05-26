@@ -174,7 +174,7 @@ export function createMonthlyCarryoverCycleAccumulator(headers = [], options = {
   const carryoverPurchaseIdx = findCarryoverHeaderIndex(headers, ['하불_1', '이월하불', '이월매입', '이월하불액']);
   const clientIdx = findCarryoverHeaderIndex(headers, ['청구처', '거래처', '화주']);
   const vendorIdx = findCarryoverHeaderIndex(headers, ['지급처', '운송사(명의)', '운송사']);
-  const incoming = blankCarryoverMetric('상단이월 반영분');
+  const incoming = blankCarryoverMetric('청구이월 반영분');
   const outgoing = blankCarryoverMetric('익월이월 발생분');
   const incomingClients = new Map();
   const incomingVendors = new Map();

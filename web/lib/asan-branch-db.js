@@ -782,7 +782,7 @@ function carryoverPartiesFromMap(map, limit = 40) {
 function normalizeCarryoverCycle(summary = {}, report = null, sourcePeriod = '') {
     const cycle = summary.carryoverCycle && typeof summary.carryoverCycle === 'object' ? summary.carryoverCycle : null;
     const reportCarryover = report?.carryover || summary.carryover || {};
-    const incoming = normalizeCarryoverMetric(cycle?.incoming || cycle?.included || {}, '상단이월 반영분');
+    const incoming = normalizeCarryoverMetric(cycle?.incoming || cycle?.included || {}, '청구이월 반영분');
     const outgoingSeed = cycle?.outgoing || reportCarryover || {};
     const outgoing = normalizeCarryoverMetric(outgoingSeed, '익월이월 발생분');
     return {
@@ -1747,7 +1747,7 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
     const daily = new Map();
     const yearly = new Map();
     const monthlyReports = [];
-    const incomingCarryover = blankCarryoverMetric('상단이월 반영분');
+    const incomingCarryover = blankCarryoverMetric('청구이월 반영분');
     const outgoingCarryover = blankCarryoverMetric('익월이월 발생분');
     const incomingCarryoverClients = new Map();
     const incomingCarryoverVendors = new Map();
@@ -1880,7 +1880,7 @@ function mergeMonthlySummaries(metas, monthlyFileSlots) {
         .sort((a, b) => a.period.localeCompare(b.period));
 
     const incomingFinal = {
-        ...normalizeCarryoverMetric(incomingCarryover, '상단이월 반영분'),
+        ...normalizeCarryoverMetric(incomingCarryover, '청구이월 반영분'),
         clientItems: carryoverPartiesFromMap(incomingCarryoverClients),
         vendorItems: carryoverPartiesFromMap(incomingCarryoverVendors),
     };

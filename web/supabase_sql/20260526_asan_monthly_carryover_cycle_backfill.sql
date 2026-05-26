@@ -1,7 +1,7 @@
 -- 아산 월간실적 이월 순환 summary 백필
 -- 목적:
 -- 1) 청구/하불은 해당 마감월 반영 금액으로 유지한다.
--- 2) 첫 컬럼 값이 '이월'인 행의 청구/하불은 상단이월 반영분(incoming/included)으로 분리한다.
+-- 2) 첫 컬럼 값이 '이월'인 행의 청구/하불은 청구이월 반영분(incoming/included)으로 분리한다.
 -- 3) 이월구분 + 청구_1/하불_1은 익월이월 발생분(outgoing)으로 분리한다.
 
 WITH monthly_files AS (
@@ -209,7 +209,7 @@ cycle_payload AS (
       'basis', '마감월',
       'included', jsonb_build_object(
         'key', 'incoming',
-        'label', '상단이월 반영분',
+        'label', '청구이월 반영분',
         'description', '전월에서 넘어와 이번 마감월 청구/하불에 반영된 상단 이월분입니다.',
         'revenue', round(a.incoming_revenue, 2),
         'purchase', round(a.incoming_purchase, 2),
@@ -221,7 +221,7 @@ cycle_payload AS (
       ),
       'incoming', jsonb_build_object(
         'key', 'incoming',
-        'label', '상단이월 반영분',
+        'label', '청구이월 반영분',
         'description', '전월에서 넘어와 이번 마감월 청구/하불에 반영된 상단 이월분입니다.',
         'revenue', round(a.incoming_revenue, 2),
         'purchase', round(a.incoming_purchase, 2),
