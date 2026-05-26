@@ -35,7 +35,7 @@
     font-weight: 900;
     color: #0f172a;
     margin: 0;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     padding-left: 12px;
     border-left: 3px solid #2563eb;
 }
@@ -870,8 +870,8 @@
 .detailChangeMarker {
     display: inline-flex;
     align-items: center;
-    height: 20px;
-    padding: 0 6px;
+    height: 18px;
+    padding: 0 5px;
     border-radius: 999px;
     background: #fed7aa;
     color: #9a3412;
@@ -887,28 +887,28 @@
 }
 
 .detailBkgConfirmCell {
-    min-width: 180px;
+    min-width: 162px;
     padding: 0 !important;
 }
 
 .detailBkgConfirmControl {
     display: grid;
-    grid-template-columns: 44px minmax(120px, 1fr);
+    grid-template-columns: 38px minmax(108px, 1fr);
     gap: 0;
     align-items: center;
 }
 
 .detailBkgSourceBadge,
 .detailBkgConfirmInput {
-    height: 30px;
+    height: 24px;
     min-width: 0;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
     color: #0f172a;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 800;
-    padding: 0 6px;
+    padding: 0 5px;
 }
 
 .detailBkgSourceBadge {
@@ -935,15 +935,15 @@
 
 .detailBkgPickButton {
     width: 100%;
-    min-height: 30px;
+    min-height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
     color: #334155;
     font: inherit;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     text-align: left;
-    padding: 2px 6px;
+    padding: 1px 5px;
     cursor: pointer;
 }
 
@@ -1019,7 +1019,7 @@
 .detailChangeInput {
     width: 100%;
     min-width: 72px;
-    height: 30px;
+    height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
@@ -1548,18 +1548,19 @@
 }
 
 .table th {
-    background: #315f8c;
-    padding: 4px 7px;
+    background: #1f5673;
+    padding: 3px 6px;
     font-weight: 700;
     color: #fff;
-    border-bottom: 1px solid #244c73;
+    border-bottom: 1px solid #184862;
     border-right: 1px solid rgba(255, 255, 255, 0.18);
     white-space: nowrap;
     position: sticky;
     top: 0;
     z-index: 5;
     text-align: left;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
+    line-height: 1.15;
     user-select: none;
 }
 
@@ -1574,7 +1575,7 @@
 }
 
 .table th:hover {
-    background: #284f77;
+    background: #184a63;
 }
 
 /* 컨럼 너비 조절 핸들 */
@@ -1595,7 +1596,7 @@
 }
 
 .filteredHeader {
-    background: #244f85 !important;
+    background: #174a63 !important;
     color: #fff !important;
 }
 
@@ -1606,12 +1607,13 @@
 }
 
 .table td {
-    padding: 4px 7px;
+    padding: 3px 6px;
     border-bottom: 1px solid #cbd5e1;
     border-right: 1px solid #d1d5db;
     color: #334155;
     white-space: nowrap;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    line-height: 1.18;
     position: relative;
 }
 
@@ -1624,21 +1626,28 @@
 }
 
 .detailTable td {
-    height: 30px;
+    height: 24px;
+}
+
+.detailTable td:has(.detailSelect),
+.detailTable td:has(.detailComboInput),
+.detailTable td:has(.detailPortSelect),
+.detailTable td:has(.detailBkgPickButton) {
+    padding: 0 !important;
 }
 
 .detailSelect,
 .detailComboInput {
     width: 100%;
     min-width: 96px;
-    height: 30px;
+    height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
     color: #0f172a;
     font: inherit;
     font-weight: 800;
-    padding: 0 6px;
+    padding: 0 5px;
 }
 
 .detailSelect:focus,
@@ -1656,7 +1665,7 @@
 .detailPortSelect {
     width: 100%;
     min-width: 94px;
-    height: 30px;
+    height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
@@ -1711,7 +1720,7 @@
 .webCellInput {
     width: 100%;
     min-width: 70px;
-    height: 30px;
+    height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
@@ -2279,7 +2288,7 @@
 
     .table th,
     .table td {
-        padding: 6px 4px;
+        padding: 4px 4px;
         font-size: 0.68rem;
     }
 
@@ -2306,13 +2315,13 @@
 
     .detailSelect,
     .detailComboInput {
-        height: 28px;
+        height: 24px;
         min-width: 88px;
         font-size: 0.68rem;
     }
 
     .detailPortSelect {
-        height: 28px;
+        height: 24px;
         min-width: 86px;
         font-size: 0.68rem;
     }
@@ -2322,7 +2331,7 @@
     }
 
     .webCellInput {
-        height: 28px;
+        height: 24px;
         min-width: 64px;
         font-size: 0.68rem;
         padding-right: 20px;

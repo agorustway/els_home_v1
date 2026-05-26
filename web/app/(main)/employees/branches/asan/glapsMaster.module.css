@@ -180,7 +180,7 @@
 .tableMeta {
     display: inline-flex;
     align-items: center;
-    height: 32px;
+    height: 28px;
     padding: 0 8px;
     color: #475569;
     font-size: 0.74rem;
@@ -196,18 +196,18 @@
 
 .rowActions {
     display: inline-flex;
-    gap: 6px;
+    gap: 4px;
 }
 
 .rowActions button {
-    height: 30px;
+    height: 24px;
     border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    border-radius: 5px;
     background: #fff;
     color: #0f172a;
-    font-size: 0.74rem;
+    font-size: 0.7rem;
     font-weight: 900;
-    padding: 0 9px;
+    padding: 0 7px;
     white-space: nowrap;
 }
 
@@ -215,13 +215,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 68px;
-    height: 23px;
-    padding: 0 8px;
+    min-width: 62px;
+    height: 20px;
+    padding: 0 7px;
     border-radius: 999px;
     background: #e2e8f0;
     color: #334155;
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     font-weight: 900;
 }
 
@@ -298,18 +298,19 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 8px 9px;
+    padding: 5px 8px;
     background: #1f5673;
     color: #fff;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
+    line-height: 1.15;
     text-align: left;
     white-space: nowrap;
 }
 
 .filterRow th {
-    top: 34px;
+    top: 26px;
     z-index: 2;
-    padding: 4px 6px;
+    padding: 3px 5px;
     background: #eef6ff;
     border-bottom: 1px solid #cbd5e1;
 }
@@ -341,7 +342,7 @@
 .filterRow select {
     width: 100%;
     min-width: 72px;
-    height: 24px;
+    height: 22px;
     border: 1px solid #cbd5e1;
     border-radius: 5px;
     background: #fff;
@@ -367,11 +368,21 @@
 }
 
 .table td {
-    padding: 7px 9px;
+    padding: 4px 8px;
     border-bottom: 1px solid #e2e8f0;
     color: #334155;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
+    line-height: 1.18;
     white-space: nowrap;
+}
+
+.table td:has(.statusPill),
+.table td:has(.sourceBadge) {
+    padding: 2px 8px;
+}
+
+.table td:has(.rowActions) {
+    padding: 0 6px;
 }
 
 .table td.protectedCell {
@@ -396,14 +407,14 @@
     display: block;
     width: 100%;
     min-width: 92px;
-    height: 32px;
+    height: 24px;
     border: 1px solid transparent;
     border-radius: 0;
     background: transparent;
     color: #0f172a;
     font: inherit;
     font-weight: 800;
-    padding: 0 9px;
+    padding: 0 8px;
     outline: none;
     box-sizing: border-box;
 }
@@ -437,13 +448,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 64px;
-    height: 23px;
-    padding: 0 8px;
+    min-width: 58px;
+    height: 20px;
+    padding: 0 7px;
     border-radius: 999px;
     background: #e2e8f0;
     color: #334155;
-    font-size: 0.7rem;
+    font-size: 0.66rem;
     font-weight: 900;
 }
 

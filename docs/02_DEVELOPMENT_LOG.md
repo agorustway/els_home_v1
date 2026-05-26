@@ -1,3 +1,21 @@
+## [2026-05-26] 아산 배차판 테이블 조밀 톤앤매너 정리 (v5.14.228)
+### 핵심
+- 배차판/상세배차/배차변동 공통 테이블의 헤더 색상을 GLAPS 계열 짙은 청록 톤으로 맞추고, 데이터 셀 padding과 line-height를 줄여 행간 여백을 낮췄습니다.
+- 상세배차/배차변동의 상차지 입력, 포트 선택, BKG확정, BKG 셀 선택, WEB 입력칸을 24px대 높이로 통일했습니다.
+- GLAPS코드 테이블도 관리 버튼, 상태/출처 배지, 필터, 직접수정 input 높이를 줄여 배차판과 같은 밀도로 보이게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 45개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+- 로컬 `http://localhost:3020/employees/branches/asan?debug=true`에서 상세배차 데이터 행 높이가 25px로 줄고 헤더 톤이 `rgb(31, 86, 115)`로 통일된 것을 확인했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 모비스 통합현황 고객사 국가·도착항 병기 (v5.14.227)
 ### 핵심
 - 모비스 원본의 `국가/국가명`과 `도착항`을 조합해 통합현황/전체/엑셀의 `고객사(국가)` 칸에 `호주 시드니`처럼 표시하도록 했습니다.
