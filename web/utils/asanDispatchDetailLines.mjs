@@ -1,3 +1,5 @@
+export const DISPATCH_DETAIL_PORT_HEADER = '포트(DIST)';
+
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '작업일자',
   '구분',
@@ -8,7 +10,7 @@ export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '운송경로',
   '운송경로코드',
   '고객사',
-  '포트',
+  DISPATCH_DETAIL_PORT_HEADER,
   '포트코드',
   '라인',
   '라인코드',
@@ -154,6 +156,7 @@ function detailValue(row, cols, key) {
 }
 
 function getDetailColumns(headers = []) {
+  const mobisPortCodeIdx = findDispatchDetailHeaderIndex(headers, ['포트(CODE)', 'CODE']);
   return {
     date: findDispatchDetailHeaderIndex(headers, ['날짜', '작업일자']),
     direction: findDispatchDetailHeaderIndex(headers, ['구분']),
@@ -161,7 +164,9 @@ function getDetailColumns(headers = []) {
     workplace: findDispatchDetailHeaderIndex(headers, ['작업지']),
     destination: findDispatchDetailHeaderIndex(headers, ['선적', '하차지(선적)', '하차지']),
     customer: findDispatchDetailHeaderIndex(headers, ['고객사(국가)', '고객사', '국가명', '국가']),
-    port: findDispatchDetailHeaderIndex(headers, ['포트(도착항)', '포트', '도착항']),
+    port: findDispatchDetailHeaderIndex(headers, ['포트(CODE)', 'CODE', '포트(도착항)', '포트', '도착항']),
+    arrivalPort: mobisPortCodeIdx >= 0 ? findDispatchDetailHeaderIndex(headers, ['도착항', '도착지', '포트(도착항)']) : -1,
+    mobisPortCode: mobisPortCodeIdx,
     line: findDispatchDetailHeaderIndex(headers, ['라인(선사명)', '라인', '선사명', '선사']),
     containerType: findDispatchDetailHeaderIndex(headers, ['TYPE', 'T']),
     bkg1: findDispatchDetailHeaderIndex(headers, ['BKG1']),
@@ -170,6 +175,15 @@ function getDetailColumns(headers = []) {
     targetVessel: findDispatchDetailHeaderIndex(headers, ['TARGET VESSEL', 'TARGETVESSEL']),
     note: findDispatchDetailHeaderIndex(headers, ['비고']),
   };
+}
+
+function buildDetailCustomer(row, cols) {
+  const customer = detailValue(row, cols, 'customer');
+  const arrivalPort = detailValue(row, cols, 'arrivalPort');
+  if (cols.mobisPortCode >= 0 && arrivalPort) {
+    return cleanText([customer, arrivalPort].filter(Boolean).join(' '));
+  }
+  return customer;
 }
 
 function findExactDispatchDetailHeaderIndex(headers = [], target) {
@@ -184,7 +198,7 @@ function buildBaseLine(row, cols, fallbackWorkDate) {
     shipper: detailValue(row, cols, 'shipper'),
     workplace: detailValue(row, cols, 'workplace'),
     destination: detailValue(row, cols, 'destination'),
-    customer: detailValue(row, cols, 'customer'),
+    customer: buildDetailCustomer(row, cols),
     port: detailValue(row, cols, 'port'),
     line: detailValue(row, cols, 'line'),
     containerType: detailValue(row, cols, 'containerType'),

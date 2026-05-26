@@ -1,3 +1,56 @@
+## [2026-05-26] 배차판 필터 상태 WEB BKG 저장 밀림 방지 (v5.14.226)
+### 핵심
+- 원인: WEB 셀 저장 API가 현재 `row_signature`와 매칭되지 않을 때 같은 `row_index`의 기존 셀을 바로 갱신했습니다. 필터/정렬 상태에서 입력하거나 행 서명이 흔들린 상황에서는 같은 행번호의 다른 BKG 기록을 새 행으로 재귀속할 위험이 있었습니다.
+- 조치: row_index fallback은 `작업지/고객사/포트/라인/TYPE` 등 핵심 row_context가 호환될 때만 기존 셀을 갱신하도록 제한했습니다. 문맥이 다르면 기존 BKG를 건드리지 않고 현재 행 서명으로 새로 저장합니다.
+- 화면 오버레이 복구도 같은 호환 판정을 사용해 같은 행번호라도 문맥이 다른 BKG가 붙지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchWebCells.test.mjs web/tests/asanDispatchRag.test.mjs`: 68개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "app/api/branches/asan/dispatch/web-cell/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`
+- `web/app/api/branches/asan/dispatch/web-cell/route.js`
+- `web/tests/asanDispatchWebCells.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-26] 모비스 CODE 포트 축 분리와 상세 고객사 표기 보정 (v5.14.225)
+### 핵심
+- 모비스 `CODE` 헤더를 글로비스 포트 축과 매칭해 통합 배차판에는 `포트(CODE)`로 보이게 하고, 모비스 개별 화면의 `국가/국가명`은 현황판 고객사 집계용으로 유지했습니다.
+- 상세배차내역과 배차변동내역은 포트 컬럼명을 `포트(DIST)`로 통일하고, 모비스 행의 고객사 컬럼에는 `국가 도착항`을 한 칸 띄어 표시하도록 했습니다.
+- RAG 배차판 스키마 설명도 `포트(DIST)`와 `픽업지역/상차지`를 분리해 CODE/Nomi 같은 설명 컬럼이 상차지로 오해되지 않게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchWebCells.test.mjs web/tests/asanDispatchRag.test.mjs`: 67개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchWebCells.mjs`, `web/utils/asanDispatchDetailLines.mjs`, `web/utils/asanDispatchRag.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/route.js`, `web/app/api/branches/asan/export/route.js`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchWebCells.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-26] 아산 GLAPS 테이블 높이 잠금 해제와 더보기 분리 (v5.14.224)
+### 핵심
+- 상세배차/배차변동/GLAPS코드 화면의 데스크탑 본문 높이 계산, 테이블 스크롤 박스 높이, 아산 content wrapper의 남은 화면 채우기를 풀어 테이블 하단과 더보기 영역이 페이지 스크롤로 자연스럽게 보이도록 했습니다.
+- 상세배차/배차변동은 기존 100건 더보기 구조를 유지하고, GLAPS코드 원장 테이블도 100건 단위 더보기/전체 표시로 끊어 렌더링 부담을 줄였습니다.
+- GLAPS코드 테이블의 가로 스크롤은 유지하되, 원장 화면 자체는 고정 높이 안에 갇히지 않도록 CSS를 정리했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+- 로컬 `http://localhost:3020/employees/branches/asan?debug=true`에서 상세배차 100행 표시, 페이지 스크롤 확장, 테이블 하단 더보기 노출, footer 앞 막힘 간격 축소를 확인했습니다. GLAPS코드는 로컬 인증 부재로 데이터는 0건이지만 100건 렌더링 제한과 CSS/빌드 검증을 완료했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] GLAPS 포트 중복 후보 선택 지원 (v5.14.223)
 ### 핵심
 - GLAPS 포트 항목매핑에서 동일 ELS 매치값에 여러 GLAPS 코드를 등록해도 후보 목록으로 유지하도록 변경했습니다.

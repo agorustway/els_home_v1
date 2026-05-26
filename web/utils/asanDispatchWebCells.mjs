@@ -17,7 +17,7 @@ const STABLE_FIELD_CANDIDATES = Object.freeze([
   ['manager', ['담당자', '당당자']],
   ['workplace', ['작업지']],
   ['customer', ['고객사(국가)', '고객사', '국가명', '국가']],
-  ['port', ['포트(도착항)', '포트', '도착항']],
+  ['port', ['포트(CODE)', 'CODE', '포트(도착항)', '포트', '도착항']],
   ['nomi', ['특이사항(Nomi,구간)', '특이사항', 'Nomi,구간']],
   ['line', ['라인(선사명)', '라인', '선사명', '선사']],
   ['container_type', ['TYPE', 'T']],
@@ -61,7 +61,7 @@ export function normalizeDispatchHeadersForType(headers = [], dispatchType = '')
   const replacements = normalizedType === 'glovis'
     ? [['col_12', 'TYPE'], ['T', 'TYPE']]
     : normalizedType === 'mobis'
-      ? [['col_15', 'TYPE']]
+      ? [['col_15', 'TYPE'], ['CODE', '포트(CODE)'], ['국가명', '국가']]
       : [];
 
   replacements.forEach(([source, target]) => {
@@ -279,14 +279,16 @@ function appendRowIndexWebCell(cellMap, key, cell) {
   cellMap.set(key, cells);
 }
 
-function isCompatibleRowContext(cell = {}, meta = {}) {
-  const savedContext = cell.row_context;
-  const currentContext = meta.rowContext;
+export function isCompatibleWebCellRowContext(cell = {}, meta = {}, options = {}) {
+  const { allowMissing = true } = options;
+  const savedContext = cell.row_context || cell.rowContext;
+  const currentContext = meta.rowContext || meta.row_context;
   if (!savedContext || typeof savedContext !== 'object' || !currentContext || typeof currentContext !== 'object') {
-    return true;
+    return allowMissing;
   }
 
   const keys = ['direction', 'shipper', 'workplace', 'customer', 'port', 'line', 'container_type', 'order_qty'];
+  const strictKeys = new Set(['direction', 'shipper', 'workplace', 'customer', 'port', 'line', 'container_type']);
   let comparable = 0;
   let matches = 0;
   keys.forEach((key) => {
@@ -294,10 +296,15 @@ function isCompatibleRowContext(cell = {}, meta = {}) {
     const current = normalizeDispatchCell(currentContext[key]);
     if (!saved || !current) return;
     comparable += 1;
-    if (saved === current) matches += 1;
+    if (saved === current) {
+      matches += 1;
+      return;
+    }
+    if (strictKeys.has(key)) matches = Number.NEGATIVE_INFINITY;
   });
 
-  if (comparable === 0) return true;
+  if (comparable === 0) return allowMissing;
+  if (!Number.isFinite(matches)) return false;
   return matches >= Math.min(3, comparable);
 }
 
@@ -347,8 +354,8 @@ export function applyDispatchWebCellOverlay({
       .find(Boolean);
     const rowIndexCells = cellMap.get(buildWebCellRowIndexLookupKey({ ...meta, fieldKey }));
     const rowIndexCell = Array.isArray(rowIndexCells)
-      ? [...rowIndexCells].reverse().find((candidate) => isCompatibleRowContext(candidate, meta))
-      : (isCompatibleRowContext(rowIndexCells, meta) ? rowIndexCells : null);
+      ? [...rowIndexCells].reverse().find((candidate) => isCompatibleWebCellRowContext(candidate, meta))
+      : (isCompatibleWebCellRowContext(rowIndexCells, meta) ? rowIndexCells : null);
     nextRow[idx] = (cell || rowIndexCell)?.value ?? '';
   });
 

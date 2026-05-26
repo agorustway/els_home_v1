@@ -9,6 +9,7 @@ import {
   applyDispatchWebCellOverlay,
   buildWebCellMap,
   createDispatchRowMetaBuilder,
+  isCompatibleWebCellRowContext,
   normalizeDispatchHeadersForType,
   normalizeDispatchRecordHeaders,
   shouldIncludeDispatchRow,
@@ -53,6 +54,13 @@ test('글로비스 T 헤더는 WEB 표시에서 TYPE으로 정규화한다', () 
   assert.deepEqual(
     normalizeDispatchHeadersForType(['구분', '라인', 'col_12', '오더'], 'glovis'),
     ['구분', '라인', 'TYPE', '오더'],
+  );
+});
+
+test('모비스 CODE와 국가명 헤더는 WEB 표시용 포트/국가 축으로 정규화한다', () => {
+  assert.deepEqual(
+    normalizeDispatchHeadersForType(['구분', 'CODE', '국가명', 'col_15', '계'], 'mobis'),
+    ['구분', '포트(CODE)', '국가', 'TYPE', '계'],
   );
 });
 
@@ -286,6 +294,33 @@ test('WEB 셀 행번호 복구는 같은 행의 최신 저장값을 우선한다
   const applied = applyDispatchWebCellOverlay({ headers, row, meta, cellMap, enabled: true });
 
   assert.equal(applied[9], 'NEW-BKG');
+});
+
+test('WEB 셀 행번호 복구는 같은 행번호라도 문맥이 다른 BKG를 붙이지 않는다', () => {
+  const buildMeta = createDispatchRowMetaBuilder({
+    dispatchType: 'glovis',
+    targetDate: '2026-05-22',
+    headers,
+  });
+  const targetRow = ['수출', '글로비스', '강수지', '글로비스1포장장', 'KASK', 'SIKOP', 'CMA', '40HC', '3', '', '', '', '', ''];
+  const otherRow = ['수출', '글로비스', '김시은', 'KCP', 'KMX', 'MXLZC', 'HLC', '40HC', '1', '', '', '', '', ''];
+  const targetMeta = buildMeta(targetRow, 3);
+  const otherMeta = buildMeta(otherRow, 3);
+  const staleCell = {
+    branch_id: 'asan',
+    dispatch_type: 'glovis',
+    target_date: '2026-05-22',
+    row_signature: 'other-signature:001',
+    field_key: 'BKG1',
+    row_index: 3,
+    row_context: otherMeta.rowContext,
+    value: 'WRONG-BKG',
+    updated_at: '2026-05-22T07:00:00.000Z',
+  };
+  const cellMap = buildWebCellMap([staleCell]);
+
+  assert.equal(isCompatibleWebCellRowContext(staleCell, targetMeta, { allowMissing: false }), false);
+  assert.equal(applyDispatchWebCellOverlay({ headers, row: targetRow, meta: targetMeta, cellMap, enabled: true })[9], '');
 });
 
 test('오더칸 문자·오류값은 WEB 오버레이 대상 행에서 제외한다', () => {

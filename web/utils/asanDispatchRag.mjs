@@ -536,7 +536,7 @@ function buildSchema(headers, type, rows = []) {
     managerIdx: findHeaderIndex(normalizedHeaders, ['담당자', '당당자', '운송사', '화주']),
     worksiteIdx: findHeaderIndex(normalizedHeaders, ['작업지', '운송지', '보관소']),
     customerIdx: findHeaderIndex(normalizedHeaders, ['고객사(국가)', '고객사', '국가명', '국가']),
-    portIdx: findHeaderIndex(normalizedHeaders, ['포트(도착항)', '포트', '도착항', '도착지']),
+    portIdx: findHeaderIndex(normalizedHeaders, ['포트(CODE)', 'CODE', '포트(도착항)', '포트', '도착항', '도착지']),
     memoIdxs: normalizedHeaders
       .map((header, idx) => ({ header, idx }))
       .filter(({ header }) => /배차정보|비고|특이사항|도착|가이드/.test(String(header || '')))
@@ -752,6 +752,7 @@ function buildSchemaProfile(records = []) {
     if (!byType[type]) {
       byType[type] = {
         orderColumns: new Set(),
+        portColumns: new Set(),
         regionColumns: new Set(),
         memoColumns: new Set(),
         metaColumns: new Set(),
@@ -760,19 +761,20 @@ function buildSchemaProfile(records = []) {
 
     const bucket = byType[type];
     addSetValues(bucket.orderColumns, [schema.headers[schema.orderIdx]]);
+    addSetValues(bucket.portColumns, [schema.headers[schema.portIdx]]);
     addSetValues(bucket.regionColumns, schema.regionCols.map((col) => col.name));
     addSetValues(bucket.memoColumns, schema.memoIdxs.map((idx) => schema.headers[idx]));
     addSetValues(bucket.metaColumns, [
       schema.headers[schema.managerIdx],
       schema.headers[schema.worksiteIdx],
       schema.headers[schema.customerIdx],
-      schema.headers[schema.portIdx],
     ]);
   }
 
   return Object.entries(byType).map(([type, profile]) => ({
     type,
     orderColumns: [...profile.orderColumns],
+    portColumns: [...profile.portColumns],
     regionColumns: [...profile.regionColumns],
     memoColumns: [...profile.memoColumns],
     metaColumns: [...profile.metaColumns],
@@ -892,6 +894,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
   for (const profile of schemaProfile) {
     const typeLabel = profile.type === 'mobis' ? '모비스' : (profile.type === 'glovis' ? '글로비스' : profile.type);
     text += `- **${typeLabel}**: 오더 컬럼: ${profile.orderColumns.join(', ') || '미탐지'} / `;
+    text += `포트(DIST) 컬럼: ${profile.portColumns.join(', ') || '미탐지'} / `;
     text += `픽업지역/상차지 컬럼: ${profile.regionColumns.join(', ') || '미탐지'} / `;
     text += `메모/시간 컬럼: ${profile.memoColumns.join(', ') || '미탐지'} / `;
     text += `기본정보 컬럼: ${profile.metaColumns.join(', ') || '미탐지'}\n`;

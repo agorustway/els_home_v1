@@ -7,6 +7,9 @@ import {
     normalizeDispatchWebCellValue,
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
+import {
+    isCompatibleWebCellRowContext,
+} from '@/utils/asanDispatchWebCells.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -131,7 +134,7 @@ export async function POST(request) {
 
         let rowIndexExisting = null;
         if (!signatureExisting && payload.rowIndex !== null) {
-            const { data: rowIndexMatch, error: rowIndexError } = await adminSupabase
+            const { data: rowIndexMatches, error: rowIndexError } = await adminSupabase
                 .from('branch_dispatch_web_cells')
                 .select('*')
                 .eq('branch_id', BRANCH_ID)
@@ -140,11 +143,16 @@ export async function POST(request) {
                 .eq('field_key', payload.fieldKey)
                 .eq('row_index', payload.rowIndex)
                 .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+                .limit(20);
 
             if (rowIndexError) throw rowIndexError;
-            rowIndexExisting = rowIndexMatch;
+            rowIndexExisting = (rowIndexMatches || []).find((candidate) => (
+                isCompatibleWebCellRowContext(
+                    candidate,
+                    { rowContext: payload.rowContext },
+                    { allowMissing: false },
+                )
+            )) || null;
         }
 
         const existing = signatureExisting || rowIndexExisting;

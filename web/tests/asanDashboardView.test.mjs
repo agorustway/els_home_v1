@@ -15,6 +15,12 @@ import {
   getDispatchPlannedQty,
   toSortedChartEntries,
 } from '../utils/asanDashboardView.mjs';
+import {
+  DISPATCH_DETAIL_HEADERS,
+  DISPATCH_DETAIL_PORT_HEADER,
+  buildDispatchDetailLines,
+  detailLineToRow,
+} from '../utils/asanDispatchDetailLines.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const headers = ['구분', '화주', '작업지', '고객사(국가)', '라인(선사명)', 'TYPE', '오더(계)', '배차', '아산', '부산'];
@@ -109,6 +115,29 @@ test('아산 현황판 모비스 고객사 구분표는 국가명으로 집계�
   assert.equal(integratedScope.chartAggs['고객사'].USA.total, 3);
   assert.equal(integratedScope.chartAggs['고객사'].KOREA.total, 2);
   assert.equal(integratedScope.chartAggs['고객사'].미분류, undefined);
+});
+
+test('모비스 CODE는 상세배차 포트(DIST)로 표시하고 국가 집계는 유지한다', () => {
+  const mobisHeaders = ['구분', '화주', '담당자', '운송사', '선적', '작업지', '포트(CODE)', 'TYPE', '수량', '도착항', '선사명', '국가', '부산'];
+  const row = ['수출', '모비스AS', '강주희', 'ELS', '센터', '모비스천안', 'USSAV', '40HC', '1', '시드니', 'CMA', '호주', '이지1'];
+  const detailLines = buildDispatchDetailLines({
+    headers: mobisHeaders,
+    rows: [row],
+    workDate: '2026-05-26',
+  });
+  const portIdx = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_PORT_HEADER);
+  const scope = buildAsanDashboardScope({
+    rows: [row],
+    headers: mobisHeaders,
+    viewType: 'mobis',
+    viewMode: 'customer',
+  });
+
+  assert.notEqual(portIdx, -1);
+  assert.equal(detailLines[0].port, 'USSAV');
+  assert.equal(detailLines[0].customer, '호주 시드니');
+  assert.equal(detailLineToRow(detailLines[0])[portIdx], 'USSAV');
+  assert.equal(toSortedChartEntries(scope.chartAggs['고객사'])[0].name, '호주');
 });
 
 test('아산 현황판 FEU는 20FT 기준으로 TYPE별 환산한다', () => {
@@ -855,6 +884,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(webCellApi, /hasActiveDispatchConfirmation/);
   assert.match(webCellApi, /previousValue/);
   assert.match(webCellApi, /BKG_LOCK_FIELDS/);
+  assert.match(webCellApi, /isCompatibleWebCellRowContext/);
+  assert.match(webCellApi, /allowMissing: false/);
   assert.match(webCellApi, /배차확정 이후 기존 BKG 값은 수정할 수 없습니다/);
   assert.match(changeApi, /branch_dispatch_detail_change_events/);
   assert.match(changeApi, /branch_dispatch_detail_change_history/);
@@ -904,6 +935,10 @@ test('아산지점은 GLAPS 마스터 원장 화면과 DB 적용 SQL을 제공�
   );
   const masterCss = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/glapsMaster.module.css'),
+    'utf8',
+  );
+  const dispatchCss = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dispatch.module.css'),
     'utf8',
   );
   const apiSource = fs.readFileSync(
@@ -971,6 +1006,12 @@ test('아산지점은 GLAPS 마스터 원장 화면과 DB 적용 SQL을 제공�
   assert.match(masterSource, /tableFilterKey/);
   assert.match(masterSource, /toggleTableSort/);
   assert.match(masterSource, /visibleTableRows/);
+  assert.match(masterSource, /const GLAPS_MASTER_PAGE_SIZE = 100;/);
+  assert.match(masterSource, /masterDisplayLimit/);
+  assert.match(masterSource, /visibleLimitedRows/);
+  assert.match(masterSource, /visibleTableRows\.slice\(0, masterDisplayLimit\)/);
+  assert.match(masterSource, /\+100건 더 보기/);
+  assert.match(masterSource, /setMasterDisplayLimit\(limit => limit \+ GLAPS_MASTER_PAGE_SIZE\)/);
   assert.match(masterSource, /className=\{`\$\{styles\.sortButton\}/);
   assert.match(masterSource, /className=\{styles\.filterRow\}/);
   assert.match(masterSource, /<select/);
@@ -1053,6 +1094,18 @@ test('아산지점은 GLAPS 마스터 원장 화면과 DB 적용 SQL을 제공�
   assert.match(masterCss, /\.filterRow th/);
   assert.match(masterCss, /\.filterRow select/);
   assert.match(masterCss, /\.tableMeta/);
+  assert.match(masterCss, /\.tableWrap\s*{[\s\S]*overflow-x: auto;[\s\S]*overflow-y: visible;/);
+  assert.match(masterCss, /\.tableWrap\s*{[\s\S]*height: auto;[\s\S]*max-height: none;/);
+  assert.match(masterCss, /\.tableFooter/);
+  assert.match(masterCss, /\.loadMoreButton/);
+  assert.doesNotMatch(pageSource, /dynamicHeight/);
+  assert.doesNotMatch(pageSource, /style=\{\{ height: dynamicHeight \}\}/);
+  assert.doesNotMatch(dispatchCss, /height:\s*calc\(100vh - 250px\)/);
+  assert.match(dispatchCss, /\.container\s*{[\s\S]*overflow: visible;/);
+  assert.match(dispatchCss, /\.tableWrap\s*{[\s\S]*overflow: visible;[\s\S]*flex: 0 0 auto;/);
+  assert.match(dispatchCss, /\.tableScroll\s*{[\s\S]*overflow-x: auto;[\s\S]*overflow-y: visible;[\s\S]*height: auto;[\s\S]*max-height: none;/);
+  assert.match(dispatchCss, /\.pageWrapper\s*{[\s\S]*min-height: auto;/);
+  assert.match(dispatchCss, /\.contentArea\s*{[\s\S]*flex: 0 0 auto;[\s\S]*min-height: 0;/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_master_versions/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_transport_routes/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.glaps_master_aliases/);

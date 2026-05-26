@@ -13,6 +13,7 @@ import {
 } from '@/utils/asanDispatchWebCellFields.mjs';
 import {
     DISPATCH_DETAIL_HEADERS,
+    DISPATCH_DETAIL_PORT_HEADER,
     GLAPS_START_LOCATION_OPTIONS,
     buildDispatchDetailLines,
     detailLineToRow,
@@ -606,6 +607,9 @@ function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
     return idx >= 0 ? String(values[idx] ?? '').trim() : '';
 }
+function getDetailPortRowValue(values = []) {
+    return getDetailRowValue(values, DISPATCH_DETAIL_PORT_HEADER) || getDetailRowValue(values, '포트');
+}
 function setDetailRowValue(values = [], header, value) {
     const idx = DETAIL_HEADER_INDEX[header];
     const next = DISPATCH_DETAIL_HEADERS.map((_, valueIdx) => String(values[valueIdx] ?? '').trim());
@@ -640,7 +644,7 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         workplace: getDetailRowValue(values, '작업지') || context.workplace || '',
         destination: getDetailRowValue(values, '하차지(선적)') || context.destination || '',
         customer: getDetailRowValue(values, '고객사') || context.customer || '',
-        port: getDetailRowValue(values, '포트') || context.port || '',
+        port: getDetailPortRowValue(values) || context.port || '',
         glapsPortCodeOverride: options.portCodeOverride || context.glapsPortCodeOverride || '',
         line: getDetailRowValue(values, '라인') || context.line || '',
         containerType: getDetailRowValue(values, '타입') || context.containerType || '',
@@ -671,7 +675,7 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         workplace: getDetailRowValue(rowValues, '작업지'),
         destination: getDetailRowValue(rowValues, '하차지(선적)'),
         customer: getDetailRowValue(rowValues, '고객사'),
-        port: getDetailRowValue(rowValues, '포트'),
+        port: getDetailPortRowValue(rowValues),
         line: getDetailRowValue(rowValues, '라인'),
         containerType: getDetailRowValue(rowValues, '타입'),
         company: getDetailRowValue(rowValues, '업체명'),
@@ -902,16 +906,34 @@ function focusDetailGridInput(event) {
 function normalizeDispatchHeaderForMerge(value) {
     return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toUpperCase();
 }
+function getDispatchHeaderMergeKey(value) {
+    const normalized = normalizeDispatchHeaderForMerge(value);
+    if (['포트', '포트(도착항)', '포트(CODE)', 'CODE'].map(normalizeDispatchHeaderForMerge).includes(normalized)) return 'PORT_CODE';
+    return normalized;
+}
+function getDispatchMergedHeaderLabel(value) {
+    return getDispatchHeaderMergeKey(value) === 'PORT_CODE' ? '포트(CODE)' : value;
+}
+function isMobisCountryDisplayHeader(value) {
+    const normalized = normalizeDispatchHeaderForMerge(value);
+    return ['국가', '국가명'].map(normalizeDispatchHeaderForMerge).includes(normalized);
+}
 function findMergedHeaderIndex(headers = [], target) {
-    const normalizedTarget = normalizeDispatchHeaderForMerge(target);
-    return headers.findIndex(header => normalizeDispatchHeaderForMerge(header) === normalizedTarget);
+    const normalizedTarget = getDispatchHeaderMergeKey(target);
+    return headers.findIndex(header => getDispatchHeaderMergeKey(header) === normalizedTarget);
 }
 function mergeDispatchHeaders(items = []) {
     const merged = [];
     items.forEach(item => {
         (item.headers || []).forEach(header => {
-            if (!header || findMergedHeaderIndex(merged, header) >= 0) return;
-            merged.push(header);
+            if (!header) return;
+            const label = getDispatchMergedHeaderLabel(header);
+            const existingIdx = findMergedHeaderIndex(merged, header);
+            if (existingIdx >= 0) {
+                if (label !== header) merged[existingIdx] = label;
+                return;
+            }
+            merged.push(label);
         });
     });
     return merged;
@@ -1056,7 +1078,6 @@ function AsanDispatchContent() {
     const detailChangeSyncRef = useRef('');
     const glapsLookupLoadedTokenRef = useRef(null);
     const dispatchLoadSeqRef = useRef(0);
-    const [dynamicHeight, setDynamicHeight] = useState('calc(100vh - 250px)');
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
     const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
@@ -1067,29 +1088,6 @@ function AsanDispatchContent() {
 
     useEffect(() => { dataRef.current = data; }, [data]);
     useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
-
-    useEffect(() => {
-        const updateHeight = () => {
-            if (window.innerWidth <= 768) {
-                setDynamicHeight('auto');
-                return;
-            }
-            if (containerRef.current) {
-                const rect = containerRef.current.getBoundingClientRect();
-                const remaining = window.innerHeight - rect.top - 24; // 24px bottom margin
-                setDynamicHeight(`${Math.max(400, remaining)}px`);
-            }
-        };
-        // Run once on mount and every time window resizes
-        updateHeight();
-        window.addEventListener('resize', updateHeight);
-        // Also run after a short delay to ensure layout is settled
-        const timer = setTimeout(updateHeight, 300);
-        return () => {
-            window.removeEventListener('resize', updateHeight);
-            clearTimeout(timer);
-        };
-    }, [mainView, activeTab]); // Recalculate if views change affecting headers
 
     useEffect(() => {
         setDetailStartOverrides({});
@@ -1835,11 +1833,12 @@ function AsanDispatchContent() {
     const visibleCols = useMemo(() => headers.map((h, i) => i).filter(i => {
         const h = headers[i];
         if (isDispatchWebCellField(h)) return true;
+        if (viewType === 'integrated' && isMobisCountryDisplayHeader(h)) return false;
         if (hiddenCols.has(h)) return false;
         // [v5.10.20] col_NN 형식(의미없는 익명 컬럼)은 자동 숨김
         if (/^col_\d+$/.test(h)) return false;
         return true;
-    }), [headers, hiddenCols]);
+    }), [headers, hiddenCols, viewType]);
 
     // 필터 적용된 행 (Set으로 검색 최적화)
     const displayRows = useMemo(() => {
@@ -2781,7 +2780,7 @@ function AsanDispatchContent() {
 
     // ===== 렌더링 =====
     return (
-        <div className={styles.container} ref={containerRef} style={{ height: dynamicHeight }} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
+        <div className={styles.container} ref={containerRef} onClick={() => { setFilterDropdown(null); setShowColPanel(false); }}>
             {/* 상단 바: 뷰전환 + 검색 + 기존 헤더 기능 병합 */}
             <div ref={topBarRef} className={styles.topBar} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

@@ -98,7 +98,7 @@ export async function GET(request) {
 
     if (type === 'integrated') {
         headers = [
-            "구분", "화주", "담당자", "선적", "작업지", "고객사(국가)", "포트(도착항)", "특이사항(Nomi,구간)",
+            "구분", "화주", "담당자", "선적", "작업지", "고객사(국가)", "포트(CODE)", "특이사항(Nomi,구간)",
             "라인(선사명)", "TYPE", "배차정보", "오더(계)", "배차예정", "기타", "아산", "부산",
             "광양", "평택", "중부", "부곡", "인천", "배차", "검증", "BKG1", "BKG2", "BKG3", "TARGET VESSEL", "비고", "특이사항"
         ];
@@ -146,7 +146,7 @@ export async function GET(request) {
                 "선적": getCol(["선적"]),
                 "작업지": getCol(["작업지"]),
                 "고객사(국가)": itemType === 'glovis' ? getCol(["고객사"]) : getCol(["국가", "국가명"]),
-                "포트(도착항)": itemType === 'glovis' ? getCol(["포트"]) : getCol(["도착항"]),
+                "포트(CODE)": itemType === 'glovis' ? getCol(["포트"]) : getCol(["포트(CODE)", "CODE"]),
                 "특이사항(Nomi,구간)": itemType === 'glovis'
                     ? firstCol(getCol(["특이사항(Nomi,구간)", "Nomi,구간"]), getColBefore(["특이사항"], ["라인", "선사명", "선사", "TYPE", "T"]))
                     : getCol(["Nomi,구간"]),

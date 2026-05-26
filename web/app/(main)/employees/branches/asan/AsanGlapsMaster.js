@@ -28,6 +28,7 @@ const ALIAS_TYPE_OPTIONS = [
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const TABLE_COLLATOR = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
 const EMPTY_TABLE_FILTER_VALUE = '__GLAPS_EMPTY_FILTER__';
+const GLAPS_MASTER_PAGE_SIZE = 100;
 
 const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
@@ -162,6 +163,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const [editor, setEditor] = useState(null);
     const [tableFilters, setTableFilters] = useState({});
     const [tableSort, setTableSort] = useState({ table: 'routes', key: '', direction: 'asc' });
+    const [masterDisplayLimit, setMasterDisplayLimit] = useState(GLAPS_MASTER_PAGE_SIZE);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
 
@@ -469,6 +471,16 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         });
     }, [activeSort.direction, activeSort.key, activeTableFilters, tableColumns, tableRows]);
 
+    useEffect(() => {
+        setMasterDisplayLimit(GLAPS_MASTER_PAGE_SIZE);
+    }, [activeTable, statusFilter, searchInput, activeTableFilters, activeSort.key, activeSort.direction]);
+
+    const visibleLimitedRows = useMemo(
+        () => visibleTableRows.slice(0, masterDisplayLimit),
+        [masterDisplayLimit, visibleTableRows],
+    );
+    const hasMoreTableRows = visibleTableRows.length > masterDisplayLimit;
+
     const inlineEditorFieldForColumn = (columnKey) => {
         if (editor?.mode === 'routes') {
             return ({
@@ -652,7 +664,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 {(activeTable === 'routes' || activeTable === 'aliases') && (
                     <button type="button" className={styles.primaryButton} onClick={beginNewRow} disabled={saving}>추가</button>
                 )}
-                <span className={styles.tableMeta}>표시 {visibleTableRows.length.toLocaleString()} / 전체 {tableRows.length.toLocaleString()}</span>
+                <span className={styles.tableMeta}>표시 {Math.min(visibleTableRows.length, masterDisplayLimit).toLocaleString()} / 필터 {visibleTableRows.length.toLocaleString()} / 전체 {tableRows.length.toLocaleString()}</span>
                 {hasTableFilters && (
                     <button type="button" onClick={clearTableFilters}>테이블 필터해제</button>
                 )}
@@ -710,7 +722,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         </thead>
                         <tbody>
                             {editor?.mode === activeTable && !editor.id && renderInlineEditorRow(`${activeTable}-new-editor`)}
-                            {visibleTableRows.map((row, rowIndex) => (
+                            {visibleLimitedRows.map((row, rowIndex) => (
                                 editor?.mode === activeTable && editor.id === row.id
                                     ? renderInlineEditorRow(row.id || `${activeTable}-${rowIndex}-editor`)
                                     : (
@@ -728,6 +740,25 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 )}
                 {!loading && visibleTableRows.length === 0 && <div className={styles.emptyState}>표시할 데이터가 없습니다.</div>}
             </div>
+            {!loading && visibleTableRows.length > 0 && (
+                <div className={styles.tableFooter}>
+                    <span>
+                        {visibleLimitedRows.length.toLocaleString()}건 표시
+                        {' '} / 필터 {visibleTableRows.length.toLocaleString()}건
+                        {' '} / 전체 {tableRows.length.toLocaleString()}건
+                    </span>
+                    {hasMoreTableRows && (
+                        <span className={styles.loadMoreWrap}>
+                            <button type="button" className={styles.loadMoreButton} onClick={() => setMasterDisplayLimit(limit => limit + GLAPS_MASTER_PAGE_SIZE)}>
+                                +100건 더 보기
+                            </button>
+                            <button type="button" className={styles.loadMoreButton} onClick={() => setMasterDisplayLimit(visibleTableRows.length)}>
+                                전체 표시
+                            </button>
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

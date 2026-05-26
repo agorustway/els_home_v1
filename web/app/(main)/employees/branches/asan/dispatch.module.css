@@ -5,8 +5,8 @@
     background: #f8fafc;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 250px);
-    overflow: hidden;
+    min-height: 0;
+    overflow: visible;
 }
 
 /* ===== 페이지 헤더 (클린 스타일) ===== */
@@ -1523,16 +1523,20 @@
     border: 1px solid #d1d5db;
     border-top: none;
     border-radius: 0 0 8px 8px;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 0 0 auto;
     min-height: 0;
 }
 
 .tableScroll {
-    overflow: auto;
-    flex: 1;
+    overflow-x: auto;
+    overflow-y: visible;
+    display: block;
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
     min-height: 0;
 }
 
@@ -2425,7 +2429,7 @@
     gap: 8px;
     padding: 6px;
     background: #f8fafc;
-    min-height: 100vh;
+    min-height: auto;
 }
 
 .mainHeader {
@@ -2476,9 +2480,10 @@
 }
 
 .contentArea {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .performanceShell {
