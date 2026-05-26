@@ -149,6 +149,21 @@ function isSortConfigEqual(a, b) {
     return (a?.key || null) === (b?.key || null) && (a?.direction || 'asc') === (b?.direction || 'asc');
 }
 
+function isConfirmedVesselColumn(header) {
+    return String(header || '').replace(/\s+/g, '').includes('선적확정모선');
+}
+
+function getConfirmedVesselColumnIndexes(headers = []) {
+    return (headers || []).reduce((indexes, header, index) => {
+        if (isConfirmedVesselColumn(header)) indexes.push(index);
+        return indexes;
+    }, []);
+}
+
+function hasConfirmedVesselValue(headers = [], row = []) {
+    return getConfirmedVesselColumnIndexes(headers).some(index => String(row?.[index] || '').trim() !== '');
+}
+
 function readContainerLookupSession() {
     if (typeof window === 'undefined') return null;
     try {
@@ -245,6 +260,7 @@ export default function AsanShipping() {
     }));
     const [unshippedOnly, setUnshippedOnly] = useState(false);
     const [storageOnly, setStorageOnly] = useState(false);
+    const [confirmedVesselOnly, setConfirmedVesselOnly] = useState(false);
     const [filterDropdown, setFilterDropdown] = useState(null);
 
     // File Browser
@@ -898,6 +914,7 @@ export default function AsanShipping() {
         setDateFilter({ col: dateColumns[0] || DEFAULT_DATE_FILTER_COL, months: getDefaultShippingMonthKeys() });
         setUnshippedOnly(false);
         setStorageOnly(false);
+        setConfirmedVesselOnly(false);
         setSearchInput('');
         setSearchTerm('');
         localStorage.removeItem(PREFS_KEY);
@@ -1239,6 +1256,10 @@ export default function AsanShipping() {
             rows = rows.filter(row => getFilterCellValue(row, '보관소').includes('자체보관'));
         }
 
+        if (confirmedVesselOnly) {
+            rows = rows.filter(row => hasConfirmedVesselValue(data?.headers || [], row));
+        }
+
         if (unshippedOnly) {
             rows = rows.filter(row => {
                 const containerNo = getRowContainerNo(row);
@@ -1257,13 +1278,7 @@ export default function AsanShipping() {
             });
         } else {
             // Default Sort: AD, AE, AF values to top
-            // Identify AD(29), AE(30), AF(31) roughly by headers like '선적확정모선' or directly by checking indices.
-            const targetCols = [];
-            data.headers.forEach((h, i) => {
-                if (h.includes('선적확정모선')) {
-                    targetCols.push(i);
-                }
-            });
+            const targetCols = getConfirmedVesselColumnIndexes(data.headers);
             if (targetCols.length > 0) {
                 rows.sort((a, b) => {
                     const hasValA = targetCols.some(cIdx => String(a[cIdx] || '').trim() !== '');
@@ -1276,7 +1291,7 @@ export default function AsanShipping() {
         }
 
         return rows;
-    }, [data, searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly, getFilterCellValue, getRowContainerNo, containerLookupResults]);
+    }, [data, searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, confirmedVesselOnly, unshippedOnly, getFilterCellValue, getRowContainerNo, containerLookupResults]);
 
     const shouldLoadFullRowsForFilters = Boolean(
         data?.source === 'supabase'
@@ -1287,6 +1302,7 @@ export default function AsanShipping() {
             filterDropdown
             || Object.keys(columnFilters).length > 0
             || storageOnly
+            || confirmedVesselOnly
             || unshippedOnly
         )
     );
@@ -1307,7 +1323,7 @@ export default function AsanShipping() {
         setTableScrollTop(0);
         setMobileVisibleLimit(MOBILE_RENDER_BATCH_SIZE);
         if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
-    }, [searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, unshippedOnly]);
+    }, [searchTerm, sortConfig, columnFilters, dateFilter, storageOnly, confirmedVesselOnly, unshippedOnly]);
 
     const totalRows = processedData.length;
     const serverTotalRows = data?.source === 'supabase' ? Number(data.total || data.data?.length || 0) : totalRows;
@@ -1654,6 +1670,14 @@ export default function AsanShipping() {
                             title={storageOnly ? '자체보관 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '자체보관 행만 표시합니다.'}
                         >
                             {storageOnly ? '필터해제' : '자체보관'}
+                        </button>
+                        <button
+                            type="button"
+                            className={`${styles.quickFilterBtn} ${confirmedVesselOnly ? styles.quickFilterBtnActive : ''}`}
+                            onClick={() => setConfirmedVesselOnly(prev => !prev)}
+                            title={confirmedVesselOnly ? '확정모선 필터 적용 중입니다. 클릭하면 필터를 해제합니다.' : '확정모선 값이 있는 행만 표시합니다.'}
+                        >
+                            {confirmedVesselOnly ? '필터해제' : '확정모선'}
                         </button>
                     </div>
                     <span className={styles.resultCountText} title="현재 검색/필터 적용 후 화면 조회 건수">

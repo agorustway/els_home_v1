@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.221 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.222 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 상세배차/변동내역의 `운송서비스코드`를 배차판 `구분` 기준으로 도출한다.
+> 최신 업데이트: 선적관리 빠른 필터에 `확정모선`을 추가해 KD/AS 선적확정모선 값이 있는 행을 바로 조회한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.221
+- **웹 버전**: v5.14.222
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -67,6 +67,7 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.222**: 선적관리 날짜 필터 옆 빠른 필터에 `확정모선` 버튼을 추가했다. `KD선적확정모선` 또는 `AS선적확정모선` 등 선적확정모선 계열 컬럼 중 하나라도 값이 있으면 조회 대상에 남긴다.
 - **v5.14.221**: GLAPS 상세배차/변동내역의 `운송서비스코드`를 배차판 `구분` 기준으로 자동 도출하고, 마스터 `운송서비스` 시트가 들어오면 해당 시트 값을 코드표로 읽는다.
 - **v5.14.220**: 월간실적 importer와 dashboard summary에 이월 순환 기준을 추가했다. `청구/하불`은 마감월 반영 금액으로 유지하고, 첫 컬럼 `이월` 행은 청구이월 반영분, `이월구분 + 청구_1/하불_1`은 익월이월 발생분으로 분리한다. 운영 Supabase monthly 메타도 2026-01~05 current 원장 기준으로 백필했다.
 - **v5.14.219**: 종합·월간·연간 실적관리 화면과 RAG 문맥의 `손익/손익률` 표기를 `이익/이익률`로 통일하고, 종합실적 `원장 신뢰도` 제목을 `마감자료 구분`으로 변경했다.
@@ -75,14 +76,13 @@
 - **v5.14.211**: AI는 `GLAPS 경로확인 안되는 작업지`를 운송경로 미도출 조건으로 읽고, 실적관리 예하 `종합실적/월간실적/연간실적` 화면 도출항목과 요약 스냅샷을 DB 기준으로 주입한다. 채팅 예시 컨테이너는 정상 선적 이력 샘플 `CMAU7631738`로 교체했다.
 - **v5.14.209**: 차량관제 모바일 운행기록 카드에서 구분을 한 줄로 표시하고 날짜 공백을 줄였다. 기록/단건 API 모두 위치 포인트를 소량 배치로 읽어 거리/최고속도/최종위치를 보강하며, 상세 위치 목록은 최근 60개만 렌더링한다.
 - **v5.14.208**: GLAPS 운송경로 탭과 수정양식에서 `상차지/경유지(ELS)/하차지`를 먼저 표시하고, 회색 보호값인 `운송경로명/운송경로코드`를 오른쪽으로 이동해 항목매핑 탭과 시선 흐름을 맞췄다.
-- **v5.14.207**: 선적관리 모바일 테이블은 표시 행을 100건 단위로 제한하고, 바닥 근처 스크롤 시 먼저 화면 표시량을 늘린 뒤 필요할 때만 다음 서버 페이지를 조회한다. 모바일 가로 스크롤은 더 이상 다음 페이지 로딩을 트리거하지 않는다.
 ## VERIFICATION
+- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
 - `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과, 정적 생성 후 외부 WebDAV fetch ECONNRESET 로그 3건 발생 but exit 0
 - `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 25개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" lib/asan-branch-db.js utils/asanPerformanceView.mjs scripts/import-asan-annual-performance.mjs tests/asanMonthlyPerformance.test.mjs`: 통과
-- Supabase 운영 확인: monthly 2026-04 `청구이월 청구 508,098,400 / 하불 435,804,350`, `익월이월 청구 484,932,800 / 하불 410,156,300`
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식을 설계한다.

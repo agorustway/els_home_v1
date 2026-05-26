@@ -1,3 +1,20 @@
+## [2026-05-26] 선적관리 확정모선 빠른 필터 추가 (v5.14.222)
+### 핵심
+- 선적관리 날짜 필터 영역의 `미선적`, `자체보관` 옆에 `확정모선` 빠른 필터 버튼을 추가했습니다.
+- `KD선적확정모선`, `AS선적확정모선`처럼 `선적확정모선`을 포함한 컬럼 중 하나라도 값이 있으면 필터 결과에 남기도록 했습니다.
+- 기본 정렬에서 확정모선 값이 있는 행을 위로 올리던 로직도 같은 컬럼 판정 함수를 사용하도록 정리했습니다.
+- 모바일 빠른 필터 버튼은 3개가 같은 폭으로 보이도록 grid를 3열로 조정했습니다.
+### 검증
+- `node --test web/tests/asanShippingFlow.test.mjs`: 37개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanShipping.js" "tests/asanShippingFlow.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/(main)/employees/branches/asan/shipping.module.css`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 월간실적 이월 순환 기준 분리 (v5.14.220)
 ### 핵심
 - 월간 원장의 `청구/하불`은 마감월 반영 금액으로 유지하고, 첫 컬럼 값이 `이월`인 행은 `청구이월 반영분`으로 따로 집계했습니다.
