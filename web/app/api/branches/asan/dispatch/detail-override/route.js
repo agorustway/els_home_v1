@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 const BRANCH_ID = 'asan';
 const VALID_TYPES = new Set(['glovis', 'mobis', 'integrated']);
-const VALID_FIELDS = new Set(['confirmed_bkg']);
+const VALID_FIELDS = new Set(['confirmed_bkg', 'glaps_port_code']);
 const VALID_SOURCES = new Set(['BKG1', 'BKG2', 'BKG3', 'manual']);
 
 function isMissingOverrideTableError(error) {

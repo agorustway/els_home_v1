@@ -176,6 +176,7 @@ function addGuideWorksheet(workbook) {
     ['항목매핑', '항목매핑_수정양식', 'ELS 디스크립션(설명)', '우리 기준 설명 또는 별칭을 입력합니다.', '검색/매칭 보조'],
     ['항목매핑', '항목매핑_수정양식', 'GLAPS 디스크립션(설명)', '회색 보호칸입니다. GLAPS 원장 설명을 유지합니다.', '참고/검색용'],
     ['항목매핑', '항목매핑_수정양식', '최종코드(BP)', '회색 보호칸입니다. GLAPS 업로드에 들어갈 기존 코드를 유지합니다. 운송사는 BP 값입니다.', '임의 생성 금지'],
+    ['항목매핑', '항목매핑_수정양식', '검수메모', '포트 중복 코드의 기본값은 기본/default/우선 중 하나를 적어 표시합니다.', '상세배차/변동내역 선택목록의 기본값'],
   ].forEach(row => sheet.addRow(row));
   sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2', activePane: 'bottomLeft' }];
   applyRowCellStyle(sheet, 1, 5, {

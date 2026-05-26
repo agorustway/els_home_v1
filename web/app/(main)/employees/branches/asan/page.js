@@ -157,6 +157,7 @@ const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡'
 const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
+const DETAIL_PORT_OVERRIDE_FIELD_KEY = 'glaps_port_code';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
 const BKG_WEB_CELL_LOCK_FIELDS = new Set([
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
@@ -595,6 +596,12 @@ function getDetailBkgValue(line, source) {
     if (source === 'BKG3') return line?.bkg3 || '';
     return line?.bkg1 || '';
 }
+function formatGlapsPortOptionLabel(option = {}) {
+    const code = option.code || '';
+    const label = option.label && option.label !== code ? ` · ${option.label}` : '';
+    const defaultMark = option.isDefault ? ' (기본)' : '';
+    return `${code}${defaultMark}${label}`;
+}
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
     return idx >= 0 ? String(values[idx] ?? '').trim() : '';
@@ -621,7 +628,7 @@ function getChangeEventPayloadContext(event = {}) {
         || event.beforeSnapshot?.rowContext
         || {};
 }
-function detailLineFromChangeValues(values = [], event = {}) {
+function detailLineFromChangeValues(values = [], event = {}, options = {}) {
     const context = getChangeEventPayloadContext(event);
     const confirmedBkg = getDetailRowValue(values, 'BKG확정') || getDetailRowValue(values, 'BKG1');
     return {
@@ -634,6 +641,7 @@ function detailLineFromChangeValues(values = [], event = {}) {
         destination: getDetailRowValue(values, '하차지(선적)') || context.destination || '',
         customer: getDetailRowValue(values, '고객사') || context.customer || '',
         port: getDetailRowValue(values, '포트') || context.port || '',
+        glapsPortCodeOverride: options.portCodeOverride || context.glapsPortCodeOverride || '',
         line: getDetailRowValue(values, '라인') || context.line || '',
         containerType: getDetailRowValue(values, '타입') || context.containerType || '',
         company: getDetailRowValue(values, '업체명') || context.company || '',
@@ -681,6 +689,8 @@ function buildDetailLineContext(line = {}) {
         workplace: line.workplace || '',
         startLocation: line.startLocation || '',
         destination: line.destination || '',
+        port: line.port || '',
+        glapsPortCode: line.glapsPortCode || '',
         company: line.company || '',
         bkg1: line.bkg1 || '',
         bkg2: line.bkg2 || '',
@@ -699,8 +709,49 @@ function buildGlapsAliasCodeMap(aliases = [], aliasType) {
         });
     return map;
 }
+function isGlapsDefaultAlias(alias = {}) {
+    const note = normalizeGlapsKey(alias.review_note || alias.reviewNote || '');
+    return ['기본', 'DEFAULT', '우선', '대표'].some(token => note.includes(normalizeGlapsKey(token)));
+}
+function buildGlapsAliasCodeOptionsMap(aliases = [], aliasType) {
+    const map = new Map();
+    const pushOption = (source, alias) => {
+        const key = normalizeGlapsKey(source);
+        const code = String(alias?.glaps_code || alias?.glapsCode || '').trim();
+        if (!key || !code) return;
+        const current = map.get(key) || [];
+        if (!current.some(option => option.code === code)) {
+            current.push({
+                code,
+                label: String(alias.glaps_name || alias.glapsName || alias.els_name || alias.elsName || alias.source_name || alias.sourceName || code).trim(),
+                isDefault: isGlapsDefaultAlias(alias),
+            });
+            map.set(key, current);
+        }
+    };
+    aliases
+        .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
+        .forEach((alias) => {
+            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].forEach(value => pushOption(value, alias));
+        });
+    map.forEach((options, key) => {
+        options.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.code.localeCompare(b.code));
+        map.set(key, options);
+    });
+    return map;
+}
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
+}
+function getGlapsAliasCodeOptions(map, value) {
+    return map.get(normalizeGlapsKey(value)) || [];
+}
+function getGlapsAliasDefaultCode(map, value, preferredCode = '') {
+    const options = getGlapsAliasCodeOptions(map, value);
+    if (!options.length) return '';
+    const preferred = String(preferredCode || '').trim();
+    if (preferred && options.some(option => option.code === preferred)) return preferred;
+    return (options.find(option => option.isDefault) || options[0]).code || '';
 }
 function setGlapsCodeMapValue(map, source, code) {
     const key = normalizeGlapsKey(source);
@@ -980,6 +1031,7 @@ function AsanDispatchContent() {
     const [dispatchConfirmationMap, setDispatchConfirmationMap] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
     const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
+    const [detailPortOverrides, setDetailPortOverrides] = useState({});
     const [detailOverrideSetupRequired, setDetailOverrideSetupRequired] = useState(false);
     const [detailConfirmation, setDetailConfirmation] = useState(null);
     const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
@@ -987,6 +1039,7 @@ function AsanDispatchContent() {
     const [detailIssueFilter, setDetailIssueFilter] = useState(reloadRestoreState.detailIssueFilter || '');
     const [detailChangeEvents, setDetailChangeEvents] = useState([]);
     const [detailChangeDrafts, setDetailChangeDrafts] = useState({});
+    const [detailChangePortOverrides, setDetailChangePortOverrides] = useState({});
     const [detailChangeStatusFilter, setDetailChangeStatusFilter] = useState(reloadRestoreState.detailChangeStatusFilter || '');
     const [detailChangeSetupRequired, setDetailChangeSetupRequired] = useState(false);
     const [detailChangeSaving, setDetailChangeSaving] = useState(false);
@@ -1532,6 +1585,8 @@ function AsanDispatchContent() {
             setDetailChangeEvents([]);
             setDetailChangeSetupRequired(false);
             setDetailChangeDrafts({});
+            setDetailChangePortOverrides({});
+            setDetailPortOverrides({});
             detailChangeSyncRef.current = '';
             return undefined;
         }
@@ -1563,6 +1618,7 @@ function AsanDispatchContent() {
                 setDetailChangeSetupRequired(Boolean(changePayload.setupRequired));
                 setDetailChangeEvents(changePayload.data || []);
                 const nextOverrides = {};
+                const nextPortOverrides = {};
                 (overridePayload.data || [])
                     .filter(row => row.field_key === 'confirmed_bkg')
                     .forEach((row) => {
@@ -1573,11 +1629,23 @@ function AsanDispatchContent() {
                             updatedAt: row.updated_at || row.created_at || '',
                         };
                     });
+                (overridePayload.data || [])
+                    .filter(row => row.field_key === DETAIL_PORT_OVERRIDE_FIELD_KEY)
+                    .forEach((row) => {
+                        nextPortOverrides[row.detail_line_key] = {
+                            value: row.value || '',
+                            source: row.source || 'manual',
+                            updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
+                            updatedAt: row.updated_at || row.created_at || '',
+                        };
+                    });
                 setDetailBkgOverrides(nextOverrides);
+                setDetailPortOverrides(nextPortOverrides);
             } catch (error) {
                 if (!cancelled) {
                     setDetailConfirmation(null);
                     setDetailBkgOverrides({});
+                    setDetailPortOverrides({});
                     setDetailChangeEvents([]);
                     setSyncStatus({ message: error.message || '상세배차 상태 조회 실패', isError: true });
                 }
@@ -1841,6 +1909,7 @@ function AsanDispatchContent() {
 
     const glapsAliasMaps = useMemo(() => ({
         port: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'port'),
+        portOptions: buildGlapsAliasCodeOptionsMap(glapsDetailLookup.aliases || [], 'port'),
         line: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'line'),
         containerType: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'container_type'),
         containerIso: buildGlapsContainerIsoCodeMap(glapsDetailLookup.sheetRows || []),
@@ -1867,7 +1936,10 @@ function AsanDispatchContent() {
             destinationName: line.destination,
         });
         const glapsRoute = routeKeys.map(key => glapsRouteMap.get(key)).find(Boolean) || null;
-        const glapsPortCode = getGlapsAliasCode(glapsAliasMaps.port, line.port);
+        const portCodeOverride = String(options.portCodeOverride || line.glapsPortCodeOverride || '').trim();
+        const glapsPortCodeOptions = getGlapsAliasCodeOptions(glapsAliasMaps.portOptions, line.port);
+        const glapsPortCode = getGlapsAliasDefaultCode(glapsAliasMaps.portOptions, line.port, portCodeOverride)
+            || getGlapsAliasCode(glapsAliasMaps.port, line.port);
         const glapsLineCode = getGlapsAliasCode(glapsAliasMaps.line, line.line);
         const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
@@ -1897,6 +1969,7 @@ function AsanDispatchContent() {
             glapsRouteName: glapsRoute?.route_name || '',
             glapsRouteCode: glapsRoute?.route_code || '',
             glapsPortCode,
+            glapsPortCodeOptions,
             glapsLineCode,
             glapsTypeCode,
             glapsOrderTypeCode,
@@ -1923,12 +1996,14 @@ function AsanDispatchContent() {
         const lineKey = makeDispatchDetailLineKey(line);
         const hasStartOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
         const bkgOverride = detailBkgOverrides[lineKey] || null;
+        const portOverride = detailPortOverrides[lineKey] || null;
         return enrichDetailLine(line, {
             startLocation: hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '',
             bkgOverride,
+            portCodeOverride: portOverride?.value || '',
             confirmedAt: detailConfirmation?.confirmed_at || '',
         });
-    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailLines, detailStartOverrides, enrichDetailLine]);
+    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailLines, detailPortOverrides, detailStartOverrides, enrichDetailLine]);
 
     const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -1998,8 +2073,10 @@ function AsanDispatchContent() {
             })
     ), [detailChangeEventByLineKey, filteredDetailLines]);
 
-    const buildDetailChangeDisplayValues = useCallback((event, rawValues = []) => {
-        const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event));
+    const buildDetailChangeDisplayValues = useCallback((event, rawValues = [], options = {}) => {
+        const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, {
+            portCodeOverride: options.portCodeOverride || '',
+        }));
         return detailLineToRow(line);
     }, [enrichDetailLine]);
 
@@ -2010,7 +2087,8 @@ function AsanDispatchContent() {
             .map((event) => {
                 const storedValues = changeEventToEditableValues(event);
                 const rawValues = detailChangeDrafts[event.id] || storedValues;
-                const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event));
+                const portCodeOverride = detailChangePortOverrides[event.id] || getChangeEventPayloadContext(event).glapsPortCodeOverride || '';
+                const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, { portCodeOverride }));
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const isDeletedAfterAdd = Boolean(getDeletedAfterAddPairKey(event));
@@ -2026,7 +2104,7 @@ function AsanDispatchContent() {
                 return { event, hasCalculatedDiff, isDeletedAfterAdd, isPairedAdd, line, rawValues, values };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
-    }, [deletedAfterAddPairKeys, detailChangeDrafts, detailChangeEvents, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
+    }, [deletedAfterAddPairKeys, detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
 
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
@@ -2263,6 +2341,39 @@ function AsanDispatchContent() {
         saveDetailBkgOverride(line, 'manual', value);
     }, [saveDetailBkgOverride]);
 
+    const saveDetailPortOverride = useCallback(async (line, value) => {
+        if (!detailScope) return;
+        const lineKey = makeDispatchDetailLineKey(line);
+        const nextValue = String(value ?? '').trim();
+        setDetailPortOverrides(prev => ({
+            ...prev,
+            [lineKey]: {
+                ...(prev[lineKey] || {}),
+                value: nextValue,
+                source: 'manual',
+            },
+        }));
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/detail-override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                body: JSON.stringify({
+                    ...detailScope,
+                    detailLineKey: lineKey,
+                    fieldKey: DETAIL_PORT_OVERRIDE_FIELD_KEY,
+                    value: nextValue,
+                    source: 'manual',
+                    rowContext: buildDetailLineContext(line),
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '포트코드 저장 실패');
+            if (payload.setupRequired) setDetailOverrideSetupRequired(true);
+        } catch (error) {
+            setSyncStatus({ message: error.message || '포트코드 저장 실패', isError: true });
+        }
+    }, [detailScope, getDetailAuthHeaders]);
+
     const changeDetailConfirmation = useCallback(async (action) => {
         if (!detailScope || detailConfirmationSaving) return;
         if (action === 'cancel' && !window.confirm('배차확정을 취소할까요? 해당일자 상세배차 수정 잠금이 해제됩니다.')) return;
@@ -2288,6 +2399,7 @@ function AsanDispatchContent() {
                 setDetailConfirmationSetupRequired(false);
                 detailChangeSyncRef.current = '';
                 setDetailChangeDrafts({});
+                setDetailChangePortOverrides({});
                 setDetailStateRefreshToken(token => token + 1);
                 setSyncStatus({
                     message: action === 'confirm' ? '배차확정 완료' : '배차확정 취소 완료',
@@ -2313,7 +2425,7 @@ function AsanDispatchContent() {
         });
     }, []);
 
-    const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null) => {
+    const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null, contextPatch = {}) => {
         if (!detailScope || !event?.id || detailChangeSaving) return;
         if (event.event_status === 'confirmed') {
             setSyncStatus({ message: '확인완료된 변동은 확인취소 후 수정할 수 있습니다.', isError: true });
@@ -2321,7 +2433,10 @@ function AsanDispatchContent() {
         }
         const rowValues = rowValuesOverride || detailChangeDrafts[event.id] || changeEventToEditableValues(event);
         const basePayload = event.editable_payload || event.after_snapshot || event.before_snapshot || {};
-        const rowContext = buildDetailChangeRowContext(rowValues, basePayload.rowContext || {});
+        const rowContext = {
+            ...buildDetailChangeRowContext(rowValues, basePayload.rowContext || {}),
+            ...contextPatch,
+        };
         setDetailChangeSaving(true);
         try {
             const response = await fetch('/api/branches/asan/dispatch/change-events', {
@@ -2353,6 +2468,11 @@ function AsanDispatchContent() {
                     delete next[event.id];
                     return next;
                 });
+                setDetailChangePortOverrides(prev => {
+                    const next = { ...prev };
+                    delete next[event.id];
+                    return next;
+                });
                 setSyncStatus({ message: '변동내역 수정 저장 완료', isError: false });
             }
         } catch (error) {
@@ -2362,9 +2482,13 @@ function AsanDispatchContent() {
         }
     }, [detailChangeDrafts, detailChangeSaving, detailScope, getDetailAuthHeaders]);
 
-    const saveDetailChangeValues = useCallback((event, rawValues) => {
-        const calculatedValues = buildDetailChangeDisplayValues(event, rawValues);
-        saveDetailChangeEvent(event, calculatedValues);
+    const saveDetailChangeValues = useCallback((event, rawValues, options = {}) => {
+        const contextPatch = {};
+        if (Object.prototype.hasOwnProperty.call(options, 'portCodeOverride')) {
+            contextPatch.glapsPortCodeOverride = String(options.portCodeOverride || '').trim();
+        }
+        const calculatedValues = buildDetailChangeDisplayValues(event, rawValues, contextPatch);
+        saveDetailChangeEvent(event, calculatedValues, contextPatch);
     }, [buildDetailChangeDisplayValues, saveDetailChangeEvent]);
 
     const confirmDetailChangeEvents = useCallback(async (eventIds = [], { bulk = false } = {}) => {
@@ -2916,6 +3040,26 @@ function AsanDispatchContent() {
                                                             </td>
                                                         );
                                                     }
+                                                    if (header === '포트코드' && (line.glapsPortCodeOptions || []).length > 1) {
+                                                        return (
+                                                            <td key={header} className={styles.detailPortCodeCell}>
+                                                                <select
+                                                                    className={styles.detailPortSelect}
+                                                                    value={line.glapsPortCode || ''}
+                                                                    onChange={(event) => saveDetailPortOverride(line, event.target.value)}
+                                                                    onKeyDown={focusDetailGridInput}
+                                                                    data-detail-row-index={detailRowIdx}
+                                                                    data-detail-col-index={colIdx}
+                                                                    disabled={detailOverrideSetupRequired || !detailScope}
+                                                                    title={`${line.port || ''} 포트코드 선택`}
+                                                                >
+                                                                    {(line.glapsPortCodeOptions || []).map(option => (
+                                                                        <option key={option.code} value={option.code}>{formatGlapsPortOptionLabel(option)}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                        );
+                                                    }
                                                     if (header === '수정일시' && changeEvent) {
                                                         const changeTooltip = buildDispatchChangeDiffTooltip(changeEvent);
                                                         return (
@@ -3076,6 +3220,33 @@ function AsanDispatchContent() {
                                                                         disabled={editDisabled}
                                                                         placeholder="선택"
                                                                     />
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (isDetailValue && header === '포트코드' && (line.glapsPortCodeOptions || []).length > 1) {
+                                                            const selectedPortCode = getDetailRowValue(rawValues, '포트코드') || line.glapsPortCode || '';
+                                                            return (
+                                                                <td key={header} className={styles.detailPortCodeCell}>
+                                                                    <select
+                                                                        className={styles.detailPortSelect}
+                                                                        value={selectedPortCode}
+                                                                        onChange={(inputEvent) => {
+                                                                            const nextPortCode = inputEvent.target.value;
+                                                                            const nextValues = setDetailRowValue(rawValues, '포트코드', inputEvent.target.value);
+                                                                            setDetailChangePortOverrides(prev => ({ ...prev, [event.id]: nextPortCode }));
+                                                                            updateDetailChangeDraft(event, nextValues);
+                                                                            saveDetailChangeValues(event, nextValues, { portCodeOverride: nextPortCode });
+                                                                        }}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        data-detail-row-index={rowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        disabled={editDisabled}
+                                                                        title={`${line.port || ''} 포트코드 선택`}
+                                                                    >
+                                                                        {(line.glapsPortCodeOptions || []).map(option => (
+                                                                            <option key={option.code} value={option.code}>{formatGlapsPortOptionLabel(option)}</option>
+                                                                        ))}
+                                                                    </select>
                                                                 </td>
                                                             );
                                                         }

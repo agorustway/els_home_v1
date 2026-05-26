@@ -1626,7 +1626,7 @@
 .detailSelect,
 .detailComboInput {
     width: 100%;
-    min-width: 132px;
+    min-width: 96px;
     height: 30px;
     border: 1px solid transparent;
     border-radius: 0;
@@ -1639,6 +1639,30 @@
 
 .detailSelect:focus,
 .detailComboInput:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+.detailPortCodeCell {
+    padding: 0 !important;
+}
+
+.detailPortSelect {
+    width: 100%;
+    min-width: 94px;
+    height: 30px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 800;
+    padding: 0 4px;
+}
+
+.detailPortSelect:focus {
     outline: none;
     border-color: #2563eb;
     background: #fff;
@@ -2279,7 +2303,13 @@
     .detailSelect,
     .detailComboInput {
         height: 28px;
-        min-width: 120px;
+        min-width: 88px;
+        font-size: 0.68rem;
+    }
+
+    .detailPortSelect {
+        height: 28px;
+        min-width: 86px;
         font-size: 0.68rem;
     }
 

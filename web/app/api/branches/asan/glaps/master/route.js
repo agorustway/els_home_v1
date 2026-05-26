@@ -659,7 +659,7 @@ export async function GET(request) {
           .order('route_code', { ascending: true })),
         fetchPagedGlapsRows(() => access.adminSupabase
           .from('glaps_master_aliases')
-          .select('id, alias_type, source_name, els_name, glaps_name, glaps_code')
+          .select('id, alias_type, source_name, els_name, glaps_name, glaps_code, review_note')
           .eq('version_id', version.id)
           .eq('active', true)
           .in('alias_type', GLAPS_LOOKUP_ALIAS_TYPES)

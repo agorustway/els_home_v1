@@ -1,3 +1,21 @@
+## [2026-05-26] GLAPS 포트 중복 후보 선택 지원 (v5.14.223)
+### 핵심
+- GLAPS 포트 항목매핑에서 동일 ELS 매치값에 여러 GLAPS 코드를 등록해도 후보 목록으로 유지하도록 변경했습니다.
+- `검수메모`에 `기본/default/우선/대표` 중 하나가 들어간 포트 항목을 기본값으로 쓰고, 상세배차와 배차변동에서 행별 포트코드를 선택 저장하게 했습니다.
+- 상세배차/배차변동의 상차지 입력칸 최소 폭을 줄여 화면 여백을 줄였습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`, `dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/app/api/branches/asan/glaps/master/route.js`, `template/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 선적관리 확정모선 빠른 필터 추가 (v5.14.222)
 ### 핵심
 - 선적관리 날짜 필터 영역의 `미선적`, `자체보관` 옆에 `확정모선` 빠른 필터 버튼을 추가했습니다.
