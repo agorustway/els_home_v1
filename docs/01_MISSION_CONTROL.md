@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.228 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.229 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판/상세배차/배차변동/GLAPS코드 테이블 행 높이와 헤더 톤을 조밀형으로 맞췄다.
+> 최신 업데이트: 아산 배차판 자동 동기화가 파일 변경 감지 후 수동 NAS 동기화와 같은 1순위 우선 절차를 타도록 맞췄다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.228
+- **웹 버전**: v5.14.229
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -69,20 +69,20 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.229**: 자동 배차판 동기화는 파일 mtime/size 변경이 안정화되면 수동 NAS 동기화와 같은 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜` 순서로 실행한다.
 - **v5.14.228**: 아산 배차판/상세배차/배차변동/GLAPS코드 테이블의 데이터 행 padding, input/select, BKG 배지, GLAPS 관리 버튼 높이를 줄이고 헤더 톤을 짙은 청록 계열로 맞췄다.
 - **v5.14.227**: 모비스 통합현황/전체/엑셀의 `고객사(국가)` 표시값을 `국가 도착항`으로 병기한다. 현황판 고객사 집계는 기존처럼 `국가/국가명` 기준을 유지한다.
 - **v5.14.226**: 배차판 컬럼 필터/정렬 상태에서 BKG를 입력할 때 같은 row_index의 다른 행 WEB 셀이 갱신되지 않도록 서버 row_index fallback에 row_context 호환 검사를 추가했다.
 - **v5.14.225**: 모비스 `CODE`를 글로비스 포트 축과 합쳐 통합현황에는 `포트(CODE)`, 상세배차/배차변동/RAG에는 `포트(DIST)`로 노출한다. 모비스 개별 화면의 국가는 유지하고, 상세/변동 고객사 컬럼에는 `국가 도착항`을 표시해 CODE 입력/검수 공간을 분리했다.
 - **v5.14.224**: 상세배차/배차변동/GLAPS코드 화면의 데스크탑 높이 고정과 내부 세로 스크롤을 해제해 테이블 하단이 페이지 스크롤로 보이게 했고, GLAPS코드 원장 테이블은 100건 단위 더보기/전체 표시로 렌더링 부담을 줄였다.
 - **v5.14.223**: GLAPS 포트 항목매핑에서 동일 ELS 매치값의 복수 GLAPS 코드를 후보로 유지하고, 검수메모 기본표시 행을 기본값으로 적용하며 상세배차/배차변동에서 행별 포트코드를 선택 저장하게 했다. 상차지 입력칸 폭도 줄였다.
-- **v5.14.222**: 선적관리 날짜 필터 옆 빠른 필터에 `확정모선` 버튼을 추가했다. `KD선적확정모선` 또는 `AS선적확정모선` 등 선적확정모선 계열 컬럼 중 하나라도 값이 있으면 조회 대상에 남긴다.
 ## VERIFICATION
+- `node --test web/tests/asanDashboardView.test.mjs`: 35개 통과
+- 번들 Python AST 검사 `docker/els-backend/app_core.py`: 통과
 - `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 54개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
-- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 44개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과
-- `node --test web/tests/asanSummaryPerformance.test.mjs web/tests/asanAnnualPerformance.test.mjs web/tests/asanMonthlyPerformance.test.mjs`: 25개 통과
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식을 설계한다.

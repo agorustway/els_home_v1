@@ -774,6 +774,78 @@ def _restart_asan_dispatch_manual_after_current():
         sync_asan_dispatch_manual_python()
 
 
+def _asan_dispatch_auto_ready_to_sync():
+    """자동 동기화는 파일 변경이 안정화된 뒤 수동 동기화와 같은 순서로 실행한다."""
+    if not supabase:
+        return False
+
+    try:
+        settings = get_asan_dispatch_settings(force=False)
+    except Exception as exc:
+        app.logger.warning(f"[자동동기화] 배차 설정 조회 실패: {exc}")
+        return False
+
+    if not settings:
+        return False
+
+    ready_types = []
+    waiting_reasons = []
+    for dtype in ['glovis', 'mobis']:
+        rel_path = settings.get(f"{dtype}_path")
+        if not rel_path:
+            continue
+
+        full_path = Path("/app/data") / rel_path.lstrip("/")
+        if not full_path.exists():
+            continue
+
+        try:
+            file_stat = full_path.stat()
+        except Exception as exc:
+            app.logger.warning(f"[자동동기화] {dtype} 파일 상태 확인 실패: {exc}")
+            continue
+
+        mtime_ts = file_stat.st_mtime
+        mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+        file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
+        cached_signature = last_file_signature_cache.get(dtype)
+
+        if cached_signature == file_signature:
+            continue
+
+        if not cached_signature and _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
+            last_file_signature_cache[dtype] = file_signature
+            dispatch_sync_gate.mark_synced(f"dispatch:{dtype}", file_signature)
+            app.logger.info(f"[자동동기화] {dtype} DB 최신 상태 확인, 자동 동기화 생략")
+            continue
+
+        decision = dispatch_sync_gate.check(f"dispatch:{dtype}", file_signature, force=False)
+        if decision.ready:
+            ready_types.append(dtype)
+        else:
+            waiting_reasons.append(f"{dtype}:{decision.reason}")
+
+    if waiting_reasons:
+        app.logger.info(f"[자동동기화] 파일 안정화/재시도 대기 중: {', '.join(waiting_reasons)}")
+        return False
+
+    if ready_types:
+        app.logger.info(
+            f"[자동동기화] 변경 파일 안정화 완료: {', '.join(ready_types)}. "
+            "수동 동기화와 동일한 1순위 우선 절차로 실행합니다."
+        )
+        return True
+
+    return False
+
+
+def sync_asan_dispatch_auto_python():
+    """파일 변경 감지는 자동으로 하되, 실제 반영 순서는 수동 동기화와 동일하게 맞춘다."""
+    if not _asan_dispatch_auto_ready_to_sync():
+        return {"ok": True, "message": "변경 없음", "results": []}
+    return sync_asan_dispatch_manual_python()
+
+
 def asan_sync_scheduler():
     app.logger.info(
         f"[스케줄러] 아산 배차판 자동 동기화 스케줄러 시작 "
@@ -783,7 +855,7 @@ def asan_sync_scheduler():
         try:
             now = datetime.now(KST)
             if 6 <= now.hour <= 23:
-                sync_asan_dispatch_python()
+                sync_asan_dispatch_auto_python()
             time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
         except Exception as e:
             app.logger.error(f"[스케줄러] 에러: {e}")

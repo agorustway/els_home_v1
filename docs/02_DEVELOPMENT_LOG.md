@@ -1,3 +1,18 @@
+## [2026-05-27] 아산 배차판 자동 동기화 수동 조건 통일 (v5.14.229)
+### 핵심
+- 원인 확인: 수동 NAS 동기화는 `force=True`로 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜`를 순차 실행하지만, 자동 스케줄러는 파일 변경 감지 후 `phase=all` 단일 루틴을 직접 호출해 수동과 조건이 달랐습니다.
+- 조치: 자동 스케줄러는 파일 mtime/size 변경이 안정화된 경우에만 동작하되, 실제 반영은 수동 NAS 동기화와 동일한 `sync_asan_dispatch_manual_python()` 루틴으로 실행하게 했습니다.
+- 기존 재시작 직후 DB 최신 파일이면 전체 파싱을 생략하는 보호 로직과 파일 저장 안정화 게이트는 유지했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 35개 통과
+- 번들 Python AST 검사 `docker/els-backend/app_core.py`: 통과
+### 변경 파일
+- `docker/els-backend/app_core.py`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-26] 아산 배차판 테이블 조밀 톤앤매너 정리 (v5.14.228)
 ### 핵심
 - 배차판/상세배차/배차변동 공통 테이블의 헤더 색상을 GLAPS 계열 짙은 청록 톤으로 맞추고, 데이터 셀 padding과 line-height를 줄여 행간 여백을 낮췄습니다.

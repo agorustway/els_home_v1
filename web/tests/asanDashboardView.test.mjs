@@ -1249,6 +1249,12 @@ test('아산 배차 자동 갱신은 화면 위치를 유지하고 메모 변경
   assert.match(core, /def sync_asan_dispatch_manual_python/);
   assert.match(core, /phase="quick"/);
   assert.match(core, /phase="rest"/);
+  assert.match(core, /def _asan_dispatch_auto_ready_to_sync/);
+  assert.match(core, /def sync_asan_dispatch_auto_python/);
+  assert.match(core, /수동 동기화와 동일한 1순위 우선 절차/);
+  assert.match(core, /return sync_asan_dispatch_manual_python\(\)/);
+  assert.match(core, /sync_asan_dispatch_auto_python\(\)/);
+  assert.doesNotMatch(core, /if 6 <= now\.hour <= 23:\s*\n\s+sync_asan_dispatch_python\(\)/);
   assert.match(core, /methods=\["GET", "POST"\]/);
   assert.match(core, /_get_asan_sync_status/);
   assert.doesNotMatch(core, /sheet_hash = hashlib\.md5\(str\(rows\)\.encode/);
