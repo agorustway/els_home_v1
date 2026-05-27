@@ -1384,6 +1384,39 @@ function finalizeRouteUnitMetric(item = {}, totalRevenue = 0) {
     return finalized;
 }
 
+function applyRouteUnitLastMetric(item = {}) {
+    const series = (Array.isArray(item.series) ? item.series : [])
+        .slice()
+        .sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR'));
+    const latest = series
+        .slice()
+        .reverse()
+        .find(row => numberValue(row.rowCount) || numberValue(row.unitRevenue) || numberValue(row.unitPurchase) || numberValue(row.unitProfit));
+    if (!latest) {
+        return { ...item, series };
+    }
+    return {
+        ...item,
+        series,
+        avgUnitRevenue: numberValue(item.unitRevenue),
+        avgUnitPurchase: numberValue(item.unitPurchase),
+        avgUnitProfit: numberValue(item.unitProfit),
+        unitRevenue: numberValue(latest.unitRevenue),
+        unitPurchase: numberValue(latest.unitPurchase),
+        unitProfit: numberValue(latest.unitProfit),
+        lastUnitKey: latest.key || '',
+        lastUnitLabel: latest.label || latest.key || '',
+        lastRowCount: numberValue(latest.rowCount) || numberValue(item.rowCount),
+        unitBasis: 'last',
+    };
+}
+
+function compareRouteUnitLastPrice(a = {}, b = {}) {
+    const unitDiff = numberValue(b.unitRevenue) - numberValue(a.unitRevenue);
+    if (unitDiff) return unitDiff;
+    return Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue));
+}
+
 function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumns, descriptorColumns, amountColumns, summary = {}, engine = 'supabase-rpc' }) {
     const groups = new Map();
     let totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
@@ -1432,11 +1465,11 @@ function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumn
     }
 
     const groupItems = Array.from(groups.values())
-        .map((item) => ({
+        .map((item) => applyRouteUnitLastMetric({
             ...finalizeRouteUnitMetric(item, totals.revenue),
-            series: item.series.sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR')),
+            series: item.series,
         }))
-        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)));
+        .sort(compareRouteUnitLastPrice);
 
     if (!rows.length) {
         totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
@@ -1742,9 +1775,9 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
             const finalized = finalizeRouteUnitMetric(item, totalRevenue);
             delete finalized.seriesMap;
             finalized.series = series;
-            return finalized;
+            return applyRouteUnitLastMetric(finalized);
         })
-        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)))
+        .sort(compareRouteUnitLastPrice)
         .slice(0, 160);
 
     return {

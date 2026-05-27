@@ -1,3 +1,23 @@
+## [2026-05-27] 아산 구간단가 LAST 단가/표 검색 보강 (v5.14.236)
+### 핵심
+- 구간단가 대표 단가를 기간 평균이나 최고값이 아니라 선택 범위 안의 마지막 기간(LAST) 청구단가/하불단가/차액단가로 고정했습니다.
+- 구간단가 금액은 억/만원 축약 없이 원 단위와 천단위 구분으로 표시하고, 표 안의 막대형 장식은 제거했습니다.
+- 구간단가 기간 선택지는 연간실적 summary가 아니라 연간+월간 구간단가 원장의 `scope.months/years`를 우선 사용해 2026 월간 자료가 보이도록 했습니다.
+- 구간별 단가 목록에 필터와 정렬을 추가했습니다. 필터는 구간/청구처/지급처/TYPE/매출열을 대상으로 하고, 정렬은 최근 청구단가/차액단가/건수/구간명 기준을 제공합니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+- 로컬 `http://localhost:3000/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2026&refresh_snapshot=1`: 2026년 구간단가 1,181건/160구간, `LastMonth=2026-05`, `unitBasis=last` 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
 ## [2026-05-27] 아산 구간단가 단가 전용 재정리 (v5.14.235)
 ### 핵심
 - 구간단가 화면에서 연간/월간 총액 리포트와 겹치던 KPI와 요약을 제거하고, 건당 청구단가·하불단가·차액단가 중심의 목록/선택 구간/기간별 흐름으로 재구성했습니다.

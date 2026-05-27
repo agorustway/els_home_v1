@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.235 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.236 / APK v5.11.29)
 
-> 최신 업데이트: 아산 `구간단가`를 연간/월간 총액 리포트와 분리하고, 연간+월간 current 원장 기준의 건당 청구/하불/차액 단가 변동 전용 화면으로 정리했다.
+> 최신 업데이트: 아산 `구간단가` 대표 단가를 선택 범위의 LAST 기간 기준으로 바꾸고, 2026 월간 원장 기간 선택/원 단위 표기/표 필터·정렬을 보강했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.235
+- **웹 버전**: v5.14.236
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -22,8 +22,9 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
-- `구간단가`는 별도 탭에서 `전체/연도별/월별` 범위와 마감월 기준으로 산출한다. 총액 KPI는 배제하고 `픽업-지역-작업지-하차 + 매출열 + 청구처/지급처/TYPE`별 건당 청구단가/하불단가/차액단가와 기간별 단가 흐름만 표시한다.
+- `구간단가`는 별도 탭에서 `전체/연도별/월별` 범위와 마감월 기준으로 산출한다. 총액 KPI는 배제하고 `픽업-지역-작업지-하차 + 매출열 + 청구처/지급처/TYPE`별 LAST 청구단가/하불단가/차액단가와 기간별 단가 흐름만 표시한다.
 - 구간단가 집계는 연간+월간 current 원장을 함께 사용한다. 같은 마감월이 연간/월간 양쪽에 있으면 월간 원장을 우선해 중복 계산을 막는다.
+- 구간단가 기간 선택지는 연간 summary가 아니라 구간단가 원장의 연간+월간 기간 목록을 사용해 2026 이후 월간 자료도 선택 가능하게 한다.
 - `web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql` 인덱스는 Supabase에 적용 완료했다. RPC SQL은 보관하지만 웹 기본 경로는 timeout 방지를 위해 인덱스 기반 JS fallback 집계를 사용한다.
 - 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
 - 페이지 로딩 문구와 폰트는 아산 하위 페이지에서 동일 톤으로 유지한다.
@@ -48,6 +49,7 @@
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채운다.
 
 ## RECENT CHANGES
+- **v5.14.236**: 구간단가 대표값을 평균/MAX가 아닌 LAST 기간 단가로 고정하고, 원 단위 천단위 표기, 2026 월간 기간 선택, 표 필터/정렬을 추가했다.
 - **v5.14.235**: 구간단가를 총액 리포트가 아닌 단가 변동 전용 화면으로 재정리하고, 연간+월간 current 원장 통합/월간 우선 중복 방지/기간 인덱스 적용을 반영했다.
 - **v5.14.234**: GLAPS 마스터 반영 중 `glaps_transport_routes_branch_version_route_source_key` UNIQUE 충돌이 나지 않도록 운송경로/항목매핑 insert 전 원장 중복행을 정리하고, 성공 시에만 새 버전을 active 전환한다.
 - **v5.14.233**: 연간실적 옆에 `구간단가` 탭을 추가하고, 마감월 기준 구간/매출열/청구처/지급처/TYPE별 청구·하불·건당단가와 기간별 변동 차트를 구성했다.
@@ -58,6 +60,8 @@
 
 ## VERIFICATION
 - `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- 로컬 `http://localhost:3000/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2026&refresh_snapshot=1`: 2026년 구간단가 1,181건/160구간, `LastMonth=2026-05`, `unitBasis=last` 확인.
+- `cd web; npm.cmd run build`: 통과
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
