@@ -64,6 +64,22 @@ const ROUTE_UNIT_COLUMNS = [
     { key: 'periodLabel', label: '기간' },
 ];
 const ROUTE_UNIT_FILTER_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
+const ROUTE_UNIT_FILTER_COLUMN_KEYS = new Set(ROUTE_UNIT_FILTER_COLUMNS.map(column => column.key));
+const ROUTE_UNIT_GROUP_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
+const ROUTE_UNIT_GROUP_COLUMN_KEYS = new Set(ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key));
+const ROUTE_UNIT_DEFAULT_GROUP_KEYS = ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key);
+
+function routeUnitColumnGrid(column = {}) {
+    if (column.key === 'workSite') return 'minmax(150px, 1.2fr)';
+    if (column.key === 'billTo' || column.key === 'payTo') return 'minmax(130px, 1fr)';
+    if (column.key === 'rowCount') return '56px';
+    if (column.key === 'periodLabel') return '92px';
+    if (column.key === 'salesItem') return '76px';
+    if (column.key === 'region' || column.key === 'category' || column.key === 'pickup' || column.key === 'type') return '70px';
+    if (column.key === 'billingPickup' || column.key === 'shipment') return '86px';
+    if (column.key === 'carrier') return '100px';
+    return '98px';
+}
 
 function fmtTs(value) {
     if (!value) return '-';
@@ -246,6 +262,60 @@ function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
         const value = columnFilters[column.key];
         if (!String(value || '').trim()) return true;
         return routeUnitTermMatches([item[column.key]], value);
+    });
+}
+
+function routeUnitAggregationKey(item = {}, groupKeys = []) {
+    return JSON.stringify([
+        safeNumber(item.revenueAmount),
+        safeNumber(item.purchaseAmount),
+        ...groupKeys.map(key => String(item[key] ?? '').trim()),
+    ]);
+}
+
+function mergeRouteUnitPeriodLabels(labels = []) {
+    const uniqueLabels = Array.from(new Set(labels.map(label => String(label || '').trim()).filter(Boolean)));
+    const normalizedPeriods = Array.from(new Set(uniqueLabels.map(label => normalizePeriodKey(label)).filter(Boolean))).sort();
+    if (normalizedPeriods.length) {
+        if (normalizedPeriods.length === 1) return normalizedPeriods[0];
+        if (normalizedPeriods.length <= 3) return normalizedPeriods.join(', ');
+        return `${normalizedPeriods[0]} ~ ${normalizedPeriods[normalizedPeriods.length - 1]} (${normalizedPeriods.length}개)`;
+    }
+    if (!uniqueLabels.length) return '-';
+    if (uniqueLabels.length <= 2) return uniqueLabels.join(', ');
+    return `${uniqueLabels[0]} 외 ${uniqueLabels.length - 1}개`;
+}
+
+function aggregateRouteUnitGroups(items = [], groupKeys = ROUTE_UNIT_DEFAULT_GROUP_KEYS) {
+    const buckets = new Map();
+    items.forEach((item) => {
+        const key = routeUnitAggregationKey(item, groupKeys);
+        let bucket = buckets.get(key);
+        if (!bucket) {
+            const groupValues = groupKeys.map(field => String(item[field] || '-').trim() || '-');
+            bucket = {
+                key,
+                revenueAmount: safeNumber(item.revenueAmount),
+                purchaseAmount: safeNumber(item.purchaseAmount),
+                unitProfit: safeNumber(item.revenueAmount) - safeNumber(item.purchaseAmount),
+                rowCount: 0,
+                routeLabel: groupValues.filter(value => value !== '-').join(' / ') || '금액 기준',
+                sourceGroupCount: 0,
+                periodLabels: new Set(),
+            };
+            groupKeys.forEach((field) => {
+                bucket[field] = item[field] || '-';
+            });
+            buckets.set(key, bucket);
+        }
+        bucket.rowCount += safeNumber(item.rowCount) || 1;
+        bucket.sourceGroupCount += 1;
+        bucket.periodLabels.add(item.periodLabel || item.period || '');
+    });
+    return Array.from(buckets.values()).map((bucket) => {
+        const periodLabel = mergeRouteUnitPeriodLabels(Array.from(bucket.periodLabels));
+        const { periodLabels, ...rest } = bucket;
+        return { ...rest, periodLabel };
     });
 }
 
@@ -977,11 +1047,23 @@ function RouteUnitPricePanel({
 }) {
     const [unitFilter, setUnitFilter] = useState('');
     const [columnFilters, setColumnFilters] = useState({});
+    const [openFilterColumn, setOpenFilterColumn] = useState('');
+    const [includedGroupFields, setIncludedGroupFields] = useState(() => ROUTE_UNIT_DEFAULT_GROUP_KEYS);
     const [unitSort, setUnitSort] = useState('revenueAmount_desc');
     const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
+    const activeGroupFieldSet = useMemo(() => new Set(includedGroupFields), [includedGroupFields]);
+    const activeRouteUnitColumns = useMemo(() => ROUTE_UNIT_COLUMNS.filter(column => (
+        !ROUTE_UNIT_GROUP_COLUMN_KEYS.has(column.key) || activeGroupFieldSet.has(column.key)
+    )), [activeGroupFieldSet]);
+    const activeRouteUnitFilterColumns = useMemo(() => activeRouteUnitColumns.filter(column => ROUTE_UNIT_FILTER_COLUMN_KEYS.has(column.key)), [activeRouteUnitColumns]);
+    const routeUnitGridTemplate = useMemo(() => activeRouteUnitColumns.map(routeUnitColumnGrid).join(' '), [activeRouteUnitColumns]);
+    const routeUnitGridStyle = useMemo(() => ({
+        gridTemplateColumns: routeUnitGridTemplate,
+        minWidth: `${Math.max(560, activeRouteUnitColumns.length * 88)}px`,
+    }), [activeRouteUnitColumns.length, routeUnitGridTemplate]);
     const filterOptions = useMemo(() => {
         const result = {};
-        ROUTE_UNIT_FILTER_COLUMNS.forEach((column) => {
+        activeRouteUnitFilterColumns.forEach((column) => {
             const values = Array.from(new Set(groups
                 .map(item => item[column.key])
                 .filter(value => value !== undefined && value !== null && String(value).trim() !== '')));
@@ -992,12 +1074,15 @@ function RouteUnitPricePanel({
             result[column.key] = values.slice(0, 600);
         });
         return result;
-    }, [groups]);
-    const visibleGroups = useMemo(() => groups
-        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters))
+    }, [activeRouteUnitFilterColumns, groups]);
+    const filteredGroups = useMemo(() => groups
+        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters)),
+    [columnFilters, groups, unitFilter]);
+    const compressedGroups = useMemo(() => aggregateRouteUnitGroups(filteredGroups, includedGroupFields), [filteredGroups, includedGroupFields]);
+    const visibleGroups = useMemo(() => compressedGroups
         .slice()
         .sort((a, b) => compareRouteUnitItems(a, b, unitSort) || String(a.routeLabel || '').localeCompare(String(b.routeLabel || ''), 'ko-KR')),
-    [columnFilters, groups, unitFilter, unitSort]);
+    [compressedGroups, unitSort]);
     const revenueAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.revenueAmount))).size, [groups]);
     const purchaseAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.purchaseAmount))).size, [groups]);
     const scopeButtons = [
@@ -1014,21 +1099,56 @@ function RouteUnitPricePanel({
         setUnitSort(`${field}_${nextDirection}`);
     };
     const updateColumnFilter = (field, value) => {
-        setColumnFilters(prev => ({
-            ...prev,
-            [field]: value,
-        }));
+        setColumnFilters((prev) => {
+            const next = { ...prev };
+            if (String(value || '').trim()) {
+                next[field] = value;
+            } else {
+                delete next[field];
+            }
+            return next;
+        });
+    };
+    const clearGroupColumnFilters = (fields = ROUTE_UNIT_DEFAULT_GROUP_KEYS) => {
+        setColumnFilters((prev) => {
+            const next = { ...prev };
+            fields.forEach(field => delete next[field]);
+            return next;
+        });
+    };
+    const toggleGroupField = (field) => {
+        const willRemove = includedGroupFields.includes(field);
+        setIncludedGroupFields(prev => (
+            prev.includes(field)
+                ? prev.filter(item => item !== field)
+                : ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(item => item === field || prev.includes(item))
+        ));
+        if (willRemove) clearGroupColumnFilters([field]);
+        if (openFilterColumn === field) setOpenFilterColumn('');
+    };
+    const includeAllGroupFields = () => {
+        setIncludedGroupFields(ROUTE_UNIT_DEFAULT_GROUP_KEYS);
+    };
+    const useAmountOnlyGrouping = () => {
+        setIncludedGroupFields([]);
+        clearGroupColumnFilters();
+        setOpenFilterColumn('');
     };
     const resetFilters = () => {
         setUnitFilter('');
         setColumnFilters({});
+        setOpenFilterColumn('');
     };
-    const activeColumnFilters = ROUTE_UNIT_FILTER_COLUMNS
-        .filter(column => String(columnFilters[column.key] || '').trim())
-        .map(column => ({
-            ...column,
-            value: columnFilters[column.key],
-        }));
+    const renderRouteUnitCell = (item, column) => {
+        if (column.key === 'revenueAmount') return <b key={column.key}>{formatRouteUnitWon(item.revenueAmount)}</b>;
+        if (column.key === 'purchaseAmount') return <b key={column.key}>{formatRouteUnitWon(item.purchaseAmount)}</b>;
+        if (column.key === 'unitProfit') {
+            return <b key={column.key} className={safeNumber(item.unitProfit) < 0 ? styles.negative : styles.positive}>{formatRouteUnitWon(item.unitProfit)}</b>;
+        }
+        if (column.key === 'rowCount') return <em key={column.key}>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</em>;
+        const value = item[column.key] || '-';
+        return <span key={column.key} title={value}>{value}</span>;
+    };
 
     return (
         <div className={styles.routeUnitShell}>
@@ -1070,14 +1190,14 @@ function RouteUnitPricePanel({
                 </button>
             </section>
             <div className={styles.routeUnitPrinciple}>
-                월간 마감자료 DB만 사용합니다. 청구/하불 금액과 매출·지역·작업지·운송사·구분·픽업·청구픽업·선적·TYPE·청구처·하불처 조건이 같은 행을 하나의 금액표로 묶습니다.
+                월간 마감자료 DB만 사용합니다. 청구/하불 금액은 항상 고정하고, 선택한 묶음 항목만 기준으로 같은 금액표를 다시 압축합니다.
             </div>
 
             {error && <div className={styles.errorBox}>{error}</div>}
 
             <div className={styles.routeUnitKpis}>
                 <div><span>월간 원장 행</span><strong>{safeNumber(data?.rowCount).toLocaleString('ko-KR')}</strong><em>{summary.monthlyFileCount || 0}개 파일</em></div>
-                <div><span>금액 묶음</span><strong>{groups.length.toLocaleString('ko-KR')}</strong><em>표시 {visibleGroups.length.toLocaleString('ko-KR')}개</em></div>
+                <div><span>금액 묶음</span><strong>{compressedGroups.length.toLocaleString('ko-KR')}</strong><em>원본 {groups.length.toLocaleString('ko-KR')}개 · 표시 {visibleGroups.length.toLocaleString('ko-KR')}개</em></div>
                 <div><span>청구 금액 종류</span><strong>{revenueAmountTypes.toLocaleString('ko-KR')}</strong><em>원 단위</em></div>
                 <div><span>하불 금액 종류</span><strong>{purchaseAmountTypes.toLocaleString('ko-KR')}</strong><em>{summary.truncated ? '상위 일부 표시' : '전체 표시'}</em></div>
             </div>
@@ -1108,47 +1228,28 @@ function RouteUnitPricePanel({
                     <button className={styles.ghostBtn} onClick={resetFilters} disabled={!unitFilter && !Object.values(columnFilters).some(Boolean)}>
                         필터 초기화
                     </button>
-                    <em>{visibleGroups.length.toLocaleString('ko-KR')} / {groups.length.toLocaleString('ko-KR')}개</em>
-                </div>
-                <div className={styles.routeUnitFilterPanel}>
-                    <div className={styles.routeUnitFilterTitle}>
-                        <span>필터 목록</span>
-                        <em>목록에서 조건을 고르고, 금액은 상단 검색창에 숫자만 입력해도 조회됩니다.</em>
-                    </div>
-                    <div className={styles.routeUnitFilterList}>
-                        {ROUTE_UNIT_FILTER_COLUMNS.map(column => (
-                            <label key={column.key}>
-                                <span>{column.label}</span>
-                                <select
-                                    value={columnFilters[column.key] || ''}
-                                    onChange={event => updateColumnFilter(column.key, event.target.value)}
-                                >
-                                    <option value="">전체</option>
-                                    {(filterOptions[column.key] || []).map(value => (
-                                        <option key={`${column.key}-${value}`} value={String(value)}>
-                                            {routeUnitFilterOptionLabel(column, value)}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        ))}
-                    </div>
-                    {activeColumnFilters.length > 0 && (
-                        <div className={styles.routeUnitFilterChips}>
-                            {activeColumnFilters.map(column => (
+                    <em>{visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개</em>
+                    <div className={styles.routeUnitGroupBar}>
+                        <span>묶음 항목</span>
+                        <div className={styles.routeUnitGroupChips}>
+                            {ROUTE_UNIT_GROUP_COLUMNS.map(column => (
                                 <button
                                     key={column.key}
                                     type="button"
-                                    onClick={() => updateColumnFilter(column.key, '')}
-                                    title={`${column.label} 필터 해제`}
+                                    className={activeGroupFieldSet.has(column.key) ? styles.routeUnitGroupChipActive : ''}
+                                    onClick={() => toggleGroupField(column.key)}
+                                    title={activeGroupFieldSet.has(column.key) ? `${column.label} 항목 제외` : `${column.label} 항목 포함`}
                                 >
-                                    <span>{column.label}</span>
-                                    <strong>{routeUnitFilterOptionLabel(column, column.value)}</strong>
-                                    <em>×</em>
+                                    {column.label}
                                 </button>
                             ))}
                         </div>
-                    )}
+                        <div className={styles.routeUnitGroupActions}>
+                            <button type="button" onClick={includeAllGroupFields}>전체 포함</button>
+                            <button type="button" onClick={useAmountOnlyGrouping}>금액만</button>
+                        </div>
+                        <em>{includedGroupFields.length}개 기준 · 제외한 항목은 집계 키에서 빠집니다.</em>
+                    </div>
                 </div>
                 {loading && !groups.length ? (
                     <div className={styles.emptyPanel}>월간 금액표를 집계하는 중입니다...</div>
@@ -1158,38 +1259,77 @@ function RouteUnitPricePanel({
                     <div className={styles.emptyPanel}>필터에 맞는 금액표가 없습니다.</div>
                 ) : (
                     <div className={styles.routeUnitRows}>
-                        <div className={styles.routeUnitHead}>
-                            {ROUTE_UNIT_COLUMNS.map(column => (
-                                <button
-                                    key={column.key}
-                                    type="button"
-                                    className={activeSortField === column.key ? styles.routeUnitSortActive : ''}
-                                    onClick={() => toggleColumnSort(column.key)}
-                                    title={`${column.label} 기준 정렬`}
-                                >
-                                    {column.label}
-                                    {activeSortField === column.key && <em>{activeSortDirection === 'asc' ? '▲' : '▼'}</em>}
-                                </button>
-                            ))}
+                        <div className={styles.routeUnitHead} style={routeUnitGridStyle}>
+                            {activeRouteUnitColumns.map((column) => {
+                                const canFilter = ROUTE_UNIT_FILTER_COLUMN_KEYS.has(column.key);
+                                const filterValue = columnFilters[column.key] || '';
+                                const optionList = filterOptions[column.key] || EMPTY_LIST;
+                                return (
+                                    <div
+                                        key={column.key}
+                                        className={`${styles.routeUnitHeadCell} ${filterValue ? styles.routeUnitHeadCellFiltered : ''}`}
+                                    >
+                                        <button
+                                            type="button"
+                                            className={`${styles.routeUnitSortButton} ${activeSortField === column.key ? styles.routeUnitSortActive : ''}`}
+                                            onClick={() => toggleColumnSort(column.key)}
+                                            title={`${column.label} 기준 정렬`}
+                                        >
+                                            <span>{column.label}</span>
+                                            {activeSortField === column.key && <em>{activeSortDirection === 'asc' ? '▲' : '▼'}</em>}
+                                        </button>
+                                        {canFilter && (
+                                            <div className={styles.routeUnitFilterSlot}>
+                                                <button
+                                                    type="button"
+                                                    className={`${styles.routeUnitFilterButton} ${filterValue ? styles.routeUnitFilterButtonActive : ''}`}
+                                                    onClick={() => setOpenFilterColumn(prev => (prev === column.key ? '' : column.key))}
+                                                    title={filterValue
+                                                        ? `${column.label}: ${routeUnitFilterOptionLabel(column, filterValue)}`
+                                                        : `${column.label} 필터`}
+                                                >
+                                                    ▾
+                                                </button>
+                                                {openFilterColumn === column.key && (
+                                                    <div className={styles.routeUnitFilterPopover}>
+                                                        <div className={styles.routeUnitFilterPopoverHeader}>
+                                                            <strong>{column.label}</strong>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    updateColumnFilter(column.key, '');
+                                                                    setOpenFilterColumn('');
+                                                                }}
+                                                            >
+                                                                전체
+                                                            </button>
+                                                        </div>
+                                                        <div className={styles.routeUnitFilterOptionList}>
+                                                            {optionList.map(value => (
+                                                                <button
+                                                                    key={`${column.key}-${value}`}
+                                                                    type="button"
+                                                                    className={String(filterValue) === String(value) ? styles.routeUnitFilterOptionActive : ''}
+                                                                    onClick={() => {
+                                                                        updateColumnFilter(column.key, String(value));
+                                                                        setOpenFilterColumn('');
+                                                                    }}
+                                                                >
+                                                                    {routeUnitFilterOptionLabel(column, value)}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                         {visibleGroups.map(item => (
-                            <div key={item.key} className={styles.routeUnitRow}>
-                                <b>{formatRouteUnitWon(item.revenueAmount)}</b>
-                                <b>{formatRouteUnitWon(item.purchaseAmount)}</b>
-                                <b className={safeNumber(item.unitProfit) < 0 ? styles.negative : styles.positive}>{formatRouteUnitWon(item.unitProfit)}</b>
-                                <span>{item.salesItem}</span>
-                                <span>{item.region}</span>
-                                <span title={item.workSite}>{item.workSite}</span>
-                                <span>{item.carrier}</span>
-                                <span>{item.category}</span>
-                                <span>{item.pickup}</span>
-                                <span>{item.billingPickup}</span>
-                                <span>{item.shipment}</span>
-                                <span>{item.type}</span>
-                                <span title={item.billTo}>{item.billTo}</span>
-                                <span title={item.payTo}>{item.payTo}</span>
-                                <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</em>
-                                <span>{item.periodLabel}</span>
+                            <div key={item.key} className={styles.routeUnitRow} style={routeUnitGridStyle}>
+                                {activeRouteUnitColumns.map(column => renderRouteUnitCell(item, column))}
                             </div>
                         ))}
                     </div>

@@ -4,6 +4,10 @@ import crypto from 'node:crypto';
 import { getNasClient } from '@/lib/nas';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
 import {
+  buildGlapsAliasDuplicateGroupKey,
+  buildGlapsRouteDuplicateGroupKey,
+} from '@/utils/glapsDuplicateGroups.mjs';
+import {
   DEFAULT_GLAPS_BRANCH_ID,
   buildGlapsRouteFingerprint,
   getGlapsRouteReviewStatus,
@@ -690,17 +694,11 @@ async function findAliasDirectDuplicates(adminSupabase, versionId, dbRow, id = '
 }
 
 function aliasMergeGroupKey(row = {}) {
-  const glapsCode = duplicateKeyPart(row.glaps_code);
-  return glapsCode || '';
+  return buildGlapsAliasDuplicateGroupKey(row);
 }
 
 function routeMergeGroupKey(row = {}) {
-  const parts = [
-    row.start_location_name,
-    row.waypoint_els_name || row.waypoint_name,
-    row.destination_name,
-  ].map(duplicateKeyPart);
-  return parts.every(Boolean) ? parts.join('|') : '';
+  return buildGlapsRouteDuplicateGroupKey(row);
 }
 
 function mergeAliasFieldValues(values = []) {

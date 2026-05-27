@@ -1,3 +1,112 @@
+## [2026-05-28] 배차변동 추가/삭제 순증감 기준 정리 (v5.14.248)
+### 핵심
+- 배차변동 추가/삭제 기준을 지역 배차칸 수량 변화 또는 행 추가/삭제로 좁혔습니다.
+- `Nomi/특이사항` 변경은 BKG/비고/GLAPS 파생코드처럼 변동 행 생성 기준에서 제외했습니다.
+- 같은 항목의 미확인 add/delete 수량이 상쇄되면 화면에서 숨기고, 이미 확인완료된 변동은 상쇄되어도 유지합니다.
+- 2026-05-27 통합 배차변동 active 48건 중 40건을 `neutralized` 이력과 함께 비활성화해 8건만 남겼습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] GLAPS 중복 기준 코드 단독 정정 (v5.14.247)
+### 핵심
+- 운송경로 중복검출/병합 기준을 `운송경로코드` 단독 반복으로 정정했습니다.
+- 항목매핑 중복검출/병합 기준을 `최종코드(BP)` 단독 반복으로 정정했습니다.
+- 상차지/경유지/하차지/공장/매핑항목/운송경로코드 등 다른 컬럼은 항목매핑 중복 판정에서 제외합니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs"`: 통과
+- `cd web; npm run build`: Next standalone manifest ENOENT로 실패. 컴파일/타입체크/정적 페이지 생성은 통과.
+- 미해결 빌드 이슈 기록: `.tmp_issues/20260528_next_build_manifest_enoent.md`
+### 변경 파일
+- `web/utils/glapsDuplicateGroups.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/glapsDuplicateGroups.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] 아산 구간단가 묶음 항목 압축 (v5.14.246)
+### 핵심
+- 구간단가에 `묶음 항목` 토글을 추가해 매출/지역/작업지/운송사/구분/픽업/청구픽업/선적/TYPE/청구처/하불처를 집계 기준에서 제외하거나 다시 포함할 수 있게 했습니다.
+- 청구/하불 금액은 고정 기준으로 두고, 제외한 항목은 집계 키에서 빼서 같은 금액표가 한 줄로 다시 합쳐지게 했습니다.
+- 컬럼 제목열 필터는 현재 포함된 컬럼에만 표시되며, 항목을 제외하면 해당 컬럼 필터도 함께 정리됩니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] 아산 구간단가 제목열 필터 전환 (v5.14.245)
+### 핵심
+- 구간단가 상단에 장황하게 분리되어 있던 `필터 목록` 패널을 제거했습니다.
+- 각 컬럼 제목열 안에 필터 버튼을 넣어, 정렬은 제목 클릭으로, 조건 필터는 제목 옆 버튼으로 처리하도록 분리했습니다.
+- 필터는 현재 조회 범위의 금액표 묶음 기준으로 목록화하며, 상단 검색창의 금액/키워드 검색은 그대로 유지했습니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] 배차확정 후 BKG 원본 변경 표시 정책 (v5.14.244)
+### 핵심
+- 배차확정 이후 원본 배차판의 BKG1~3/TARGET VESSEL/비고가 바뀌어도 `BKG확정`은 확정 당시 값 또는 WEB 수기값으로 유지합니다.
+- 원본 BKG가 바뀌면 상세배차/배차변동의 BKG 배지와 원본칸을 붉게 표시하고, 사용자가 바뀐 BKG 셀을 클릭할 때만 `BKG확정`을 새 값으로 바꿉니다.
+- TARGET VESSEL/비고 변경은 행 이벤트를 만들지 않고 memo_changed 이력과 붉은 배경으로만 알립니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 49개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "app/api/branches/asan/dispatch/confirmation/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+- 로컬 `http://localhost:3000/employees/branches/asan?debug=true`: HTTP 200 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/app/api/branches/asan/dispatch/confirmation/route.js`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] GLAPS 중복 유틸 분리 (v5.14.243)
+### 핵심
+- 항목매핑/운송경로 중복검출과 병합 기준을 화면/API 공통 유틸로 분리했습니다.
+- 화면과 API가 `glapsDuplicateGroups` 공통 유틸을 사용하게 하여 빨간 중복 표시와 실제 병합 대상이 같은 기준을 따르게 했습니다.
+- 중복 필터 화면에서는 같은 중복 그룹끼리 붙어서 보이게 정렬했습니다.
+- 실제 최종 기준은 v5.14.247에서 `운송경로코드`/`최종코드(BP)` 단독 반복으로 정정했습니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/utils/glapsDuplicateGroups.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/glapsDuplicateGroups.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] 아산 구간단가 필터 목록화 (v5.14.242)
 ### 핵심
 - 구간단가 표 헤더 아래에 길게 늘어났던 컬럼별 입력 필터줄을 제거했습니다.

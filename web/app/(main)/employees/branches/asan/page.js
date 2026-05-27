@@ -25,6 +25,8 @@ import {
     formatDispatchChangeStatus,
     formatDispatchChangeType,
     getDispatchChangeDiffHeaders,
+    getDispatchMemoOnlyDiffHeaders,
+    makeDispatchMemoSignature,
     makeDispatchChangeSnapshotLine,
 } from '@/utils/asanDispatchChangeEvents.mjs';
 import {
@@ -163,6 +165,7 @@ const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const DETAIL_PORT_OVERRIDE_FIELD_KEY = 'glaps_port_code';
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
+const DETAIL_SOURCE_MEMO_HEADERS = Object.freeze(['BKG1', 'BKG2', 'BKG3', 'TARGET VESSEL', '비고']);
 const BKG_WEB_CELL_LOCK_FIELDS = new Set([
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG2,
@@ -606,6 +609,43 @@ function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
     return idx >= 0 ? String(values[idx] ?? '').trim() : '';
 }
+function getConfirmationSnapshotValues(snapshot = {}) {
+    return snapshot?.rowValues
+        || snapshot?.row_values?.values
+        || snapshot?.row_values
+        || [];
+}
+function getConfirmationSnapshotLineKey(snapshot = {}) {
+    return snapshot?.detailLineKey || snapshot?.detail_line_key || '';
+}
+function getDetailMemoDiffSet(beforeValues = [], afterValues = []) {
+    if (!Array.isArray(beforeValues) || beforeValues.length === 0) return new Set();
+    return new Set(getDispatchMemoOnlyDiffHeaders(beforeValues, afterValues));
+}
+function isDetailMemoHeaderHighlighted(line = {}, header = '') {
+    if (!DETAIL_SOURCE_MEMO_HEADERS.includes(header)) return false;
+    const diffHeaders = new Set(line.memoDiffHeaders || []);
+    if (!diffHeaders.has(header)) return false;
+    if (BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
+        const bkgValue = getDetailBkgValue(line, header);
+        return Boolean(bkgValue !== (line.confirmedBkg || ''));
+    }
+    return true;
+}
+function isDetailBkgConfirmStale(line = {}) {
+    const source = line.confirmedBkgSource || '';
+    if (!BKG_CONFIRM_SOURCE_OPTIONS.includes(source)) return false;
+    return getDetailBkgValue(line, source) !== (line.confirmedBkg || '');
+}
+function buildDetailMemoTooltip(line = {}, header = '') {
+    const beforeValues = line.memoBaseValues || [];
+    if (!beforeValues.length || !DETAIL_SOURCE_MEMO_HEADERS.includes(header)) return '';
+    const beforeValue = getDetailRowValue(beforeValues, header) || '(빈값)';
+    const afterValue = header === 'BKG확정'
+        ? line.confirmedBkg || '(빈값)'
+        : getDetailRowValue(detailLineToRow(line), header) || '(빈값)';
+    return `${header} 변경 감지\n변경전: ${beforeValue}\n현재: ${afterValue}`;
+}
 function getDetailPortRowValue(values = []) {
     return getDetailRowValue(values, DISPATCH_DETAIL_PORT_HEADER) || getDetailRowValue(values, '포트');
 }
@@ -633,7 +673,7 @@ function getChangeEventPayloadContext(event = {}) {
 }
 function detailLineFromChangeValues(values = [], event = {}, options = {}) {
     const context = getChangeEventPayloadContext(event);
-    const confirmedBkg = getDetailRowValue(values, 'BKG확정') || getDetailRowValue(values, 'BKG1');
+    const confirmedBkg = getDetailRowValue(values, 'BKG확정') || context.confirmedBkg || getDetailRowValue(values, 'BKG1');
     return {
         lineNo: context.lineNo || null,
         workDate: getDetailRowValue(values, '작업일자') || context.workDate || '',
@@ -683,6 +723,8 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         bkg1: getDetailRowValue(rowValues, 'BKG1'),
         bkg2: getDetailRowValue(rowValues, 'BKG2'),
         bkg3: getDetailRowValue(rowValues, 'BKG3'),
+        targetVessel: getDetailRowValue(rowValues, 'TARGET VESSEL'),
+        note: getDetailRowValue(rowValues, '비고'),
         confirmedBkg: getDetailRowValue(rowValues, 'BKG확정'),
     };
 }
@@ -701,6 +743,9 @@ function buildDetailLineContext(line = {}) {
         bkg1: line.bkg1 || '',
         bkg2: line.bkg2 || '',
         bkg3: line.bkg3 || '',
+        targetVessel: line.targetVessel || '',
+        note: line.note || '',
+        confirmedBkg: line.confirmedBkg || '',
     };
 }
 function buildGlapsAliasCodeMap(aliases = [], aliasType) {
@@ -1945,6 +1990,9 @@ function AsanDispatchContent() {
 
     const enrichDetailLine = useCallback((line = {}, options = {}) => {
         const bkgOverride = options.bkgOverride || null;
+        const snapshotValues = Array.isArray(options.snapshotValues) ? options.snapshotValues : [];
+        const snapshotConfirmedBkg = getDetailRowValue(snapshotValues, 'BKG확정');
+        const snapshotBkgSource = snapshotConfirmedBkg ? inferBkgSourceFromDetailValues(snapshotValues) : '';
         const startLocation = Object.prototype.hasOwnProperty.call(options, 'startLocation')
             ? options.startLocation || ''
             : line.startLocation || '';
@@ -1970,7 +2018,7 @@ function AsanDispatchContent() {
         const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsConsigneeCode = getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
-        const confirmedBkg = bkgOverride ? bkgOverride.value : line.confirmedBkg || line.bkg1 || '';
+        const confirmedBkg = bkgOverride ? bkgOverride.value : snapshotConfirmedBkg || line.confirmedBkg || line.bkg1 || '';
         const bkgUpdatedAt = bkgOverride?.updatedAt || '';
         const confirmedAt = options.confirmedAt || '';
         const shouldMarkBkgUpdated = Boolean(bkgUpdatedAt && (!confirmedAt || isTimestampAfter(bkgUpdatedAt, confirmedAt)));
@@ -1979,7 +2027,7 @@ function AsanDispatchContent() {
             glapsCarrierBpCode: carrierCode || '',
             startLocation,
             confirmedBkg,
-            confirmedBkgSource: bkgOverride?.source || line.confirmedBkgSource || (confirmedBkg ? inferBkgSourceFromDetailValues(detailLineToRow({ ...line, confirmedBkg })) : 'BKG1'),
+            confirmedBkgSource: bkgOverride?.source || snapshotBkgSource || line.confirmedBkgSource || (confirmedBkg ? inferBkgSourceFromDetailValues(detailLineToRow({ ...line, confirmedBkg })) : 'BKG1'),
             confirmedBkgUpdatedAt: shouldMarkBkgUpdated ? bkgUpdatedAt : '',
             confirmedBkgUpdatedBy: shouldMarkBkgUpdated ? bkgOverride?.updatedBy || '' : '',
             detailUpdatedAt: line.detailUpdatedAt || (shouldMarkBkgUpdated ? fmtShortTs(bkgUpdatedAt) : ''),
@@ -2011,18 +2059,38 @@ function AsanDispatchContent() {
         };
     }, [glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
 
+    const detailConfirmationSnapshotByLineKey = useMemo(() => {
+        const map = new Map();
+        const snapshots = detailConfirmation?.snapshot_lines || detailConfirmation?.snapshotLines || [];
+        (snapshots || []).forEach((snapshot) => {
+            const key = getConfirmationSnapshotLineKey(snapshot);
+            if (key && !map.has(key)) map.set(key, snapshot);
+        });
+        return map;
+    }, [detailConfirmation]);
+
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
         const hasStartOverride = Object.prototype.hasOwnProperty.call(detailStartOverrides, lineKey);
         const bkgOverride = detailBkgOverrides[lineKey] || null;
         const portOverride = detailPortOverrides[lineKey] || null;
-        return enrichDetailLine(line, {
+        const snapshotValues = getConfirmationSnapshotValues(detailConfirmationSnapshotByLineKey.get(lineKey));
+        const enriched = enrichDetailLine(line, {
             startLocation: hasStartOverride ? detailStartOverrides[lineKey] || '' : line.startLocation || '',
             bkgOverride,
             portCodeOverride: portOverride?.value || '',
             confirmedAt: detailConfirmation?.confirmed_at || '',
+            snapshotValues,
         });
-    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailLines, detailPortOverrides, detailStartOverrides, enrichDetailLine]);
+        const rowValues = detailLineToRow(enriched);
+        const memoDiffHeaders = [...getDetailMemoDiffSet(snapshotValues, rowValues)];
+        return {
+            ...enriched,
+            memoBaseValues: snapshotValues,
+            memoDiffHeaders,
+            bkgConfirmStale: isDetailBkgConfirmStale({ ...enriched, memoDiffHeaders }),
+        };
+    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailConfirmationSnapshotByLineKey, detailLines, detailPortOverrides, detailStartOverrides, enrichDetailLine]);
 
     const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -2044,7 +2112,7 @@ function AsanDispatchContent() {
     ), [detailDisplayLines]);
 
     const detailSnapshotSignature = useMemo(() => (
-        detailSnapshotLines.map(line => `${line.detailLineKey}:${line.rowFingerprint}`).join('|')
+        detailSnapshotLines.map(line => `${line.detailLineKey}:${line.rowFingerprint}:${makeDispatchMemoSignature(line.rowValues)}`).join('|')
     ), [detailSnapshotLines]);
 
     const detailChangeSummary = useMemo(() => {
@@ -2107,6 +2175,10 @@ function AsanDispatchContent() {
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const changedHeaderSet = getDispatchChangedHeaderSet(event);
+                const memoBaseValues = snapshotRowValues(event.before_snapshot);
+                const memoDiffHeaders = memoBaseValues.length > 0
+                    ? [...getDetailMemoDiffSet(memoBaseValues, editableValues)]
+                    : [];
                 const values = [
                     ...editableValues,
                     formatDispatchChangeType(event.change_type),
@@ -2115,7 +2187,19 @@ function AsanDispatchContent() {
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
-                return { event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values };
+                return {
+                    event,
+                    changedHeaderSet,
+                    hasCalculatedDiff,
+                    line: {
+                        ...line,
+                        memoBaseValues,
+                        memoDiffHeaders,
+                        bkgConfirmStale: isDetailBkgConfirmStale({ ...line, memoDiffHeaders }),
+                    },
+                    rawValues,
+                    values,
+                };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
     }, [detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
@@ -2313,7 +2397,7 @@ function AsanDispatchContent() {
     }, []);
 
     const saveDetailBkgOverride = useCallback(async (line, source, value) => {
-        if (!detailScope || detailConfirmationLocked) return;
+        if (!detailScope) return;
         const lineKey = makeDispatchDetailLineKey(line);
         const nextValue = String(value ?? '').trim();
         const nextSource = BKG_CONFIRM_SOURCE_OPTIONS.includes(source) ? source : 'manual';
@@ -2344,7 +2428,7 @@ function AsanDispatchContent() {
         } catch (error) {
             setSyncStatus({ message: error.message || 'BKG확정 저장 실패', isError: true });
         }
-    }, [detailConfirmationLocked, detailScope, getDetailAuthHeaders]);
+    }, [detailScope, getDetailAuthHeaders]);
 
     const changeDetailBkgSource = useCallback((line, source) => {
         saveDetailBkgOverride(line, source, getDetailBkgValue(line, source));
@@ -2987,6 +3071,8 @@ function AsanDispatchContent() {
                                         return (
                                             <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''} ${detailConfirmationLocked ? styles.detailLockedRow : ''} ${changeEvent ? styles.detailChangedRow : ''}`}>
                                                 {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
+                                                    const memoCellClass = isDetailMemoHeaderHighlighted(line, header) ? styles.detailMemoDiffCell : '';
+                                                    const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
                                                     if (header === '상차지') {
                                                         return (
                                                             <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
@@ -3007,10 +3093,14 @@ function AsanDispatchContent() {
                                                     }
                                                     if (header === 'BKG확정') {
                                                         const isManualBkg = line.confirmedBkgSource === 'manual';
+                                                        const isBkgStale = isDetailBkgConfirmStale(line);
                                                         return (
                                                             <td key={header} className={styles.detailBkgConfirmCell}>
                                                                 <div className={styles.detailBkgConfirmControl}>
-                                                                    <span className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''}`}>
+                                                                    <span
+                                                                        className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''} ${isBkgStale ? styles.detailBkgSourceStale : ''}`}
+                                                                        title={isBkgStale ? '선택된 BKG 원본값이 확정 이후 변경되었습니다.' : ''}
+                                                                    >
                                                                         {isManualBkg ? '수기' : line.confirmedBkgSource || 'BKG1'}
                                                                     </span>
                                                                     <input
@@ -3024,7 +3114,7 @@ function AsanDispatchContent() {
                                                                         onKeyDown={focusDetailGridInput}
                                                                         data-detail-row-index={detailRowIdx}
                                                                         data-detail-col-index={colIdx}
-                                                                        disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
+                                                                        disabled={detailOverrideSetupRequired || !detailScope}
                                                                         title={line.confirmedBkgSource && line.confirmedBkgSource !== 'manual' ? `${line.confirmedBkgSource} 선택값` : '수기 입력값'}
                                                                     />
                                                                 </div>
@@ -3033,10 +3123,14 @@ function AsanDispatchContent() {
                                                     }
                                                     if (BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
                                                         const bkgValue = getDetailBkgValue(line, header);
-                                                        const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
-                                                        const isDisabledBkg = detailConfirmationLocked || detailOverrideSetupRequired || !detailScope || !bkgValue;
+                                                        const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue) && bkgValue === line.confirmedBkg;
+                                                        const isDisabledBkg = detailOverrideSetupRequired || !detailScope || !bkgValue;
                                                         return (
-                                                            <td key={header} className={isSelectedBkg ? styles.detailBkgSelectedCell : ''}>
+                                                            <td
+                                                                key={header}
+                                                                className={[isSelectedBkg ? styles.detailBkgSelectedCell : '', memoCellClass].filter(Boolean).join(' ')}
+                                                                title={memoTooltip}
+                                                            >
                                                                 {bkgValue ? (
                                                                     <button
                                                                         type="button"
@@ -3085,7 +3179,7 @@ function AsanDispatchContent() {
                                                             </td>
                                                         );
                                                     }
-                                                    return <td key={header}>{rowValues[colIdx]}</td>;
+                                                    return <td key={header} className={memoCellClass} title={memoTooltip}>{rowValues[colIdx]}</td>;
                                                 })}
                                             </tr>
                                         );
@@ -3219,7 +3313,9 @@ function AsanDispatchContent() {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
-                                                        const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : '';
+                                                        const memoCellClass = isDetailValue && isDetailMemoHeaderHighlighted(line, header) ? styles.detailMemoDiffCell : '';
+                                                        const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
+                                                        const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : memoCellClass;
                                                         if (isDetailValue && header === '상차지') {
                                                             return (
                                                                 <td key={header} className={[!line.startLocation ? styles.detailManualCell : '', changedCellClass].filter(Boolean).join(' ')}>
@@ -3267,10 +3363,14 @@ function AsanDispatchContent() {
                                                         }
                                                         if (isDetailValue && header === 'BKG확정') {
                                                             const isManualBkg = line.confirmedBkgSource === 'manual';
+                                                            const isBkgStale = isDetailBkgConfirmStale(line);
                                                             return (
                                                                 <td key={header} className={[styles.detailBkgConfirmCell, changedCellClass].filter(Boolean).join(' ')}>
                                                                     <div className={styles.detailBkgConfirmControl}>
-                                                                        <span className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''}`}>
+                                                                        <span
+                                                                            className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''} ${isBkgStale ? styles.detailBkgSourceStale : ''}`}
+                                                                            title={isBkgStale ? '선택된 BKG 원본값이 확정 이후 변경되었습니다.' : ''}
+                                                                        >
                                                                             {isManualBkg ? '수기' : line.confirmedBkgSource || 'BKG1'}
                                                                         </span>
                                                                         <input
@@ -3290,10 +3390,14 @@ function AsanDispatchContent() {
                                                         }
                                                         if (isDetailValue && BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
                                                             const bkgValue = getDetailBkgValue(line, header);
-                                                            const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
+                                                            const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue) && bkgValue === line.confirmedBkg;
                                                             const isDisabledBkg = editDisabled || !bkgValue;
                                                             return (
-                                                                <td key={header} className={[isSelectedBkg ? styles.detailBkgSelectedCell : '', changedCellClass].filter(Boolean).join(' ')}>
+                                                                <td
+                                                                    key={header}
+                                                                    className={[isSelectedBkg ? styles.detailBkgSelectedCell : '', changedCellClass].filter(Boolean).join(' ')}
+                                                                    title={memoTooltip}
+                                                                >
                                                                     {bkgValue ? (
                                                                         <button
                                                                             type="button"
@@ -3319,6 +3423,7 @@ function AsanDispatchContent() {
                                                             <td
                                                                 key={header}
                                                                 className={[isChangeType ? styles.detailChangeTypeCell : '', changedCellClass].filter(Boolean).join(' ')}
+                                                                title={memoTooltip}
                                                             >
                                                                 {isDetailValue ? (
                                                                     values[colIdx] || ''

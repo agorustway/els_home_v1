@@ -43,17 +43,43 @@ const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '라인',
   '타입',
 ]);
-const TRANSPORT_CHANGE_CONTEXT_KEYS = Object.freeze([
-  'transportRemark',
-]);
+const TRANSPORT_CHANGE_CONTEXT_KEYS = Object.freeze([]);
 const MEMO_ONLY_HEADERS = new Set([
-  'BKG확정',
   'BKG1',
   'BKG2',
   'BKG3',
   'TARGET VESSEL',
   '비고',
   '수정일시',
+]);
+const AUTO_REFRESH_MEMO_HEADERS = Object.freeze([
+  'BKG1',
+  'BKG2',
+  'BKG3',
+  'TARGET VESSEL',
+  '비고',
+  '수정일시',
+]);
+const AUTO_REFRESH_MEMO_CONTEXT_KEYS = Object.freeze([
+  'bkg1',
+  'bkg2',
+  'bkg3',
+  'targetVessel',
+  'note',
+  'detailUpdatedAt',
+]);
+const NEUTRAL_ADD_DELETE_HEADERS = Object.freeze([
+  '작업일자',
+  '구분',
+  '화주',
+  '상차지',
+  '작업지',
+  '하차지(선적)',
+  '고객사',
+  '포트(DIST)',
+  '라인',
+  '타입',
+  '업체명',
 ]);
 
 export function isDispatchDerivedGlapsHeader(header = '') {
@@ -156,6 +182,83 @@ function makeRowPayload(record = {}) {
   };
 }
 
+function eventRowValues(event = {}) {
+  return event.editablePayload?.rowValues
+    || event.editable_payload?.rowValues
+    || event.afterSnapshot?.rowValues
+    || event.after_snapshot?.rowValues
+    || event.beforeSnapshot?.rowValues
+    || event.before_snapshot?.rowValues
+    || [];
+}
+
+export function makeDispatchNeutralPairKey(event = {}) {
+  const headerMap = valuesByHeader(eventRowValues(event));
+  return makeKey([
+    ...NEUTRAL_ADD_DELETE_HEADERS.map(header => headerMap[header] || ''),
+  ]);
+}
+
+export function filterNeutralizedDispatchChangeEvents(events = [], options = {}) {
+  const isConfirmedEvent = typeof options.isConfirmedEvent === 'function'
+    ? options.isConfirmedEvent
+    : () => false;
+  const grouped = new Map();
+  events.forEach((event, index) => {
+    if (!['add', 'delete'].includes(event.changeType)) return;
+    const key = makeDispatchNeutralPairKey(event);
+    if (!key) return;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({ event, index });
+  });
+
+  const removeIndexes = new Set();
+  grouped.forEach((items) => {
+    const freeAdds = items.filter(item => item.event.changeType === 'add' && !isConfirmedEvent(item.event));
+    const freeDeletes = items.filter(item => item.event.changeType === 'delete' && !isConfirmedEvent(item.event));
+    const cancelCount = Math.min(freeAdds.length, freeDeletes.length);
+    for (let idx = 0; idx < cancelCount; idx += 1) {
+      removeIndexes.add(freeAdds[idx].index);
+      removeIndexes.add(freeDeletes[idx].index);
+    }
+  });
+
+  if (removeIndexes.size === 0) return events;
+  return events.filter((_, index) => !removeIndexes.has(index));
+}
+
+export function makeDispatchMemoSignature(values = []) {
+  const headerMap = valuesByHeader(values);
+  return makeKey(AUTO_REFRESH_MEMO_HEADERS.map(header => headerMap[header] || ''));
+}
+
+export function mergeDispatchMemoOnlyPayload(existingPayload = null, nextPayload = null) {
+  if (!existingPayload || !Object.keys(existingPayload || {}).length) return nextPayload;
+  if (!nextPayload || !Object.keys(nextPayload || {}).length) return existingPayload;
+
+  const mergedValues = normalizeValues(existingPayload.rowValues || []);
+  const nextValues = normalizeValues(nextPayload.rowValues || []);
+  AUTO_REFRESH_MEMO_HEADERS.forEach((header) => {
+    const idx = DISPATCH_DETAIL_HEADERS.indexOf(header);
+    if (idx >= 0) mergedValues[idx] = nextValues[idx] || '';
+  });
+
+  const mergedContext = {
+    ...(existingPayload.rowContext || {}),
+  };
+  const nextContext = nextPayload.rowContext || {};
+  AUTO_REFRESH_MEMO_CONTEXT_KEYS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(nextContext, key)) mergedContext[key] = nextContext[key] ?? '';
+  });
+
+  return {
+    ...nextPayload,
+    ...existingPayload,
+    rowValues: mergedValues,
+    rowContext: mergedContext,
+  };
+}
+
 export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
   const rowValues = normalizeValues(detailLineToRow(line));
   const headerMap = valuesByHeader(rowValues);
@@ -178,6 +281,9 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     bkg2: line.bkg2 || '',
     bkg3: line.bkg3 || '',
     confirmedBkg: line.confirmedBkg || line.bkg1 || '',
+    targetVessel: line.targetVessel || '',
+    note: line.note || '',
+    detailUpdatedAt: line.detailUpdatedAt || '',
     sourceRowIndex: line.sourceRowIndex ?? null,
     sourceRegion: line.sourceRegion || '',
     sourceText: line.sourceText || '',

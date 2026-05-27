@@ -5,6 +5,8 @@ import {
     DISPATCH_CHANGE_SCHEMA_VERSION,
     diffDispatchChangeLines,
     diffDispatchMemoOnlyChanges,
+    filterNeutralizedDispatchChangeEvents,
+    mergeDispatchMemoOnlyPayload,
     normalizeDispatchChangeLineRecord,
 } from '@/utils/asanDispatchChangeEvents.mjs';
 
@@ -108,6 +110,17 @@ async function decorateEvent(adminSupabase, row) {
     return decorateActorFields(adminSupabase, row, ['confirmed_by', 'created_by', 'updated_by']);
 }
 
+function dbRowToNeutralFilterEvent(row = {}) {
+    return {
+        eventKey: row.event_key || '',
+        changeType: row.change_type || '',
+        editablePayload: row.editable_payload || null,
+        afterSnapshot: row.after_snapshot || null,
+        beforeSnapshot: row.before_snapshot || null,
+        row,
+    };
+}
+
 async function fetchEvents(adminSupabase, payload) {
     let query = adminSupabase
         .from('branch_dispatch_detail_change_events')
@@ -129,8 +142,13 @@ async function fetchEvents(adminSupabase, payload) {
 
     const { data, error } = await query;
     if (error) throw error;
+    const scopedRows = (data || []).filter(row => eventMatchesRequestedScope(row, payload));
+    const visibleEvents = filterNeutralizedDispatchChangeEvents(
+        scopedRows.map(dbRowToNeutralFilterEvent),
+        { isConfirmedEvent: event => event.row?.event_status === 'confirmed' },
+    );
     const decorated = [];
-    for (const row of (data || []).filter(row => eventMatchesRequestedScope(row, payload))) {
+    for (const row of visibleEvents.map(event => event.row).filter(Boolean)) {
         decorated.push(await decorateEvent(adminSupabase, row));
     }
     return decorated;
@@ -194,13 +212,19 @@ async function seedSnapshots(adminSupabase, confirmation, currentLines, actor, n
 
 function eventToDbPayload(event, confirmation, actor, now, existing = null) {
     const keepEditablePayload = existing?.editable_payload && Object.keys(existing.editable_payload || {}).length > 0
-        ? existing.editable_payload
+        ? mergeDispatchMemoOnlyPayload(existing.editable_payload, event.editablePayload)
         : event.editablePayload;
-    const payloadChanged = existing
+    const significantPayloadChanged = existing
         ? jsonPayload(existing.before_snapshot) !== jsonPayload(event.beforeSnapshot)
             || jsonPayload(existing.after_snapshot) !== jsonPayload(event.afterSnapshot)
             || existing.change_type !== event.changeType
             || Number(existing.quantity_delta || 0) !== Number(event.quantityDelta || 0)
+        : true;
+    const statusResetRequired = existing
+        ? existing.change_type !== event.changeType
+            || Number(existing.quantity_delta || 0) !== Number(event.quantityDelta || 0)
+            || cleanText(existing.before_snapshot?.rowFingerprint) !== cleanText(event.beforeSnapshot?.rowFingerprint)
+            || cleanText(existing.after_snapshot?.rowFingerprint) !== cleanText(event.afterSnapshot?.rowFingerprint)
         : true;
     return {
         confirmation_id: confirmation.id,
@@ -209,7 +233,7 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
         target_date: confirmation.target_date,
         event_key: event.eventKey,
         change_type: event.changeType,
-        event_status: payloadChanged ? 'pending' : existing?.event_status || 'pending',
+        event_status: statusResetRequired ? 'pending' : existing?.event_status || 'pending',
         detail_line_key: event.detailLineKey || '',
         identity_key: event.identityKey || '',
         group_key: event.groupKey || '',
@@ -218,11 +242,11 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
         after_snapshot: event.afterSnapshot,
         editable_payload: keepEditablePayload,
         active: true,
-        occurred_at: payloadChanged ? now : existing?.occurred_at || event.occurredAt || now,
-        confirmed_by: payloadChanged ? null : existing?.confirmed_by || null,
-        confirmed_at: payloadChanged ? null : existing?.confirmed_at || null,
+        occurred_at: statusResetRequired ? now : existing?.occurred_at || event.occurredAt || now,
+        confirmed_by: statusResetRequired ? null : existing?.confirmed_by || null,
+        confirmed_at: statusResetRequired ? null : existing?.confirmed_at || null,
         updated_by: actor,
-        updated_at: now,
+        updated_at: significantPayloadChanged || jsonPayload(existing?.editable_payload) !== jsonPayload(keepEditablePayload) ? now : existing?.updated_at || now,
     };
 }
 
@@ -285,9 +309,8 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
 
     const normalizedSnapshots = snapshots.map(snapshotRecordToLine);
     const normalizedCurrent = currentLines.map(normalizeDispatchChangeLineRecord);
-    const nextEvents = diffDispatchChangeLines(normalizedSnapshots, normalizedCurrent, { occurredAt: now });
+    const rawNextEvents = diffDispatchChangeLines(normalizedSnapshots, normalizedCurrent, { occurredAt: now });
     const memoChanges = diffDispatchMemoOnlyChanges(normalizedSnapshots, normalizedCurrent, { occurredAt: now });
-    const nextKeys = new Set(nextEvents.map(event => event.eventKey));
 
     const { data: existingRows, error: existingError } = await adminSupabase
         .from('branch_dispatch_detail_change_events')
@@ -296,6 +319,10 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
     if (existingError) throw existingError;
 
     const existingByKey = new Map((existingRows || []).map(row => [row.event_key, row]));
+    const nextEvents = filterNeutralizedDispatchChangeEvents(rawNextEvents, {
+        isConfirmedEvent: event => existingByKey.get(event.eventKey)?.event_status === 'confirmed',
+    });
+    const nextKeys = new Set(nextEvents.map(event => event.eventKey));
 
     for (const event of nextEvents) {
         const existing = existingByKey.get(event.eventKey) || null;
@@ -333,6 +360,7 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
 
     for (const existing of existingRows || []) {
         if (!existing.active || nextKeys.has(existing.event_key)) continue;
+        if (existing.event_status === 'confirmed') continue;
         const { data, error } = await adminSupabase
             .from('branch_dispatch_detail_change_events')
             .update({

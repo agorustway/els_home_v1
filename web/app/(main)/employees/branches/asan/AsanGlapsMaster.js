@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './glapsMaster.module.css';
+import { buildGlapsDuplicateInfo } from '@/utils/glapsDuplicateGroups.mjs';
 import { formatGlapsAliasType } from '@/utils/glapsMasterData.mjs';
 
 const STATUS_LABELS = {
@@ -85,10 +86,6 @@ function routeMatchKey(row) {
         .join(' → ');
 }
 
-function routeDuplicateParts(row) {
-    return [row.start_location_name, row.waypoint_els_name || row.waypoint_name, row.destination_name];
-}
-
 function tableText(value) {
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') return JSON.stringify(value);
@@ -113,50 +110,8 @@ function compareTableValues(a, b) {
     return TABLE_COLLATOR.compare(tableText(a), tableText(b));
 }
 
-function duplicateGroupKey(parts = []) {
-    return parts.map(value => normalizeTableFilter(value)).join('|');
-}
-
 function buildDuplicateInfo(activeTable, rows = []) {
-    const byId = new Map();
-    const groups = [];
-    const addGroup = (label, keyFn, options = {}) => {
-        const grouped = new Map();
-        rows.forEach((row) => {
-            const parts = keyFn(row);
-            if (options.requireParts?.some(index => !normalizeTableFilter(parts[index]))) return;
-            const key = duplicateGroupKey(parts);
-            if (!key.replace(/\|/g, '')) return;
-            if (!grouped.has(key)) grouped.set(key, []);
-            grouped.get(key).push(row);
-        });
-        grouped.forEach((items) => {
-            if (items.length < 2) return;
-            if (options.requireDifferentCodes) {
-                const codes = new Set(items.map(item => normalizeTableFilter(item.glaps_code)));
-                if (codes.size < 2) return;
-            }
-            groups.push({ label, count: items.length });
-            items.forEach((item) => {
-                if (!item.id) return;
-                const labels = byId.get(item.id) || [];
-                labels.push(`${label} ${items.length}건`);
-                byId.set(item.id, labels);
-            });
-        });
-    };
-
-    if (activeTable === 'routes') {
-        addGroup('연결키 중복', routeDuplicateParts, { requireParts: [0, 1, 2] });
-    } else if (activeTable === 'aliases') {
-        addGroup('최종코드(BP) 중복', row => [row.glaps_code], { requireParts: [0] });
-    }
-
-    return {
-        byId,
-        rowCount: byId.size,
-        groupCount: groups.length,
-    };
+    return buildGlapsDuplicateInfo(activeTable, rows);
 }
 
 function routeToEditorValues(row = {}) {
@@ -436,7 +391,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             setMessage({ type: 'error', text: '병합할 항목을 먼저 선택해주세요.' });
             return;
         }
-        const basis = activeTable === 'routes' ? '연결키' : '최종코드(BP)';
+        const basis = activeTable === 'routes' ? '운송경로코드' : '최종코드(BP)';
         const label = selectedOnly ? `선택한 ${ids.length.toLocaleString()}건의 ${basis} 그룹` : `현재 ${basis} 중복 ${duplicateInfo.groupCount.toLocaleString()}그룹`;
         if (!window.confirm(`${label}을 병합할까요?`)) return;
         setSaving(true);
@@ -619,14 +574,23 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 return tableFilterKey(column.value?.(row)) === filterValue;
             });
         });
-        if (!activeSort.key) return filteredRows;
+        if (!activeSort.key) {
+            if (duplicateOnly) {
+                return [...filteredRows].sort((a, b) => (
+                    compareTableValues(duplicateInfo.keyById?.get(a.id), duplicateInfo.keyById?.get(b.id))
+                    || compareTableValues(activeTable === 'routes' ? a.route_code : a.source_name, activeTable === 'routes' ? b.route_code : b.source_name)
+                    || compareTableValues(a.id, b.id)
+                ));
+            }
+            return filteredRows;
+        }
         const sortColumn = tableColumns.find(column => column.key === activeSort.key && column.sortable !== false);
         if (!sortColumn) return filteredRows;
         return [...filteredRows].sort((a, b) => {
             const direction = activeSort.direction === 'desc' ? -1 : 1;
             return compareTableValues(sortColumn.value?.(a), sortColumn.value?.(b)) * direction;
         });
-    }, [activeSort.direction, activeSort.key, activeTableFilters, duplicateInfo.byId, duplicateOnly, tableColumns, tableRows]);
+    }, [activeSort.direction, activeSort.key, activeTable, activeTableFilters, duplicateInfo.byId, duplicateInfo.keyById, duplicateOnly, tableColumns, tableRows]);
 
     useEffect(() => {
         setMasterDisplayLimit(GLAPS_MASTER_PAGE_SIZE);

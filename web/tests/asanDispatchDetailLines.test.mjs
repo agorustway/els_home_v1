@@ -14,8 +14,12 @@ import {
   DISPATCH_CHANGE_SCHEMA_VERSION,
   diffDispatchChangeLines,
   diffDispatchMemoOnlyChanges,
+  filterNeutralizedDispatchChangeEvents,
   getDispatchChangeDiffHeaders,
+  makeDispatchNeutralPairKey,
+  makeDispatchMemoSignature,
   makeDispatchChangeSnapshotLine,
+  mergeDispatchMemoOnlyPayload,
 } from '../utils/asanDispatchChangeEvents.mjs';
 import {
   GLAPS_UPLOAD_HEADERS,
@@ -357,6 +361,35 @@ test('배차변동 비교는 수량 감소를 삭제 이벤트로 감지한다',
   assert.equal(events.reduce((sum, event) => sum + event.quantityDelta, 0), -3);
 });
 
+test('배차변동 비교는 같은 항목의 미확인 추가/삭제 순증감 0건을 숨긴다', () => {
+  const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
+  const [line] = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-27', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '칸1', 'BKG-A']],
+  }).map((item, index) => makeDispatchChangeSnapshotLine(item, `line-${index}`));
+  const addEvent = {
+    eventKey: 'add:test:1',
+    changeType: 'add',
+    afterSnapshot: line,
+    editablePayload: line,
+  };
+  const deleteEvent = {
+    eventKey: 'delete:test:1',
+    changeType: 'delete',
+    beforeSnapshot: line,
+    editablePayload: line,
+  };
+
+  assert.equal(makeDispatchNeutralPairKey(addEvent), makeDispatchNeutralPairKey(deleteEvent));
+  assert.deepEqual(filterNeutralizedDispatchChangeEvents([addEvent, deleteEvent]), []);
+  assert.deepEqual(
+    filterNeutralizedDispatchChangeEvents([addEvent, deleteEvent], {
+      isConfirmedEvent: event => event.eventKey === addEvent.eventKey,
+    }).map(event => event.changeType),
+    ['add', 'delete'],
+  );
+});
+
 test('배차변동 비교는 BKG 변경을 행 이벤트가 아닌 메모 이력 대상으로만 본다', () => {
   const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
   const beforeLines = buildDispatchDetailLines({
@@ -373,9 +406,32 @@ test('배차변동 비교는 BKG 변경을 행 이벤트가 아닌 메모 이력
 
   assert.equal(events.length, 0);
   assert.equal(memoChanges.length, 1);
-  assert.deepEqual(memoChanges[0].diffHeaders, ['BKG확정', 'BKG1']);
+  assert.deepEqual(memoChanges[0].diffHeaders, ['BKG1']);
   assert.equal(memoChanges[0].beforeSnapshot.rowValues[16], 'BKG-A');
   assert.equal(memoChanges[0].afterSnapshot.rowValues[16], 'BKG-B');
+  assert.equal(memoChanges[0].afterSnapshot.rowValues[17], 'BKG-B');
+});
+
+test('배차변동 editable payload는 원본 BKG 변경을 반영하되 BKG확정은 보존한다', () => {
+  const existing = {
+    rowValues: DISPATCH_DETAIL_HEADERS.map(header => (
+      header === 'BKG확정' || header === 'BKG1' ? 'BKG-A' : ''
+    )),
+    rowContext: { bkg1: 'BKG-A', confirmedBkg: 'BKG-A' },
+  };
+  const next = {
+    rowValues: DISPATCH_DETAIL_HEADERS.map(header => (
+      header === 'BKG확정' ? 'BKG-B' : header === 'BKG1' ? 'BKG-B' : header === 'TARGET VESSEL' ? 'VESSEL-2' : ''
+    )),
+    rowContext: { bkg1: 'BKG-B', confirmedBkg: 'BKG-B', targetVessel: 'VESSEL-2' },
+  };
+
+  const merged = mergeDispatchMemoOnlyPayload(existing, next);
+
+  assert.equal(merged.rowValues[DISPATCH_DETAIL_HEADERS.indexOf('BKG확정')], 'BKG-A');
+  assert.equal(merged.rowValues[DISPATCH_DETAIL_HEADERS.indexOf('BKG1')], 'BKG-B');
+  assert.equal(merged.rowValues[DISPATCH_DETAIL_HEADERS.indexOf('TARGET VESSEL')], 'VESSEL-2');
+  assert.equal(makeDispatchMemoSignature(existing.rowValues).includes('BKG-A'), true);
 });
 
 test('배차변동 비교는 고객사 포트 라인 타입 변경만 변경 이벤트로 감지한다', () => {
@@ -396,6 +452,36 @@ test('배차변동 비교는 고객사 포트 라인 타입 변경만 변경 이
   assert.equal(events[0].changeType, 'change');
   assert.equal(events[0].quantityDelta, 0);
   assert.deepEqual(changedHeaders, ['포트(DIST)', '라인', '타입']);
+});
+
+test('배차변동 비교는 Nomi/특이사항 변경만으로 변동 이벤트를 만들지 않는다', () => {
+  const baseLine = {
+    lineNo: 1,
+    workDate: '2026-05-27',
+    direction: '수출',
+    shipper: '글로비스',
+    startLocation: '부산신항',
+    workplace: 'KCC글라스',
+    destination: '부산신항',
+    customer: 'KAGA',
+    port: 'USSAV',
+    line: 'EMC',
+    containerType: '40HC',
+    company: '칸',
+    bkg1: 'BKG-A',
+    confirmedBkg: 'BKG-A',
+    sourceRowIndex: 1,
+    sourceRegion: '부산',
+    sourceText: '칸1',
+    sourceUnitIndex: 1,
+    rawCompany: '칸',
+  };
+
+  const beforeLine = makeDispatchChangeSnapshotLine({ ...baseLine, transportRemark: '' }, 'line-1');
+  const afterLine = makeDispatchChangeSnapshotLine({ ...baseLine, transportRemark: '모빌' }, 'line-1');
+  const events = diffDispatchChangeLines([beforeLine], [afterLine], { occurredAt: '2026-05-27T12:00:00Z' });
+
+  assert.equal(events.length, 0);
 });
 
 test('배차변동 비교는 GLAPS 파생코드 보강만으로 변경 이벤트를 만들지 않는다', () => {

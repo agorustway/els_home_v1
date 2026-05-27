@@ -56,7 +56,22 @@ async function fetchConfirmation(adminSupabase, payload) {
 }
 
 async function decorateConfirmation(adminSupabase, row) {
-    return decorateActorFields(adminSupabase, row, ['confirmed_by', 'canceled_by', 'created_by', 'updated_by']);
+    if (!row) return null;
+    const decorated = await decorateActorFields(adminSupabase, row, ['confirmed_by', 'canceled_by', 'created_by', 'updated_by']);
+    const { data, error } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .select('detail_line_key,row_values,row_context')
+        .eq('confirmation_id', row.id)
+        .eq('active', true);
+    if (error) throw error;
+    return {
+        ...decorated,
+        snapshot_lines: (data || []).map(snapshot => ({
+            detailLineKey: snapshot.detail_line_key || '',
+            rowValues: snapshot.row_values?.values || snapshot.row_values || [],
+            rowContext: snapshot.row_context || {},
+        })),
+    };
 }
 
 function toSnapshotDbRow(line, resultRow, actor, now) {
