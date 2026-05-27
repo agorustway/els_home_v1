@@ -1,3 +1,39 @@
+## [2026-05-28] 구간단가 제목열 다중 선택 필터 (v5.14.255)
+### 핵심
+- 구간단가 컬럼 제목열의 목록 필터를 단일 선택에서 다중 선택으로 변경했습니다.
+- 같은 컬럼에서 선택한 여러 값은 OR로 적용하고, 서로 다른 컬럼의 필터는 기존처럼 AND로 적용해 지역/TYPE/청구처 등을 겹쳐서 좁혀 볼 수 있습니다.
+- 선택된 필터는 팝오버를 닫지 않고 체크 표시로 누적되며, 헤더 버튼에는 선택 개수를 표시합니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+- 로컬 `http://localhost:3000/employees/branches/asan?debug=true`: 구간단가 지역 필터에서 `아산`+`천안` 다중 선택 시 `2개 선택`, `지역: 아산 외 1개`, `512 / 512개` 표시 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] 선적관리 최병훈 P1 기본 레이아웃 fallback (v5.14.254)
+### 핵심
+- 기존 사용자 `asan_shipping_default`가 있으면 그대로 유지하고, 없는 사용자에게만 최병훈 계정의 `asan_shipping_preset_1`을 기본 레이아웃 fallback으로 적용하게 했습니다.
+- fallback으로 받은 값은 화면 적용 뒤 기존 자동 저장 흐름을 통해 해당 사용자 default로 저장되므로, 이후 각 사용자 설정은 독립적으로 유지됩니다.
+- 모바일 P1 로드 시 보이던 `COL1`, `COLS2`류 익명 엑셀 컬럼은 헤더 정규화 단계에서 제거해 PC/모바일 표시 목록에 들어오지 않게 했습니다.
+### 검증
+- `cd web; node --test --test-name-pattern "선적관리 액션바|선적관리 숨김 컬럼|선적관리 레이아웃|선적관리 사용자 prefs" tests\asanShippingFlow.test.mjs`: 4개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/user/prefs/route.js" "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
+- `cd web; node --test tests\asanShippingFlow.test.mjs`: 기존 NAS 스케줄러 로그 문구(`변경 없음`) 검사 1건 실패, 이번 변경 범위 테스트는 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/app/api/user/prefs/route.js`
+- `web/utils/asanShippingView.mjs`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 코드 화면 키값/검수 안내 정리 (v5.14.253)
 ### 핵심
 - GLAPS 요약 카드를 운송경로 전체/확정/조정필요/코드없음/원본시트 필터 버튼으로 바꿨습니다.

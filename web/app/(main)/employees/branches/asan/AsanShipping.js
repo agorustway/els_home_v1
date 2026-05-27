@@ -12,6 +12,7 @@ import {
     areSetsEqual,
     buildRecentShippingMonthOptions,
     compareShippingFilterValues,
+    filterShippingDisplayHeaders,
     findWorkDateColumnIndex,
     getDefaultShippingMonthKeys,
     getShippingVirtualWindow,
@@ -320,7 +321,7 @@ export default function AsanShipping() {
             };
         });
         if (payload.headers) {
-            const filteredHeaders = payload.headers.filter(h => h !== 'col_1');
+            const filteredHeaders = filterShippingDisplayHeaders(payload.headers);
             setHeaders(filteredHeaders);
         }
     }, []);
@@ -689,7 +690,7 @@ export default function AsanShipping() {
 
         const loadDbPrefs = async () => {
             try {
-                const res = await fetch('/api/user/prefs?page_key=asan_shipping_default');
+                const res = await fetch('/api/user/prefs?page_key=asan_shipping_default&fallback=asan_shipping_admin_p1');
                 const { data: prefs } = await res.json();
                 if (prefs && prefs.colOrder && prefs.colOrder.length > 0) {
                     let finalOrder = prefs.colOrder;

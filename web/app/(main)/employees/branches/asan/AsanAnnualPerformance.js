@@ -237,6 +237,20 @@ function routeUnitFilterOptionLabel(column = {}, value = '') {
     return String(value);
 }
 
+function normalizeRouteUnitColumnFilterValues(value) {
+    const values = Array.isArray(value) ? value : [value];
+    return Array.from(new Set(values
+        .map(item => String(item ?? '').trim())
+        .filter(Boolean)));
+}
+
+function routeUnitFilterSummary(column = {}, value = '') {
+    const values = normalizeRouteUnitColumnFilterValues(value);
+    if (!values.length) return '전체';
+    const first = routeUnitFilterOptionLabel(column, values[0]);
+    return values.length === 1 ? first : `${first} 외 ${values.length - 1}개`;
+}
+
 function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
     const terms = String(filter || '')
         .split(/[;,，；]+/)
@@ -263,9 +277,9 @@ function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
     ];
     if (terms.length && !terms.every(term => routeUnitTermMatches(globalValues, term))) return false;
     return ROUTE_UNIT_COLUMNS.every((column) => {
-        const value = columnFilters[column.key];
-        if (!String(value || '').trim()) return true;
-        return routeUnitTermMatches([item[column.key]], value);
+        const values = normalizeRouteUnitColumnFilterValues(columnFilters[column.key]);
+        if (!values.length) return true;
+        return values.some(value => routeUnitTermMatches([item[column.key]], value));
     });
 }
 
@@ -1161,6 +1175,8 @@ function RouteUnitPricePanel({
     const activeSortMatch = String(unitSort || '').match(/^(.+)_(asc|desc)$/);
     const activeSortField = activeSortMatch?.[1] || '';
     const activeSortDirection = activeSortMatch?.[2] || '';
+    const hasColumnFilters = useMemo(() => Object.values(columnFilters)
+        .some(value => normalizeRouteUnitColumnFilterValues(value).length), [columnFilters]);
     const toggleColumnSort = (field) => {
         const nextDirection = activeSortField === field && activeSortDirection === 'desc' ? 'asc' : 'desc';
         setUnitSort(`${field}_${nextDirection}`);
@@ -1168,8 +1184,30 @@ function RouteUnitPricePanel({
     const updateColumnFilter = (field, value) => {
         setColumnFilters((prev) => {
             const next = { ...prev };
-            if (String(value || '').trim()) {
-                next[field] = value;
+            const values = normalizeRouteUnitColumnFilterValues(value);
+            if (values.length) {
+                next[field] = values;
+            } else {
+                delete next[field];
+            }
+            return next;
+        });
+    };
+    const toggleColumnFilterValue = (field, value) => {
+        setColumnFilters((prev) => {
+            const current = normalizeRouteUnitColumnFilterValues(prev[field]);
+            const normalizedValue = String(value ?? '').trim();
+            const next = { ...prev };
+            if (!normalizedValue) {
+                delete next[field];
+                return next;
+            }
+            const exists = current.includes(normalizedValue);
+            const values = exists
+                ? current.filter(item => item !== normalizedValue)
+                : [...current, normalizedValue];
+            if (values.length) {
+                next[field] = values;
             } else {
                 delete next[field];
             }
@@ -1405,7 +1443,7 @@ function RouteUnitPricePanel({
                         <button type="button" onClick={() => loadRouteUnitPreset('p2')}>P2 로드</button>
                         <button type="button" onClick={exportVisibleRouteUnitRows} disabled={!visibleGroups.length}>엑셀</button>
                         <button type="button" onClick={resetRouteUnitLayout}>정렬초기화</button>
-                        <button type="button" onClick={resetFilters} disabled={!unitFilter && !Object.values(columnFilters).some(Boolean)}>
+                        <button type="button" onClick={resetFilters} disabled={!unitFilter && !hasColumnFilters}>
                             필터초기화
                         </button>
                         <button type="button" onClick={() => onRefresh({ refresh: true })} disabled={loading}>
@@ -1426,12 +1464,14 @@ function RouteUnitPricePanel({
                         <div className={styles.routeUnitHead} style={routeUnitGridStyle}>
                             {activeRouteUnitColumns.map((column) => {
                                 const canFilter = ROUTE_UNIT_FILTER_COLUMN_KEYS.has(column.key);
-                                const filterValue = columnFilters[column.key] || '';
+                                const filterValues = normalizeRouteUnitColumnFilterValues(columnFilters[column.key]);
+                                const filterActive = filterValues.length > 0;
+                                const filterSummary = routeUnitFilterSummary(column, filterValues);
                                 const optionList = filterOptions[column.key] || EMPTY_LIST;
                                 return (
                                     <div
                                         key={column.key}
-                                        className={`${styles.routeUnitHeadCell} ${filterValue ? styles.routeUnitHeadCellFiltered : ''} ${dragRouteUnitColumn === column.key ? styles.routeUnitHeadCellDragging : ''}`}
+                                        className={`${styles.routeUnitHeadCell} ${filterActive ? styles.routeUnitHeadCellFiltered : ''} ${dragRouteUnitColumn === column.key ? styles.routeUnitHeadCellDragging : ''}`}
                                         draggable
                                         onDragStart={(event) => {
                                             event.dataTransfer?.setData('text/plain', column.key);
@@ -1458,10 +1498,10 @@ function RouteUnitPricePanel({
                                             <div className={styles.routeUnitFilterSlot}>
                                                 <button
                                                     type="button"
-                                                    className={`${styles.routeUnitFilterButton} ${filterValue ? styles.routeUnitFilterButtonActive : ''}`}
+                                                    className={`${styles.routeUnitFilterButton} ${filterActive ? styles.routeUnitFilterButtonActive : ''}`}
                                                     onClick={() => setOpenFilterColumn(prev => (prev === column.key ? '' : column.key))}
-                                                    title={filterValue
-                                                        ? `${column.label}: ${routeUnitFilterOptionLabel(column, filterValue)}`
+                                                    title={filterActive
+                                                        ? `${column.label}: ${filterSummary}`
                                                         : `${column.label} 필터`}
                                                 >
                                                     ▾
@@ -1470,11 +1510,11 @@ function RouteUnitPricePanel({
                                                     <div className={styles.routeUnitFilterPopover}>
                                                         <div className={styles.routeUnitFilterPopoverHeader}>
                                                             <strong>{column.label}</strong>
+                                                            {filterActive && <em>{filterValues.length}개 선택</em>}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
                                                                     updateColumnFilter(column.key, '');
-                                                                    setOpenFilterColumn('');
                                                                 }}
                                                             >
                                                                 전체
@@ -1485,13 +1525,14 @@ function RouteUnitPricePanel({
                                                                 <button
                                                                     key={`${column.key}-${value}`}
                                                                     type="button"
-                                                                    className={String(filterValue) === String(value) ? styles.routeUnitFilterOptionActive : ''}
-                                                                    onClick={() => {
-                                                                        updateColumnFilter(column.key, String(value));
-                                                                        setOpenFilterColumn('');
-                                                                    }}
+                                                                    className={filterValues.includes(String(value)) ? styles.routeUnitFilterOptionActive : ''}
+                                                                    onClick={() => toggleColumnFilterValue(column.key, String(value))}
+                                                                    title={routeUnitFilterOptionLabel(column, value)}
                                                                 >
-                                                                    {routeUnitFilterOptionLabel(column, value)}
+                                                                    <span className={styles.routeUnitFilterCheck}>
+                                                                        {filterValues.includes(String(value)) ? '✓' : ''}
+                                                                    </span>
+                                                                    <span>{routeUnitFilterOptionLabel(column, value)}</span>
                                                                 </button>
                                                             ))}
                                                         </div>

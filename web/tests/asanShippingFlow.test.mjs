@@ -14,11 +14,13 @@ import {
 import {
   buildRecentShippingMonthOptions,
   compareShippingFilterValues,
+  filterShippingDisplayHeaders,
   findWorkDateColumnIndex,
   getDefaultShippingMonthKeys,
   getShippingVirtualWindow,
   getShippingSignalTone,
   getVisibleShippingColumns,
+  isAnonymousShippingColumn,
   isShippingUnshippedCandidate,
   mergePendingContainerLookupResults,
   normalizeShippingFilterValue,
@@ -469,6 +471,8 @@ test('선적관리 액션바는 모바일 줄바꿈을 지원하고 이력 요�
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.actionGroup[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
   assert.match(source, /const orderedVisibleColumns = useMemo/);
   assert.match(source, /getVisibleShippingColumns\(colOrder, allHeaders, hiddenCols\)/);
+  assert.match(source, /filterShippingDisplayHeaders\(payload\.headers\)/);
+  assert.match(source, /page_key=asan_shipping_default&fallback=asan_shipping_admin_p1/);
   assert.match(source, /\{orderedVisibleColumns\.map\(col =>/);
   assert.match(source, /if \(headers\.length === 0 \|\| allHeaders\.length === 0\) return;/);
   assert.match(css, /\.hiddenLookupChip[\s\S]*background: #e8f7ee;/);
@@ -479,9 +483,13 @@ test('선적관리 액션바는 모바일 줄바꿈을 지원하고 이력 요�
 });
 
 test('선적관리 숨김 컬럼은 엑셀/이력 컬럼 모두 실제 표시 목록에서 빠진다', () => {
-  const headers = ['지역', 'CONTAINER', '이력 구분', '이력 MOVE TIME'];
-  const order = normalizeShippingColumnOrder(['이력 구분', '지역'], headers);
+  const headers = ['지역', 'COL1', 'CONTAINER', '이력 구분', 'COLS2', '이력 MOVE TIME'];
+  const filteredHeaders = filterShippingDisplayHeaders(headers);
+  const order = normalizeShippingColumnOrder(['이력 구분', 'COL1', '지역'], filteredHeaders);
 
+  assert.equal(isAnonymousShippingColumn('COL1'), true);
+  assert.equal(isAnonymousShippingColumn('COLS2'), true);
+  assert.deepEqual(filteredHeaders, ['지역', 'CONTAINER', '이력 구분', '이력 MOVE TIME']);
   assert.deepEqual(order, ['지역', 'CONTAINER', '이력 구분', '이력 MOVE TIME']);
   assert.deepEqual(
     getVisibleShippingColumns(order, headers, new Set(['CONTAINER', '이력 구분'])),
@@ -518,6 +526,19 @@ test('선적관리 레이아웃은 엑셀 제목 변경만 인덱스로 매칭�
   });
 
   assert.deepEqual(added.colOrder, ['지역', 'CONTAINER', '신규열', '이력 구분']);
+});
+
+test('선적관리 사용자 prefs API는 기존 사용자값이 없을 때만 최병훈 P1 fallback을 요청한다', () => {
+  const source = fs.readFileSync(
+    path.join(repoRoot, 'web/app/api/user/prefs/route.js'),
+    'utf8',
+  );
+
+  assert.match(source, /asan_shipping_admin_p1/);
+  assert.match(source, /ownerEmail: 'orakami@gmail\.com'/);
+  assert.match(source, /fallbackPageKey: 'asan_shipping_preset_1'/);
+  assert.match(source, /if \(data\) return NextResponse\.json\(\{ data: data\.settings \|\| \{\}, source: 'user' \}\);/);
+  assert.match(source, /const fallbackSettings = await readAllowedFallbackPrefs\(pageKey, fallbackToken\);/);
 });
 
 test('선적관리 화면은 전체/조회 건수와 컨테이너 조회 완료/실패 건수를 구분해 표시한다', () => {

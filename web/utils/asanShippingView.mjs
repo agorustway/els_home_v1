@@ -2,24 +2,34 @@ import { isContainerLookupColumn } from './containerHistoryResults.mjs';
 
 export const SHIPPING_SIGNAL_TYPES = new Set(['반입', '적하']);
 
+export function isAnonymousShippingColumn(header = '') {
+  const text = String(header || '').trim().replace(/[\s_-]+/g, '').toLowerCase();
+  return /^cols?\d+$/.test(text);
+}
+
+export function filterShippingDisplayHeaders(headers = []) {
+  return (headers || []).filter((header) => !isAnonymousShippingColumn(header));
+}
+
 export function normalizeShippingColumnOrder(order = [], currentHeaders = []) {
   const seen = new Set();
   const normalized = [];
+  const current = filterShippingDisplayHeaders(currentHeaders);
 
   (order || []).forEach((col) => {
-    if (!currentHeaders.includes(col) || seen.has(col)) return;
+    if (isAnonymousShippingColumn(col) || !current.includes(col) || seen.has(col)) return;
     seen.add(col);
     normalized.push(col);
   });
 
-  currentHeaders.forEach((col) => {
+  current.forEach((col) => {
     if (seen.has(col)) return;
     seen.add(col);
     normalized.push(col);
   });
 
   const excelCols = normalized.filter((col) => !isContainerLookupColumn(col));
-  const lookupCols = currentHeaders.filter((col) => isContainerLookupColumn(col) && normalized.includes(col));
+  const lookupCols = current.filter((col) => isContainerLookupColumn(col) && normalized.includes(col));
   const extraLookupCols = normalized.filter((col) => isContainerLookupColumn(col) && !lookupCols.includes(col));
 
   return [...excelCols, ...lookupCols, ...extraLookupCols];
@@ -36,8 +46,8 @@ export function reconcileShippingLayoutPrefs({
   sourceHeaders = [],
   currentHeaders = [],
 } = {}) {
-  const current = Array.isArray(currentHeaders) ? currentHeaders : [];
-  const source = Array.isArray(sourceHeaders) ? sourceHeaders : [];
+  const current = filterShippingDisplayHeaders(Array.isArray(currentHeaders) ? currentHeaders : []);
+  const source = filterShippingDisplayHeaders(Array.isArray(sourceHeaders) ? sourceHeaders : []);
   const sourceExcelHeaders = source.filter((col) => !isContainerLookupColumn(col));
   const currentExcelHeaders = current.filter((col) => !isContainerLookupColumn(col));
   const canTreatMissingNameAsRename = sourceExcelHeaders.length === currentExcelHeaders.length;
