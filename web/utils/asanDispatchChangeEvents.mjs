@@ -1,5 +1,7 @@
 import { DISPATCH_DETAIL_HEADERS, detailLineToRow } from './asanDispatchDetailLines.mjs';
 
+export const DISPATCH_CHANGE_SCHEMA_VERSION = 2;
+
 export const DISPATCH_CHANGE_TYPE_LABELS = Object.freeze({
   add: '추가',
   delete: '삭제',
@@ -158,6 +160,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
   const rowValues = normalizeValues(detailLineToRow(line));
   const headerMap = valuesByHeader(rowValues);
   const rowContext = {
+    changeSchemaVersion: DISPATCH_CHANGE_SCHEMA_VERSION,
     lineNo: line.lineNo || null,
     workDate: line.workDate || '',
     shipper: line.shipper || '',

@@ -20,6 +20,22 @@
 
 ---
 
+## [2026-05-27] 아산 배차변동 구버전 재동기화 방어 (v5.14.240)
+### 핵심
+- 배차변동 스냅샷 payload에 `changeSchemaVersion=2`를 추가했습니다.
+- 구버전으로 열린 배차판 탭이 `transportRemark` 없는 currentLines를 보내면 서버가 sync를 무시해 기존 변동 이벤트를 덮어쓰지 않게 했습니다.
+- 2026-05-27 통합 배차변동 이벤트는 새 기준 active 48건(추가 28, 삭제 20)으로 다시 계산하는 절차를 확인했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "utils/asanDispatchDetailLines.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs tests/asanDispatchDetailLines.test.mjs`: 통과
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] 아산 배차변동내역 감지 기준 축소 (v5.14.238)
 ### 핵심
 - 배차변동내역은 지역 배차칸 수량 변화만 `추가/삭제`로 기록하고, 같은 원천행의 고객사·포트·라인·TYPE 변화만 `변경`으로 기록하도록 비교 기준을 줄였습니다.

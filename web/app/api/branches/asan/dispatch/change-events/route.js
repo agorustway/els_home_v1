@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/utils/supabase/server';
 import { decorateActorFields, getCurrentUserActorName } from '../actorName';
 import {
+    DISPATCH_CHANGE_SCHEMA_VERSION,
     diffDispatchChangeLines,
     diffDispatchMemoOnlyChanges,
     normalizeDispatchChangeLineRecord,
@@ -139,6 +140,16 @@ function jsonPayload(value) {
     return JSON.stringify(value ?? null);
 }
 
+function currentLineSchemaVersion(line = {}) {
+    const context = line.rowContext || line.row_context || {};
+    return Number(context.changeSchemaVersion || context.dispatchChangeSchemaVersion || 0);
+}
+
+function hasSupportedCurrentLineSchema(currentLines = []) {
+    if (!Array.isArray(currentLines) || currentLines.length === 0) return true;
+    return currentLines.every(line => currentLineSchemaVersion(line) >= DISPATCH_CHANGE_SCHEMA_VERSION);
+}
+
 function snapshotRecordToLine(row = {}) {
     return normalizeDispatchChangeLineRecord({
         detailLineKey: row.detail_line_key,
@@ -264,6 +275,7 @@ async function insertMemoOnlyHistory(adminSupabase, confirmation, memoChanges, a
 async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor, now) {
     if (!confirmation?.id) return;
     if (!confirmation.active) return;
+    if (!hasSupportedCurrentLineSchema(currentLines)) return;
 
     const snapshots = await fetchSnapshots(adminSupabase, confirmation.id);
     if (snapshots.length === 0) {

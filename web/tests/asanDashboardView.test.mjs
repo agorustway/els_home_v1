@@ -852,6 +852,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(changeUtil, /DERIVED_GLAPS_HEADERS/);
   assert.match(changeUtil, /TRANSPORT_CHANGE_HEADERS/);
   assert.match(changeUtil, /MEMO_ONLY_HEADERS/);
+  assert.match(changeUtil, /DISPATCH_CHANGE_SCHEMA_VERSION/);
   assert.match(changeUtil, /diffDispatchMemoOnlyChanges/);
   assert.match(changeUtil, /getDispatchChangeDiffHeaders/);
   assert.match(changeUtil, /const rowFingerprint = makeRowFingerprint\(headerMap, rowContext\)/);
@@ -911,6 +912,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(changeApi, /insertMemoOnlyHistory/);
   assert.match(changeApi, /memo_changed/);
   assert.match(changeApi, /diffDispatchMemoOnlyChanges/);
+  assert.match(changeApi, /hasSupportedCurrentLineSchema/);
+  assert.match(changeApi, /currentLineSchemaVersion/);
   assert.match(changeApi, /확인완료된 변동은 확인취소 후 수정할 수 있습니다/);
   assert.match(changeApi, /eventMatchesRequestedScope/);
   assert.match(changeApi, /query\.in\('dispatch_type', \[payload\.dispatchType, 'integrated'\]\)/);
