@@ -467,6 +467,48 @@ function webProtectionSummary(result = {}) {
   };
 }
 
+function dedupeRowsByInsertKey(rows = [], keyFn) {
+  const seen = new Set();
+  const deduped = [];
+  let skipped = 0;
+  rows.forEach((row) => {
+    const key = keyFn(row);
+    if (!key) {
+      deduped.push(row);
+      return;
+    }
+    if (seen.has(key)) {
+      skipped += 1;
+      return;
+    }
+    seen.add(key);
+    deduped.push(row);
+  });
+  return { rows: deduped, skipped };
+}
+
+function routeInsertConstraintKey(row = {}) {
+  if (row.source_row_number === null || row.source_row_number === undefined) return '';
+  return [
+    cleanText(row.branch_id),
+    cleanText(row.version_id),
+    cleanText(row.route_code),
+    cleanText(row.source_sheet),
+    cleanText(row.source_row_number),
+  ].join('|');
+}
+
+function aliasInsertConstraintKey(row = {}) {
+  return [
+    cleanText(row.branch_id),
+    cleanText(row.version_id),
+    cleanText(row.alias_type),
+    cleanText(row.source_name),
+    cleanText(row.route_code),
+    cleanText(row.glaps_code),
+  ].join('|');
+}
+
 function hasDbValueChanged(existing = {}, next = {}, fields = []) {
   return fields.some(([dbKey, nextKey = dbKey]) => cleanText(existing[dbKey]) !== cleanText(next[nextKey]));
 }
@@ -1020,12 +1062,6 @@ export async function POST(request) {
         ])
         : [[], []];
 
-      await access.adminSupabase
-        .from('glaps_master_versions')
-        .update({ active: false })
-        .eq('branch_id', branchId)
-        .eq('active', true);
-
       const { data: version, error: versionError } = await access.adminSupabase
         .from('glaps_master_versions')
         .insert({
@@ -1034,7 +1070,7 @@ export async function POST(request) {
           source_hash: sourceHash,
           source_sheets: parsed.sourceSheets,
           imported_by: access.user.email,
-          active: true,
+          active: false,
           route_count: parsed.routes.length,
           alias_count: parsed.aliases.length,
           sheet_row_count: parsed.sheetRows.length,
@@ -1053,8 +1089,10 @@ export async function POST(request) {
       const parsedAliasRows = parsed.aliases.map(alias => toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: masterActor }));
       const routeProtection = applyWebProtectedMasterRows(parsedRouteRows, protectedRouteRows, { branchId, versionId: version.id, kind: 'routes' });
       const aliasProtection = applyWebProtectedMasterRows(parsedAliasRows, protectedAliasRows, { branchId, versionId: version.id, kind: 'aliases' });
-      const routeRows = routeProtection.rows;
-      const aliasRows = aliasProtection.rows;
+      const routeInsertRows = dedupeRowsByInsertKey(routeProtection.rows, routeInsertConstraintKey);
+      const aliasInsertRows = dedupeRowsByInsertKey(aliasProtection.rows, aliasInsertConstraintKey);
+      const routeRows = routeInsertRows.rows;
+      const aliasRows = aliasInsertRows.rows;
       const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
@@ -1076,13 +1114,29 @@ export async function POST(request) {
         actor: access.user.email,
         routes: { total: routeRows.length, ...webProtectionSummary(routeProtection) },
         aliases: { total: aliasRows.length, ...webProtectionSummary(aliasProtection) },
+        skippedDuplicateRows: {
+          routes: routeInsertRows.skipped,
+          aliases: aliasInsertRows.skipped,
+        },
         webProtectedPreserved: routeProtection.preserved + aliasProtection.preserved,
       };
       await rememberGlapsUploadResult(access.adminSupabase, version, uploadLog);
+      await access.adminSupabase
+        .from('glaps_master_versions')
+        .update({ active: false })
+        .eq('branch_id', branchId)
+        .eq('active', true);
+      const { data: activatedVersion, error: activateError } = await access.adminSupabase
+        .from('glaps_master_versions')
+        .update({ active: true })
+        .eq('id', version.id)
+        .select('*')
+        .single();
+      if (activateError) throw activateError;
 
       return NextResponse.json({
         success: true,
-        version,
+        version: activatedVersion || { ...version, active: true },
         summary: parsed.summary,
         aliasCount: parsed.aliases.length,
         sheetRowCount: parsed.sheetRows.length,
@@ -1091,6 +1145,7 @@ export async function POST(request) {
           routes: webProtectionSummary(routeProtection),
           aliases: webProtectionSummary(aliasProtection),
         },
+        skippedDuplicateRows: uploadLog.skippedDuplicateRows,
         uploadLog,
       });
     }

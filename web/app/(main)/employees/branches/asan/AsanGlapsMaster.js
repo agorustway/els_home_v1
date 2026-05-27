@@ -193,9 +193,15 @@ function uploadProtectionText(payload = {}) {
         || 0,
     );
     const preserved = Number(payload.webProtection?.preserved || 0);
+    const skippedDuplicates = Number(
+        (payload.skippedDuplicateRows?.routes || 0) + (payload.skippedDuplicateRows?.aliases || 0)
+        || (payload.routes?.skippedDuplicateRows || 0) + (payload.aliases?.skippedDuplicateRows || 0)
+        || 0,
+    );
     const parts = [];
     if (skipped > 0) parts.push(`WEB수정 보호 ${skipped.toLocaleString()}건 업로드 제외`);
     if (preserved > 0) parts.push(`WEB수정 ${preserved.toLocaleString()}건 보존`);
+    if (skippedDuplicates > 0) parts.push(`원장 중복행 ${skippedDuplicates.toLocaleString()}건 정리`);
     return parts.length ? ` / ${parts.join(' / ')}` : '';
 }
 
