@@ -1743,6 +1743,8 @@
     overflow: auto;
     scrollbar-gutter: stable both-edges;
     max-height: 560px;
+    border-top: 1px solid #cbd5e1;
+    background: #e8eff6;
 }
 
 .routeUnitTableTools {
@@ -1903,7 +1905,7 @@
     display: grid;
     grid-template-columns: 98px 98px 98px 76px 72px minmax(150px, 1.2fr) 100px 70px 70px 86px 86px 70px minmax(130px, 1fr) minmax(130px, 1fr) 56px 92px;
     align-items: center;
-    gap: 7px;
+    gap: 0;
     min-width: 1500px;
 }
 
@@ -1911,12 +1913,13 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 7px 9px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
-    color: #64748b;
+    padding: 0;
+    border-bottom: 1px solid #254e73;
+    background: #2f628e;
+    color: #f8fafc;
     font-size: 0.68rem;
     font-weight: 950;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
 }
 
 .routeUnitHeadCell {
@@ -1925,6 +1928,9 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    min-height: 32px;
+    padding: 0 8px;
+    border-right: 1px solid rgba(255, 255, 255, 0.24);
     overflow: visible;
     cursor: grab;
 }
@@ -1969,11 +1975,11 @@
 }
 
 .routeUnitSortActive {
-    color: #0f766e !important;
+    color: #fff !important;
 }
 
 .routeUnitHeadCellFiltered .routeUnitSortButton {
-    color: #0f766e;
+    color: #ccfbf1;
 }
 
 .routeUnitFilterSlot {
@@ -1987,10 +1993,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
     border-radius: 5px;
-    background: #fff;
-    color: #64748b;
+    background: rgba(255, 255, 255, 0.16);
+    color: #e2e8f0;
     font-family: inherit;
     font-size: 0.65rem;
     font-weight: 950;
@@ -1998,7 +2004,7 @@
 }
 
 .routeUnitFilterButtonActive {
-    border-color: #14b8a6;
+    border-color: #99f6e4;
     background: #ccfbf1;
     color: #0f766e;
 }
@@ -2125,10 +2131,11 @@
 .routeUnitRow {
     position: relative;
     width: 100%;
-    padding: 7px 9px;
+    min-height: 31px;
+    padding: 0;
     border: 0;
-    border-bottom: 1px solid #eef2f7;
-    background: #fff;
+    border-bottom: 1px solid #d8e2ed;
+    background: #f8fbff;
     color: #0f172a;
     font-family: inherit;
     font-size: 0.7rem;
@@ -2137,15 +2144,25 @@
     cursor: default;
 }
 
+.routeUnitRows .routeUnitRow:nth-child(odd) {
+    background: #edf3f9;
+}
+
 .routeUnitRow:hover,
 .routeUnitRowActive {
-    background: #ecfeff;
+    background: #dff8f6;
 }
 
 .routeUnitRow > span,
 .routeUnitRow > b,
 .routeUnitRow > em {
     min-width: 0;
+    height: 100%;
+    min-height: 31px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    border-right: 1px solid #d8e2ed;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2153,8 +2170,17 @@
 
 .routeUnitRow > b,
 .routeUnitRow > em {
+    justify-content: flex-end;
     text-align: right;
     font-style: normal;
+}
+
+.routeUnitRevenueAmount {
+    color: #1d4ed8 !important;
+}
+
+.routeUnitPurchaseAmount {
+    color: #dc2626 !important;
 }
 
 .changeGrid,

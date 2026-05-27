@@ -1,3 +1,21 @@
+## [2026-05-28] 구간단가 TYPE 검색/표 대비 보강 (v5.14.256)
+### 핵심
+- `20RF`처럼 영문이 포함된 TYPE 검색어는 숫자 보조검색을 끄도록 조정했습니다. 이제 `20RF`가 `2026-05`의 `20`에 과매칭되어 40HC 행까지 남는 문제가 없어집니다.
+- 구간단가 표 헤더를 선적관리 리스트처럼 진한 남색 헤더와 셀 경계형 행으로 바꾸고, 행 배경을 교차 적용해 눈에 더 잘 들어오게 했습니다.
+- 청구금액은 파란색, 하불금액은 빨간색으로 분리 표시했습니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+- 로컬 `http://localhost:3000/employees/branches/asan?debug=true`: 구간단가 `20RF` 검색 시 `1 / 1개`, 표시행 TYPE `20RF`, `40HC` 미포함 확인. 헤더 배경 `rgb(47, 98, 142)`, 청구 `rgb(29, 78, 216)`, 하불 `rgb(220, 38, 38)` 확인.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 구간단가 제목열 다중 선택 필터 (v5.14.255)
 ### 핵심
 - 구간단가 컬럼 제목열의 목록 필터를 단일 선택에서 다중 선택으로 변경했습니다.

@@ -46,8 +46,8 @@ const ROUTE_UNIT_SORT_OPTIONS = [
 ];
 const ROUTE_UNIT_NUMERIC_FIELDS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount']);
 const ROUTE_UNIT_COLUMNS = [
-    { key: 'revenueAmount', label: '청구', numeric: true },
-    { key: 'purchaseAmount', label: '하불', numeric: true },
+    { key: 'revenueAmount', label: '청구금액', numeric: true },
+    { key: 'purchaseAmount', label: '하불금액', numeric: true },
     { key: 'unitProfit', label: '차액', numeric: true },
     { key: 'salesItem', label: '매출' },
     { key: 'region', label: '지역' },
@@ -74,6 +74,8 @@ const ROUTE_UNIT_GROUP_COLUMN_KEYS = new Set(ROUTE_UNIT_GROUP_COLUMNS.map(column
 const ROUTE_UNIT_DEFAULT_GROUP_KEYS = ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key);
 
 function routeUnitColumnGrid(column = {}) {
+    if (column.key === 'revenueAmount' || column.key === 'purchaseAmount') return '108px';
+    if (column.key === 'unitProfit') return '100px';
     if (column.key === 'workSite') return 'minmax(150px, 1.2fr)';
     if (column.key === 'billTo' || column.key === 'payTo') return 'minmax(130px, 1fr)';
     if (column.key === 'rowCount') return '56px';
@@ -214,7 +216,9 @@ function compareRouteUnitItems(a = {}, b = {}, sortKey = 'revenueAmount_desc') {
 function normalizeRouteUnitSearchPart(value) {
     const text = String(value ?? '').trim().toLowerCase();
     const numeric = text.replace(/[^0-9.-]/g, '');
-    return { text, numeric };
+    const hasAsciiLetter = /[a-z]/i.test(text);
+    const numericFallback = hasAsciiLetter ? '' : numeric;
+    return { text, numeric: numericFallback };
 }
 
 function routeUnitSearchBlob(values = []) {
@@ -1327,8 +1331,8 @@ function RouteUnitPricePanel({
         downloadRouteUnitExcel(visibleGroups, activeRouteUnitColumns, data?.scope?.label || scope);
     };
     const renderRouteUnitCell = (item, column) => {
-        if (column.key === 'revenueAmount') return <b key={column.key}>{formatRouteUnitWon(item.revenueAmount)}</b>;
-        if (column.key === 'purchaseAmount') return <b key={column.key}>{formatRouteUnitWon(item.purchaseAmount)}</b>;
+        if (column.key === 'revenueAmount') return <b key={column.key} className={styles.routeUnitRevenueAmount}>{formatRouteUnitWon(item.revenueAmount)}</b>;
+        if (column.key === 'purchaseAmount') return <b key={column.key} className={styles.routeUnitPurchaseAmount}>{formatRouteUnitWon(item.purchaseAmount)}</b>;
         if (column.key === 'unitProfit') {
             return <b key={column.key} className={safeNumber(item.unitProfit) < 0 ? styles.negative : styles.positive}>{formatRouteUnitWon(item.unitProfit)}</b>;
         }
