@@ -1280,31 +1280,6 @@ function RouteUnitPricePanel({
         setOpenFilterColumn('');
         setRouteUnitPresetMessage('정렬 초기화');
     };
-    const toggleGroupField = (field) => {
-        const willRemove = includedGroupFields.includes(field);
-        setIncludedGroupFields(prev => (
-            prev.includes(field)
-                ? prev.filter(item => item !== field)
-                : ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(item => item === field || prev.includes(item))
-        ));
-        setRouteUnitHiddenColumns(prev => (
-            willRemove
-                ? normalizeRouteUnitHiddenColumns([...prev, field])
-                : normalizeRouteUnitHiddenColumns(prev.filter(item => item !== field))
-        ));
-        if (willRemove) clearGroupColumnFilters([field]);
-        if (openFilterColumn === field) setOpenFilterColumn('');
-    };
-    const includeAllGroupFields = () => {
-        setIncludedGroupFields(ROUTE_UNIT_DEFAULT_GROUP_KEYS);
-        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns(prev.filter(key => !ROUTE_UNIT_GROUP_COLUMN_KEYS.has(key))));
-    };
-    const useAmountOnlyGrouping = () => {
-        setIncludedGroupFields([]);
-        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns([...prev, ...ROUTE_UNIT_DEFAULT_GROUP_KEYS]));
-        clearGroupColumnFilters();
-        setOpenFilterColumn('');
-    };
     const resetFilters = () => {
         setUnitFilter('');
         setColumnFilters({});
@@ -1364,7 +1339,7 @@ function RouteUnitPricePanel({
                 </button>
             </section>
             <div className={styles.routeUnitPrinciple}>
-                월간 마감자료 DB만 사용합니다. 청구/하불 금액은 항상 고정하고, 선택한 묶음 항목만 기준으로 같은 금액표를 다시 압축합니다.
+                월간 마감자료 DB만 사용합니다. 청구/하불 금액은 항상 고정하고, 숨김 처리한 조건은 집계 기준에서 제외해 같은 금액표를 다시 압축합니다.
             </div>
 
             {error && <div className={styles.errorBox}>{error}</div>}
@@ -1439,27 +1414,6 @@ function RouteUnitPricePanel({
                         {routeUnitPresetMessage && <span className={styles.routeUnitPresetMessage}>{routeUnitPresetMessage}</span>}
                     </div>
                     <em className={styles.routeUnitCount}>{visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개</em>
-                    <div className={styles.routeUnitGroupBar}>
-                        <span>묶음 항목</span>
-                        <div className={styles.routeUnitGroupChips}>
-                            {ROUTE_UNIT_GROUP_COLUMNS.map(column => (
-                                <button
-                                    key={column.key}
-                                    type="button"
-                                    className={activeGroupFieldSet.has(column.key) ? styles.routeUnitGroupChipActive : ''}
-                                    onClick={() => toggleGroupField(column.key)}
-                                    title={activeGroupFieldSet.has(column.key) ? `${column.label} 항목 제외` : `${column.label} 항목 포함`}
-                                >
-                                    {column.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className={styles.routeUnitGroupActions}>
-                            <button type="button" onClick={includeAllGroupFields}>전체 포함</button>
-                            <button type="button" onClick={useAmountOnlyGrouping}>금액만</button>
-                        </div>
-                        <em>{includedGroupFields.length}개 기준 · 제외한 항목은 집계 키에서 빠집니다.</em>
-                    </div>
                 </div>
                 {loading && !groups.length ? (
                     <div className={styles.emptyPanel}>월간 금액표를 집계하는 중입니다...</div>

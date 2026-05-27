@@ -1,3 +1,20 @@
+## [2026-05-28] 아산 구간단가 숨김 기준 통합과 도구줄 정렬 (v5.14.252)
+### 핵심
+- 구간단가 표의 `묶음 항목` 바를 제거하고, 숨김 드롭존이 컬럼 숨김과 집계 기준 제외를 함께 담당하도록 정리했습니다.
+- 필터 라벨/입력칸을 인라인 배치로 바꿔 P1/P2, 엑셀, 초기화, 새로고침 버튼과 높이를 맞췄습니다.
+- 필터 입력칸 폭을 제한하고 버튼 영역과 간격을 벌려 선적관리 리스트와 같은 표 조작 밀도로 맞췄습니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 선적관리 일별 전체 표시와 확정 잠금 보강 (v5.14.251)
 ### 핵심
 - 선적관리 일별 화면은 표시 제한을 우회해 100건 더보기 없이 전체 행을 기본 표시하도록 변경했습니다.

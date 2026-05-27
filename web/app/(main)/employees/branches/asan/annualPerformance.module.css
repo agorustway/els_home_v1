@@ -1747,9 +1747,9 @@
 
 .routeUnitTableTools {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) auto auto;
+    grid-template-columns: minmax(260px, 520px) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 7px;
+    gap: 7px 12px;
     padding: 7px 9px;
     border-bottom: 1px solid #e2e8f0;
     background: #f8fafc;
@@ -1831,7 +1831,7 @@
 .routeUnitTableTools input,
 .routeUnitTableTools select {
     width: 100%;
-    height: 30px;
+    height: 28px;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: #fff;
@@ -1852,6 +1852,10 @@
 }
 
 .routeUnitSearchBox {
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px !important;
     align-self: stretch;
 }
 
@@ -1891,75 +1895,6 @@
     color: #0f766e !important;
     font-size: 0.64rem !important;
     font-weight: 950 !important;
-    white-space: nowrap;
-}
-
-.routeUnitGroupBar {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 7px;
-    padding-top: 5px;
-    border-top: 1px solid #e2e8f0;
-}
-
-.routeUnitGroupBar > span {
-    color: #0f172a;
-    font-size: 0.68rem;
-    font-weight: 950;
-    white-space: nowrap;
-}
-
-.routeUnitGroupChips {
-    min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.routeUnitGroupChips button,
-.routeUnitGroupActions button {
-    height: 24px;
-    padding: 0 7px;
-    border: 1px solid #cbd5e1;
-    border-radius: 999px;
-    background: #fff;
-    color: #64748b;
-    font-family: inherit;
-    font-size: 0.64rem;
-    font-weight: 900;
-    cursor: pointer;
-}
-
-.routeUnitGroupChips button {
-    max-width: 92px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.routeUnitGroupChipActive {
-    border-color: #14b8a6 !important;
-    background: #ccfbf1 !important;
-    color: #0f766e !important;
-}
-
-.routeUnitGroupActions {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.routeUnitGroupActions button {
-    border-radius: 6px;
-}
-
-.routeUnitGroupBar > em {
-    color: #64748b;
-    font-size: 0.64rem;
-    font-style: normal;
-    font-weight: 850;
     white-space: nowrap;
 }
 
@@ -6025,16 +5960,7 @@
     }
 
     .routeUnitTableTools {
-        grid-template-columns: minmax(180px, 1fr) auto auto;
-    }
-
-    .routeUnitGroupBar {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-    }
-
-    .routeUnitGroupBar > em {
-        grid-column: 2 / -1;
-        justify-self: start;
+        grid-template-columns: minmax(220px, 420px) minmax(0, 1fr) auto;
     }
 
     .metricLegend {
@@ -6161,19 +6087,6 @@
     }
 
     .routeUnitToolButtons {
-        justify-content: flex-start;
-    }
-
-    .routeUnitGroupBar {
-        grid-template-columns: 1fr;
-        align-items: stretch;
-    }
-
-    .routeUnitGroupBar > em {
-        grid-column: auto;
-    }
-
-    .routeUnitGroupActions {
         justify-content: flex-start;
     }
 
