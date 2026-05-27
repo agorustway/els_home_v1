@@ -427,6 +427,10 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.doesNotMatch(component, /보고서 표 없음 · 원장 기준 분석 중/);
   assert.match(component, /익월이월/);
   assert.match(component, /청구이월/);
+  assert.match(component, /직전 대비/);
+  assert.match(component, /revenueDeltaRangeLabel/);
+  assert.match(component, /recentDeltaRangeLabel/);
+  assert.doesNotMatch(component, /최근 증감/);
   assert.match(component, /selectedReportPeriod/);
   assert.match(component, /2027-03/);
   assert.match(component, /buildMonthlyPerformanceFileSlots/);

@@ -825,6 +825,7 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
     const previous = series.length >= 2 ? series[series.length - 2] : null;
     const recentDelta = last && previous ? safeNumber(last.revenue) - safeNumber(previous.revenue) : 0;
     const recentDeltaRate = previous?.revenue ? (recentDelta / Math.abs(previous.revenue)) * 100 : 0;
+    const recentDeltaRangeLabel = previous && last ? `${previous.displayLabel} → ${last.displayLabel}` : '-';
     const lastIdx = Math.max(0, series.length - 1);
     const grid = [0.25, 0.5, 0.75].map(ratio => pad.top + chartH * ratio);
     const axisStep = series.length <= 8 ? 1 : Math.ceil(series.length / 7);
@@ -939,9 +940,9 @@ function MonthlyLedgerFlowChart({ items = [], scopeLabel = '-', basisLabel = '�
                         <div><span>평균 청구</span><strong>{formatPerformanceAmount(avgRevenue)}</strong><em>{formatPerformanceAmount(avgProfit)} 이익</em></div>
                         <div><span>누적 청구</span><strong>{formatPerformanceAmount(totals.revenue)}</strong><em>{series.length.toLocaleString('ko-KR')}{unitLabel} · {totals.rowCount.toLocaleString('ko-KR')}건</em></div>
                         <div>
-                            <span>최근 증감</span>
+                            <span>직전 대비</span>
                             <strong className={recentDelta < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(recentDelta)}</strong>
-                            <em>{formatPercent(recentDeltaRate, 1)}</em>
+                            <em>{recentDeltaRangeLabel} · {formatPercent(recentDeltaRate, 1)}</em>
                         </div>
                     </div>
                 </>
@@ -1335,6 +1336,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const bestRevenueItem = maxBy(scopeFlowItems, 'revenue');
     const bestProfitItem = maxBy(scopeFlowItems, 'profit');
     const revenueDelta = metricDelta(latestFlowItem, previousFlowItem, 'revenue');
+    const revenueDeltaRangeLabel = previousFlowItem && latestFlowItem ? `${previousFlowItem.scopeLabel || '-'} → ${latestFlowItem.scopeLabel || '-'}` : '-';
     const avgRevenuePerJob = scopeRows ? scopeRevenue / scopeRows : 0;
     const carryoverRate = scopeRevenue ? (carryoverRevenue / scopeRevenue) * 100 : 0;
     const incomingCarryoverRate = scopeRevenue ? (incomingCarryoverRevenue / scopeRevenue) * 100 : 0;
@@ -1821,9 +1823,9 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                 <em>{latestFlowItem ? formatPerformanceAmount(latestFlowItem.revenue) : '-'}</em>
                             </div>
                             <div>
-                                <span>최근 증감</span>
+                                <span>직전 대비</span>
                                 <strong className={revenueDelta.amount < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(revenueDelta.amount)}</strong>
-                                <em>{formatPercent(revenueDelta.rate, 1)}</em>
+                                <em>{revenueDeltaRangeLabel} · {formatPercent(revenueDelta.rate, 1)}</em>
                             </div>
                         </div>
                     </section>
