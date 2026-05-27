@@ -840,6 +840,7 @@
 }
 
 .detailLockedRow td {
+    background: #f1f5f9 !important;
     color: #64748b;
 }
 
@@ -855,6 +856,11 @@
 .detailChangeDeleteRow .detailChangeTypeCell {
     background: #d1d5db !important;
     color: #334155 !important;
+}
+
+.detailChangeConfirmedRow td {
+    background: #f1f5f9 !important;
+    color: #64748b;
 }
 
 .detailChangeMarker {
@@ -1706,6 +1712,36 @@
 
 .detailManualCell {
     background: #ffedd5;
+}
+
+.detailLockedRow.detailChangedRow td,
+.detailLockedRow .detailManualCell,
+.detailLockedRow .detailBkgSelectedCell,
+.detailChangeConfirmedRow .detailChangeTypeCell,
+.detailChangeConfirmedRow .detailChangeDiffCell,
+.detailChangeConfirmedRow .detailMemoDiffCell,
+.detailChangeConfirmedRow .detailBkgSelectedCell {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+    box-shadow: none;
+}
+
+.detailLockedRow .detailBkgSourceBadge,
+.detailChangeConfirmedRow .detailBkgSourceBadge {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.detailLockedRow input:disabled,
+.detailLockedRow select:disabled,
+.detailLockedRow button:disabled,
+.detailChangeConfirmedRow input:disabled,
+.detailChangeConfirmedRow select:disabled,
+.detailChangeConfirmedRow button:disabled {
+    background: #e2e8f0;
+    color: #64748b;
+    cursor: default;
+    box-shadow: none;
 }
 
 .webCellEditableTd {

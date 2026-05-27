@@ -1,3 +1,37 @@
+## [2026-05-28] 선적관리 일별 전체 표시와 확정 잠금 보강 (v5.14.251)
+### 핵심
+- 선적관리 일별 화면은 표시 제한을 우회해 100건 더보기 없이 전체 행을 기본 표시하도록 변경했습니다.
+- 상세배차 확정 후에도 열려 있던 `BKG확정`, BKG 원본 선택 버튼, `포트코드` 선택을 함께 잠그고 회색 배경으로 표시했습니다.
+- 배차변동내역에서 확인완료된 행은 기존처럼 수정 불가 상태를 유지하면서 행 전체를 회색 잠금 상태로 보이게 했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 51개 통과
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/page.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] 아산 구간단가 선적관리식 표 조작 UX (v5.14.250)
+### 핵심
+- 구간단가 표 상단에 선적관리 리스트와 같은 `숨김` 드롭존을 추가했습니다.
+- 컬럼 제목을 드래그해 열 순서를 바꿀 수 있고, 숨김 영역에 드롭하면 해당 컬럼을 숨기며 묶음 항목이면 집계 기준에서도 제외합니다.
+- P1/P2 레이아웃 저장·로드, 현재 표시 컬럼 기준 엑셀 CSV 다운로드, 표 새로고침, 정렬/필터 초기화를 표 도구줄에 배치했습니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 일반 목록 중복 강조 제한 (v5.14.249)
 ### 핵심
 - 일반 목록에서는 전체 원장 기준 중복 행이어도 빨간 배경을 표시하지 않게 했습니다.

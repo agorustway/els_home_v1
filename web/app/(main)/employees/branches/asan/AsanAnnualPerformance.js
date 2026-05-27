@@ -64,6 +64,10 @@ const ROUTE_UNIT_COLUMNS = [
     { key: 'periodLabel', label: '기간' },
 ];
 const ROUTE_UNIT_FILTER_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
+const ROUTE_UNIT_COLUMN_KEYS = ROUTE_UNIT_COLUMNS.map(column => column.key);
+const ROUTE_UNIT_COLUMN_KEY_SET = new Set(ROUTE_UNIT_COLUMN_KEYS);
+const ROUTE_UNIT_COLUMNS_BY_KEY = new Map(ROUTE_UNIT_COLUMNS.map(column => [column.key, column]));
+const ROUTE_UNIT_LOCKED_HIDDEN_KEYS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit']);
 const ROUTE_UNIT_FILTER_COLUMN_KEYS = new Set(ROUTE_UNIT_FILTER_COLUMNS.map(column => column.key));
 const ROUTE_UNIT_GROUP_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
 const ROUTE_UNIT_GROUP_COLUMN_KEYS = new Set(ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key));
@@ -317,6 +321,55 @@ function aggregateRouteUnitGroups(items = [], groupKeys = ROUTE_UNIT_DEFAULT_GRO
         const { periodLabels, ...rest } = bucket;
         return { ...rest, periodLabel };
     });
+}
+
+function normalizeRouteUnitColumnOrder(order = []) {
+    const seen = new Set();
+    const valid = Array.isArray(order)
+        ? order.filter((key) => {
+            if (!ROUTE_UNIT_COLUMN_KEY_SET.has(key) || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        : [];
+    return [...valid, ...ROUTE_UNIT_COLUMN_KEYS.filter(key => !seen.has(key))];
+}
+
+function normalizeRouteUnitHiddenColumns(hiddenColumns = []) {
+    const seen = new Set();
+    return (Array.isArray(hiddenColumns) ? hiddenColumns : [])
+        .filter((key) => {
+            if (!ROUTE_UNIT_COLUMN_KEY_SET.has(key) || ROUTE_UNIT_LOCKED_HIDDEN_KEYS.has(key) || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+}
+
+function csvEscape(value) {
+    const text = String(value ?? '');
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadRouteUnitExcel(rows = [], columns = [], scopeLabel = '전체') {
+    if (typeof document === 'undefined') return;
+    const csvRows = [
+        columns.map(column => column.label),
+        ...rows.map(item => columns.map((column) => {
+            if (ROUTE_UNIT_NUMERIC_FIELDS.has(column.key)) return Math.round(safeNumber(item[column.key]));
+            return item[column.key] || '';
+        })),
+    ];
+    const csv = `\uFEFF${csvRows.map(row => row.map(csvEscape).join(',')).join('\r\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const safeScope = String(scopeLabel || 'route-unit').replace(/[^\w가-힣-]+/g, '_');
+    anchor.href = url;
+    anchor.download = `asan_route_unit_${safeScope}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
 }
 
 function getPerformanceGrade(profitRate) {
@@ -1049,12 +1102,26 @@ function RouteUnitPricePanel({
     const [columnFilters, setColumnFilters] = useState({});
     const [openFilterColumn, setOpenFilterColumn] = useState('');
     const [includedGroupFields, setIncludedGroupFields] = useState(() => ROUTE_UNIT_DEFAULT_GROUP_KEYS);
-    const [unitSort, setUnitSort] = useState('revenueAmount_desc');
+    const [unitSort, setUnitSort] = useState(() => ROUTE_UNIT_SORT_OPTIONS[0].key);
+    const [routeUnitColumnOrder, setRouteUnitColumnOrder] = useState(() => [...ROUTE_UNIT_COLUMN_KEYS]);
+    const [routeUnitHiddenColumns, setRouteUnitHiddenColumns] = useState([]);
+    const [dragRouteUnitColumn, setDragRouteUnitColumn] = useState('');
+    const [hiddenDropActive, setHiddenDropActive] = useState(false);
+    const [routeUnitPresetMessage, setRouteUnitPresetMessage] = useState('');
     const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
     const activeGroupFieldSet = useMemo(() => new Set(includedGroupFields), [includedGroupFields]);
-    const activeRouteUnitColumns = useMemo(() => ROUTE_UNIT_COLUMNS.filter(column => (
-        !ROUTE_UNIT_GROUP_COLUMN_KEYS.has(column.key) || activeGroupFieldSet.has(column.key)
-    )), [activeGroupFieldSet]);
+    const routeUnitHiddenSet = useMemo(() => new Set(routeUnitHiddenColumns), [routeUnitHiddenColumns]);
+    const orderedRouteUnitColumns = useMemo(() => normalizeRouteUnitColumnOrder(routeUnitColumnOrder)
+        .map(key => ROUTE_UNIT_COLUMNS_BY_KEY.get(key))
+        .filter(Boolean), [routeUnitColumnOrder]);
+    const visibleHiddenColumns = useMemo(() => normalizeRouteUnitColumnOrder(routeUnitHiddenColumns)
+        .filter(key => routeUnitHiddenSet.has(key))
+        .map(key => ROUTE_UNIT_COLUMNS_BY_KEY.get(key))
+        .filter(Boolean), [routeUnitHiddenColumns, routeUnitHiddenSet]);
+    const activeRouteUnitColumns = useMemo(() => orderedRouteUnitColumns.filter(column => (
+        !routeUnitHiddenSet.has(column.key)
+        && (!ROUTE_UNIT_GROUP_COLUMN_KEYS.has(column.key) || activeGroupFieldSet.has(column.key))
+    )), [activeGroupFieldSet, orderedRouteUnitColumns, routeUnitHiddenSet]);
     const activeRouteUnitFilterColumns = useMemo(() => activeRouteUnitColumns.filter(column => ROUTE_UNIT_FILTER_COLUMN_KEYS.has(column.key)), [activeRouteUnitColumns]);
     const routeUnitGridTemplate = useMemo(() => activeRouteUnitColumns.map(routeUnitColumnGrid).join(' '), [activeRouteUnitColumns]);
     const routeUnitGridStyle = useMemo(() => ({
@@ -1116,6 +1183,103 @@ function RouteUnitPricePanel({
             return next;
         });
     };
+    const hideRouteUnitColumn = (field) => {
+        if (!ROUTE_UNIT_COLUMN_KEY_SET.has(field) || ROUTE_UNIT_LOCKED_HIDDEN_KEYS.has(field)) return;
+        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns([...prev, field]));
+        setColumnFilters((prev) => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+        if (ROUTE_UNIT_GROUP_COLUMN_KEYS.has(field)) {
+            setIncludedGroupFields(prev => prev.filter(item => item !== field));
+            clearGroupColumnFilters([field]);
+        }
+        if (openFilterColumn === field) setOpenFilterColumn('');
+    };
+    const showRouteUnitColumn = (field) => {
+        if (!ROUTE_UNIT_COLUMN_KEY_SET.has(field)) return;
+        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns(prev.filter(item => item !== field)));
+        if (ROUTE_UNIT_GROUP_COLUMN_KEYS.has(field)) {
+            setIncludedGroupFields(prev => ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(item => item === field || prev.includes(item)));
+        }
+    };
+    const moveRouteUnitColumn = (field, targetField) => {
+        if (!ROUTE_UNIT_COLUMN_KEY_SET.has(field) || !ROUTE_UNIT_COLUMN_KEY_SET.has(targetField) || field === targetField) return;
+        setRouteUnitColumnOrder((prev) => {
+            const order = normalizeRouteUnitColumnOrder(prev).filter(item => item !== field);
+            const targetIndex = order.indexOf(targetField);
+            if (targetIndex < 0) return normalizeRouteUnitColumnOrder(prev);
+            order.splice(targetIndex, 0, field);
+            return normalizeRouteUnitColumnOrder(order);
+        });
+    };
+    const handleRouteUnitHeaderDrop = (event, targetField) => {
+        event.preventDefault();
+        const sourceField = event.dataTransfer?.getData('text/plain') || dragRouteUnitColumn;
+        if (!sourceField) return;
+        showRouteUnitColumn(sourceField);
+        moveRouteUnitColumn(sourceField, targetField);
+        setDragRouteUnitColumn('');
+        setHiddenDropActive(false);
+    };
+    const handleRouteUnitHiddenDrop = (event) => {
+        event.preventDefault();
+        const sourceField = event.dataTransfer?.getData('text/plain') || dragRouteUnitColumn;
+        hideRouteUnitColumn(sourceField);
+        setDragRouteUnitColumn('');
+        setHiddenDropActive(false);
+    };
+    const saveRouteUnitPreset = (slot) => {
+        const prefs = readPrefs();
+        writePrefs({
+            ...prefs,
+            routeUnitPresets: {
+                ...(prefs.routeUnitPresets || {}),
+                [slot]: {
+                    columnOrder: normalizeRouteUnitColumnOrder(routeUnitColumnOrder),
+                    hiddenColumns: normalizeRouteUnitHiddenColumns(routeUnitHiddenColumns),
+                    includedGroupFields,
+                    unitSort,
+                    savedAt: new Date().toISOString(),
+                },
+            },
+        });
+        setRouteUnitPresetMessage(`${slot.toUpperCase()} 저장`);
+    };
+    const loadRouteUnitPreset = (slot) => {
+        const preset = readPrefs()?.routeUnitPresets?.[slot];
+        if (!preset) {
+            setRouteUnitPresetMessage(`${slot.toUpperCase()} 없음`);
+            return;
+        }
+        const savedIncluded = Array.isArray(preset.includedGroupFields)
+            ? ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(key => preset.includedGroupFields.includes(key))
+            : ROUTE_UNIT_DEFAULT_GROUP_KEYS;
+        const hiddenColumns = normalizeRouteUnitHiddenColumns([
+            ...(preset.hiddenColumns || []),
+            ...ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(key => !savedIncluded.includes(key)),
+        ]);
+        setRouteUnitColumnOrder(normalizeRouteUnitColumnOrder(preset.columnOrder));
+        setRouteUnitHiddenColumns(hiddenColumns);
+        setIncludedGroupFields(ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(key => savedIncluded.includes(key) && !hiddenColumns.includes(key)));
+        if (preset.unitSort) setUnitSort(preset.unitSort);
+        setColumnFilters((prev) => {
+            const next = { ...prev };
+            hiddenColumns.forEach(field => delete next[field]);
+            return next;
+        });
+        setOpenFilterColumn('');
+        setRouteUnitPresetMessage(`${slot.toUpperCase()} 로드`);
+    };
+    const resetRouteUnitLayout = () => {
+        setRouteUnitColumnOrder([...ROUTE_UNIT_COLUMN_KEYS]);
+        setRouteUnitHiddenColumns([]);
+        setIncludedGroupFields(ROUTE_UNIT_DEFAULT_GROUP_KEYS);
+        setUnitSort(ROUTE_UNIT_SORT_OPTIONS[0].key);
+        setOpenFilterColumn('');
+        setRouteUnitPresetMessage('정렬 초기화');
+    };
     const toggleGroupField = (field) => {
         const willRemove = includedGroupFields.includes(field);
         setIncludedGroupFields(prev => (
@@ -1123,14 +1287,21 @@ function RouteUnitPricePanel({
                 ? prev.filter(item => item !== field)
                 : ROUTE_UNIT_DEFAULT_GROUP_KEYS.filter(item => item === field || prev.includes(item))
         ));
+        setRouteUnitHiddenColumns(prev => (
+            willRemove
+                ? normalizeRouteUnitHiddenColumns([...prev, field])
+                : normalizeRouteUnitHiddenColumns(prev.filter(item => item !== field))
+        ));
         if (willRemove) clearGroupColumnFilters([field]);
         if (openFilterColumn === field) setOpenFilterColumn('');
     };
     const includeAllGroupFields = () => {
         setIncludedGroupFields(ROUTE_UNIT_DEFAULT_GROUP_KEYS);
+        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns(prev.filter(key => !ROUTE_UNIT_GROUP_COLUMN_KEYS.has(key))));
     };
     const useAmountOnlyGrouping = () => {
         setIncludedGroupFields([]);
+        setRouteUnitHiddenColumns(prev => normalizeRouteUnitHiddenColumns([...prev, ...ROUTE_UNIT_DEFAULT_GROUP_KEYS]));
         clearGroupColumnFilters();
         setOpenFilterColumn('');
     };
@@ -1138,6 +1309,9 @@ function RouteUnitPricePanel({
         setUnitFilter('');
         setColumnFilters({});
         setOpenFilterColumn('');
+    };
+    const exportVisibleRouteUnitRows = () => {
+        downloadRouteUnitExcel(visibleGroups, activeRouteUnitColumns, data?.scope?.label || scope);
     };
     const renderRouteUnitCell = (item, column) => {
         if (column.key === 'revenueAmount') return <b key={column.key}>{formatRouteUnitWon(item.revenueAmount)}</b>;
@@ -1208,7 +1382,39 @@ function RouteUnitPricePanel({
                     <span>청구/하불 금액 + 주요 조건별 묶음</span>
                 </div>
                 <div className={styles.routeUnitTableTools}>
-                    <label>
+                    <div
+                        className={`${styles.routeUnitHiddenZone} ${hiddenDropActive ? styles.routeUnitHiddenZoneActive : ''}`}
+                        onDragOver={(event) => {
+                            event.preventDefault();
+                            setHiddenDropActive(true);
+                        }}
+                        onDragLeave={() => setHiddenDropActive(false)}
+                        onDrop={handleRouteUnitHiddenDrop}
+                    >
+                        <strong>숨김</strong>
+                        {visibleHiddenColumns.length ? (
+                            <div>
+                                {visibleHiddenColumns.map(column => (
+                                    <button
+                                        key={column.key}
+                                        type="button"
+                                        draggable
+                                        onDragStart={(event) => {
+                                            event.dataTransfer?.setData('text/plain', column.key);
+                                            setDragRouteUnitColumn(column.key);
+                                        }}
+                                        onClick={() => showRouteUnitColumn(column.key)}
+                                        title={`${column.label} 다시 표시`}
+                                    >
+                                        {column.label}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <span className={styles.routeUnitHiddenHint}>열 제목을 이곳으로 드롭하면 숨김</span>
+                        )}
+                    </div>
+                    <label className={styles.routeUnitSearchBox}>
                         <span>필터</span>
                         <input
                             type="search"
@@ -1217,18 +1423,22 @@ function RouteUnitPricePanel({
                             placeholder="금액, TYPE, 작업지, 운송사, 청구처 (, ; 조건)"
                         />
                     </label>
-                    <label>
-                        <span>정렬</span>
-                        <select value={unitSort} onChange={event => setUnitSort(event.target.value)}>
-                            {ROUTE_UNIT_SORT_OPTIONS.map(item => (
-                                <option key={item.key} value={item.key}>{item.label}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <button className={styles.ghostBtn} onClick={resetFilters} disabled={!unitFilter && !Object.values(columnFilters).some(Boolean)}>
-                        필터 초기화
-                    </button>
-                    <em>{visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개</em>
+                    <div className={styles.routeUnitToolButtons}>
+                        <button type="button" onClick={() => saveRouteUnitPreset('p1')}>P1 저장</button>
+                        <button type="button" onClick={() => loadRouteUnitPreset('p1')}>P1 로드</button>
+                        <button type="button" onClick={() => saveRouteUnitPreset('p2')}>P2 저장</button>
+                        <button type="button" onClick={() => loadRouteUnitPreset('p2')}>P2 로드</button>
+                        <button type="button" onClick={exportVisibleRouteUnitRows} disabled={!visibleGroups.length}>엑셀</button>
+                        <button type="button" onClick={resetRouteUnitLayout}>정렬초기화</button>
+                        <button type="button" onClick={resetFilters} disabled={!unitFilter && !Object.values(columnFilters).some(Boolean)}>
+                            필터초기화
+                        </button>
+                        <button type="button" onClick={() => onRefresh({ refresh: true })} disabled={loading}>
+                            {loading ? '조회중' : '새로고침'}
+                        </button>
+                        {routeUnitPresetMessage && <span className={styles.routeUnitPresetMessage}>{routeUnitPresetMessage}</span>}
+                    </div>
+                    <em className={styles.routeUnitCount}>{visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개</em>
                     <div className={styles.routeUnitGroupBar}>
                         <span>묶음 항목</span>
                         <div className={styles.routeUnitGroupChips}>
@@ -1267,7 +1477,19 @@ function RouteUnitPricePanel({
                                 return (
                                     <div
                                         key={column.key}
-                                        className={`${styles.routeUnitHeadCell} ${filterValue ? styles.routeUnitHeadCellFiltered : ''}`}
+                                        className={`${styles.routeUnitHeadCell} ${filterValue ? styles.routeUnitHeadCellFiltered : ''} ${dragRouteUnitColumn === column.key ? styles.routeUnitHeadCellDragging : ''}`}
+                                        draggable
+                                        onDragStart={(event) => {
+                                            event.dataTransfer?.setData('text/plain', column.key);
+                                            setDragRouteUnitColumn(column.key);
+                                        }}
+                                        onDragOver={(event) => event.preventDefault()}
+                                        onDrop={(event) => handleRouteUnitHeaderDrop(event, column.key)}
+                                        onDragEnd={() => {
+                                            setDragRouteUnitColumn('');
+                                            setHiddenDropActive(false);
+                                        }}
+                                        title={`${column.label} 열 이동: 드래그 / 숨김: 숨김 영역에 드롭`}
                                     >
                                         <button
                                             type="button"

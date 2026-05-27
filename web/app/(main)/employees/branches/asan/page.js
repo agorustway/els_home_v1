@@ -50,6 +50,7 @@ const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance', 'route-unit-price'];
 const ASAN_DISPATCH_VIEW_TYPES = Object.freeze(['integrated', 'glovis', 'mobis']);
 const ASAN_DISPATCH_MAIN_VIEWS = Object.freeze(['dashboard', 'grid', 'detail', 'detail-change', 'glaps-master']);
+const DAILY_DISPLAY_LIMIT = Number.MAX_SAFE_INTEGER;
 
 const loadAsanShipping = () => import('./AsanShipping');
 const loadAsanGlapsMaster = () => import('./AsanGlapsMaster');
@@ -1545,6 +1546,7 @@ function AsanDispatchContent() {
         const el = tabsRef.current.querySelector(selector);
         if (el) scrollDateTabHorizontally(tabsRef.current, el);
     }, [activeTab, data.length, visibleDateTabs, periodMode]);
+    const effectiveDisplayLimit = periodMode === 'daily' ? DAILY_DISPLAY_LIMIT : displayLimit;
 
     const mergedView = useMemo(() => {
         if (!data || data.length === 0) return null;
@@ -2262,8 +2264,8 @@ function AsanDispatchContent() {
     ]);
 
     // 표시 제한 (성능 최적화)
-    const limitedRows = useMemo(() => displayRows.slice(0, displayLimit), [displayRows, displayLimit]);
-    const hasMore = displayRows.length > displayLimit;
+    const limitedRows = useMemo(() => displayRows.slice(0, effectiveDisplayLimit), [displayRows, effectiveDisplayLimit]);
+    const hasMore = displayRows.length > effectiveDisplayLimit;
 
     const uniqueVals = useMemo(() => {
         if (filterDropdown === null) return [];
@@ -3065,7 +3067,7 @@ function AsanDispatchContent() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {detailRowsForDisplay.slice(0, displayLimit).map(({ line, changeEvent }, detailRowIdx) => {
+                                    {detailRowsForDisplay.slice(0, effectiveDisplayLimit).map(({ line, changeEvent }, detailRowIdx) => {
                                         const lineKey = makeDispatchDetailLineKey(line);
                                         const rowValues = detailLineToRow(line);
                                         return (
@@ -3114,7 +3116,7 @@ function AsanDispatchContent() {
                                                                         onKeyDown={focusDetailGridInput}
                                                                         data-detail-row-index={detailRowIdx}
                                                                         data-detail-col-index={colIdx}
-                                                                        disabled={detailOverrideSetupRequired || !detailScope}
+                                                                        disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
                                                                         title={line.confirmedBkgSource && line.confirmedBkgSource !== 'manual' ? `${line.confirmedBkgSource} 선택값` : '수기 입력값'}
                                                                     />
                                                                 </div>
@@ -3124,7 +3126,7 @@ function AsanDispatchContent() {
                                                     if (BKG_CONFIRM_SOURCE_OPTIONS.includes(header)) {
                                                         const bkgValue = getDetailBkgValue(line, header);
                                                         const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue) && bkgValue === line.confirmedBkg;
-                                                        const isDisabledBkg = detailOverrideSetupRequired || !detailScope || !bkgValue;
+                                                        const isDisabledBkg = detailConfirmationLocked || detailOverrideSetupRequired || !detailScope || !bkgValue;
                                                         return (
                                                             <td
                                                                 key={header}
@@ -3158,7 +3160,7 @@ function AsanDispatchContent() {
                                                                     onKeyDown={focusDetailGridInput}
                                                                     data-detail-row-index={detailRowIdx}
                                                                     data-detail-col-index={colIdx}
-                                                                    disabled={detailOverrideSetupRequired || !detailScope}
+                                                                    disabled={detailConfirmationLocked || detailOverrideSetupRequired || !detailScope}
                                                                     title={`${line.port || ''} 포트코드 선택`}
                                                                 >
                                                                     {(line.glapsPortCodeOptions || []).map(option => (
@@ -3189,12 +3191,12 @@ function AsanDispatchContent() {
                         </div>
                         <div className={styles.tableFooter}>
                             <span>
-                                {Math.min(filteredDetailLines.length, displayLimit).toLocaleString()}건 표시
+                                {Math.min(filteredDetailLines.length, effectiveDisplayLimit).toLocaleString()}건 표시
                                 {searchTerm ? ` / 검색 ${filteredDetailLines.length.toLocaleString()}건` : ''}
                                 {' '} / 전체 {detailSummary.total.toLocaleString()}건
                                 {detailChangeSummary.total > 0 ? ` / 최종 ${detailChangeSummary.finalTotal.toLocaleString()}건` : ''}
                             </span>
-                            {filteredDetailLines.length > displayLimit && (
+                            {filteredDetailLines.length > effectiveDisplayLimit && (
                                 <span className={styles.loadMoreWrap}>
                                     <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(p => p + 100)}>+100건 더 보기</button>
                                     <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(filteredDetailLines.length)}>전체 표시</button>
@@ -3301,14 +3303,14 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
+                                        {detailChangeRows.slice(0, effectiveDisplayLimit).map(({ event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
                                             const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
                                             const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             const isDeleteEvent = event.change_type === 'delete';
                                             const isConfirmedEvent = event.event_status === 'confirmed';
                                             const editDisabled = detailChangeSaving || isConfirmedEvent;
                                             return (
-                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''}`}>
+                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''} ${isConfirmedEvent ? styles.detailChangeConfirmedRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
@@ -3477,11 +3479,11 @@ function AsanDispatchContent() {
                             </div>
                             <div className={styles.tableFooter}>
                                 <span>
-                                    {Math.min(detailChangeRows.length, displayLimit).toLocaleString()}건 표시
+                                    {Math.min(detailChangeRows.length, effectiveDisplayLimit).toLocaleString()}건 표시
                                     {searchTerm ? ` / 검색 ${detailChangeRows.length.toLocaleString()}건` : ''}
                                     {' '} / 전체 {detailChangeRows.length.toLocaleString()}건
                                 </span>
-                                {detailChangeRows.length > displayLimit && (
+                                {detailChangeRows.length > effectiveDisplayLimit && (
                                     <span className={styles.loadMoreWrap}>
                                         <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(p => p + 100)}>+100건 더 보기</button>
                                         <button className={styles.loadMoreBtn} onClick={() => setDisplayLimit(detailChangeRows.length)}>전체 표시</button>

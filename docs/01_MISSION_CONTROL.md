@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.249 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.251 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 일반 목록에서는 중복 행 빨간 표시를 숨기고, `중복검출` 활성 시에만 중복 그룹을 강조한다.
+> 최신 업데이트: 선적관리 일별 화면은 기본 전체 표시로 전환하고, 상세 확정/변동 확인 행은 회색 잠금 상태로 보이게 했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.249
+- **웹 버전**: v5.14.251
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -24,7 +24,8 @@
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
 - `구간단가`는 월간 마감자료 current 원장만 사용한다. 연간 원장 36만 행은 DB 부하와 컬럼 신뢰도 문제로 합산하지 않는다.
 - 구간단가 조회 범위는 `전체/연도별/월별`이며, 제목열 클릭 정렬과 컬럼 제목열 내부 필터 버튼을 제공한다.
-- 구간단가 묶음 항목은 화면에서 제외/포함할 수 있다. 제외한 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
+- 구간단가 묶음 항목은 제외/포함할 수 있다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
+- 구간단가 표는 열 드래그 이동, P1/P2 레이아웃 저장·로드, 현재 표시 기준 엑셀 CSV 다운로드, 새로고침을 지원한다.
 - 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, TYPE, 청구처, 하불처`다. 금액 검색은 천단위 구분 없이 숫자만 입력해도 찾을 수 있다.
 - 구간단가 API는 dashboard snapshot을 만들지 않고 `asan_monthly_route_unit_amount_payload` RPC를 우선 사용한다. 실패 시 월간 current 행을 1000행 단위로만 읽는 JS fallback을 사용한다.
 - 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
@@ -55,6 +56,8 @@
 - 배차변동 sync payload는 `changeSchemaVersion=2` 이상만 반영한다. 구버전으로 열린 탭이 transportRemark 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.251**: 선적관리 일별 화면은 100건 더보기 없이 전체 행을 기본 표시한다. 배차확정된 상세는 BKG확정/원본 BKG/포트코드까지 입력 잠금하고, 확인완료된 변동내역 행은 회색 배경으로 잠금 상태를 표시한다.
+- **v5.14.250**: 구간단가 표를 선적관리 리스트 형식으로 정리했다. 숨김 드롭존/열 이동/P1·P2 저장·로드/엑셀/새로고침을 제공하고, 숨긴 묶음 열은 집계 기준에서도 제외한다.
 - **v5.14.249**: GLAPS 일반 목록의 빨간 중복 강조를 제거하고, 중복검출 모드에서만 `운송경로코드`/`최종코드(BP)` 중복 그룹을 표시한다.
 - **v5.14.248**: 배차변동 비교에서 Nomi/특이사항을 제외하고, 미확인 추가/삭제 순증감 0쌍은 자동 숨김 처리했다. 2026-05-27 active 변동 48건 중 40건을 neutralized 이력으로 비활성화해 8건만 남겼다.
 - **v5.14.247**: GLAPS 중복검출/병합을 코드 단독 기준으로 정정했다. 운송경로는 `운송경로코드`, 항목매핑은 `최종코드(BP)`만 반복 여부를 본다.
@@ -68,16 +71,10 @@
 - **v5.14.239**: 구간단가를 월간실적 current 원장 전용 청구/하불 금액표로 재구성하고, 연간 원장/기간별 단가 차트/dashboard snapshot 의존을 제거했다.
 - **v5.14.238**: 배차변동 비교에서 BKG/비고/GLAPS 파생값 변화를 제외하고, 변경 이벤트는 고객사·포트·라인·TYPE 기준으로만 만들며 변경 셀은 붉은색으로 표시한다.
 - **v5.14.237**: GLAPS 중복검출/병합을 운송경로는 연결키, 항목매핑은 최종코드(BP) 기준으로 통일하고, 운송경로도 선택/일괄 병합할 수 있게 했다.
-- **v5.14.236**: 구간단가 대표값을 평균/MAX가 아닌 LAST 기간 단가로 고정하고, 원 단위 천단위 표기, 2026 월간 기간 선택, 표 필터/정렬을 추가했다.
-- **v5.14.235**: 구간단가를 총액 리포트가 아닌 단가 변동 전용 화면으로 재정리하고, 연간+월간 current 원장 통합/월간 우선 중복 방지/기간 인덱스 적용을 반영했다.
-- **v5.14.234**: GLAPS 마스터 반영 중 `glaps_transport_routes_branch_version_route_source_key` UNIQUE 충돌이 나지 않도록 운송경로/항목매핑 insert 전 원장 중복행을 정리하고, 성공 시에만 새 버전을 active 전환한다.
-- **v5.14.233**: 연간실적 옆에 `구간단가` 탭을 추가하고, 마감월 기준 구간/매출열/청구처/지급처/TYPE별 청구·하불·건당단가와 기간별 변동 차트를 구성했다.
-- **v5.14.232**: GLAPS 항목매핑 중복 표시/병합 UI를 추가했다. 실제 중복 기준은 v5.14.247에서 코드 단독 기준으로 정정했다.
-- **v5.14.231**: 모바일 배차판 합계바에서 데스크탑용 `summaryRight` flex-basis가 세로 높이로 적용되어 생기던 큰 공백을 제거했다.
-- **v5.14.230**: GLAPS 직접등록 중복/UNIQUE 오류 판정을 좁히고, 운송경로/항목매핑 중복·복수후보 필터와 포트 후보용 UNIQUE SQL을 추가했다.
-- **v5.14.229**: 자동 배차판 동기화는 파일 mtime/size 안정화 후 수동 NAS 동기화와 같은 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜` 순서로 실행한다.
 
 ## VERIFICATION
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/page.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 51개 통과
 - `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - Supabase 2026-05-27 통합 배차변동: active 48건 -> 8건, neutralized history 40건 기록.
@@ -85,12 +82,8 @@
 - `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs"`: 통과
 - `cd web; npm run build`: Next standalone manifest ENOENT로 실패. 컴파일/타입체크/정적 페이지 생성은 통과.
-- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
 - Supabase RPC `asan_monthly_route_unit_amount_payload('month', 2026, 1, 5)`: `type=40RF`, 2,518행/803묶음 확인.
 - 로컬 API 월별/연도별/전체: 각각 2,518행/803묶음, 11,620행/2,974묶음, 12,178행/3,066묶음 확인.
-- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
 
 ## IN-PROGRESS
 - 구간단가는 월간 금액표 RPC 운영으로 전환했다. 운영 빌드 후 웹 `구간단가` 탭에서 최신 월 기본 조회와 전체 조회 체감 속도를 확인한다.

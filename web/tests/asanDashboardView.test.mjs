@@ -817,10 +817,18 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /setDetailRowValue\(draft, '상차지'/);
   assert.match(source, /setDetailRowValue\(draft, 'BKG확정'/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS\.includes\(header\)/);
+  assert.match(source, /disabled=\{detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope\}/);
+  assert.match(source, /const isDisabledBkg = detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope \|\| !bkgValue;/);
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
   assert.match(source, /계산값반영/);
   assert.match(source, /detailChangedRow/);
   assert.match(source, /detailChangeDeleteRow/);
+  assert.match(source, /isConfirmedEvent \? styles\.detailChangeConfirmedRow : ''/);
+  assert.match(source, /const DAILY_DISPLAY_LIMIT = Number\.MAX_SAFE_INTEGER;/);
+  assert.match(source, /const effectiveDisplayLimit = periodMode === 'daily' \? DAILY_DISPLAY_LIMIT : displayLimit;/);
+  assert.match(source, /displayRows\.slice\(0, effectiveDisplayLimit\)/);
+  assert.match(source, /detailRowsForDisplay\.slice\(0, effectiveDisplayLimit\)/);
+  assert.match(source, /detailChangeRows\.slice\(0, effectiveDisplayLimit\)/);
   assert.match(source, /변경건/);
   assert.match(source, /onMasterChanged=\{handleGlapsMasterChanged\}/);
   assert.match(glapsMasterSource, /onMasterChanged = null/);
@@ -874,6 +882,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangeTypeCell/);
   assert.match(css, /\.detailChangeDiffCell/);
   assert.match(css, /\.detailChangeDeleteRow td\s*{[\s\S]*background: #e5e7eb !important;/);
+  assert.match(css, /\.detailLockedRow td\s*{[\s\S]*background: #f1f5f9 !important;/);
+  assert.match(css, /\.detailChangeConfirmedRow td\s*{[\s\S]*background: #f1f5f9 !important;/);
+  assert.match(css, /\.detailLockedRow input:disabled,[\s\S]*\.detailChangeConfirmedRow button:disabled\s*{[\s\S]*background: #e2e8f0;/);
   assert.match(css, /\.detailChangeTypeWrap/);
   assert.match(css, /\.detailChangeUnconfirmButton/);
   assert.match(css, /\.webCellLockedTd/);
