@@ -59,6 +59,13 @@ function isDashboardSnapshotUnavailable(error) {
         || text.includes('does not exist');
 }
 
+function isStatementTimeoutError(error) {
+    const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
+    return text.includes('57014')
+        || text.includes('statement timeout')
+        || text.includes('canceling statement');
+}
+
 function normalizeSnapshotPayload(payload = {}, source = 'supabase-dashboard-snapshot') {
     return {
         ...payload,
@@ -80,7 +87,7 @@ async function readDashboardSnapshot({ dashboardType, scopeKey, sourceSignature 
         .eq('scope_key', scopeKey)
         .limit(1);
     if (error) {
-        if (isDashboardSnapshotUnavailable(error)) return null;
+        if (isDashboardSnapshotUnavailable(error) || isStatementTimeoutError(error)) return null;
         throw new Error(error.message);
     }
     const row = data?.[0];
@@ -114,7 +121,7 @@ async function writeDashboardSnapshot({ dashboardType, scopeKey, sourceSignature
     const { error } = await supabase
         .from(DASHBOARD_SNAPSHOT_TABLE)
         .upsert(row, { onConflict: 'branch_id,dashboard_type,scope_key' });
-    if (error && !isDashboardSnapshotUnavailable(error)) throw new Error(error.message);
+    if (error && !isDashboardSnapshotUnavailable(error) && !isStatementTimeoutError(error)) throw new Error(error.message);
 }
 
 async function withDashboardSnapshot({
@@ -1438,7 +1445,8 @@ function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumn
     return {
         routeUnitPrice: {
             scope,
-            basis: '마감월',
+            basis: '마감월 단가',
+            datasetBasis: summary.datasetBasis || '연간+월간 current 원장',
             trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
             sourceSignature,
             engine,
@@ -1453,19 +1461,22 @@ function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumn
                 periodStart: summary.periodStart || '',
                 periodEnd: summary.periodEnd || '',
                 annualFileCount: summary.annualFileCount || 0,
+                monthlyFileCount: summary.monthlyFileCount || 0,
+                sourceFileCount: summary.sourceFileCount || summary.annualFileCount || 0,
+                monthlyOverridePeriods: summary.monthlyOverridePeriods || 0,
             },
         },
     };
 }
 
-async function tryAnnualRouteUnitPriceRpc(supabase, scope) {
+async function tryRouteUnitPriceRpc(supabase, scope) {
     const scopeYear = scope.mode === 'year' || scope.mode === 'month'
         ? Number(scope.year || String(scope.month || '').slice(0, 4))
         : null;
     const scopeMonth = scope.mode === 'month'
         ? Number(String(scope.month || '').slice(5, 7))
         : null;
-    const { data, error } = await supabase.rpc('asan_annual_route_unit_price_rows', {
+    const { data, error } = await supabase.rpc('asan_performance_route_unit_price_rows', {
         p_scope: scope.mode,
         p_year: Number.isFinite(scopeYear) ? scopeYear : null,
         p_month: Number.isFinite(scopeMonth) ? scopeMonth : null,
@@ -1473,7 +1484,12 @@ async function tryAnnualRouteUnitPriceRpc(supabase, scope) {
     });
     if (error) {
         const text = `${error.code || ''} ${error.message || ''}`.toLowerCase();
-        if (text.includes('42883') || text.includes('pgrst202') || text.includes('asan_annual_route_unit_price_rows')) {
+        if (
+            isStatementTimeoutError(error)
+            || text.includes('42883')
+            || text.includes('pgrst202')
+            || text.includes('asan_performance_route_unit_price_rows')
+        ) {
             return null;
         }
         throw new Error(error.message);
@@ -1481,11 +1497,102 @@ async function tryAnnualRouteUnitPriceRpc(supabase, scope) {
     return Array.isArray(data) ? data : [];
 }
 
-async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature }) {
-    const supabase = getSupabaseAdmin();
+function routeUnitMetaPeriods(meta = {}) {
+    const summary = summaryOf(meta);
+    const periods = new Set();
+    for (const item of summary.monthly || []) {
+        const period = String(item?.period || '').trim();
+        if (period) periods.add(period);
+    }
+    const sourcePeriod = metaSourcePeriod(meta);
+    if (sourcePeriod) periods.add(sourcePeriod);
+    return Array.from(periods).sort();
+}
+
+function routeUnitSummaryFromMetas(metas = [], monthlyOverridePeriods = new Set()) {
+    const annualMetas = metas.filter(meta => meta.dataset_type === 'annual');
+    const monthlyMetas = metas.filter(meta => meta.dataset_type === 'monthly');
+    const allPeriods = metas.flatMap(routeUnitMetaPeriods).filter(Boolean).sort();
     const summary = mergeAnnualSummaries(metas);
-    const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
-    const allMetasHaveSnapshot = metas.length > 0 && snapshotIds.length === metas.length;
+    return {
+        ...summary,
+        datasetBasis: '연간+월간 current 원장',
+        periodStart: allPeriods[0] || summary.periodStart || '',
+        periodEnd: allPeriods[allPeriods.length - 1] || summary.periodEnd || '',
+        annualFileCount: annualMetas.length,
+        monthlyFileCount: monthlyMetas.length,
+        sourceFileCount: metas.length,
+        monthlyOverridePeriods: monthlyOverridePeriods.size,
+        importMode: 'annual-monthly-route-unit',
+    };
+}
+
+async function routeUnitPriceSourceState() {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+        .from('branch_performance_files')
+        .select('dataset_type,file_path,sheet_name,row_count,current_row_count,file_modified_at,synced_at,summary')
+        .eq('branch_id', 'asan')
+        .in('dataset_type', ['annual', 'monthly']);
+    if (error) throw new Error(error.message);
+    const metas = (data || [])
+        .filter(meta => {
+            const summary = summaryOf(meta);
+            return numberValue(meta.current_row_count || meta.row_count || summary.totalRows) > 0
+                && (summary.currentSnapshotId || summary.snapshotId || meta.current_row_count || meta.row_count);
+        })
+        .sort((a, b) => (
+            String(a.dataset_type).localeCompare(String(b.dataset_type), 'ko-KR')
+            || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR')
+            || String(a.sheet_name).localeCompare(String(b.sheet_name), 'ko-KR')
+        ));
+    const monthlyOverridePeriods = new Set(
+        metas
+            .filter(meta => meta.dataset_type === 'monthly')
+            .flatMap(routeUnitMetaPeriods)
+            .filter(Boolean),
+    );
+    const periods = Array.from(new Set(metas.flatMap(routeUnitMetaPeriods).filter(Boolean))).sort();
+    const signature = hashSnapshotSource({
+        version: DASHBOARD_SNAPSHOT_VERSION,
+        dataset: 'route-unit-price',
+        basis: 'annual-monthly-current',
+        monthlyOverridePeriods: Array.from(monthlyOverridePeriods).sort(),
+        metas: metas.map(meta => {
+            const summary = summaryOf(meta);
+            return {
+                dataset_type: meta.dataset_type,
+                file_path: meta.file_path,
+                sheet_name: meta.sheet_name,
+                row_count: meta.row_count || 0,
+                current_row_count: meta.current_row_count || 0,
+                file_modified_at: meta.file_modified_at || '',
+                synced_at: meta.synced_at || '',
+                snapshot_id: summary.currentSnapshotId || summary.snapshotId || '',
+            };
+        }),
+    });
+    return {
+        metas,
+        periods,
+        monthlyOverridePeriods,
+        signature,
+        sourceSyncedAt: maxTimestamp(metas.map(meta => meta.synced_at || meta.file_modified_at)),
+    };
+}
+
+async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature, monthlyOverridePeriods = new Set() }) {
+    const supabase = getSupabaseAdmin();
+    const summary = routeUnitSummaryFromMetas(metas, monthlyOverridePeriods);
+    const snapshotSources = metas
+        .map(meta => ({
+            datasetType: meta.dataset_type || 'annual',
+            snapshotId: summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId || '',
+            filePath: meta.file_path,
+            sheetName: meta.sheet_name || '',
+        }))
+        .filter(source => source.snapshotId || source.filePath);
+    const allMetasHaveSnapshot = metas.length > 0 && snapshotSources.length === metas.length && snapshotSources.every(source => source.snapshotId);
     const groups = new Map();
     const totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
     const routeColumns = ['픽업', '지역', '작업지', '하차'];
@@ -1499,7 +1606,8 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
         return {
             routeUnitPrice: {
                 scope,
-                basis: '마감월',
+                basis: '마감월 단가',
+                datasetBasis: summary.datasetBasis,
                 sourceSignature,
                 routeColumns,
                 descriptorColumns,
@@ -1511,24 +1619,27 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
         };
     }
 
-    const rpcRows = await tryAnnualRouteUnitPriceRpc(supabase, scope);
-    if (rpcRows) {
-        return routeUnitRowsToPayload({
-            rows: rpcRows,
-            scope,
-            sourceSignature,
-            routeColumns,
-            descriptorColumns,
-            amountColumns,
-            summary,
-            engine: 'supabase-rpc',
-        });
+    if (process.env.ASAN_ROUTE_UNIT_RPC_ENABLED === '1') {
+        const rpcRows = await tryRouteUnitPriceRpc(supabase, scope);
+        if (rpcRows) {
+            return routeUnitRowsToPayload({
+                rows: rpcRows,
+                scope,
+                sourceSignature,
+                routeColumns,
+                descriptorColumns,
+                amountColumns,
+                summary,
+                engine: 'supabase-rpc',
+            });
+        }
     }
 
     const consumeRows = (rows = []) => {
         for (const row of rows) {
             const periodInfo = routeUnitPeriod(row);
             if (!periodInfo.period) continue;
+            if (row.dataset_type === 'annual' && monthlyOverridePeriods.has(periodInfo.period)) continue;
             if (scope.mode === 'year' && scope.year && String(periodInfo.year) !== String(scope.year)) continue;
             if (scope.mode === 'month' && scope.month && periodInfo.period !== scope.month) continue;
 
@@ -1576,9 +1687,9 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
     };
 
     const keysetSources = allMetasHaveSnapshot
-        ? snapshotIds.map(snapshotId => ({ snapshotId }))
+        ? snapshotSources
         : (metas.length
-            ? metas.map(meta => ({ filePath: meta.file_path, sheetName: meta.sheet_name }))
+            ? snapshotSources
             : [{ currentOnly: true }]);
 
     for (const source of keysetSources) {
@@ -1588,7 +1699,7 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
                 .from('branch_performance_rows')
                 .select('row_data,row_index,year_value,month_value,snapshot_id')
                 .eq('branch_id', 'asan')
-                .eq('dataset_type', 'annual')
+                .eq('dataset_type', source.datasetType || 'annual')
                 .order('row_index', { ascending: true })
                 .limit(batchSize);
             if (source.snapshotId) {
@@ -1598,6 +1709,14 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
             } else {
                 query = query.eq('is_current', true);
             }
+            if (scope.mode === 'year' && scope.year) {
+                query = query.eq('year_value', Number(scope.year));
+            }
+            if (scope.mode === 'month' && scope.month) {
+                query = query
+                    .eq('year_value', Number(String(scope.month).slice(0, 4)))
+                    .eq('month_value', Number(String(scope.month).slice(5, 7)));
+            }
             if (lastRowIndex >= 0) query = query.gt('row_index', lastRowIndex);
 
             const { data, error } = await query;
@@ -1605,7 +1724,7 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
             const rows = data || [];
             if (!rows.length) break;
             scannedRows += rows.length;
-            consumeRows(rows);
+            consumeRows(rows.map(row => ({ ...row, dataset_type: source.datasetType || 'annual' })));
             const nextRowIndex = Number(rows[rows.length - 1]?.row_index);
             if (!Number.isFinite(nextRowIndex) || nextRowIndex <= lastRowIndex || rows.length < batchSize) break;
             lastRowIndex = nextRowIndex;
@@ -1631,7 +1750,8 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
     return {
         routeUnitPrice: {
             scope,
-            basis: '마감월',
+            basis: '마감월 단가',
+            datasetBasis: summary.datasetBasis,
             trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
             sourceSignature,
             routeColumns,
@@ -1645,6 +1765,9 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
                 periodStart: summary.periodStart || '',
                 periodEnd: summary.periodEnd || '',
                 annualFileCount: summary.annualFileCount || metas.length,
+                monthlyFileCount: summary.monthlyFileCount || 0,
+                sourceFileCount: summary.sourceFileCount || metas.length,
+                monthlyOverridePeriods: summary.monthlyOverridePeriods || 0,
             },
         },
     };
@@ -1918,24 +2041,21 @@ export async function queryAsanAnnualPerformanceDashboardFromSupabase(searchPara
 }
 
 export async function queryAsanAnnualRouteUnitPriceFromSupabase(searchParams) {
-    const state = await annualDashboardSourceState();
-    const summary = mergeAnnualSummaries(state.metas);
-    const periods = (summary.monthly || [])
-        .map(item => String(item.period || '').trim())
-        .filter(Boolean)
-        .sort();
+    const state = await routeUnitPriceSourceState();
+    const periods = state.periods;
     const scope = normalizeRouteUnitScope(searchParams, periods);
-    const scopeKey = `route-unit-price:v2:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
+    const scopeKey = `route-unit-price:v3:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
     return withDashboardSnapshot({
         dashboardType: 'annual-route-unit-price',
         scopeKey,
-        sourceSignature: `${state.signature}:route-unit-price-v2`,
+        sourceSignature: `${state.signature}:route-unit-price-v3`,
         sourceSyncedAt: state.sourceSyncedAt,
         refresh: dashboardRefreshRequested(searchParams),
         buildPayload: async () => buildAnnualRouteUnitPricePayload({
             metas: state.metas,
             scope,
             sourceSignature: state.signature,
+            monthlyOverridePeriods: state.monthlyOverridePeriods,
         }),
     });
 }

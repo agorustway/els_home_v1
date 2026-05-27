@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.233 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.235 / APK v5.11.29)
 
-> 최신 업데이트: 아산 연간실적에 `구간단가` 분석 탭을 추가했다. 마감월 기준으로 `픽업-지역-작업지-하차 + 매출열 + 청구처/지급처/TYPE` 단가를 기간별로 추적한다.
+> 최신 업데이트: 아산 `구간단가`를 연간/월간 총액 리포트와 분리하고, 연간+월간 current 원장 기준의 건당 청구/하불/차액 단가 변동 전용 화면으로 정리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.233
+- **웹 버전**: v5.14.235
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -22,8 +22,9 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
-- 연간실적 `구간단가`는 `전체/연도별/월별` 범위와 마감월 기준으로 산출한다. 구간 조건은 `픽업-지역-작업지-하차`, 표시 기준은 `매출열/청구처/지급처/TYPE/청구/하불/건당단가`.
-- `web/supabase_sql/20260527_asan_annual_route_unit_price_rpc.sql`은 DB 선집계 RPC다. Supabase 앱 재인증 전에는 웹이 snapshot_id만 필터링해 읽고 JS에서 범위 집계한 뒤 dashboard snapshot 캐시를 사용한다.
+- `구간단가`는 별도 탭에서 `전체/연도별/월별` 범위와 마감월 기준으로 산출한다. 총액 KPI는 배제하고 `픽업-지역-작업지-하차 + 매출열 + 청구처/지급처/TYPE`별 건당 청구단가/하불단가/차액단가와 기간별 단가 흐름만 표시한다.
+- 구간단가 집계는 연간+월간 current 원장을 함께 사용한다. 같은 마감월이 연간/월간 양쪽에 있으면 월간 원장을 우선해 중복 계산을 막는다.
+- `web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql` 인덱스는 Supabase에 적용 완료했다. RPC SQL은 보관하지만 웹 기본 경로는 timeout 방지를 위해 인덱스 기반 JS fallback 집계를 사용한다.
 - 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
 - 페이지 로딩 문구와 폰트는 아산 하위 페이지에서 동일 톤으로 유지한다.
 
@@ -36,6 +37,7 @@
 - GLAPS 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받는다. 삭제는 행 삭제가 아니라 `삭제(Y)` 입력으로만 처리한다.
 - `WEB수정` 행은 업로드 변경/삭제에서 제외하고, 마스터 업로드/NAS 반영 시 새 활성 버전으로 보존한다.
+- GLAPS 마스터 반영은 새 버전을 비활성으로 만든 뒤 모든 insert가 성공한 경우에만 active 전환한다. 같은 원장 행이 중복 파싱되면 insert 전에 정리하고 결과 메시지에 `원장 중복행 N건 정리`로 알린다.
 - 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다.
 
 ## ASAN DISPATCH NOTES
@@ -46,21 +48,24 @@
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채운다.
 
 ## RECENT CHANGES
+- **v5.14.235**: 구간단가를 총액 리포트가 아닌 단가 변동 전용 화면으로 재정리하고, 연간+월간 current 원장 통합/월간 우선 중복 방지/기간 인덱스 적용을 반영했다.
+- **v5.14.234**: GLAPS 마스터 반영 중 `glaps_transport_routes_branch_version_route_source_key` UNIQUE 충돌이 나지 않도록 운송경로/항목매핑 insert 전 원장 중복행을 정리하고, 성공 시에만 새 버전을 active 전환한다.
 - **v5.14.233**: 연간실적 옆에 `구간단가` 탭을 추가하고, 마감월 기준 구간/매출열/청구처/지급처/TYPE별 청구·하불·건당단가와 기간별 변동 차트를 구성했다.
 - **v5.14.232**: GLAPS 항목매핑에서 같은 `매핑항목+운송경로코드+최종코드(BP)` 행을 빨간색 미병합 중복으로 표시하고, 병합 시 다중 별칭으로 인식하게 했다.
 - **v5.14.231**: 모바일 배차판 합계바에서 데스크탑용 `summaryRight` flex-basis가 세로 높이로 적용되어 생기던 큰 공백을 제거했다.
 - **v5.14.230**: GLAPS 직접등록 중복/UNIQUE 오류 판정을 좁히고, 운송경로/항목매핑 중복·복수후보 필터와 포트 후보용 UNIQUE SQL을 추가했다.
 - **v5.14.229**: 자동 배차판 동기화는 파일 mtime/size 안정화 후 수동 NAS 동기화와 같은 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜` 순서로 실행한다.
-- **v5.14.228**: 아산 배차판/상세배차/배차변동/GLAPS코드 테이블 밀도와 헤더 톤을 정리했다.
 
 ## VERIFICATION
 - `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
-- 로컬 `http://localhost:3033/employees/branches/asan?debug=true`: `구간단가` 탭 진입, 전체 v2 snapshot 367,993건/160구간 표시 확인
-- Supabase 앱 커넥터 재인증 필요: `asan_annual_route_unit_price_rpc` 마이그레이션 적용은 보류, 웹 fallback 경로는 코드에 포함.
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+- 로컬 `http://localhost:3035/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2025&refresh_snapshot=1`: 2025년 단가 payload 응답 확인(33,394건/160구간, 연간+월간 기준).
 
 ## IN-PROGRESS
-- Supabase 앱 재인증 후 `web/supabase_sql/20260527_asan_annual_route_unit_price_rpc.sql` 적용 여부 확인.
+- 구간단가 전체기간 최초 집계는 대용량이므로 dashboard snapshot 캐시를 우선 사용하고, RPC 기본 활성화는 보류한다.
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.

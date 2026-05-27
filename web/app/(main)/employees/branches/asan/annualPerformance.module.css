@@ -1687,6 +1687,16 @@
     color: #94a3b8;
 }
 
+.routeUnitPrinciple {
+    padding: 8px 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
 .routeUnitKpis,
 .routeUnitTrendSummary,
 .routeUnitAmountGrid {

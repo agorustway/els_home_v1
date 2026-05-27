@@ -1,3 +1,41 @@
+## [2026-05-27] 아산 구간단가 단가 전용 재정리 (v5.14.235)
+### 핵심
+- 구간단가 화면에서 연간/월간 총액 리포트와 겹치던 KPI와 요약을 제거하고, 건당 청구단가·하불단가·차액단가 중심의 목록/선택 구간/기간별 흐름으로 재구성했습니다.
+- 집계 기준을 연간 current 원장 단독에서 연간+월간 current 원장 통합으로 바꿨습니다. 같은 마감월이 양쪽에 있으면 월간 원장을 우선해 중복 단가 계산을 막습니다.
+- Supabase에 구간단가 기간 조회 인덱스를 적용했습니다. RPC는 SQL로 보관하되 기본 웹 경로는 timeout 방지를 위해 인덱스 기반 JS fallback 집계를 사용합니다.
+### 검증
+- Supabase `asan_route_unit_price_period_indexes`, `asan_route_unit_price_rpc_annual_monthly` 마이그레이션 적용 성공
+- 로컬 `http://localhost:3035/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2025&refresh_snapshot=1`: 2025년 단가 payload 33,394건/160구간 응답 확인
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260527_asan_annual_route_unit_price_rpc.sql`
+- `web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] GLAPS 마스터 원장 중복행 방어 (v5.14.234)
+### 핵심
+- 원인: GLAPS 마스터 반영 중 파싱 결과에 같은 `branch_id + version_id + route_code + source_sheet + source_row_number` 운송경로가 중복 포함되면 DB 제약 `glaps_transport_routes_branch_version_route_source_key`에서 insert가 중단됐습니다.
+- 조치: 마스터 반영 시 새 버전은 비활성으로 만든 뒤 모든 행 insert가 성공한 경우에만 active 전환합니다. 운송경로와 항목매핑은 DB insert 전에 실제 UNIQUE 기준으로 한 번 정리하고, 정리 건수는 `원장 중복행 N건 정리`로 화면 메시지와 업로드 로그에 남깁니다.
+- 기존 `WEB수정` 보존과 GLAPS 코드기준 병합 흐름은 유지했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] 아산 연간실적 구간단가 분석 추가 (v5.14.233)
 ### 핵심
 - 실적관리 하위 탭에 `구간단가`를 추가했습니다. 연간 원장 DB를 마감월 기준으로 읽고 `픽업-지역-작업지-하차 + 매출열 + 청구처 + 지급처 + TYPE` 조합별 청구/하불/차액/건당단가를 표시합니다.

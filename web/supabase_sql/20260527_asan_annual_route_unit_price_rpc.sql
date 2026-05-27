@@ -1,4 +1,5 @@
--- 아산 연간실적 구간단가: 원장 전체를 웹 프로세스로 끌고 오지 않고 DB에서 구간/기간 단위로 먼저 집계한다.
+-- 아산 구간단가: 연간+월간 current 원장을 DB에서 구간/기간 단위로 먼저 집계한다.
+-- 같은 마감월이 연간/월간 양쪽에 있으면 월간 원장을 우선해 단가 중복 계산을 막는다.
 
 CREATE OR REPLACE FUNCTION public.asan_performance_amount_to_numeric(value text)
 RETURNS numeric
@@ -17,7 +18,7 @@ AS $$
     FROM parsed;
 $$;
 
-CREATE OR REPLACE FUNCTION public.asan_annual_route_unit_price_rows(
+CREATE OR REPLACE FUNCTION public.asan_performance_route_unit_price_rows(
     p_scope text DEFAULT 'all',
     p_year integer DEFAULT NULL,
     p_month integer DEFAULT NULL,
@@ -57,19 +58,37 @@ SET search_path = public
 AS $$
     WITH current_files AS (
         SELECT
+            dataset_type,
             file_path,
             sheet_name,
-            nullif(coalesce(summary->>'currentSnapshotId', summary->>'snapshotId'), '') AS snapshot_id
+            nullif(coalesce(summary->>'currentSnapshotId', summary->>'snapshotId'), '') AS snapshot_id,
+            nullif(
+                coalesce(
+                    summary->>'sourcePeriod',
+                    CASE
+                        WHEN summary->>'sourceYear' IS NOT NULL AND summary->>'sourceMonth' IS NOT NULL
+                            THEN (summary->>'sourceYear') || '-' || lpad(summary->>'sourceMonth', 2, '0')
+                        ELSE NULL
+                    END
+                ),
+                ''
+            ) AS source_period
         FROM branch_performance_files
         WHERE branch_id = 'asan'
-          AND dataset_type = 'annual'
+          AND dataset_type IN ('annual', 'monthly')
           AND (
               nullif(coalesce(summary->>'currentSnapshotId', summary->>'snapshotId'), '') IS NOT NULL
               OR coalesce(current_row_count, row_count, 0) > 0
           )
     ),
+    monthly_override_periods AS (
+        SELECT DISTINCT source_period AS period_key
+        FROM current_files
+        WHERE dataset_type = 'monthly'
+          AND source_period IS NOT NULL
+    ),
     current_rows AS (
-        SELECT r.row_data, r.year_value, r.month_value
+        SELECT r.row_data, r.year_value, r.month_value, r.dataset_type
         FROM branch_performance_rows r
         JOIN current_files f
           ON (
@@ -83,10 +102,11 @@ AS $$
               AND r.sheet_name = f.sheet_name
           )
         WHERE r.branch_id = 'asan'
-          AND r.dataset_type = 'annual'
+          AND r.dataset_type = f.dataset_type
     ),
     normal_rows AS (
         SELECT
+            dataset_type,
             coalesce(nullif(btrim(row_data->>'픽업'), ''), nullif(btrim(row_data->>'청구픽업'), ''), '-') AS pickup,
             coalesce(nullif(btrim(row_data->>'지역'), ''), '-') AS region,
             coalesce(nullif(btrim(row_data->>'작업지'), ''), '-') AS work_site,
@@ -124,6 +144,7 @@ AS $$
             revenue,
             purchase,
             revenue - purchase AS profit,
+            dataset_type,
             period_year,
             period_month,
             period_year::text || '-' || lpad(period_month::text, 2, '0') AS period_key,
@@ -138,6 +159,10 @@ AS $$
           AND period_month IS NOT NULL
           AND period_month BETWEEN 1 AND 12
           AND (revenue <> 0 OR purchase <> 0)
+          AND NOT (
+              dataset_type = 'annual'
+              AND (period_year::text || '-' || lpad(period_month::text, 2, '0')) IN (SELECT period_key FROM monthly_override_periods)
+          )
     ),
     scoped AS (
         SELECT
@@ -246,6 +271,6 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.asan_performance_amount_to_numeric(text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.asan_annual_route_unit_price_rows(text, integer, integer, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.asan_performance_route_unit_price_rows(text, integer, integer, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.asan_performance_amount_to_numeric(text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.asan_annual_route_unit_price_rows(text, integer, integer, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.asan_performance_route_unit_price_rows(text, integer, integer, integer) TO service_role;
