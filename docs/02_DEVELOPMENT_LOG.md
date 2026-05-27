@@ -1,3 +1,18 @@
+## [2026-05-28] GLAPS 일반 목록 중복 강조 제한 (v5.14.249)
+### 핵심
+- 일반 목록에서는 전체 원장 기준 중복 행이어도 빨간 배경을 표시하지 않게 했습니다.
+- `중복검출`을 눌렀을 때만 `운송경로코드`/`최종코드(BP)` 중복 그룹을 빨간색으로 강조합니다.
+- 중복 여부 계산과 선택/일괄병합 기준은 기존 코드 단독 기준을 유지합니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 배차변동 추가/삭제 순증감 기준 정리 (v5.14.248)
 ### 핵심
 - 배차변동 추가/삭제 기준을 지역 배차칸 수량 변화 또는 행 추가/삭제로 좁혔습니다.

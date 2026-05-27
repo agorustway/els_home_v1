@@ -874,7 +874,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         <tbody>
                             {editor?.mode === activeTable && !editor.id && renderInlineEditorRow(`${activeTable}-new-editor`)}
                             {visibleLimitedRows.map((row, rowIndex) => {
-                                const duplicateMessages = duplicateInfo.byId.get(row.id) || [];
+                                const duplicateMessages = duplicateOnly ? (duplicateInfo.byId.get(row.id) || []) : [];
                                 return editor?.mode === activeTable && editor.id === row.id
                                     ? renderInlineEditorRow(row.id || `${activeTable}-${rowIndex}-editor`)
                                     : (
