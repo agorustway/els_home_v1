@@ -61,7 +61,7 @@
   - `is_current=true`만 웹 현재 조회에 사용
   - current 조회 timeout 완화 보조 인덱스: `web/supabase_sql/20260517_asan_performance_current_lookup_index.sql`
   - snapshot 조회 보조 인덱스: `web/supabase_sql/20260517_asan_performance_snapshot_row_index.sql`
-  - 구간단가 기간 조회 보조 인덱스: `web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql`
+  - 구간단가 월간 금액표 RPC: `web/supabase_sql/20260527_asan_monthly_route_unit_amount_rows.sql`
   - 실패한 staged 스냅샷 빠른 공개 SQL: `web/supabase_sql/20260517_asan_performance_recover_staged_snapshot.sql`
   - 월별 summary 복구 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_monthly_summary_from_row_data.sql`
   - 10년 원장 분석 summary 재생성 SQL: `web/supabase_sql/20260517_asan_performance_rebuild_analytics_workbench_summary.sql`
@@ -80,8 +80,9 @@
   - 화면 분석은 Supabase summary/breakdown을 사용하며, 브라우저에서 36만 행 전체를 재집계하지 않는다.
   - 월별 흐름은 `summary.monthlyBasis`를 표시하고, 현재 운영 기준은 원본 `마감월`이다.
   - 조사범위 날짜 선택은 `직접` 모드에서만 활성화하고, 전체/최근 기간 프리셋에서는 잠금 상태로 표시한다.
-  - `구간단가`는 연간/월간 총액 리포트와 분리된 별도 탭이다. 연간+월간 current 원장을 함께 읽되 같은 마감월은 월간 원장을 우선하고, 화면은 선택 범위의 마지막 기간(LAST) 청구단가/하불단가/차액단가와 기간별 단가 변동만 표시한다.
-  - 구간단가 금액은 원 단위 천단위 구분으로 표시한다. 표는 단가 비교용으로 정리해 막대 장식 없이 필터/정렬 중심으로 운영한다.
+  - `구간단가`는 연간/월간 총액 리포트와 분리된 별도 탭이다. 현재 운영 기준은 월간실적 current 원장만 사용하며, 기본 조회는 최신 월별이고 필요 시 전체 월간 원장으로 확장한다.
+  - 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, 청구처, 하불처`다. 화면은 단가 차트가 아니라 금액 확인용 테이블이며 필터/정렬 중심으로 운영한다.
+  - 구간단가 API는 dashboard snapshot을 만들지 않는다. `asan_monthly_route_unit_amount_payload` RPC를 우선 사용하고, 실패 시 월간 current 행을 1000행 단위로 읽어 같은 구조의 payload를 만든다.
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
   - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count/sort timeout을 피한다.

@@ -1313,16 +1313,9 @@ function routeUnitPeriod(row = {}) {
     };
 }
 
-function routeUnitWorkDate(row = {}) {
-    const raw = routeUnitValue(row, ['작업일자', '작업일', '운송일자']);
-    const match = String(raw || '').match(/^(\d{4})[-./]?(0?[1-9]|1[0-2])[-./]?(0?[1-9]|[12]\d|3[01])/);
-    if (!match) return '';
-    return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
-}
-
 function normalizeRouteUnitScope(searchParams, periods = []) {
     const mode = String(searchParams.get('unit_scope') || 'all').toLowerCase();
-    const normalizedMode = ['all', 'year', 'month'].includes(mode) ? mode : 'all';
+    const normalizedMode = ['all', 'month'].includes(mode) ? mode : 'all';
     const years = Array.from(new Set(periods.map(period => String(period).slice(0, 4)).filter(Boolean))).sort();
     const latestPeriod = periods[periods.length - 1] || '';
     const requestedYear = String(searchParams.get('unit_year') || '').trim();
@@ -1335,199 +1328,193 @@ function normalizeRouteUnitScope(searchParams, periods = []) {
         month,
         years,
         months: periods,
-        label: normalizedMode === 'year'
-            ? `${year || '-'}년`
-            : (normalizedMode === 'month' ? `${month || '-'} 마감월` : '전체 기간'),
+        label: normalizedMode === 'month' ? `${month || '-'} 마감월` : '전체 기간',
     };
 }
 
-function addRouteUnitMetric(bucket, metric = {}) {
-    bucket.revenue += numberValue(metric.revenue);
-    bucket.purchase += numberValue(metric.purchase);
-    bucket.profit += numberValue(metric.profit);
-    bucket.rowCount += numberValue(metric.rowCount || 1);
+function normalizeRouteUnitAmount(value) {
+    return roundMetric(amountValue(value));
 }
 
-function ensureRouteUnitSeries(map, key, seed = {}) {
-    if (!key) return null;
-    if (!map.has(key)) {
-        map.set(key, {
-            ...seed,
-            key,
-            revenue: 0,
-            purchase: 0,
-            profit: 0,
-            rowCount: 0,
-        });
-    }
-    return map.get(key);
+function routeUnitPriceField(row, candidates = []) {
+    const value = routeUnitValue(row, candidates);
+    return normalizeRouteUnitText(value);
 }
 
-function routeUnitTrendSeed(scope, periodInfo, workDate) {
-    if (scope.mode === 'month') {
-        const key = workDate || periodInfo.period || '미지정';
-        return { key, label: key, basis: '작업일자' };
-    }
-    if (scope.mode === 'year') {
-        const key = periodInfo.period || '미지정';
-        return { key, label: key, period: periodInfo.period, basis: '월별' };
-    }
-    const key = periodInfo.year ? String(periodInfo.year) : '미지정';
-    return { key, label: key, year: periodInfo.year || '', basis: '연도별' };
+function createRouteUnitPriceBucket(seed = {}) {
+    return {
+        ...seed,
+        revenue: 0,
+        purchase: 0,
+        profit: 0,
+        rowCount: 0,
+        periodSet: new Set(),
+    };
 }
 
-function finalizeRouteUnitMetric(item = {}, totalRevenue = 0) {
-    const finalized = finalizeMetricItem(item, totalRevenue);
-    finalized.unitRevenue = finalized.rowCount ? roundMetric(finalized.revenue / finalized.rowCount) : 0;
-    finalized.unitPurchase = finalized.rowCount ? roundMetric(finalized.purchase / finalized.rowCount) : 0;
-    finalized.unitProfit = finalized.rowCount ? roundMetric(finalized.profit / finalized.rowCount) : 0;
-    return finalized;
+function addRouteUnitPriceBucket(bucket, metric = {}) {
+    const revenueAmount = numberValue(metric.revenueAmount);
+    const purchaseAmount = numberValue(metric.purchaseAmount);
+    bucket.revenue += revenueAmount;
+    bucket.purchase += purchaseAmount;
+    bucket.profit += revenueAmount - purchaseAmount;
+    bucket.rowCount += 1;
+    if (metric.period) bucket.periodSet.add(metric.period);
 }
 
-function applyRouteUnitLastMetric(item = {}) {
-    const series = (Array.isArray(item.series) ? item.series : [])
-        .slice()
-        .sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR'));
-    const latest = series
-        .slice()
-        .reverse()
-        .find(row => numberValue(row.rowCount) || numberValue(row.unitRevenue) || numberValue(row.unitPurchase) || numberValue(row.unitProfit));
-    if (!latest) {
-        return { ...item, series };
-    }
+function finalizeRouteUnitPriceBucket(item = {}, totalRevenue = 0) {
+    const periods = Array.from(item.periodSet || []).sort();
+    const revenue = roundMetric(item.revenue);
+    const purchase = roundMetric(item.purchase);
+    const profit = roundMetric(item.profit);
+    const rowCount = numberValue(item.rowCount);
     return {
         ...item,
-        series,
-        avgUnitRevenue: numberValue(item.unitRevenue),
-        avgUnitPurchase: numberValue(item.unitPurchase),
-        avgUnitProfit: numberValue(item.unitProfit),
-        unitRevenue: numberValue(latest.unitRevenue),
-        unitPurchase: numberValue(latest.unitPurchase),
-        unitProfit: numberValue(latest.unitProfit),
-        lastUnitKey: latest.key || '',
-        lastUnitLabel: latest.label || latest.key || '',
-        lastRowCount: numberValue(latest.rowCount) || numberValue(item.rowCount),
-        unitBasis: 'last',
+        periodSet: undefined,
+        periods,
+        periodLabel: periods.length
+            ? (periods.length === 1 ? periods[0] : `${periods[0]} ~ ${periods[periods.length - 1]}`)
+            : '-',
+        revenue,
+        purchase,
+        profit,
+        rowCount,
+        revenueShare: totalRevenue ? Math.round((revenue / totalRevenue) * 10000) / 100 : 0,
+        unitRevenue: numberValue(item.revenueAmount),
+        unitPurchase: numberValue(item.purchaseAmount),
+        unitProfit: numberValue(item.revenueAmount) - numberValue(item.purchaseAmount),
+        unitBasis: 'monthly-amount',
     };
 }
 
-function compareRouteUnitLastPrice(a = {}, b = {}) {
-    const unitDiff = numberValue(b.unitRevenue) - numberValue(a.unitRevenue);
-    if (unitDiff) return unitDiff;
-    return Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue));
+function compareRouteUnitAmountGroup(a = {}, b = {}) {
+    const revenueDiff = numberValue(b.revenueAmount) - numberValue(a.revenueAmount);
+    if (revenueDiff) return revenueDiff;
+    const purchaseDiff = numberValue(b.purchaseAmount) - numberValue(a.purchaseAmount);
+    if (purchaseDiff) return purchaseDiff;
+    return numberValue(b.rowCount) - numberValue(a.rowCount);
 }
 
-function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumns, descriptorColumns, amountColumns, summary = {}, engine = 'supabase-rpc' }) {
-    const groups = new Map();
-    let totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
-
-    for (const row of rows || []) {
-        const key = String(row.route_key || '').trim();
-        if (!key) continue;
-        if (!groups.has(key)) {
-            groups.set(key, {
-                key,
-                routeLabel: row.route_label || [row.pickup, row.region, row.work_site, row.unload].map(normalizeRouteUnitText).join(' - '),
-                pickup: row.pickup || '-',
-                region: row.region || '-',
-                workSite: row.work_site || '-',
-                unload: row.unload || '-',
-                salesItem: row.sales_item || '-',
-                billTo: row.bill_to || '-',
-                payTo: row.pay_to || '-',
-                type: row.type_value || '-',
-                revenue: numberValue(row.group_revenue),
-                purchase: numberValue(row.group_purchase),
-                profit: numberValue(row.group_profit),
-                rowCount: numberValue(row.group_row_count),
-                series: [],
-            });
-        }
-        const bucket = groups.get(key);
-        bucket.series.push(finalizeRouteUnitMetric({
-            key: row.trend_key || '',
-            label: row.trend_label || row.trend_key || '',
-            basis: row.trend_basis || '',
-            revenue: numberValue(row.revenue),
-            purchase: numberValue(row.purchase),
-            profit: numberValue(row.profit),
+function routeUnitAmountRpcRowsToPayload({
+    rows = [],
+    scope,
+    sourceSignature,
+    routeColumns,
+    descriptorColumns,
+    amountColumns,
+    summary,
+    maxGroups,
+}) {
+    const first = rows[0] || {};
+    const totalGroupCount = numberValue(first.total_group_count || rows.length);
+    const totalRowCount = numberValue(first.total_row_count || rows.reduce((sum, row) => sum + numberValue(row.row_count), 0));
+    const totalRevenue = roundMetric(first.total_revenue ?? rows.reduce((sum, row) => sum + numberValue(row.revenue), 0));
+    const totalPurchase = roundMetric(first.total_purchase ?? rows.reduce((sum, row) => sum + numberValue(row.purchase), 0));
+    const totalProfit = roundMetric(first.total_profit ?? (totalRevenue - totalPurchase));
+    const groups = rows.map((row) => {
+        const periods = Array.isArray(row.periods) ? row.periods.filter(Boolean).sort() : [];
+        const revenueAmount = numberValue(row.revenue_amount);
+        const purchaseAmount = numberValue(row.purchase_amount);
+        const routeLabel = [row.sales_item, row.region, row.work_site, row.pickup, row.shipment]
+            .map(value => normalizeRouteUnitText(value))
+            .filter(value => value && value !== '-')
+            .join(' · ') || '-';
+        return {
+            key: row.key || [revenueAmount, purchaseAmount, row.sales_item, row.region, row.work_site, row.carrier, row.category, row.pickup, row.billing_pickup, row.shipment, row.bill_to, row.pay_to].join('||'),
+            routeLabel,
+            revenueAmount,
+            purchaseAmount,
+            salesItem: normalizeRouteUnitText(row.sales_item),
+            region: normalizeRouteUnitText(row.region),
+            workSite: normalizeRouteUnitText(row.work_site),
+            carrier: normalizeRouteUnitText(row.carrier),
+            category: normalizeRouteUnitText(row.category),
+            pickup: normalizeRouteUnitText(row.pickup),
+            billingPickup: normalizeRouteUnitText(row.billing_pickup),
+            shipment: normalizeRouteUnitText(row.shipment),
+            billTo: normalizeRouteUnitText(row.bill_to),
+            payTo: normalizeRouteUnitText(row.pay_to),
             rowCount: numberValue(row.row_count),
-        }));
-
-        if (row.scope_row_count != null) {
-            totals = {
-                revenue: numberValue(row.scope_revenue),
-                purchase: numberValue(row.scope_purchase),
-                profit: numberValue(row.scope_profit),
-                rowCount: numberValue(row.scope_row_count),
-            };
-        }
-    }
-
-    const groupItems = Array.from(groups.values())
-        .map((item) => applyRouteUnitLastMetric({
-            ...finalizeRouteUnitMetric(item, totals.revenue),
-            series: item.series,
-        }))
-        .sort(compareRouteUnitLastPrice);
-
-    if (!rows.length) {
-        totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
-    }
+            revenue: roundMetric(row.revenue),
+            purchase: roundMetric(row.purchase),
+            profit: roundMetric(row.profit),
+            revenueShare: totalRevenue ? Math.round((numberValue(row.revenue) / totalRevenue) * 10000) / 100 : 0,
+            periods,
+            periodLabel: periods.length
+                ? (periods.length === 1 ? periods[0] : `${periods[0]} ~ ${periods[periods.length - 1]}`)
+                : '-',
+            unitRevenue: revenueAmount,
+            unitPurchase: purchaseAmount,
+            unitProfit: revenueAmount - purchaseAmount,
+            unitBasis: 'monthly-amount',
+        };
+    });
 
     return {
         routeUnitPrice: {
             scope,
-            basis: '마감월 단가',
-            datasetBasis: summary.datasetBasis || '연간+월간 current 원장',
-            trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
+            basis: '월간 금액표',
+            datasetBasis: summary.datasetBasis,
+            trendBasis: '테이블',
             sourceSignature,
-            engine,
+            engine: 'supabase-rpc-monthly-amount',
             routeColumns,
             descriptorColumns,
             amountColumns,
-            scannedRows: totals.rowCount,
-            rowCount: totals.rowCount,
-            totals: finalizeRouteUnitMetric(totals),
-            groups: groupItems,
+            scannedRows: totalRowCount,
+            rowCount: totalRowCount,
+            totals: {
+                revenue: totalRevenue,
+                purchase: totalPurchase,
+                profit: totalProfit,
+                rowCount: totalRowCount,
+            },
+            groups,
             summary: {
                 periodStart: summary.periodStart || '',
                 periodEnd: summary.periodEnd || '',
-                annualFileCount: summary.annualFileCount || 0,
+                annualFileCount: 0,
                 monthlyFileCount: summary.monthlyFileCount || 0,
-                sourceFileCount: summary.sourceFileCount || summary.annualFileCount || 0,
-                monthlyOverridePeriods: summary.monthlyOverridePeriods || 0,
+                sourceFileCount: summary.sourceFileCount || 0,
+                groupCount: totalGroupCount,
+                returnedGroupCount: groups.length,
+                truncated: totalGroupCount > Math.min(maxGroups, groups.length),
             },
         },
     };
 }
 
-async function tryRouteUnitPriceRpc(supabase, scope) {
-    const scopeYear = scope.mode === 'year' || scope.mode === 'month'
-        ? Number(scope.year || String(scope.month || '').slice(0, 4))
-        : null;
-    const scopeMonth = scope.mode === 'month'
-        ? Number(String(scope.month || '').slice(5, 7))
-        : null;
-    const { data, error } = await supabase.rpc('asan_performance_route_unit_price_rows', {
-        p_scope: scope.mode,
-        p_year: Number.isFinite(scopeYear) ? scopeYear : null,
-        p_month: Number.isFinite(scopeMonth) ? scopeMonth : null,
-        p_limit: 160,
-    });
-    if (error) {
-        const text = `${error.code || ''} ${error.message || ''}`.toLowerCase();
-        if (
-            isStatementTimeoutError(error)
-            || text.includes('42883')
-            || text.includes('pgrst202')
-            || text.includes('asan_performance_route_unit_price_rows')
-        ) {
-            return null;
+async function tryMonthlyRouteUnitAmountRpc(supabase, scope, limit) {
+    try {
+        const request = supabase.rpc('asan_monthly_route_unit_amount_payload', {
+            p_scope: scope.mode || 'all',
+            p_year: scope.mode === 'month'
+                ? Number(String(scope.month || '').slice(0, 4))
+                : (scope.year ? Number(scope.year) : null),
+            p_month: scope.mode === 'month'
+                ? Number(String(scope.month || '').slice(5, 7))
+                : null,
+            p_limit: limit,
+        });
+        const executable = typeof request.abortSignal === 'function' && typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+            ? request.abortSignal(AbortSignal.timeout(12000))
+            : request;
+        const { data, error } = await executable;
+        if (error) return null;
+        if (data && Array.isArray(data.groups)) {
+            return data.groups.map(row => ({
+                ...row,
+                total_group_count: data.total_group_count,
+                total_row_count: data.total_row_count,
+                total_revenue: data.total_revenue,
+                total_purchase: data.total_purchase,
+                total_profit: data.total_profit,
+            }));
         }
-        throw new Error(error.message);
+        return Array.isArray(data) ? data : [];
+    } catch {
+        return null;
     }
-    return Array.isArray(data) ? data : [];
 }
 
 function routeUnitMetaPeriods(meta = {}) {
@@ -1542,21 +1529,19 @@ function routeUnitMetaPeriods(meta = {}) {
     return Array.from(periods).sort();
 }
 
-function routeUnitSummaryFromMetas(metas = [], monthlyOverridePeriods = new Set()) {
-    const annualMetas = metas.filter(meta => meta.dataset_type === 'annual');
+function routeUnitSummaryFromMetas(metas = []) {
     const monthlyMetas = metas.filter(meta => meta.dataset_type === 'monthly');
     const allPeriods = metas.flatMap(routeUnitMetaPeriods).filter(Boolean).sort();
     const summary = mergeAnnualSummaries(metas);
     return {
         ...summary,
-        datasetBasis: '연간+월간 current 원장',
+        datasetBasis: '월간실적 current 원장',
         periodStart: allPeriods[0] || summary.periodStart || '',
         periodEnd: allPeriods[allPeriods.length - 1] || summary.periodEnd || '',
-        annualFileCount: annualMetas.length,
+        annualFileCount: 0,
         monthlyFileCount: monthlyMetas.length,
         sourceFileCount: metas.length,
-        monthlyOverridePeriods: monthlyOverridePeriods.size,
-        importMode: 'annual-monthly-route-unit',
+        importMode: 'monthly-price-table',
     };
 }
 
@@ -1566,7 +1551,7 @@ async function routeUnitPriceSourceState() {
         .from('branch_performance_files')
         .select('dataset_type,file_path,sheet_name,row_count,current_row_count,file_modified_at,synced_at,summary')
         .eq('branch_id', 'asan')
-        .in('dataset_type', ['annual', 'monthly']);
+        .eq('dataset_type', 'monthly');
     if (error) throw new Error(error.message);
     const metas = (data || [])
         .filter(meta => {
@@ -1579,18 +1564,11 @@ async function routeUnitPriceSourceState() {
             || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR')
             || String(a.sheet_name).localeCompare(String(b.sheet_name), 'ko-KR')
         ));
-    const monthlyOverridePeriods = new Set(
-        metas
-            .filter(meta => meta.dataset_type === 'monthly')
-            .flatMap(routeUnitMetaPeriods)
-            .filter(Boolean),
-    );
     const periods = Array.from(new Set(metas.flatMap(routeUnitMetaPeriods).filter(Boolean))).sort();
     const signature = hashSnapshotSource({
         version: DASHBOARD_SNAPSHOT_VERSION,
         dataset: 'route-unit-price',
-        basis: 'annual-monthly-current',
-        monthlyOverridePeriods: Array.from(monthlyOverridePeriods).sort(),
+        basis: 'monthly-current-amount-table',
         metas: metas.map(meta => {
             const summary = summaryOf(meta);
             return {
@@ -1608,38 +1586,36 @@ async function routeUnitPriceSourceState() {
     return {
         metas,
         periods,
-        monthlyOverridePeriods,
         signature,
         sourceSyncedAt: maxTimestamp(metas.map(meta => meta.synced_at || meta.file_modified_at)),
     };
 }
 
-async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature, monthlyOverridePeriods = new Set() }) {
+async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature }) {
     const supabase = getSupabaseAdmin();
-    const summary = routeUnitSummaryFromMetas(metas, monthlyOverridePeriods);
-    const snapshotSources = metas
-        .map(meta => ({
-            datasetType: meta.dataset_type || 'annual',
-            snapshotId: summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId || '',
-            filePath: meta.file_path,
-            sheetName: meta.sheet_name || '',
-        }))
-        .filter(source => source.snapshotId || source.filePath);
-    const allMetasHaveSnapshot = metas.length > 0 && snapshotSources.length === metas.length && snapshotSources.every(source => source.snapshotId);
+    const summary = routeUnitSummaryFromMetas(metas);
+    const snapshotIds = metas
+        .map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId)
+        .filter(Boolean);
+    const filePaths = Array.from(new Set(metas.map(meta => meta.file_path).filter(Boolean)));
+    const usesDiffCurrent = metas.some(meta => (
+        summaryOf(meta).importMode === 'diff-current' || summaryOf(meta).currentSelectionMode === 'is_current'
+    ));
     const groups = new Map();
     const totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
-    const routeColumns = ['픽업', '지역', '작업지', '하차'];
-    const descriptorColumns = ['매출', '청구처', '지급처', 'TYPE'];
+    const routeColumns = ['매출', '지역', '작업지', '운송사(명의)', '구분', '픽업', '청구픽업', '선적', '청구처', '하불처'];
+    const descriptorColumns = ['청구', '하불'];
     const amountColumns = ['청구', '하불'];
     const batchSize = 1000;
-    const maxRows = 650000;
+    const maxRows = 200000;
+    const maxGroups = 5000;
     let scannedRows = 0;
 
     if (!metas.length) {
         return {
             routeUnitPrice: {
                 scope,
-                basis: '마감월 단가',
+                basis: '월간 금액표',
                 datasetBasis: summary.datasetBasis,
                 sourceSignature,
                 routeColumns,
@@ -1652,155 +1628,155 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
         };
     }
 
-    if (process.env.ASAN_ROUTE_UNIT_RPC_ENABLED === '1') {
-        const rpcRows = await tryRouteUnitPriceRpc(supabase, scope);
-        if (rpcRows) {
-            return routeUnitRowsToPayload({
-                rows: rpcRows,
-                scope,
-                sourceSignature,
-                routeColumns,
-                descriptorColumns,
-                amountColumns,
-                summary,
-                engine: 'supabase-rpc',
-            });
-        }
+    const rpcRows = await tryMonthlyRouteUnitAmountRpc(supabase, scope, maxGroups);
+    if (rpcRows) {
+        return routeUnitAmountRpcRowsToPayload({
+            rows: rpcRows,
+            scope,
+            sourceSignature,
+            routeColumns,
+            descriptorColumns,
+            amountColumns,
+            summary,
+            maxGroups,
+        });
     }
 
     const consumeRows = (rows = []) => {
         for (const row of rows) {
             const periodInfo = routeUnitPeriod(row);
             if (!periodInfo.period) continue;
-            if (row.dataset_type === 'annual' && monthlyOverridePeriods.has(periodInfo.period)) continue;
             if (scope.mode === 'year' && scope.year && String(periodInfo.year) !== String(scope.year)) continue;
             if (scope.mode === 'month' && scope.month && periodInfo.period !== scope.month) continue;
 
-            const revenue = amountValue(routeUnitValue(row, ['청구', '청구금액', '매출금액']));
-            const purchase = amountValue(routeUnitValue(row, ['하불', '지급금액', '매입금액']));
-            if (!revenue && !purchase) continue;
-            const profit = revenue - purchase;
-            const pickup = routeUnitValue(row, ['픽업', '청구픽업']);
-            const region = routeUnitValue(row, ['지역']);
-            const workSite = routeUnitValue(row, ['작업지']);
-            const unload = routeUnitValue(row, ['하차', '하차지']);
-            const salesItem = routeUnitValue(row, ['매출', '매출구분', '항목']);
-            const billTo = routeUnitValue(row, ['청구처', '거래처', '화주']);
-            const payTo = routeUnitValue(row, ['지급처', '하불처', '운송사']);
-            const type = routeUnitValue(row, ['TYPE', '타입', '규격']);
-            const routeLabel = [pickup, region, workSite, unload].map(normalizeRouteUnitText).join(' - ');
-            const key = [routeLabel, salesItem, billTo, payTo, type].join('||');
+            const revenueAmount = normalizeRouteUnitAmount(routeUnitValue(row, ['청구', '청구금액', '매출금액']));
+            const purchaseAmount = normalizeRouteUnitAmount(routeUnitValue(row, ['하불', '지급금액', '매입금액']));
+            if (!revenueAmount && !purchaseAmount) continue;
+            const salesItem = routeUnitPriceField(row, ['매출', '매출구분', '항목']);
+            const region = routeUnitPriceField(row, ['지역']);
+            const workSite = routeUnitPriceField(row, ['작업지']);
+            const carrier = routeUnitPriceField(row, ['운송사(명의)', '운송사명의', '운송사']);
+            const category = routeUnitPriceField(row, ['구분']);
+            const pickup = routeUnitPriceField(row, ['픽업']);
+            const billingPickup = routeUnitPriceField(row, ['청구픽업', '청구 픽업']);
+            const shipment = routeUnitPriceField(row, ['선적', '선적지', '선적항']);
+            const billTo = routeUnitPriceField(row, ['청구처', '거래처', '화주']);
+            const payTo = routeUnitPriceField(row, ['하불처', '지급처', '하불거래처']);
+            const routeLabel = [salesItem, region, workSite, pickup, shipment].filter(value => value && value !== '-').join(' · ') || '-';
+            const key = [
+                revenueAmount,
+                purchaseAmount,
+                salesItem,
+                region,
+                workSite,
+                carrier,
+                category,
+                pickup,
+                billingPickup,
+                shipment,
+                billTo,
+                payTo,
+            ].join('||');
             if (!groups.has(key)) {
-                groups.set(key, {
+                groups.set(key, createRouteUnitPriceBucket({
                     key,
                     routeLabel,
-                    pickup,
+                    revenueAmount,
+                    purchaseAmount,
+                    salesItem,
                     region,
                     workSite,
-                    unload,
-                    salesItem,
+                    carrier,
+                    category,
+                    pickup,
+                    billingPickup,
+                    shipment,
                     billTo,
                     payTo,
-                    type,
-                    revenue: 0,
-                    purchase: 0,
-                    profit: 0,
-                    rowCount: 0,
-                    seriesMap: new Map(),
-                });
+                }));
             }
             const bucket = groups.get(key);
-            addRouteUnitMetric(bucket, { revenue, purchase, profit, rowCount: 1 });
-            addRouteUnitMetric(totals, { revenue, purchase, profit, rowCount: 1 });
-            const workDate = routeUnitWorkDate(row);
-            const trendSeed = routeUnitTrendSeed(scope, periodInfo, workDate);
-            const trend = ensureRouteUnitSeries(bucket.seriesMap, trendSeed.key, trendSeed);
-            if (trend) addRouteUnitMetric(trend, { revenue, purchase, profit, rowCount: 1 });
+            addRouteUnitPriceBucket(bucket, { revenueAmount, purchaseAmount, period: periodInfo.period });
+            totals.revenue += revenueAmount;
+            totals.purchase += purchaseAmount;
+            totals.profit += revenueAmount - purchaseAmount;
+            totals.rowCount += 1;
         }
     };
 
-    const keysetSources = allMetasHaveSnapshot
-        ? snapshotSources
-        : (metas.length
-            ? snapshotSources
-            : [{ currentOnly: true }]);
-
-    for (const source of keysetSources) {
-        let lastRowIndex = -1;
-        for (let guard = 0; guard < maxRows; guard += batchSize) {
-            let query = supabase
-                .from('branch_performance_rows')
-                .select('row_data,row_index,year_value,month_value,snapshot_id')
-                .eq('branch_id', 'asan')
-                .eq('dataset_type', source.datasetType || 'annual')
-                .order('row_index', { ascending: true })
-                .limit(batchSize);
-            if (source.snapshotId) {
-                query = query.eq('snapshot_id', source.snapshotId);
-            } else if (source.filePath) {
-                query = query.eq('is_current', true).eq('file_path', source.filePath).eq('sheet_name', source.sheetName || '');
-            } else {
-                query = query.eq('is_current', true);
-            }
-            if (scope.mode === 'year' && scope.year) {
-                query = query.eq('year_value', Number(scope.year));
-            }
-            if (scope.mode === 'month' && scope.month) {
-                query = query
-                    .eq('year_value', Number(String(scope.month).slice(0, 4)))
-                    .eq('month_value', Number(String(scope.month).slice(5, 7)));
-            }
-            if (lastRowIndex >= 0) query = query.gt('row_index', lastRowIndex);
-
-            const { data, error } = await query;
-            if (error) throw new Error(error.message);
-            const rows = data || [];
-            if (!rows.length) break;
-            scannedRows += rows.length;
-            consumeRows(rows.map(row => ({ ...row, dataset_type: source.datasetType || 'annual' })));
-            const nextRowIndex = Number(rows[rows.length - 1]?.row_index);
-            if (!Number.isFinite(nextRowIndex) || nextRowIndex <= lastRowIndex || rows.length < batchSize) break;
-            lastRowIndex = nextRowIndex;
-            if (scannedRows >= maxRows) break;
+    const buildRowsQuery = () => {
+        let query = supabase
+            .from('branch_performance_rows')
+            .select('row_data,row_index,year_value,month_value,snapshot_id,file_path,sheet_name')
+            .eq('branch_id', 'asan')
+            .eq('dataset_type', 'monthly');
+        if (usesDiffCurrent || !snapshotIds.length) {
+            query = query.eq('is_current', true);
+            if (filePaths.length) query = query.in('file_path', filePaths);
+        } else {
+            query = query.in('snapshot_id', snapshotIds);
         }
-        if (scannedRows >= maxRows) break;
+        if (scope.mode === 'year' && scope.year) {
+            query = query.eq('year_value', Number(scope.year));
+        }
+        if (scope.mode === 'month' && scope.month) {
+            query = query
+                .eq('year_value', Number(String(scope.month).slice(0, 4)))
+                .eq('month_value', Number(String(scope.month).slice(5, 7)));
+        }
+        return query
+            .order('file_path', { ascending: true })
+            .order('sheet_name', { ascending: true })
+            .order('row_index', { ascending: true });
+    };
+
+    for (let offset = 0; offset < maxRows; offset += batchSize) {
+        const { data, error } = await buildRowsQuery().range(offset, offset + batchSize - 1);
+        if (error) throw new Error(error.message);
+        const rows = data || [];
+        if (!rows.length) break;
+        scannedRows += rows.length;
+        consumeRows(rows.map(row => ({ ...row, dataset_type: 'monthly' })));
+        if (rows.length < batchSize || scannedRows >= maxRows) {
+            break;
+        }
     }
 
     const totalRevenue = totals.revenue;
     const groupItems = Array.from(groups.values())
-        .map((item) => {
-            const series = Array.from(item.seriesMap.values())
-                .map(metric => finalizeRouteUnitMetric(metric))
-                .sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR'));
-            const finalized = finalizeRouteUnitMetric(item, totalRevenue);
-            delete finalized.seriesMap;
-            finalized.series = series;
-            return applyRouteUnitLastMetric(finalized);
-        })
-        .sort(compareRouteUnitLastPrice)
-        .slice(0, 160);
+        .map(item => finalizeRouteUnitPriceBucket(item, totalRevenue))
+        .sort(compareRouteUnitAmountGroup)
+        .slice(0, maxGroups);
 
     return {
         routeUnitPrice: {
             scope,
-            basis: '마감월 단가',
+            basis: '월간 금액표',
             datasetBasis: summary.datasetBasis,
-            trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
+            trendBasis: '테이블',
             sourceSignature,
+            engine: 'monthly-js-table',
             routeColumns,
             descriptorColumns,
             amountColumns,
             scannedRows,
             rowCount: totals.rowCount,
-            totals: finalizeRouteUnitMetric(totals),
+            totals: {
+                revenue: roundMetric(totals.revenue),
+                purchase: roundMetric(totals.purchase),
+                profit: roundMetric(totals.profit),
+                rowCount: numberValue(totals.rowCount),
+            },
             groups: groupItems,
             summary: {
                 periodStart: summary.periodStart || '',
                 periodEnd: summary.periodEnd || '',
-                annualFileCount: summary.annualFileCount || metas.length,
+                annualFileCount: 0,
                 monthlyFileCount: summary.monthlyFileCount || 0,
                 sourceFileCount: summary.sourceFileCount || metas.length,
-                monthlyOverridePeriods: summary.monthlyOverridePeriods || 0,
+                groupCount: groups.size,
+                returnedGroupCount: groupItems.length,
+                truncated: groups.size > groupItems.length,
             },
         },
     };
@@ -2077,20 +2053,24 @@ export async function queryAsanAnnualRouteUnitPriceFromSupabase(searchParams) {
     const state = await routeUnitPriceSourceState();
     const periods = state.periods;
     const scope = normalizeRouteUnitScope(searchParams, periods);
-    const scopeKey = `route-unit-price:v3:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
-    return withDashboardSnapshot({
-        dashboardType: 'annual-route-unit-price',
-        scopeKey,
-        sourceSignature: `${state.signature}:route-unit-price-v3`,
-        sourceSyncedAt: state.sourceSyncedAt,
-        refresh: dashboardRefreshRequested(searchParams),
-        buildPayload: async () => buildAnnualRouteUnitPricePayload({
-            metas: state.metas,
-            scope,
-            sourceSignature: state.signature,
-            monthlyOverridePeriods: state.monthlyOverridePeriods,
-        }),
+    const scopeKey = `route-unit-price:v4-monthly-amount:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
+    const built = await buildAnnualRouteUnitPricePayload({
+        metas: state.metas,
+        scope,
+        sourceSignature: state.signature,
     });
+    return {
+        ...normalizeSnapshotPayload(built, 'supabase-live-route-unit-price'),
+        dashboard_snapshot: {
+            hit: false,
+            skipped: true,
+            reason: 'monthly-live-amount-table',
+            dashboard_type: 'annual-route-unit-price',
+            scope_key: scopeKey,
+            computed_at: new Date().toISOString(),
+            source_synced_at: state.sourceSyncedAt || '',
+        },
+    };
 }
 
 async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
