@@ -1,3 +1,63 @@
+## [2026-05-27] 아산 구간단가 월간 금액표 재구성 (v5.14.239)
+### 핵심
+- 구간단가를 연간 대용량 원장과 기간별 단가 차트에서 분리하고, 월간실적 `is_current=true` 원장만 사용하는 청구/하불 금액표로 다시 구성했습니다.
+- 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, 청구처, 하불처`이며, 화면은 전체/월별 범위와 테이블 필터/정렬 중심으로 동작합니다.
+- API는 dashboard snapshot을 만들지 않고 Supabase RPC `asan_monthly_route_unit_amount_payload`를 우선 사용합니다. RPC 실패 시에도 월간 current 행을 1000행 단위로만 읽는 fallback으로 제한했습니다.
+### 검증
+- Supabase RPC `asan_monthly_route_unit_amount_payload('all', null, null, 5000)`: 12,178행/3,051묶음 응답 확인
+- 로컬 API `analysis=route-unit-price&unit_scope=month&unit_month=2026-01&refresh_snapshot=1`: 2,518행/795묶음, RPC 약 5.1초 확인
+- 로컬 API `analysis=route-unit-price&unit_scope=all&refresh_snapshot=1`: 12,178행/3,051묶음, RPC 약 1.5초 확인
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260527_asan_monthly_route_unit_amount_rows.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
+## [2026-05-27] 아산 배차변동내역 감지 기준 축소 (v5.14.238)
+### 핵심
+- 배차변동내역은 지역 배차칸 수량 변화만 `추가/삭제`로 기록하고, 같은 원천행의 고객사·포트·라인·TYPE 변화만 `변경`으로 기록하도록 비교 기준을 줄였습니다.
+- BKG확정/BKG1~3/TARGET VESSEL/비고/수정일시와 GLAPS 파생코드 변화는 변동 행을 만들지 않습니다. BKG·비고류 변경은 `memo_changed` 이력으로만 남깁니다.
+- `추가취소쌍` 표시는 제거했고, 변경 이벤트에서는 실제 달라진 셀만 붉은색으로 표시합니다.
+- 2026-05-27 통합 배차변동 이벤트를 새 기준으로 재정리했습니다. 기존 active 118건을 비활성화하고 새 기준 active 48건(추가 28, 삭제 20)으로 재계산했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 47개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "utils/asanDispatchDetailLines.mjs" tests/asanDashboardView.test.mjs tests/asanDispatchDetailLines.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] GLAPS 중복 판정키/병합 기준 정리 (v5.14.237)
+### 핵심
+- 운송경로 중복 기준을 `상차지 + 경유지(ELS) + 하차지` 연결키로 고정했습니다. 운송경로코드만 같은 행은 더 이상 중복 기준으로 보지 않습니다.
+- 항목매핑 중복 기준을 최종코드(BP) 하나로 고정했습니다. 같은 최종코드 안의 배차판 매칭용 값, ELS명, GLAPS명, 운송경로코드는 쉼표 다중값으로 병합합니다.
+- GLAPS코드 화면에서 운송경로도 항목매핑과 동일하게 중복행 선택/일괄 병합을 지원합니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] 아산 구간단가 LAST 단가/표 검색 보강 (v5.14.236)
 ### 핵심
 - 구간단가 대표 단가를 기간 평균이나 최고값이 아니라 선택 범위 안의 마지막 기간(LAST) 청구단가/하불단가/차액단가로 고정했습니다.

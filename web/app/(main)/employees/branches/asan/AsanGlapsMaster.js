@@ -85,6 +85,10 @@ function routeMatchKey(row) {
         .join(' → ');
 }
 
+function routeDuplicateParts(row) {
+    return [row.start_location_name, row.waypoint_els_name || row.waypoint_name, row.destination_name];
+}
+
 function tableText(value) {
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') return JSON.stringify(value);
@@ -143,10 +147,9 @@ function buildDuplicateInfo(activeTable, rows = []) {
     };
 
     if (activeTable === 'routes') {
-        addGroup('운송경로코드 중복', row => [row.route_code]);
-        addGroup('연결키 중복', row => [routeMatchKey(row)]);
+        addGroup('연결키 중복', routeDuplicateParts, { requireParts: [0, 1, 2] });
     } else if (activeTable === 'aliases') {
-        addGroup('코드기준 미병합', row => [row.alias_type, row.route_code, row.glaps_code], { requireParts: [0, 2] });
+        addGroup('최종코드(BP) 중복', row => [row.glaps_code], { requireParts: [0] });
     }
 
     return {
@@ -217,7 +220,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const [tableFilters, setTableFilters] = useState({});
     const [tableSort, setTableSort] = useState({ table: 'routes', key: '', direction: 'asc' });
     const [duplicateOnly, setDuplicateOnly] = useState(false);
-    const [selectedAliasIds, setSelectedAliasIds] = useState([]);
+    const [selectedDuplicateIds, setSelectedDuplicateIds] = useState([]);
     const [masterDisplayLimit, setMasterDisplayLimit] = useState(GLAPS_MASTER_PAGE_SIZE);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
@@ -248,7 +251,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     useEffect(() => {
         setEditor(null);
         setDuplicateOnly(false);
-        setSelectedAliasIds([]);
+        setSelectedDuplicateIds([]);
     }, [activeTable]);
 
     const routes = data?.routes || [];
@@ -261,13 +264,13 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const version = data?.version || null;
     const duplicateInfo = useMemo(() => buildDuplicateInfo(activeTable, tableRows), [activeTable, tableRows]);
     const hasDuplicateRows = duplicateInfo.rowCount > 0;
-    const selectedAliasIdSet = useMemo(() => new Set(selectedAliasIds), [selectedAliasIds]);
-    const selectedDuplicateAliasCount = selectedAliasIds.filter(id => duplicateInfo.byId.has(id)).length;
+    const selectedDuplicateIdSet = useMemo(() => new Set(selectedDuplicateIds), [selectedDuplicateIds]);
+    const selectedDuplicateCount = selectedDuplicateIds.filter(id => duplicateInfo.byId.has(id)).length;
 
     useEffect(() => {
-        if (activeTable !== 'aliases') return;
+        if (activeTable !== 'routes' && activeTable !== 'aliases') return;
         const validIds = new Set(tableRows.map(row => row.id).filter(Boolean));
-        setSelectedAliasIds((prev) => {
+        setSelectedDuplicateIds((prev) => {
             const next = prev.filter(id => validIds.has(id));
             return next.length === prev.length ? prev : next;
         });
@@ -418,22 +421,23 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
     }, [activeTable, editor?.id, fetchData, onMasterChanged]);
 
-    const toggleAliasSelection = useCallback((rowId) => {
+    const toggleDuplicateSelection = useCallback((rowId) => {
         const id = tableText(rowId).trim();
         if (!id) return;
-        setSelectedAliasIds(prev => (
+        setSelectedDuplicateIds(prev => (
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         ));
     }, []);
 
-    const mergeAliasDuplicates = useCallback(async ({ selectedOnly = false } = {}) => {
-        if (activeTable !== 'aliases') return;
-        const ids = selectedOnly ? selectedAliasIds : [];
+    const mergeDuplicateRows = useCallback(async ({ selectedOnly = false } = {}) => {
+        if (activeTable !== 'routes' && activeTable !== 'aliases') return;
+        const ids = selectedOnly ? selectedDuplicateIds : [];
         if (selectedOnly && ids.length === 0) {
             setMessage({ type: 'error', text: '병합할 항목을 먼저 선택해주세요.' });
             return;
         }
-        const label = selectedOnly ? `선택한 ${ids.length.toLocaleString()}건의 코드그룹` : `현재 코드기준 중복 ${duplicateInfo.groupCount.toLocaleString()}그룹`;
+        const basis = activeTable === 'routes' ? '연결키' : '최종코드(BP)';
+        const label = selectedOnly ? `선택한 ${ids.length.toLocaleString()}건의 ${basis} 그룹` : `현재 ${basis} 중복 ${duplicateInfo.groupCount.toLocaleString()}그룹`;
         if (!window.confirm(`${label}을 병합할까요?`)) return;
         setSaving(true);
         try {
@@ -441,18 +445,18 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    mode: 'aliases',
-                    action: 'merge_by_glaps_code',
+                    mode: activeTable,
+                    action: 'merge_by_key',
                     ids,
                 }),
             });
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(payload.error || 'GLAPS 코드기준 병합 실패');
+            if (!response.ok) throw new Error(payload.error || 'GLAPS 중복 병합 실패');
             setMessage({
                 type: 'success',
-                text: `코드기준 병합 ${Number(payload.mergedGroups || 0).toLocaleString()}그룹 / ${Number(payload.mergedRows || 0).toLocaleString()}행 반영 완료`,
+                text: `${basis} 병합 ${Number(payload.mergedGroups || 0).toLocaleString()}그룹 / ${Number(payload.mergedRows || 0).toLocaleString()}행 반영 완료`,
             });
-            setSelectedAliasIds([]);
+            setSelectedDuplicateIds([]);
             await fetchData();
             onMasterChanged?.();
         } catch (error) {
@@ -460,7 +464,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         } finally {
             setSaving(false);
         }
-    }, [activeTable, duplicateInfo.groupCount, fetchData, onMasterChanged, selectedAliasIds]);
+    }, [activeTable, duplicateInfo.groupCount, fetchData, onMasterChanged, selectedDuplicateIds]);
 
     const updateTableFilter = (key, value) => {
         setTableFilters(prev => {
@@ -491,6 +495,24 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const tableColumns = useMemo(() => {
         if (activeTable === 'routes') {
             return [
+                {
+                    key: 'select',
+                    label: '선택',
+                    value: row => (selectedDuplicateIdSet.has(row.id) ? '선택' : ''),
+                    filterable: false,
+                    sortable: false,
+                    className: styles.selectCell,
+                    render: row => (
+                        <input
+                            type="checkbox"
+                            className={styles.rowSelectCheckbox}
+                            checked={selectedDuplicateIdSet.has(row.id)}
+                            onChange={() => toggleDuplicateSelection(row.id)}
+                            disabled={saving || !duplicateInfo.byId.has(row.id)}
+                            aria-label="병합 항목 선택"
+                        />
+                    ),
+                },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
@@ -519,7 +541,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 {
                     key: 'select',
                     label: '선택',
-                    value: row => (selectedAliasIdSet.has(row.id) ? '선택' : ''),
+                    value: row => (selectedDuplicateIdSet.has(row.id) ? '선택' : ''),
                     filterable: false,
                     sortable: false,
                     className: styles.selectCell,
@@ -527,8 +549,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         <input
                             type="checkbox"
                             className={styles.rowSelectCheckbox}
-                            checked={selectedAliasIdSet.has(row.id)}
-                            onChange={() => toggleAliasSelection(row.id)}
+                            checked={selectedDuplicateIdSet.has(row.id)}
+                            onChange={() => toggleDuplicateSelection(row.id)}
                             disabled={saving || !duplicateInfo.byId.has(row.id)}
                             aria-label="병합 항목 선택"
                         />
@@ -562,7 +584,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : '') },
             { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {} },
         ];
-    }, [activeTable, beginEditRow, deleteRow, duplicateInfo.byId, saving, selectedAliasIdSet, toggleAliasSelection]);
+    }, [activeTable, beginEditRow, deleteRow, duplicateInfo.byId, saving, selectedDuplicateIdSet, toggleDuplicateSelection]);
 
     const activeTableFilters = useMemo(() => tableFilters[activeTable] || {}, [activeTable, tableFilters]);
     const hasTableFilters = Object.values(activeTableFilters).some(value => normalizeTableFilter(value));
@@ -809,20 +831,20 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         {duplicateOnly ? '중복해제' : '중복검출'} {duplicateInfo.rowCount.toLocaleString()}
                     </button>
                 )}
-                {activeTable === 'aliases' && (
+                {(activeTable === 'routes' || activeTable === 'aliases') && (
                     <>
                         <button
                             type="button"
                             className={styles.mergeButton}
-                            onClick={() => mergeAliasDuplicates({ selectedOnly: true })}
-                            disabled={saving || selectedDuplicateAliasCount === 0}
+                            onClick={() => mergeDuplicateRows({ selectedOnly: true })}
+                            disabled={saving || selectedDuplicateCount === 0}
                         >
-                            선택병합 {selectedDuplicateAliasCount.toLocaleString()}
+                            선택병합 {selectedDuplicateCount.toLocaleString()}
                         </button>
                         <button
                             type="button"
                             className={styles.mergeButton}
-                            onClick={() => mergeAliasDuplicates({ selectedOnly: false })}
+                            onClick={() => mergeDuplicateRows({ selectedOnly: false })}
                             disabled={saving || duplicateInfo.groupCount === 0}
                         >
                             일괄병합 {duplicateInfo.groupCount.toLocaleString()}

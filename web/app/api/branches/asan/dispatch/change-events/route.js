@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/utils/supabase/server';
 import { decorateActorFields, getCurrentUserActorName } from '../actorName';
 import {
     diffDispatchChangeLines,
+    diffDispatchMemoOnlyChanges,
     normalizeDispatchChangeLineRecord,
 } from '@/utils/asanDispatchChangeEvents.mjs';
 
@@ -138,23 +139,6 @@ function jsonPayload(value) {
     return JSON.stringify(value ?? null);
 }
 
-function addDeletedAfterAddContext(payload = {}, addEvent = {}) {
-    if (!payload) return payload;
-    return {
-        ...payload,
-        rowContext: {
-            ...(payload.rowContext || {}),
-            deletedAfterAdd: true,
-            deletedAfterAddEventKey: addEvent.event_key || '',
-            deletedAfterAddEventId: addEvent.id || '',
-        },
-    };
-}
-
-function deleteAfterAddEventKey(existing = {}) {
-    return `delete-after-add:${existing.event_key || existing.id || ''}`;
-}
-
 function snapshotRecordToLine(row = {}) {
     return normalizeDispatchChangeLineRecord({
         detailLineKey: row.detail_line_key,
@@ -231,36 +215,6 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
     };
 }
 
-function deletedAfterAddPayload(existing, actor, now) {
-    const deletedLinePayload = existing.editable_payload
-        || existing.after_snapshot
-        || existing.before_snapshot
-        || null;
-    const pairedPayload = addDeletedAfterAddContext(deletedLinePayload, existing);
-    return {
-        confirmation_id: existing.confirmation_id,
-        branch_id: existing.branch_id || BRANCH_ID,
-        dispatch_type: existing.dispatch_type,
-        target_date: existing.target_date,
-        event_key: deleteAfterAddEventKey(existing),
-        change_type: 'delete',
-        event_status: 'pending',
-        detail_line_key: existing.detail_line_key || pairedPayload?.detailLineKey || '',
-        identity_key: existing.identity_key || pairedPayload?.identityKey || '',
-        group_key: existing.group_key || pairedPayload?.groupKey || '',
-        quantity_delta: -1,
-        before_snapshot: pairedPayload,
-        after_snapshot: null,
-        editable_payload: pairedPayload,
-        active: true,
-        occurred_at: now,
-        confirmed_by: null,
-        confirmed_at: null,
-        updated_by: actor,
-        updated_at: now,
-    };
-}
-
 async function insertHistory(adminSupabase, event, confirmation, action, actor, now, oldPayload = null, newPayload = null) {
     const { error } = await adminSupabase
         .from('branch_dispatch_detail_change_history')
@@ -281,6 +235,32 @@ async function insertHistory(adminSupabase, event, confirmation, action, actor, 
     if (error) throw error;
 }
 
+async function insertMemoOnlyHistory(adminSupabase, confirmation, memoChanges, actor, now) {
+    if (!confirmation?.id || memoChanges.length === 0) return;
+    const { data: existingRows, error } = await adminSupabase
+        .from('branch_dispatch_detail_change_history')
+        .select('old_payload, new_payload')
+        .eq('confirmation_id', confirmation.id)
+        .eq('action', 'memo_changed');
+    if (error) throw error;
+
+    const existingKeys = new Set((existingRows || []).map(row => `${jsonPayload(row.old_payload)}=>${jsonPayload(row.new_payload)}`));
+    for (const change of memoChanges) {
+        const oldPayload = {
+            ...change.beforeSnapshot,
+            memoDiffHeaders: change.diffHeaders,
+        };
+        const newPayload = {
+            ...change.afterSnapshot,
+            memoDiffHeaders: change.diffHeaders,
+        };
+        const historyKey = `${jsonPayload(oldPayload)}=>${jsonPayload(newPayload)}`;
+        if (existingKeys.has(historyKey)) continue;
+        existingKeys.add(historyKey);
+        await insertHistory(adminSupabase, null, confirmation, 'memo_changed', actor, now, oldPayload, newPayload);
+    }
+}
+
 async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor, now) {
     if (!confirmation?.id) return;
     if (!confirmation.active) return;
@@ -294,6 +274,7 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
     const normalizedSnapshots = snapshots.map(snapshotRecordToLine);
     const normalizedCurrent = currentLines.map(normalizeDispatchChangeLineRecord);
     const nextEvents = diffDispatchChangeLines(normalizedSnapshots, normalizedCurrent, { occurredAt: now });
+    const memoChanges = diffDispatchMemoOnlyChanges(normalizedSnapshots, normalizedCurrent, { occurredAt: now });
     const nextKeys = new Set(nextEvents.map(event => event.eventKey));
 
     const { data: existingRows, error: existingError } = await adminSupabase
@@ -340,35 +321,6 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
 
     for (const existing of existingRows || []) {
         if (!existing.active || nextKeys.has(existing.event_key)) continue;
-        if (existing.change_type === 'add') {
-            const dbPayload = deletedAfterAddPayload(existing, actor, now);
-            const existingDelete = existingByKey.get(dbPayload.event_key);
-            if (existingDelete?.active) continue;
-            if (existingDelete?.id) {
-                const { data, error } = await adminSupabase
-                    .from('branch_dispatch_detail_change_events')
-                    .update(dbPayload)
-                    .eq('id', existingDelete.id)
-                    .select()
-                    .single();
-                if (error) throw error;
-                await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add_reopened', actor, now, existingDelete, data);
-                continue;
-            }
-            const { data, error } = await adminSupabase
-                .from('branch_dispatch_detail_change_events')
-                .insert({
-                    ...dbPayload,
-                    created_by: actor,
-                    created_at: now,
-                })
-                .select()
-                .single();
-            if (error) throw error;
-            await insertHistory(adminSupabase, data, confirmation, 'deleted_after_add', actor, now, null, data);
-            continue;
-        }
-        if (existing.change_type === 'delete') continue;
         const { data, error } = await adminSupabase
             .from('branch_dispatch_detail_change_events')
             .update({
@@ -382,6 +334,8 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
         if (error) throw error;
         await insertHistory(adminSupabase, data, confirmation, 'resolved', actor, now, existing, data);
     }
+
+    await insertMemoOnlyHistory(adminSupabase, confirmation, memoChanges, actor, now);
 }
 
 async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false } = {}) {

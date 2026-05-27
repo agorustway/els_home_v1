@@ -24,6 +24,7 @@ import {
     changeEventToEditableValues,
     formatDispatchChangeStatus,
     formatDispatchChangeType,
+    getDispatchChangeDiffHeaders,
     makeDispatchChangeSnapshotLine,
 } from '@/utils/asanDispatchChangeEvents.mjs';
 import {
@@ -335,22 +336,6 @@ function syncStatusPrefix(status = {}) {
     if (/(진행 중|요청 중|확인 중|저장 중|처리 중|불러오는 중|동기화 중)/.test(message)) return '진행';
     return '완료';
 }
-function getDeletedAfterAddPairKey(event = {}) {
-    const rowContext = event.before_snapshot?.rowContext
-        || event.editable_payload?.rowContext
-        || event.after_snapshot?.rowContext
-        || {};
-    return rowContext.deletedAfterAddEventKey || '';
-}
-function buildDeletedAfterAddPairKeySet(events = []) {
-    const keys = new Set();
-    events.forEach((event) => {
-        if (event.change_type !== 'delete') return;
-        const pairKey = getDeletedAfterAddPairKey(event);
-        if (pairKey) keys.add(pairKey);
-    });
-    return keys;
-}
 function dispatchConfirmationMapKey(targetDate = '', dispatchType = '') {
     return `${targetDate || ''}:${dispatchType || ''}`;
 }
@@ -383,15 +368,27 @@ function buildDispatchChangeDiffTooltip(event = {}) {
     if (event.change_type === 'delete') return `${label}\n확정 이후 삭제된 상세라인입니다.`;
     const beforeValues = snapshotRowValues(event.before_snapshot);
     const afterValues = snapshotRowValues(event.after_snapshot || event.editable_payload);
-    const changed = DISPATCH_DETAIL_HEADERS
-        .map((header, idx) => {
+    const beforeContext = event.before_snapshot?.rowContext || {};
+    const afterContext = (event.after_snapshot || event.editable_payload)?.rowContext || {};
+    const changed = getDispatchChangeDiffHeaders(beforeValues, afterValues, beforeContext, afterContext)
+        .map((header) => {
+            if (header === 'transportRemark') {
+                return `특이사항(Nomi,구간): ${changeTooltipValue(beforeContext.transportRemark)} -> ${changeTooltipValue(afterContext.transportRemark)}`;
+            }
+            const idx = DISPATCH_DETAIL_HEADERS.indexOf(header);
             const beforeValue = String(beforeValues[idx] ?? '').trim();
             const afterValue = String(afterValues[idx] ?? '').trim();
-            if (beforeValue === afterValue) return '';
             return `${header}: ${changeTooltipValue(beforeValue)} -> ${changeTooltipValue(afterValue)}`;
-        })
-        .filter(Boolean);
+        });
     return changed.length > 0 ? `${label}\n${changed.join('\n')}` : label;
+}
+function getDispatchChangedHeaderSet(event = {}) {
+    if (event.change_type !== 'change') return new Set();
+    const beforeValues = snapshotRowValues(event.before_snapshot);
+    const afterValues = snapshotRowValues(event.after_snapshot || event.editable_payload);
+    const beforeContext = event.before_snapshot?.rowContext || {};
+    const afterContext = (event.after_snapshot || event.editable_payload)?.rowContext || {};
+    return new Set(getDispatchChangeDiffHeaders(beforeValues, afterValues, beforeContext, afterContext));
 }
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
@@ -647,6 +644,7 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         destination: getDetailRowValue(values, '하차지(선적)') || context.destination || '',
         customer: getDetailRowValue(values, '고객사') || context.customer || '',
         port: getDetailPortRowValue(values) || context.port || '',
+        transportRemark: context.transportRemark || '',
         glapsPortCodeOverride: options.portCodeOverride || context.glapsPortCodeOverride || '',
         line: getDetailRowValue(values, '라인') || context.line || '',
         containerType: getDetailRowValue(values, '타입') || context.containerType || '',
@@ -678,6 +676,7 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         destination: getDetailRowValue(rowValues, '하차지(선적)'),
         customer: getDetailRowValue(rowValues, '고객사'),
         port: getDetailPortRowValue(rowValues),
+        transportRemark: baseContext.transportRemark || '',
         line: getDetailRowValue(rowValues, '라인'),
         containerType: getDetailRowValue(rowValues, '타입'),
         company: getDetailRowValue(rowValues, '업체명'),
@@ -696,6 +695,7 @@ function buildDetailLineContext(line = {}) {
         startLocation: line.startLocation || '',
         destination: line.destination || '',
         port: line.port || '',
+        transportRemark: line.transportRemark || '',
         glapsPortCode: line.glapsPortCode || '',
         company: line.company || '',
         bkg1: line.bkg1 || '',
@@ -2060,10 +2060,6 @@ function AsanDispatchContent() {
         };
     }, [detailChangeEvents, detailSummary.total]);
 
-    const deletedAfterAddPairKeys = useMemo(() => (
-        buildDeletedAfterAddPairKeySet(detailChangeEvents || [])
-    ), [detailChangeEvents]);
-
     const detailChangeEventByLineKey = useMemo(() => {
         const map = new Map();
         (detailChangeEvents || []).forEach((event) => {
@@ -2110,8 +2106,7 @@ function AsanDispatchContent() {
                 const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, { portCodeOverride }));
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
-                const isDeletedAfterAdd = Boolean(getDeletedAfterAddPairKey(event));
-                const isPairedAdd = event.change_type === 'add' && deletedAfterAddPairKeys.has(event.event_key);
+                const changedHeaderSet = getDispatchChangedHeaderSet(event);
                 const values = [
                     ...editableValues,
                     formatDispatchChangeType(event.change_type),
@@ -2120,10 +2115,10 @@ function AsanDispatchContent() {
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
-                return { event, hasCalculatedDiff, isDeletedAfterAdd, isPairedAdd, line, rawValues, values };
+                return { event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values };
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
-    }, [deletedAfterAddPairKeys, detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
+    }, [detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
 
     useEffect(() => {
         if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
@@ -3212,21 +3207,22 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, displayLimit).map(({ event, hasCalculatedDiff, isDeletedAfterAdd, isPairedAdd, line, rawValues, values }, rowIdx) => {
+                                        {detailChangeRows.slice(0, displayLimit).map(({ event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
                                             const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
                                             const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             const isDeleteEvent = event.change_type === 'delete';
                                             const isConfirmedEvent = event.event_status === 'confirmed';
                                             const editDisabled = detailChangeSaving || isConfirmedEvent;
                                             return (
-                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''} ${(isPairedAdd || isDeletedAfterAdd) ? styles.detailChangePairedRow : ''}`}>
+                                                <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
+                                                        const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : '';
                                                         if (isDetailValue && header === '상차지') {
                                                             return (
-                                                                <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
+                                                                <td key={header} className={[!line.startLocation ? styles.detailManualCell : '', changedCellClass].filter(Boolean).join(' ')}>
                                                                     <input
                                                                         className={styles.detailComboInput}
                                                                         list={DETAIL_START_LOCATION_DATALIST_ID}
@@ -3245,7 +3241,7 @@ function AsanDispatchContent() {
                                                         if (isDetailValue && header === '포트코드' && (line.glapsPortCodeOptions || []).length > 1) {
                                                             const selectedPortCode = getDetailRowValue(rawValues, '포트코드') || line.glapsPortCode || '';
                                                             return (
-                                                                <td key={header} className={styles.detailPortCodeCell}>
+                                                                <td key={header} className={[styles.detailPortCodeCell, changedCellClass].filter(Boolean).join(' ')}>
                                                                     <select
                                                                         className={styles.detailPortSelect}
                                                                         value={selectedPortCode}
@@ -3272,7 +3268,7 @@ function AsanDispatchContent() {
                                                         if (isDetailValue && header === 'BKG확정') {
                                                             const isManualBkg = line.confirmedBkgSource === 'manual';
                                                             return (
-                                                                <td key={header} className={styles.detailBkgConfirmCell}>
+                                                                <td key={header} className={[styles.detailBkgConfirmCell, changedCellClass].filter(Boolean).join(' ')}>
                                                                     <div className={styles.detailBkgConfirmControl}>
                                                                         <span className={`${styles.detailBkgSourceBadge} ${isManualBkg ? styles.detailBkgSourceManual : ''}`}>
                                                                             {isManualBkg ? '수기' : line.confirmedBkgSource || 'BKG1'}
@@ -3297,7 +3293,7 @@ function AsanDispatchContent() {
                                                             const isSelectedBkg = line.confirmedBkgSource === header && Boolean(bkgValue);
                                                             const isDisabledBkg = editDisabled || !bkgValue;
                                                             return (
-                                                                <td key={header} className={isSelectedBkg ? styles.detailBkgSelectedCell : ''}>
+                                                                <td key={header} className={[isSelectedBkg ? styles.detailBkgSelectedCell : '', changedCellClass].filter(Boolean).join(' ')}>
                                                                     {bkgValue ? (
                                                                         <button
                                                                             type="button"
@@ -3322,7 +3318,7 @@ function AsanDispatchContent() {
                                                         return (
                                                             <td
                                                                 key={header}
-                                                                className={isChangeType ? styles.detailChangeTypeCell : ''}
+                                                                className={[isChangeType ? styles.detailChangeTypeCell : '', changedCellClass].filter(Boolean).join(' ')}
                                                             >
                                                                 {isDetailValue ? (
                                                                     values[colIdx] || ''
@@ -3361,7 +3357,6 @@ function AsanDispatchContent() {
                                                                 ) : isChangeType ? (
                                                                     <span className={styles.detailChangeTypeWrap} title={buildDispatchChangeDiffTooltip(event)}>
                                                                         <span>{values[colIdx]}</span>
-                                                                        {(isPairedAdd || isDeletedAfterAdd) && <em>추가취소쌍</em>}
                                                                     </span>
                                                                 ) : (
                                                                     values[colIdx]

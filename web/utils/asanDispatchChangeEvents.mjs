@@ -35,9 +35,28 @@ const DERIVED_GLAPS_HEADERS = new Set([
   '운송사코드',
   '컨샤이니',
 ]);
-const SIGNIFICANT_HEADERS = DISPATCH_DETAIL_HEADERS.filter(
-  header => header !== '수정일시' && !DERIVED_GLAPS_HEADERS.has(header),
-);
+const TRANSPORT_CHANGE_HEADERS = Object.freeze([
+  '고객사',
+  '포트(DIST)',
+  '라인',
+  '타입',
+]);
+const TRANSPORT_CHANGE_CONTEXT_KEYS = Object.freeze([
+  'transportRemark',
+]);
+const MEMO_ONLY_HEADERS = new Set([
+  'BKG확정',
+  'BKG1',
+  'BKG2',
+  'BKG3',
+  'TARGET VESSEL',
+  '비고',
+  '수정일시',
+]);
+
+export function isDispatchDerivedGlapsHeader(header = '') {
+  return DERIVED_GLAPS_HEADERS.has(header);
+}
 const IDENTITY_FALLBACK_HEADERS = Object.freeze([
   '작업일자',
   '구분',
@@ -86,8 +105,27 @@ function makeKey(parts = []) {
   return parts.map(cleanText).join('\u001f');
 }
 
-function makeRowFingerprint(headerMap = {}) {
-  return makeKey(SIGNIFICANT_HEADERS.map(header => headerMap[header] || ''));
+function makeRowFingerprint(headerMap = {}, rowContext = {}) {
+  return makeKey([
+    ...TRANSPORT_CHANGE_HEADERS.map(header => headerMap[header] || ''),
+    ...TRANSPORT_CHANGE_CONTEXT_KEYS.map(key => rowContext[key] || ''),
+  ]);
+}
+
+export function getDispatchChangeDiffHeaders(beforeValues = [], afterValues = [], beforeContext = {}, afterContext = {}) {
+  const beforeMap = valuesByHeader(beforeValues);
+  const afterMap = valuesByHeader(afterValues);
+  const changed = TRANSPORT_CHANGE_HEADERS.filter(header => cleanText(beforeMap[header]) !== cleanText(afterMap[header]));
+  TRANSPORT_CHANGE_CONTEXT_KEYS.forEach((key) => {
+    if (cleanText(beforeContext[key]) !== cleanText(afterContext[key])) changed.push(key);
+  });
+  return changed;
+}
+
+export function getDispatchMemoOnlyDiffHeaders(beforeValues = [], afterValues = []) {
+  const beforeMap = valuesByHeader(beforeValues);
+  const afterMap = valuesByHeader(afterValues);
+  return [...MEMO_ONLY_HEADERS].filter(header => cleanText(beforeMap[header]) !== cleanText(afterMap[header]));
 }
 
 function makeIdentityKey(line = {}, headerMap = {}) {
@@ -119,8 +157,6 @@ function makeRowPayload(record = {}) {
 export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
   const rowValues = normalizeValues(detailLineToRow(line));
   const headerMap = valuesByHeader(rowValues);
-  const rowFingerprint = makeRowFingerprint(headerMap);
-  const identityKey = makeIdentityKey(line, headerMap);
   const rowContext = {
     lineNo: line.lineNo || null,
     workDate: line.workDate || '',
@@ -131,6 +167,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     destination: line.destination || '',
     customer: line.customer || '',
     port: line.port || '',
+    transportRemark: line.transportRemark || '',
     line: line.line || '',
     containerType: line.containerType || '',
     company: line.company || '',
@@ -145,6 +182,8 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     rawCompany: line.rawCompany || '',
     startSuffix: line.startSuffix || '',
   };
+  const rowFingerprint = makeRowFingerprint(headerMap, rowContext);
+  const identityKey = makeIdentityKey(line, headerMap);
   return {
     detailLineKey,
     identityKey,
@@ -164,9 +203,9 @@ export function normalizeDispatchChangeLineRecord(input = {}) {
     || [];
   const rowValues = normalizeValues(rawValues);
   const headerMap = valuesByHeader(rowValues);
-  const rowFingerprint = makeRowFingerprint(headerMap) || cleanText(input.rowFingerprint || input.row_fingerprint);
   const detailLineKey = cleanText(input.detailLineKey || input.detail_line_key);
   const rowContext = input.rowContext || input.row_context || {};
+  const rowFingerprint = makeRowFingerprint(headerMap, rowContext) || cleanText(input.rowFingerprint || input.row_fingerprint);
   const identityKey = cleanText(input.identityKey || input.identity_key) || makeIdentityKey({ ...rowContext, detailLineKey }, headerMap);
   const groupKey = cleanText(input.groupKey || input.group_key) || rowFingerprint;
   return {
@@ -307,6 +346,37 @@ export function diffDispatchChangeLines(snapshotLines = [], currentLines = [], o
     if (aLine !== bLine) return aLine - bLine;
     return a.eventKey.localeCompare(b.eventKey);
   });
+}
+
+export function diffDispatchMemoOnlyChanges(snapshotLines = [], currentLines = [], options = {}) {
+  const occurredAt = options.occurredAt || new Date().toISOString();
+  const before = snapshotLines.map(normalizeDispatchChangeLineRecord).sort(compareLineOrder);
+  const after = currentLines.map(normalizeDispatchChangeLineRecord).sort(compareLineOrder);
+  const afterByIdentity = new Map();
+  after.forEach((record) => {
+    const key = record.identityKey || record.groupKey || record.detailLineKey || '';
+    if (!afterByIdentity.has(key)) afterByIdentity.set(key, []);
+    afterByIdentity.get(key).push(record);
+  });
+
+  const memoChanges = [];
+  before.forEach((beforeRecord) => {
+    const key = beforeRecord.identityKey || beforeRecord.groupKey || beforeRecord.detailLineKey || '';
+    const candidates = afterByIdentity.get(key) || [];
+    const afterRecord = candidates.shift();
+    if (!afterRecord) return;
+    if (beforeRecord.rowFingerprint !== afterRecord.rowFingerprint) return;
+    const diffHeaders = getDispatchMemoOnlyDiffHeaders(beforeRecord.rowValues, afterRecord.rowValues);
+    if (diffHeaders.length === 0) return;
+    memoChanges.push({
+      eventKey: `memo:${hashDispatchChangeText(`${key}:${diffHeaders.join('|')}`)}`,
+      diffHeaders,
+      beforeSnapshot: makeRowPayload(beforeRecord),
+      afterSnapshot: makeRowPayload(afterRecord),
+      occurredAt,
+    });
+  });
+  return memoChanges;
 }
 
 export function changeEventToEditableValues(event = {}) {

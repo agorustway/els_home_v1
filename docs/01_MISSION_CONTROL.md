@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.236 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.239 / APK v5.11.29)
 
-> 최신 업데이트: 아산 `구간단가` 대표 단가를 선택 범위의 LAST 기간 기준으로 바꾸고, 2026 월간 원장 기간 선택/원 단위 표기/표 필터·정렬을 보강했다.
+> 최신 업데이트: 아산 `구간단가`를 연간 대용량 집계에서 분리하고 월간실적 current 원장 기반 청구/하불 금액표로 재구성했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.236
+- **웹 버전**: v5.14.239
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -22,10 +22,9 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
-- `구간단가`는 별도 탭에서 `전체/연도별/월별` 범위와 마감월 기준으로 산출한다. 총액 KPI는 배제하고 `픽업-지역-작업지-하차 + 매출열 + 청구처/지급처/TYPE`별 LAST 청구단가/하불단가/차액단가와 기간별 단가 흐름만 표시한다.
-- 구간단가 집계는 연간+월간 current 원장을 함께 사용한다. 같은 마감월이 연간/월간 양쪽에 있으면 월간 원장을 우선해 중복 계산을 막는다.
-- 구간단가 기간 선택지는 연간 summary가 아니라 구간단가 원장의 연간+월간 기간 목록을 사용해 2026 이후 월간 자료도 선택 가능하게 한다.
-- `web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql` 인덱스는 Supabase에 적용 완료했다. RPC SQL은 보관하지만 웹 기본 경로는 timeout 방지를 위해 인덱스 기반 JS fallback 집계를 사용한다.
+- `구간단가`는 월간실적 current 원장만 사용한다. 기본은 최신 월별 조회이고, 필요 시 전체 월간 원장으로 확장한다.
+- 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, 청구처, 하불처`다. 화면은 테이블 필터/정렬 중심으로 운영한다.
+- 구간단가 API는 dashboard snapshot을 만들지 않고 `asan_monthly_route_unit_amount_payload` RPC를 우선 사용한다. 실패 시 월간 current 행을 1000행 단위로만 읽는 JS fallback을 사용한다.
 - 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
 - 페이지 로딩 문구와 폰트는 아산 하위 페이지에서 동일 톤으로 유지한다.
 
@@ -34,6 +33,7 @@
 - 운송사코드는 `운송사코드` 시트의 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
 - 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
 - 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. 항목매핑 UNIQUE는 `glaps_code`까지 포함한다.
+- GLAPS 중복 판정/병합 기준은 운송경로=`상차지+경유지(ELS)+하차지` 연결키, 항목매핑=`최종코드(BP)`다. 같은 키 안의 다른 설명/매칭값은 쉼표 다중값으로 병합한다.
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - GLAPS 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받는다. 삭제는 행 삭제가 아니라 `삭제(Y)` 입력으로만 처리한다.
@@ -47,8 +47,12 @@
 - 1순위 완료 신호(`quick_done`)를 받으면 웹은 즉시 새로고침한다. 전/후 작업일과 나머지 날짜는 백그라운드에서 순차 반영한다.
 - 상세배차/배차변동 다운로드는 기존 우리 기준 시트와 별도로 `GLAPS_업로드` 시트를 추가한다.
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채운다.
+- 배차변동내역은 지역 배차칸 수량 변화는 추가/삭제, 고객사·포트·라인·TYPE 변화는 변경으로 기록한다. BKG1~3/TARGET VESSEL/비고와 GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.239**: 구간단가를 월간실적 current 원장 전용 청구/하불 금액표로 재구성하고, 연간 원장/기간별 단가 차트/dashboard snapshot 의존을 제거했다.
+- **v5.14.238**: 배차변동 비교에서 BKG/비고/GLAPS 파생값 변화를 제외하고, 변경 이벤트는 고객사·포트·라인·TYPE 기준으로만 만들며 변경 셀은 붉은색으로 표시한다.
+- **v5.14.237**: GLAPS 중복검출/병합을 운송경로는 연결키, 항목매핑은 최종코드(BP) 기준으로 통일하고, 운송경로도 선택/일괄 병합할 수 있게 했다.
 - **v5.14.236**: 구간단가 대표값을 평균/MAX가 아닌 LAST 기간 단가로 고정하고, 원 단위 천단위 표기, 2026 월간 기간 선택, 표 필터/정렬을 추가했다.
 - **v5.14.235**: 구간단가를 총액 리포트가 아닌 단가 변동 전용 화면으로 재정리하고, 연간+월간 current 원장 통합/월간 우선 중복 방지/기간 인덱스 적용을 반영했다.
 - **v5.14.234**: GLAPS 마스터 반영 중 `glaps_transport_routes_branch_version_route_source_key` UNIQUE 충돌이 나지 않도록 운송경로/항목매핑 insert 전 원장 중복행을 정리하고, 성공 시에만 새 버전을 active 전환한다.
@@ -60,16 +64,16 @@
 
 ## VERIFICATION
 - `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
-- 로컬 `http://localhost:3000/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2026&refresh_snapshot=1`: 2026년 구간단가 1,181건/160구간, `LastMonth=2026-05`, `unitBasis=last` 확인.
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
 - `cd web; npm.cmd run build`: 통과
+- 로컬 API `analysis=route-unit-price&unit_scope=month&unit_month=2026-01&refresh_snapshot=1`: RPC 5.1초, 2,518행/795묶음 확인.
+- 로컬 API `analysis=route-unit-price&unit_scope=all&refresh_snapshot=1`: RPC 1.5초, 12,178행/3,051묶음 확인.
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
-- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과
-- 로컬 `http://localhost:3035/api/branches/asan/performance/annual?analysis=route-unit-price&unit_scope=year&unit_year=2025&refresh_snapshot=1`: 2025년 단가 payload 응답 확인(33,394건/160구간, 연간+월간 기준).
 
 ## IN-PROGRESS
-- 구간단가 전체기간 최초 집계는 대용량이므로 dashboard snapshot 캐시를 우선 사용하고, RPC 기본 활성화는 보류한다.
+- 구간단가는 월간 금액표 RPC 운영으로 전환했다. 운영 빌드 후 웹 `구간단가` 탭에서 최신 월 기본 조회와 전체 조회 체감 속도를 확인한다.
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.

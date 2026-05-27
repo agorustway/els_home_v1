@@ -655,23 +655,19 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
 }
 
 async function findRouteDirectDuplicates(adminSupabase, versionId, dbRow, id = '') {
-  const routeCodeKey = duplicateKeyPart(dbRow.route_code);
-  const fingerprintKey = duplicateKeyPart(dbRow.route_fingerprint);
-  if (!routeCodeKey && !fingerprintKey) return [];
+  const connectionKey = routeMergeGroupKey(dbRow);
+  if (!connectionKey) return [];
 
   let query = adminSupabase
     .from('glaps_transport_routes')
-    .select('id, route_code, route_name, start_location_name, waypoint_els_name, destination_name, route_fingerprint')
+    .select('id, route_code, route_name, start_location_name, waypoint_name, waypoint_els_name, destination_name, route_fingerprint')
     .eq('version_id', versionId)
     .eq('active', true);
   if (id) query = query.neq('id', id);
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []).filter((row) => (
-    (routeCodeKey && duplicateKeyPart(row.route_code) === routeCodeKey)
-    || (fingerprintKey && duplicateKeyPart(row.route_fingerprint) === fingerprintKey)
-  ));
+  return (data || []).filter(row => routeMergeGroupKey(row) === connectionKey);
 }
 
 async function findAliasDirectDuplicates(adminSupabase, versionId, dbRow, id = '') {
@@ -694,14 +690,17 @@ async function findAliasDirectDuplicates(adminSupabase, versionId, dbRow, id = '
 }
 
 function aliasMergeGroupKey(row = {}) {
-  const aliasType = duplicateKeyPart(row.alias_type);
   const glapsCode = duplicateKeyPart(row.glaps_code);
-  if (!aliasType || !glapsCode) return '';
-  return [
-    aliasType,
-    duplicateKeyPart(row.route_code),
-    glapsCode,
-  ].join('|');
+  return glapsCode || '';
+}
+
+function routeMergeGroupKey(row = {}) {
+  const parts = [
+    row.start_location_name,
+    row.waypoint_els_name || row.waypoint_name,
+    row.destination_name,
+  ].map(duplicateKeyPart);
+  return parts.every(Boolean) ? parts.join('|') : '';
 }
 
 function mergeAliasFieldValues(values = []) {
@@ -717,6 +716,15 @@ function mergeAliasFieldValues(values = []) {
 }
 
 function aliasMergeSortScore(row = {}) {
+  return [
+    isWebEditedRow(row) ? '0' : '1',
+    cleanText(row.alias_type) === 'generic' ? '1' : '0',
+    cleanText(row.created_at),
+    cleanText(row.id),
+  ].join('|');
+}
+
+function routeMergeSortScore(row = {}) {
   return [
     isWebEditedRow(row) ? '0' : '1',
     cleanText(row.created_at),
@@ -737,12 +745,100 @@ function buildMergedAliasRow(group = [], actor) {
       els_name: mergeAliasFieldValues(sorted.map(row => row.els_name)),
       glaps_name: mergeAliasFieldValues(sorted.map(row => row.glaps_name)),
       glaps_code: cleanText(survivor.glaps_code),
-      route_code: cleanText(survivor.route_code),
+      route_code: mergeAliasFieldValues(sorted.map(row => row.route_code)),
       review_status: cleanText(survivor.glaps_code) ? 'ready' : normalizeReviewStatus(survivor.review_status, 'needs_mapping'),
       review_note: mergeAliasFieldValues(sorted.map(row => row.review_note)),
       active: true,
       updated_by: actor,
     },
+  };
+}
+
+function buildMergedRouteRow(group = [], actor) {
+  const sorted = [...group].sort((a, b) => routeMergeSortScore(a).localeCompare(routeMergeSortScore(b)));
+  const survivor = sorted[0];
+  const loserIds = sorted.map(row => cleanText(row.id)).filter(id => id && id !== cleanText(survivor.id));
+  const mergedRouteCode = mergeAliasFieldValues(sorted.map(row => row.route_code));
+  return {
+    survivor,
+    loserIds,
+    update: {
+      route_code: mergedRouteCode,
+      route_name: mergeAliasFieldValues(sorted.map(row => row.route_name)),
+      start_location_name: cleanText(survivor.start_location_name),
+      waypoint_name: mergeAliasFieldValues(sorted.map(row => row.waypoint_name)),
+      waypoint_els_name: mergeAliasFieldValues(sorted.map(row => row.waypoint_els_name || row.waypoint_name)),
+      destination_name: cleanText(survivor.destination_name),
+      route_fingerprint: cleanText(survivor.route_fingerprint),
+      review_status: mergedRouteCode ? 'ready' : normalizeReviewStatus(survivor.review_status, 'needs_mapping'),
+      review_note: mergeAliasFieldValues(sorted.map(row => row.review_note)),
+      active: true,
+      updated_by: actor,
+    },
+  };
+}
+
+async function mergeRouteRowsByConnectionKey(adminSupabase, { version, ids = [], userEmail }) {
+  const actor = buildEditActor('web', userEmail);
+  const selectedIds = new Set((Array.isArray(ids) ? ids : [ids]).map(cleanText).filter(Boolean));
+  const rows = await fetchPagedGlapsRows(() => adminSupabase
+    .from('glaps_transport_routes')
+    .select('id, route_code, route_name, start_location_name, waypoint_name, waypoint_els_name, destination_name, route_fingerprint, review_status, review_note, updated_by, created_at')
+    .eq('version_id', version.id)
+    .eq('active', true));
+
+  const selectedGroupKeys = new Set();
+  rows.forEach((row) => {
+    if (!selectedIds.has(cleanText(row.id))) return;
+    const key = routeMergeGroupKey(row);
+    if (key) selectedGroupKeys.add(key);
+  });
+  if (selectedIds.size > 0 && selectedGroupKeys.size === 0) {
+    return { success: true, mode: 'routes', action: 'merge_by_key', mergedGroups: 0, mergedRows: 0, deactivatedRows: 0 };
+  }
+
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const key = routeMergeGroupKey(row);
+    if (!key) return;
+    if (selectedIds.size > 0 && !selectedGroupKeys.has(key)) return;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  });
+
+  let mergedGroups = 0;
+  let mergedRows = 0;
+  let deactivatedRows = 0;
+  for (const group of grouped.values()) {
+    if (group.length < 2) continue;
+    const { survivor, loserIds, update } = buildMergedRouteRow(group, actor);
+    const { error: updateError } = await adminSupabase
+      .from('glaps_transport_routes')
+      .update(update)
+      .eq('id', survivor.id)
+      .eq('version_id', version.id);
+    if (updateError) throw updateError;
+    if (loserIds.length > 0) {
+      const { error: inactiveError } = await adminSupabase
+        .from('glaps_transport_routes')
+        .update({ active: false, updated_by: actor })
+        .eq('version_id', version.id)
+        .in('id', loserIds);
+      if (inactiveError) throw inactiveError;
+    }
+    mergedGroups += 1;
+    mergedRows += group.length;
+    deactivatedRows += loserIds.length;
+  }
+
+  await refreshVersionCounts(adminSupabase, version.id);
+  return {
+    success: true,
+    mode: 'routes',
+    action: 'merge_by_key',
+    mergedGroups,
+    mergedRows,
+    deactivatedRows,
   };
 }
 
@@ -762,7 +858,7 @@ async function mergeAliasRowsByGlapsCode(adminSupabase, { version, ids = [], use
     if (key) selectedGroupKeys.add(key);
   });
   if (selectedIds.size > 0 && selectedGroupKeys.size === 0) {
-    return { success: true, mode: 'aliases', action: 'merge_by_glaps_code', mergedGroups: 0, mergedRows: 0, deactivatedRows: 0 };
+    return { success: true, mode: 'aliases', action: 'merge_by_key', mergedGroups: 0, mergedRows: 0, deactivatedRows: 0 };
   }
 
   const grouped = new Map();
@@ -803,7 +899,7 @@ async function mergeAliasRowsByGlapsCode(adminSupabase, { version, ids = [], use
   return {
     success: true,
     mode: 'aliases',
-    action: 'merge_by_glaps_code',
+    action: 'merge_by_key',
     mergedGroups,
     mergedRows,
     deactivatedRows,
@@ -815,14 +911,15 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
   const action = cleanText(payload.action || 'upsert');
   const target = mode === 'route' || mode === 'routes' ? 'routes' : (mode === 'alias' || mode === 'aliases' ? 'aliases' : '');
   if (!target) return { error: jsonError('지원하지 않는 직접수정 대상입니다.', 400) };
-  if (!['upsert', 'delete', 'merge_by_glaps_code'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
+  if (!['upsert', 'delete', 'merge_by_key', 'merge_by_glaps_code'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
 
   const actor = buildEditActor('web', userEmail);
   const row = payload.row || {};
   const id = cleanText(payload.id || row.id);
-  if (action === 'merge_by_glaps_code') {
-    if (target !== 'aliases') return { error: jsonError('항목매핑만 코드기준 병합할 수 있습니다.', 400) };
-    const result = await mergeAliasRowsByGlapsCode(adminSupabase, { version, ids: payload.ids || [], userEmail });
+  if (action === 'merge_by_key' || action === 'merge_by_glaps_code') {
+    const result = target === 'routes'
+      ? await mergeRouteRowsByConnectionKey(adminSupabase, { version, ids: payload.ids || [], userEmail })
+      : await mergeAliasRowsByGlapsCode(adminSupabase, { version, ids: payload.ids || [], userEmail });
     return { result };
   }
   if (action === 'delete') {
@@ -841,7 +938,7 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
     if (duplicates.length > 0) {
       return {
         error: duplicateJsonError(
-          '이미 같은 운송경로코드 또는 상차지·경유지(ELS)·하차지 연결키가 등록되어 있습니다.',
+          '이미 같은 상차지·경유지(ELS)·하차지 연결키가 등록되어 있습니다.',
           summarizeDuplicateRows(duplicates, duplicate => `${duplicate.route_code || '-'} ${duplicate.route_name || ''}`.trim()),
         ),
       };
