@@ -1,3 +1,20 @@
+## [2026-05-27] 아산 구간단가 필터 목록화 (v5.14.242)
+### 핵심
+- 구간단가 표 헤더 아래에 길게 늘어났던 컬럼별 입력 필터줄을 제거했습니다.
+- 금액/매출/지역/작업지/운송사/구분/픽업/선적/TYPE/청구처/하불처를 `필터 목록` 드롭다운으로 정리했습니다.
+- 적용된 조건은 칩으로 표시하고, 칩 클릭 또는 `필터 초기화`로 해제할 수 있게 했습니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
 ## [2026-05-27] 아산 구간단가 TYPE/기간/필터 보강 (v5.14.241)
 ### 핵심
 - 구간단가는 DB 부하와 컬럼 신뢰도를 고려해 월간 마감자료 current 원장 전용으로 유지했습니다. 연간 36만 행 원장은 합산하지 않습니다.

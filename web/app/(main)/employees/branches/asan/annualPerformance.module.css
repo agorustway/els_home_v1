@@ -1792,8 +1792,101 @@
     white-space: nowrap;
 }
 
+.routeUnitFilterPanel {
+    display: grid;
+    gap: 7px;
+    padding: 8px 9px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.routeUnitFilterTitle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.routeUnitFilterTitle span {
+    color: #0f172a;
+    font-size: 0.72rem;
+    font-weight: 950;
+}
+
+.routeUnitFilterTitle em {
+    color: #64748b;
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 850;
+    text-align: right;
+}
+
+.routeUnitFilterList {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    gap: 6px;
+}
+
+.routeUnitFilterList label {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.routeUnitFilterList span {
+    color: #64748b;
+    font-size: 0.64rem;
+    font-weight: 900;
+}
+
+.routeUnitFilterList select {
+    width: 100%;
+    height: 29px;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 850;
+}
+
+.routeUnitFilterChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.routeUnitFilterChips button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 25px;
+    max-width: 220px;
+    padding: 0 7px;
+    border: 1px solid #99f6e4;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0f766e;
+    font-family: inherit;
+    font-size: 0.66rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.routeUnitFilterChips strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.routeUnitFilterChips em {
+    font-style: normal;
+}
+
 .routeUnitHead,
-.routeUnitFilterRow,
 .routeUnitRow {
     display: grid;
     grid-template-columns: 98px 98px 98px 76px 72px minmax(150px, 1.2fr) 100px 70px 70px 86px 86px 70px minmax(130px, 1fr) minmax(130px, 1fr) 56px 92px;
@@ -1839,29 +1932,6 @@
 
 .routeUnitSortActive {
     color: #0f766e !important;
-}
-
-.routeUnitFilterRow {
-    position: sticky;
-    top: 31px;
-    z-index: 2;
-    padding: 5px 9px 6px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #fff;
-}
-
-.routeUnitFilterRow input {
-    width: 100%;
-    height: 25px;
-    min-width: 0;
-    padding: 0 6px;
-    border: 1px solid #dbe7f3;
-    border-radius: 5px;
-    background: #f8fafc;
-    color: #0f172a;
-    font-family: inherit;
-    font-size: 0.64rem;
-    font-weight: 800;
 }
 
 .routeUnitRow {
@@ -5732,9 +5802,12 @@
     }
 
     .routeUnitHead,
-    .routeUnitFilterRow,
     .routeUnitRow {
         min-width: 1420px;
+    }
+
+    .routeUnitFilterList {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .routeUnitTableTools {
@@ -5850,7 +5923,6 @@
     }
 
     .routeUnitHead,
-    .routeUnitFilterRow,
     .routeUnitRow {
         grid-template-columns: 92px 92px 92px 70px 66px minmax(136px, 1.2fr) 92px 64px 64px 78px 78px 66px minmax(116px, 1fr) minmax(116px, 1fr) 52px 84px;
         min-width: 1320px;
@@ -5863,5 +5935,19 @@
 
     .routeUnitTableTools em {
         justify-self: start;
+    }
+
+    .routeUnitFilterTitle {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .routeUnitFilterTitle em {
+        text-align: left;
+    }
+
+    .routeUnitFilterList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

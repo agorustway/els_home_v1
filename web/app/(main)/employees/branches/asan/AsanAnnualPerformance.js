@@ -63,6 +63,7 @@ const ROUTE_UNIT_COLUMNS = [
     { key: 'rowCount', label: '건수', numeric: true },
     { key: 'periodLabel', label: '기간' },
 ];
+const ROUTE_UNIT_FILTER_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
 
 function fmtTs(value) {
     if (!value) return '-';
@@ -208,6 +209,12 @@ function routeUnitTermMatches(values = [], rawTerm = '') {
     if (!text) return true;
     const blob = routeUnitSearchBlob(values);
     return blob.includes(text) || Boolean(numeric && blob.includes(numeric));
+}
+
+function routeUnitFilterOptionLabel(column = {}, value = '') {
+    if (!value) return '전체';
+    if (column.numeric) return formatRouteUnitWon(value);
+    return String(value);
 }
 
 function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
@@ -972,6 +979,20 @@ function RouteUnitPricePanel({
     const [columnFilters, setColumnFilters] = useState({});
     const [unitSort, setUnitSort] = useState('revenueAmount_desc');
     const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
+    const filterOptions = useMemo(() => {
+        const result = {};
+        ROUTE_UNIT_FILTER_COLUMNS.forEach((column) => {
+            const values = Array.from(new Set(groups
+                .map(item => item[column.key])
+                .filter(value => value !== undefined && value !== null && String(value).trim() !== '')));
+            values.sort((a, b) => {
+                if (column.numeric) return safeNumber(b) - safeNumber(a);
+                return String(a).localeCompare(String(b), 'ko-KR', { numeric: true });
+            });
+            result[column.key] = values.slice(0, 600);
+        });
+        return result;
+    }, [groups]);
     const visibleGroups = useMemo(() => groups
         .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters))
         .slice()
@@ -1002,6 +1023,12 @@ function RouteUnitPricePanel({
         setUnitFilter('');
         setColumnFilters({});
     };
+    const activeColumnFilters = ROUTE_UNIT_FILTER_COLUMNS
+        .filter(column => String(columnFilters[column.key] || '').trim())
+        .map(column => ({
+            ...column,
+            value: columnFilters[column.key],
+        }));
 
     return (
         <div className={styles.routeUnitShell}>
@@ -1083,6 +1110,46 @@ function RouteUnitPricePanel({
                     </button>
                     <em>{visibleGroups.length.toLocaleString('ko-KR')} / {groups.length.toLocaleString('ko-KR')}개</em>
                 </div>
+                <div className={styles.routeUnitFilterPanel}>
+                    <div className={styles.routeUnitFilterTitle}>
+                        <span>필터 목록</span>
+                        <em>목록에서 조건을 고르고, 금액은 상단 검색창에 숫자만 입력해도 조회됩니다.</em>
+                    </div>
+                    <div className={styles.routeUnitFilterList}>
+                        {ROUTE_UNIT_FILTER_COLUMNS.map(column => (
+                            <label key={column.key}>
+                                <span>{column.label}</span>
+                                <select
+                                    value={columnFilters[column.key] || ''}
+                                    onChange={event => updateColumnFilter(column.key, event.target.value)}
+                                >
+                                    <option value="">전체</option>
+                                    {(filterOptions[column.key] || []).map(value => (
+                                        <option key={`${column.key}-${value}`} value={String(value)}>
+                                            {routeUnitFilterOptionLabel(column, value)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        ))}
+                    </div>
+                    {activeColumnFilters.length > 0 && (
+                        <div className={styles.routeUnitFilterChips}>
+                            {activeColumnFilters.map(column => (
+                                <button
+                                    key={column.key}
+                                    type="button"
+                                    onClick={() => updateColumnFilter(column.key, '')}
+                                    title={`${column.label} 필터 해제`}
+                                >
+                                    <span>{column.label}</span>
+                                    <strong>{routeUnitFilterOptionLabel(column, column.value)}</strong>
+                                    <em>×</em>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
                 {loading && !groups.length ? (
                     <div className={styles.emptyPanel}>월간 금액표를 집계하는 중입니다...</div>
                 ) : !groups.length ? (
@@ -1103,18 +1170,6 @@ function RouteUnitPricePanel({
                                     {column.label}
                                     {activeSortField === column.key && <em>{activeSortDirection === 'asc' ? '▲' : '▼'}</em>}
                                 </button>
-                            ))}
-                        </div>
-                        <div className={styles.routeUnitFilterRow}>
-                            {ROUTE_UNIT_COLUMNS.map(column => (
-                                <input
-                                    key={column.key}
-                                    value={columnFilters[column.key] || ''}
-                                    onChange={event => updateColumnFilter(column.key, event.target.value)}
-                                    placeholder={column.numeric ? '숫자' : '필터'}
-                                    inputMode={column.numeric ? 'numeric' : 'text'}
-                                    aria-label={`${column.label} 필터`}
-                                />
                             ))}
                         </div>
                         {visibleGroups.map(item => (
