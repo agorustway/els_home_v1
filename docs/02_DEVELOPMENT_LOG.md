@@ -1,3 +1,24 @@
+## [2026-05-27] 아산 연간실적 구간단가 분석 추가 (v5.14.233)
+### 핵심
+- 실적관리 하위 탭에 `구간단가`를 추가했습니다. 연간 원장 DB를 마감월 기준으로 읽고 `픽업-지역-작업지-하차 + 매출열 + 청구처 + 지급처 + TYPE` 조합별 청구/하불/차액/건당단가를 표시합니다.
+- 구간단가 화면은 `전체/연도별/월별` 범위를 제공하며, 선택 구간의 기간별 단가 변동을 청구단가/하불단가 평균선과 최고/최저 포인트가 있는 그래프로 보여줍니다.
+- Supabase DB 선집계 RPC SQL(`20260527_asan_annual_route_unit_price_rpc.sql`)을 추가했습니다. Supabase 앱 커넥터 재인증 전에는 웹이 snapshot_id만 필터링해 읽고 JS에서 범위 집계한 뒤 dashboard snapshot 캐시를 사용합니다.
+### 검증
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/performance/annual/route.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- 로컬 `http://localhost:3033/employees/branches/asan?debug=true`: `구간단가` 탭 진입, 전체 v2 snapshot 367,993건/160구간 표시 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/app/api/branches/asan/performance/annual/route.js`
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260527_asan_annual_route_unit_price_rpc.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] GLAPS 항목매핑 코드기준 병합 (v5.14.232)
 ### 핵심
 - GLAPS코드 화면의 항목매핑 중복 기준을 `매핑항목 + 운송경로코드 + 최종코드(BP)`로 바꿔, 같은 GLAPS 코드에 붙은 여러 ELS 매치코드/디스크립션을 미병합 중복으로 빨간색 표시합니다.

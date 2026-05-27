@@ -44,7 +44,7 @@ const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
 const ASAN_DISPATCH_RELOAD_STATE_KEY = 'asan_dispatch_reload_state';
 const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
-const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance'];
+const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance', 'route-unit-price'];
 const ASAN_DISPATCH_VIEW_TYPES = Object.freeze(['integrated', 'glovis', 'mobis']);
 const ASAN_DISPATCH_MAIN_VIEWS = Object.freeze(['dashboard', 'grid', 'detail', 'detail-change', 'glaps-master']);
 
@@ -73,6 +73,7 @@ const ASAN_PERFORMANCE_TAB_LOADERS = {
     'summary-performance': [loadAsanSummaryPerformance],
     'monthly-performance': [loadAsanMonthlyPerformance],
     'annual-performance': [loadAsanAnnualPerformance],
+    'route-unit-price': [loadAsanAnnualPerformance],
 };
 
 function prefetchAsanLoaders(loaders = []) {
@@ -3710,6 +3711,15 @@ function AsanPerformanceManagement() {
                 >
                     연간실적
                 </button>
+                <button
+                    className={`${styles.performanceTabBtn} ${activePerformanceTab === 'route-unit-price' ? styles.performanceTabBtnActive : ''}`}
+                    onClick={() => switchPerformanceTab('route-unit-price')}
+                    onMouseEnter={() => prefetchPerformanceTab('route-unit-price')}
+                    onFocus={() => prefetchPerformanceTab('route-unit-price')}
+                    onTouchStart={() => prefetchPerformanceTab('route-unit-price')}
+                >
+                    구간단가
+                </button>
             </div>
 
             <div className={styles.performanceContent}>
@@ -3722,6 +3732,9 @@ function AsanPerformanceManagement() {
                 )}
                 {activePerformanceTab === 'annual-performance' && (
                     <AsanAnnualPerformance />
+                )}
+                {activePerformanceTab === 'route-unit-price' && (
+                    <AsanAnnualPerformance initialAnalysisView="route-unit" title="구간단가" />
                 )}
             </div>
         </div>

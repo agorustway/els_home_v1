@@ -727,6 +727,18 @@ function numberValue(value) {
     return Number.isFinite(num) ? num : 0;
 }
 
+function amountValue(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const text = String(value ?? '').trim();
+    if (!text || text === '-') return 0;
+    const negative = /^\(.*\)$/.test(text) || /^-/.test(text);
+    const compact = text.replace(/[^\d.]/g, '');
+    if (!compact) return 0;
+    const num = Number(compact);
+    if (!Number.isFinite(num)) return 0;
+    return negative ? -Math.abs(num) : num;
+}
+
 function roundMetric(value) {
     return Math.round(numberValue(value) * 100) / 100;
 }
@@ -1248,6 +1260,396 @@ function annualRowToValues(row, headers) {
     });
 }
 
+function normalizeRouteUnitText(value) {
+    return String(value ?? '').trim() || '-';
+}
+
+function normalizedHeaderKey(value) {
+    return String(value || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function routeUnitValue(row, candidates = []) {
+    const rowData = row.row_data && typeof row.row_data === 'object' ? row.row_data : {};
+    for (const name of candidates) {
+        if (Object.prototype.hasOwnProperty.call(rowData, name)) return normalizeRouteUnitText(rowData[name]);
+    }
+    const normalizedCandidates = candidates.map(normalizedHeaderKey).filter(Boolean);
+    for (const [key, value] of Object.entries(rowData)) {
+        const normalized = normalizedHeaderKey(key);
+        if (normalizedCandidates.some(candidate => normalized === candidate || normalized.includes(candidate))) {
+            return normalizeRouteUnitText(value);
+        }
+    }
+    return '-';
+}
+
+function routeUnitPeriod(row = {}) {
+    const year = Number(row.year_value);
+    const month = Number(row.month_value);
+    if (Number.isFinite(year) && Number.isFinite(month) && year > 0 && month > 0) {
+        return {
+            year,
+            month,
+            period: `${year}-${String(month).padStart(2, '0')}`,
+        };
+    }
+    const rowData = row.row_data && typeof row.row_data === 'object' ? row.row_data : {};
+    const raw = routeUnitValue({ row_data: rowData }, ['마감월', '월', '정산월']);
+    const match = String(raw || '').match(/^(\d{4})[-./]?(0?[1-9]|1[0-2])/);
+    if (!match) return { year: 0, month: 0, period: '' };
+    const parsedYear = Number(match[1]);
+    const parsedMonth = Number(match[2]);
+    return {
+        year: parsedYear,
+        month: parsedMonth,
+        period: `${parsedYear}-${String(parsedMonth).padStart(2, '0')}`,
+    };
+}
+
+function routeUnitWorkDate(row = {}) {
+    const raw = routeUnitValue(row, ['작업일자', '작업일', '운송일자']);
+    const match = String(raw || '').match(/^(\d{4})[-./]?(0?[1-9]|1[0-2])[-./]?(0?[1-9]|[12]\d|3[01])/);
+    if (!match) return '';
+    return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+}
+
+function normalizeRouteUnitScope(searchParams, periods = []) {
+    const mode = String(searchParams.get('unit_scope') || 'all').toLowerCase();
+    const normalizedMode = ['all', 'year', 'month'].includes(mode) ? mode : 'all';
+    const years = Array.from(new Set(periods.map(period => String(period).slice(0, 4)).filter(Boolean))).sort();
+    const latestPeriod = periods[periods.length - 1] || '';
+    const requestedYear = String(searchParams.get('unit_year') || '').trim();
+    const requestedMonth = String(searchParams.get('unit_month') || '').trim();
+    const year = requestedYear || (latestPeriod ? latestPeriod.slice(0, 4) : years[years.length - 1] || '');
+    const month = requestedMonth || (latestPeriod || '');
+    return {
+        mode: normalizedMode,
+        year,
+        month,
+        years,
+        months: periods,
+        label: normalizedMode === 'year'
+            ? `${year || '-'}년`
+            : (normalizedMode === 'month' ? `${month || '-'} 마감월` : '전체 기간'),
+    };
+}
+
+function addRouteUnitMetric(bucket, metric = {}) {
+    bucket.revenue += numberValue(metric.revenue);
+    bucket.purchase += numberValue(metric.purchase);
+    bucket.profit += numberValue(metric.profit);
+    bucket.rowCount += numberValue(metric.rowCount || 1);
+}
+
+function ensureRouteUnitSeries(map, key, seed = {}) {
+    if (!key) return null;
+    if (!map.has(key)) {
+        map.set(key, {
+            ...seed,
+            key,
+            revenue: 0,
+            purchase: 0,
+            profit: 0,
+            rowCount: 0,
+        });
+    }
+    return map.get(key);
+}
+
+function routeUnitTrendSeed(scope, periodInfo, workDate) {
+    if (scope.mode === 'month') {
+        const key = workDate || periodInfo.period || '미지정';
+        return { key, label: key, basis: '작업일자' };
+    }
+    if (scope.mode === 'year') {
+        const key = periodInfo.period || '미지정';
+        return { key, label: key, period: periodInfo.period, basis: '월별' };
+    }
+    const key = periodInfo.year ? String(periodInfo.year) : '미지정';
+    return { key, label: key, year: periodInfo.year || '', basis: '연도별' };
+}
+
+function finalizeRouteUnitMetric(item = {}, totalRevenue = 0) {
+    const finalized = finalizeMetricItem(item, totalRevenue);
+    finalized.unitRevenue = finalized.rowCount ? roundMetric(finalized.revenue / finalized.rowCount) : 0;
+    finalized.unitPurchase = finalized.rowCount ? roundMetric(finalized.purchase / finalized.rowCount) : 0;
+    finalized.unitProfit = finalized.rowCount ? roundMetric(finalized.profit / finalized.rowCount) : 0;
+    return finalized;
+}
+
+function routeUnitRowsToPayload({ rows = [], scope, sourceSignature, routeColumns, descriptorColumns, amountColumns, summary = {}, engine = 'supabase-rpc' }) {
+    const groups = new Map();
+    let totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+
+    for (const row of rows || []) {
+        const key = String(row.route_key || '').trim();
+        if (!key) continue;
+        if (!groups.has(key)) {
+            groups.set(key, {
+                key,
+                routeLabel: row.route_label || [row.pickup, row.region, row.work_site, row.unload].map(normalizeRouteUnitText).join(' - '),
+                pickup: row.pickup || '-',
+                region: row.region || '-',
+                workSite: row.work_site || '-',
+                unload: row.unload || '-',
+                salesItem: row.sales_item || '-',
+                billTo: row.bill_to || '-',
+                payTo: row.pay_to || '-',
+                type: row.type_value || '-',
+                revenue: numberValue(row.group_revenue),
+                purchase: numberValue(row.group_purchase),
+                profit: numberValue(row.group_profit),
+                rowCount: numberValue(row.group_row_count),
+                series: [],
+            });
+        }
+        const bucket = groups.get(key);
+        bucket.series.push(finalizeRouteUnitMetric({
+            key: row.trend_key || '',
+            label: row.trend_label || row.trend_key || '',
+            basis: row.trend_basis || '',
+            revenue: numberValue(row.revenue),
+            purchase: numberValue(row.purchase),
+            profit: numberValue(row.profit),
+            rowCount: numberValue(row.row_count),
+        }));
+
+        if (row.scope_row_count != null) {
+            totals = {
+                revenue: numberValue(row.scope_revenue),
+                purchase: numberValue(row.scope_purchase),
+                profit: numberValue(row.scope_profit),
+                rowCount: numberValue(row.scope_row_count),
+            };
+        }
+    }
+
+    const groupItems = Array.from(groups.values())
+        .map((item) => ({
+            ...finalizeRouteUnitMetric(item, totals.revenue),
+            series: item.series.sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR')),
+        }))
+        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)));
+
+    if (!rows.length) {
+        totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+    }
+
+    return {
+        routeUnitPrice: {
+            scope,
+            basis: '마감월',
+            trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
+            sourceSignature,
+            engine,
+            routeColumns,
+            descriptorColumns,
+            amountColumns,
+            scannedRows: totals.rowCount,
+            rowCount: totals.rowCount,
+            totals: finalizeRouteUnitMetric(totals),
+            groups: groupItems,
+            summary: {
+                periodStart: summary.periodStart || '',
+                periodEnd: summary.periodEnd || '',
+                annualFileCount: summary.annualFileCount || 0,
+            },
+        },
+    };
+}
+
+async function tryAnnualRouteUnitPriceRpc(supabase, scope) {
+    const scopeYear = scope.mode === 'year' || scope.mode === 'month'
+        ? Number(scope.year || String(scope.month || '').slice(0, 4))
+        : null;
+    const scopeMonth = scope.mode === 'month'
+        ? Number(String(scope.month || '').slice(5, 7))
+        : null;
+    const { data, error } = await supabase.rpc('asan_annual_route_unit_price_rows', {
+        p_scope: scope.mode,
+        p_year: Number.isFinite(scopeYear) ? scopeYear : null,
+        p_month: Number.isFinite(scopeMonth) ? scopeMonth : null,
+        p_limit: 160,
+    });
+    if (error) {
+        const text = `${error.code || ''} ${error.message || ''}`.toLowerCase();
+        if (text.includes('42883') || text.includes('pgrst202') || text.includes('asan_annual_route_unit_price_rows')) {
+            return null;
+        }
+        throw new Error(error.message);
+    }
+    return Array.isArray(data) ? data : [];
+}
+
+async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature }) {
+    const supabase = getSupabaseAdmin();
+    const summary = mergeAnnualSummaries(metas);
+    const snapshotIds = metas.map(meta => summaryOf(meta).currentSnapshotId || summaryOf(meta).snapshotId).filter(Boolean);
+    const allMetasHaveSnapshot = metas.length > 0 && snapshotIds.length === metas.length;
+    const groups = new Map();
+    const totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
+    const routeColumns = ['픽업', '지역', '작업지', '하차'];
+    const descriptorColumns = ['매출', '청구처', '지급처', 'TYPE'];
+    const amountColumns = ['청구', '하불'];
+    const batchSize = 1000;
+    const maxRows = 650000;
+    let scannedRows = 0;
+
+    if (!metas.length) {
+        return {
+            routeUnitPrice: {
+                scope,
+                basis: '마감월',
+                sourceSignature,
+                routeColumns,
+                descriptorColumns,
+                amountColumns,
+                rowCount: 0,
+                groups: [],
+                totals,
+            },
+        };
+    }
+
+    const rpcRows = await tryAnnualRouteUnitPriceRpc(supabase, scope);
+    if (rpcRows) {
+        return routeUnitRowsToPayload({
+            rows: rpcRows,
+            scope,
+            sourceSignature,
+            routeColumns,
+            descriptorColumns,
+            amountColumns,
+            summary,
+            engine: 'supabase-rpc',
+        });
+    }
+
+    const consumeRows = (rows = []) => {
+        for (const row of rows) {
+            const periodInfo = routeUnitPeriod(row);
+            if (!periodInfo.period) continue;
+            if (scope.mode === 'year' && scope.year && String(periodInfo.year) !== String(scope.year)) continue;
+            if (scope.mode === 'month' && scope.month && periodInfo.period !== scope.month) continue;
+
+            const revenue = amountValue(routeUnitValue(row, ['청구', '청구금액', '매출금액']));
+            const purchase = amountValue(routeUnitValue(row, ['하불', '지급금액', '매입금액']));
+            if (!revenue && !purchase) continue;
+            const profit = revenue - purchase;
+            const pickup = routeUnitValue(row, ['픽업', '청구픽업']);
+            const region = routeUnitValue(row, ['지역']);
+            const workSite = routeUnitValue(row, ['작업지']);
+            const unload = routeUnitValue(row, ['하차', '하차지']);
+            const salesItem = routeUnitValue(row, ['매출', '매출구분', '항목']);
+            const billTo = routeUnitValue(row, ['청구처', '거래처', '화주']);
+            const payTo = routeUnitValue(row, ['지급처', '하불처', '운송사']);
+            const type = routeUnitValue(row, ['TYPE', '타입', '규격']);
+            const routeLabel = [pickup, region, workSite, unload].map(normalizeRouteUnitText).join(' - ');
+            const key = [routeLabel, salesItem, billTo, payTo, type].join('||');
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    routeLabel,
+                    pickup,
+                    region,
+                    workSite,
+                    unload,
+                    salesItem,
+                    billTo,
+                    payTo,
+                    type,
+                    revenue: 0,
+                    purchase: 0,
+                    profit: 0,
+                    rowCount: 0,
+                    seriesMap: new Map(),
+                });
+            }
+            const bucket = groups.get(key);
+            addRouteUnitMetric(bucket, { revenue, purchase, profit, rowCount: 1 });
+            addRouteUnitMetric(totals, { revenue, purchase, profit, rowCount: 1 });
+            const workDate = routeUnitWorkDate(row);
+            const trendSeed = routeUnitTrendSeed(scope, periodInfo, workDate);
+            const trend = ensureRouteUnitSeries(bucket.seriesMap, trendSeed.key, trendSeed);
+            if (trend) addRouteUnitMetric(trend, { revenue, purchase, profit, rowCount: 1 });
+        }
+    };
+
+    const keysetSources = allMetasHaveSnapshot
+        ? snapshotIds.map(snapshotId => ({ snapshotId }))
+        : (metas.length
+            ? metas.map(meta => ({ filePath: meta.file_path, sheetName: meta.sheet_name }))
+            : [{ currentOnly: true }]);
+
+    for (const source of keysetSources) {
+        let lastRowIndex = -1;
+        for (let guard = 0; guard < maxRows; guard += batchSize) {
+            let query = supabase
+                .from('branch_performance_rows')
+                .select('row_data,row_index,year_value,month_value,snapshot_id')
+                .eq('branch_id', 'asan')
+                .eq('dataset_type', 'annual')
+                .order('row_index', { ascending: true })
+                .limit(batchSize);
+            if (source.snapshotId) {
+                query = query.eq('snapshot_id', source.snapshotId);
+            } else if (source.filePath) {
+                query = query.eq('is_current', true).eq('file_path', source.filePath).eq('sheet_name', source.sheetName || '');
+            } else {
+                query = query.eq('is_current', true);
+            }
+            if (lastRowIndex >= 0) query = query.gt('row_index', lastRowIndex);
+
+            const { data, error } = await query;
+            if (error) throw new Error(error.message);
+            const rows = data || [];
+            if (!rows.length) break;
+            scannedRows += rows.length;
+            consumeRows(rows);
+            const nextRowIndex = Number(rows[rows.length - 1]?.row_index);
+            if (!Number.isFinite(nextRowIndex) || nextRowIndex <= lastRowIndex || rows.length < batchSize) break;
+            lastRowIndex = nextRowIndex;
+            if (scannedRows >= maxRows) break;
+        }
+        if (scannedRows >= maxRows) break;
+    }
+
+    const totalRevenue = totals.revenue;
+    const groupItems = Array.from(groups.values())
+        .map((item) => {
+            const series = Array.from(item.seriesMap.values())
+                .map(metric => finalizeRouteUnitMetric(metric))
+                .sort((a, b) => String(a.key || a.label).localeCompare(String(b.key || b.label), 'ko-KR'));
+            const finalized = finalizeRouteUnitMetric(item, totalRevenue);
+            delete finalized.seriesMap;
+            finalized.series = series;
+            return finalized;
+        })
+        .sort((a, b) => Math.abs(numberValue(b.revenue)) - Math.abs(numberValue(a.revenue)))
+        .slice(0, 160);
+
+    return {
+        routeUnitPrice: {
+            scope,
+            basis: '마감월',
+            trendBasis: scope.mode === 'month' ? '작업일자별' : (scope.mode === 'year' ? '월별' : '연도별'),
+            sourceSignature,
+            routeColumns,
+            descriptorColumns,
+            amountColumns,
+            scannedRows,
+            rowCount: totals.rowCount,
+            totals: finalizeRouteUnitMetric(totals),
+            groups: groupItems,
+            summary: {
+                periodStart: summary.periodStart || '',
+                periodEnd: summary.periodEnd || '',
+                annualFileCount: summary.annualFileCount || metas.length,
+            },
+        },
+    };
+}
+
 async function getAnnualPagedRows({ query, buildQuery, headers, metaBySnapshot, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, orderBySnapshot = false, search = '', searchMode = 'or' }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
@@ -1512,6 +1914,29 @@ export async function queryAsanAnnualPerformanceDashboardFromSupabase(searchPara
         sourceSyncedAt: state.sourceSyncedAt,
         refresh: dashboardRefreshRequested(searchParams),
         buildPayload: async () => buildAnnualDashboardPayloadFromMetas(state.metas),
+    });
+}
+
+export async function queryAsanAnnualRouteUnitPriceFromSupabase(searchParams) {
+    const state = await annualDashboardSourceState();
+    const summary = mergeAnnualSummaries(state.metas);
+    const periods = (summary.monthly || [])
+        .map(item => String(item.period || '').trim())
+        .filter(Boolean)
+        .sort();
+    const scope = normalizeRouteUnitScope(searchParams, periods);
+    const scopeKey = `route-unit-price:v2:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
+    return withDashboardSnapshot({
+        dashboardType: 'annual-route-unit-price',
+        scopeKey,
+        sourceSignature: `${state.signature}:route-unit-price-v2`,
+        sourceSyncedAt: state.sourceSyncedAt,
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: async () => buildAnnualRouteUnitPricePayload({
+            metas: state.metas,
+            scope,
+            sourceSignature: state.signature,
+        }),
     });
 }
 

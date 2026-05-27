@@ -22,6 +22,7 @@ const EMPTY_LIST = Object.freeze([]);
 const ANALYSIS_VIEWS = [
     { key: 'overview', label: '개요' },
     { key: 'matrix', label: '연도×월' },
+    { key: 'route-unit', label: '구간단가' },
     { key: 'segments', label: '계약/차량' },
     { key: 'calendar', label: '요일' },
     { key: 'evidence', label: '검증·근거' },
@@ -855,7 +856,266 @@ function SegmentEvidenceTable({ label, items = [], filterTerms = [], onOpen }) {
     );
 }
 
-export default function AsanAnnualPerformance({ searchHandoff = null }) {
+function RouteUnitUnitTrendChart({ item = null, scopeLabel = '-', basis = '연도별' }) {
+    const series = normalizeSeries(item?.series || []);
+    const width = 940;
+    const height = 246;
+    const pad = { left: 58, right: 42, top: 30, bottom: 46 };
+    const chartW = width - pad.left - pad.right;
+    const chartH = height - pad.top - pad.bottom;
+    const maxUnit = Math.max(1, ...series.flatMap(row => [safeNumber(row.unitRevenue), safeNumber(row.unitPurchase)]));
+    const xAt = idx => pad.left + (series.length <= 1 ? 0 : (idx / (series.length - 1)) * chartW);
+    const yAt = value => pad.top + chartH - (safeNumber(value) / maxUnit) * chartH;
+    const linePoints = field => series.map((row, idx) => `${xAt(idx).toFixed(1)},${yAt(row[field]).toFixed(1)}`).join(' ');
+    const avgRevenue = series.length ? sumField(series, 'unitRevenue') / series.length : 0;
+    const avgPurchase = series.length ? sumField(series, 'unitPurchase') / series.length : 0;
+    const recent = series[series.length - 1] || null;
+    const highRevenue = series.reduce((best, row) => (!best || safeNumber(row.unitRevenue) > safeNumber(best.unitRevenue) ? row : best), null);
+    const lowProfit = series.reduce((best, row) => (!best || safeNumber(row.unitProfit) < safeNumber(best.unitProfit) ? row : best), null);
+    const tickEvery = Math.max(1, Math.ceil(series.length / 7));
+
+    return (
+        <section className={styles.routeUnitTrend}>
+            <div className={styles.panelHeader}>
+                <h3>선택 구간 단가 변동</h3>
+                <span>{scopeLabel} · {basis} · 건당 청구/하불</span>
+            </div>
+            {!item || series.length < 2 ? (
+                <div className={styles.emptyPanel}>선택 구간의 기간별 단가 변동 데이터가 부족합니다.</div>
+            ) : (
+                <>
+                    <svg className={styles.routeUnitTrendSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="구간단가 변동 차트">
+                        {[0.25, 0.5, 0.75, 1].map(ratio => (
+                            <line
+                                key={ratio}
+                                x1={pad.left}
+                                y1={pad.top + chartH - chartH * ratio}
+                                x2={width - pad.right}
+                                y2={pad.top + chartH - chartH * ratio}
+                                className={styles.axisLine}
+                            />
+                        ))}
+                        <line x1={pad.left} y1={yAt(avgRevenue)} x2={width - pad.right} y2={yAt(avgRevenue)} className={styles.trendAvgRevenueLine} />
+                        <line x1={pad.left} y1={yAt(avgPurchase)} x2={width - pad.right} y2={yAt(avgPurchase)} className={styles.trendAvgProfitLine} />
+                        <polyline points={linePoints('unitRevenue')} className={styles.revenueLine} />
+                        <polyline points={linePoints('unitPurchase')} className={styles.purchaseLine} />
+                        <text x={width - pad.right} y={Math.max(14, yAt(avgRevenue) - 7)} textAnchor="end" className={styles.trendAvgLabel}>
+                            청구 평균 {formatPerformanceAmount(avgRevenue)}
+                        </text>
+                        <text x={width - pad.right} y={Math.min(height - 10, yAt(avgPurchase) + 16)} textAnchor="end" className={styles.trendAvgLabel}>
+                            하불 평균 {formatPerformanceAmount(avgPurchase)}
+                        </text>
+                        {highRevenue && (
+                            <g>
+                                <circle cx={xAt(series.indexOf(highRevenue))} cy={yAt(highRevenue.unitRevenue)} r="5" className={styles.trendRevenuePoint}>
+                                    <title>{`${highRevenue.label || highRevenue.key} 최고 청구단가 ${formatPerformanceAmount(highRevenue.unitRevenue)}`}</title>
+                                </circle>
+                                <text x={xAt(series.indexOf(highRevenue))} y={Math.max(14, yAt(highRevenue.unitRevenue) - 10)} className={styles.trendMarkerLabel} textAnchor="middle">청구 최고</text>
+                            </g>
+                        )}
+                        {lowProfit && (
+                            <g>
+                                <circle cx={xAt(series.indexOf(lowProfit))} cy={yAt(Math.max(0, lowProfit.unitPurchase))} r="4.5" className={styles.trendLossPoint}>
+                                    <title>{`${lowProfit.label || lowProfit.key} 최저 차액 ${formatPerformanceAmount(lowProfit.unitProfit)}`}</title>
+                                </circle>
+                                <text x={xAt(series.indexOf(lowProfit))} y={Math.min(height - 10, yAt(Math.max(0, lowProfit.unitPurchase)) + 18)} className={styles.trendMarkerLabel} textAnchor="middle">차액 최저</text>
+                            </g>
+                        )}
+                        {recent && (
+                            <g>
+                                <circle cx={xAt(series.length - 1)} cy={yAt(recent.unitRevenue)} r="4.5" className={styles.trendRecentPoint}>
+                                    <title>{`${recent.label || recent.key} 최근 청구 ${formatPerformanceAmount(recent.unitRevenue)}, 하불 ${formatPerformanceAmount(recent.unitPurchase)}`}</title>
+                                </circle>
+                                <text x={Math.min(width - 40, xAt(series.length - 1))} y={Math.max(14, yAt(recent.unitRevenue) - 10)} className={styles.trendMarkerLabel} textAnchor="end">최근</text>
+                            </g>
+                        )}
+                        {series.filter((_, idx) => idx % tickEvery === 0 || idx === series.length - 1).map((row, idx) => (
+                            <text key={`${row.key}-${idx}`} x={xAt(series.indexOf(row))} y={height - 16} className={styles.axisLabel} textAnchor="middle">
+                                {row.label || row.key}
+                            </text>
+                        ))}
+                    </svg>
+                    <div className={styles.routeUnitTrendSummary}>
+                        <div><span>최근 청구단가</span><strong>{formatPerformanceAmount(recent?.unitRevenue)}</strong><em>{recent?.label || '-'}</em></div>
+                        <div><span>최근 하불단가</span><strong>{formatPerformanceAmount(recent?.unitPurchase)}</strong><em>건당 기준</em></div>
+                        <div><span>최고 청구단가</span><strong>{formatPerformanceAmount(highRevenue?.unitRevenue)}</strong><em>{highRevenue?.label || '-'}</em></div>
+                        <div><span>최저 차액</span><strong>{formatPerformanceAmount(lowProfit?.unitProfit)}</strong><em>{lowProfit?.label || '-'}</em></div>
+                    </div>
+                </>
+            )}
+        </section>
+    );
+}
+
+function RouteUnitPricePanel({
+    data,
+    loading,
+    error,
+    scope,
+    setScope,
+    years,
+    year,
+    setYear,
+    months,
+    month,
+    setMonth,
+    selectedKey,
+    setSelectedKey,
+    onRefresh,
+    onOpenDetail,
+}) {
+    const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
+    const selected = groups.find(item => item.key === selectedKey) || groups[0] || null;
+    const totals = data?.totals || {};
+    const maxRevenue = Math.max(1, ...groups.map(item => Math.abs(safeNumber(item.revenue))));
+    const scopeButtons = [
+        { key: 'all', label: '전체' },
+        { key: 'year', label: '연도별' },
+        { key: 'month', label: '월별' },
+    ];
+
+    return (
+        <div className={styles.routeUnitShell}>
+            <section className={styles.routeUnitControls}>
+                <div>
+                    <span>수집범위</span>
+                    <strong>{data?.scope?.label || (scope === 'all' ? '전체 기간' : '-')}</strong>
+                    <em>마감월 기준 · 픽업-지역-작업지-하차</em>
+                </div>
+                <div className={styles.routeUnitScopeButtons}>
+                    {scopeButtons.map(item => (
+                        <button
+                            key={item.key}
+                            className={scope === item.key ? styles.scopeActive : ''}
+                            onClick={() => setScope(item.key)}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+                <select
+                    aria-label="구간단가 연도"
+                    disabled={scope === 'all'}
+                    value={year || ''}
+                    onChange={event => setYear(event.target.value)}
+                >
+                    {years.map(item => <option key={item} value={item}>{item}년</option>)}
+                </select>
+                <select
+                    aria-label="구간단가 마감월"
+                    disabled={scope !== 'month'}
+                    value={month || ''}
+                    onChange={event => setMonth(event.target.value)}
+                >
+                    {months.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <button className={styles.ghostBtn} onClick={() => onRefresh({ refresh: true })} disabled={loading}>
+                    {loading ? '조회중' : '갱신'}
+                </button>
+            </section>
+
+            {error && <div className={styles.errorBox}>{error}</div>}
+
+            <div className={styles.routeUnitKpis}>
+                <div><span>청구 합계</span><strong>{formatPerformanceAmount(totals.revenue)}</strong><em>{safeNumber(totals.rowCount).toLocaleString('ko-KR')}건</em></div>
+                <div><span>하불 합계</span><strong>{formatPerformanceAmount(totals.purchase)}</strong><em>건당 {formatPerformanceAmount(totals.unitPurchase)}</em></div>
+                <div><span>차액</span><strong className={safeNumber(totals.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(totals.profit)}</strong><em>건당 {formatPerformanceAmount(totals.unitProfit)}</em></div>
+                <div><span>표시 구간</span><strong>{groups.length.toLocaleString('ko-KR')}</strong><em>{data?.engine || 'supabase'} 집계</em></div>
+            </div>
+
+            <div className={styles.routeUnitLayout}>
+                <section className={styles.routeUnitListPanel}>
+                    <div className={styles.panelHeader}>
+                        <h3>구간별 단가 목록</h3>
+                        <span>매출열 · 청구처 · 지급처 · TYPE · 청구/하불</span>
+                    </div>
+                    {loading && !groups.length ? (
+                        <div className={styles.emptyPanel}>구간단가를 집계하는 중입니다...</div>
+                    ) : !groups.length ? (
+                        <div className={styles.emptyPanel}>구간단가 데이터가 없습니다.</div>
+                    ) : (
+                        <div className={styles.routeUnitRows}>
+                            <div className={styles.routeUnitHead}>
+                                <span>구간</span>
+                                <span>매출열</span>
+                                <span>청구처</span>
+                                <span>지급처</span>
+                                <span>TYPE</span>
+                                <span>청구</span>
+                                <span>하불</span>
+                                <span>건당 청구</span>
+                                <span>건수</span>
+                            </div>
+                            {groups.map(item => (
+                                <button
+                                    key={item.key}
+                                    className={`${styles.routeUnitRow} ${selected?.key === item.key ? styles.routeUnitRowActive : ''}`}
+                                    onClick={() => setSelectedKey(item.key)}
+                                >
+                                    <span title={item.routeLabel}>{item.routeLabel}</span>
+                                    <span>{item.salesItem}</span>
+                                    <span>{item.billTo}</span>
+                                    <span>{item.payTo}</span>
+                                    <span>{item.type}</span>
+                                    <b>{formatPerformanceAmount(item.revenue)}</b>
+                                    <b>{formatPerformanceAmount(item.purchase)}</b>
+                                    <b>{formatPerformanceAmount(item.unitRevenue)}</b>
+                                    <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</em>
+                                    <i><DataBar value={item.revenue} max={maxRevenue} tone="revenue" /></i>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <div className={styles.routeUnitDetailStack}>
+                    <section className={styles.routeUnitSelectedCard}>
+                        <div className={styles.panelHeader}>
+                            <h3>선택 구간</h3>
+                            <button
+                                className={styles.inlineAction}
+                                disabled={!selected}
+                                onClick={() => selected && onOpenDetail([
+                                    selected.pickup,
+                                    selected.region,
+                                    selected.workSite,
+                                    selected.unload,
+                                    selected.salesItem,
+                                    selected.billTo,
+                                    selected.payTo,
+                                    selected.type,
+                                ].filter(Boolean), 'and')}
+                            >
+                                원장 상세
+                            </button>
+                        </div>
+                        {selected ? (
+                            <>
+                                <strong className={styles.routeUnitRoute}>{selected.routeLabel}</strong>
+                                <div className={styles.routeUnitMetaGrid}>
+                                    <div><span>매출열</span><b>{selected.salesItem}</b></div>
+                                    <div><span>청구처</span><b>{selected.billTo}</b></div>
+                                    <div><span>지급처</span><b>{selected.payTo}</b></div>
+                                    <div><span>TYPE</span><b>{selected.type}</b></div>
+                                </div>
+                                <div className={styles.routeUnitAmountGrid}>
+                                    <div><span>청구</span><strong>{formatPerformanceAmount(selected.revenue)}</strong><em>건당 {formatPerformanceAmount(selected.unitRevenue)}</em></div>
+                                    <div><span>하불</span><strong>{formatPerformanceAmount(selected.purchase)}</strong><em>건당 {formatPerformanceAmount(selected.unitPurchase)}</em></div>
+                                    <div><span>차액</span><strong className={safeNumber(selected.profit) < 0 ? styles.negative : styles.positive}>{formatPerformanceAmount(selected.profit)}</strong><em>건당 {formatPerformanceAmount(selected.unitProfit)}</em></div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className={styles.emptyPanel}>선택된 구간이 없습니다.</div>
+                        )}
+                    </section>
+                    <RouteUnitUnitTrendChart item={selected} scopeLabel={data?.scope?.label || '-'} basis={data?.trendBasis || '연도별'} />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function AsanAnnualPerformance({ searchHandoff = null, initialAnalysisView = 'overview', title = '연간실적' }) {
     const [selectedPath, setSelectedPath] = useState(DEFAULT_ANNUAL_PERFORMANCE_PATH);
     const [sheetName, setSheetName] = useState(DEFAULT_ANNUAL_PERFORMANCE_SHEET);
     const [headerRow, setHeaderRow] = useState('');
@@ -869,11 +1129,18 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
     const [activeTab, setActiveTab] = useState('analytics');
-    const [analysisView, setAnalysisView] = useState('overview');
+    const [analysisView, setAnalysisView] = useState(initialAnalysisView || 'overview');
     const [selectedSegmentKey, setSelectedSegmentKey] = useState('own_direct');
     const [scopeMode, setScopeMode] = useState('all');
     const [scopeStart, setScopeStart] = useState('');
     const [scopeEnd, setScopeEnd] = useState('');
+    const [routeUnitScope, setRouteUnitScope] = useState('all');
+    const [routeUnitYear, setRouteUnitYear] = useState('');
+    const [routeUnitMonth, setRouteUnitMonth] = useState('');
+    const [routeUnitData, setRouteUnitData] = useState(null);
+    const [routeUnitLoading, setRouteUnitLoading] = useState(false);
+    const [routeUnitError, setRouteUnitError] = useState('');
+    const [selectedRouteUnitKey, setSelectedRouteUnitKey] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchMode, setSearchMode] = useState('or');
@@ -892,6 +1159,10 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
     const syncWasRunningRef = useRef(false);
     const searchEffectReadyRef = useRef(false);
     const appliedSearchHandoffRef = useRef(null);
+
+    useEffect(() => {
+        setAnalysisView(initialAnalysisView || 'overview');
+    }, [initialAnalysisView]);
 
     useEffect(() => {
         const prefs = readPrefs();
@@ -1115,6 +1386,12 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
     const weekday = Array.isArray(summary.weekday) ? summary.weekday : EMPTY_LIST;
     const strategicSegments = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : EMPTY_LIST;
     const periodOptions = useMemo(() => getPeriodOptions(monthly), [monthly]);
+    const routeUnitYears = useMemo(() => Array.from(new Set(periodOptions.map(period => period.slice(0, 4)).filter(Boolean))).sort(), [periodOptions]);
+    const routeUnitMonths = useMemo(() => (
+        routeUnitYear
+            ? periodOptions.filter(period => period.startsWith(`${routeUnitYear}-`))
+            : periodOptions
+    ), [periodOptions, routeUnitYear]);
     const scopeBounds = useMemo(() => getScopeBounds({
         mode: scopeMode,
         periods: periodOptions,
@@ -1232,6 +1509,57 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         if (!scopeStart || !periodOptions.includes(scopeStart)) setScopeStart(periodOptions[0]);
         if (!scopeEnd || !periodOptions.includes(scopeEnd)) setScopeEnd(periodOptions[periodOptions.length - 1]);
     }, [periodOptions, scopeEnd, scopeStart]);
+
+    useEffect(() => {
+        if (!routeUnitYears.length) return;
+        if (!routeUnitYear || !routeUnitYears.includes(routeUnitYear)) {
+            setRouteUnitYear(routeUnitYears[routeUnitYears.length - 1]);
+        }
+    }, [routeUnitYear, routeUnitYears]);
+
+    useEffect(() => {
+        if (!routeUnitMonths.length) return;
+        if (!routeUnitMonth || !routeUnitMonths.includes(routeUnitMonth)) {
+            setRouteUnitMonth(routeUnitMonths[routeUnitMonths.length - 1]);
+        }
+    }, [routeUnitMonth, routeUnitMonths]);
+
+    const fetchRouteUnitData = useCallback(async (options = {}) => {
+        if (routeUnitScope === 'year' && !routeUnitYear) return;
+        if (routeUnitScope === 'month' && !routeUnitMonth) return;
+        setRouteUnitLoading(true);
+        setRouteUnitError('');
+        try {
+            const params = new URLSearchParams({
+                source: 'supabase',
+                analysis: 'route-unit-price',
+                unit_scope: routeUnitScope,
+            });
+            if (routeUnitScope === 'year') params.set('unit_year', routeUnitYear);
+            if (routeUnitScope === 'month') {
+                params.set('unit_month', routeUnitMonth);
+                params.set('unit_year', routeUnitMonth.slice(0, 4));
+            }
+            if (options.refresh) params.set('refresh_snapshot', '1');
+            const res = await fetch(`/api/branches/asan/performance/annual?${params.toString()}`, { cache: 'no-store' });
+            const json = await readPerformanceJson(res, '구간단가 조회 실패');
+            const nextData = json.data?.routeUnitPrice || null;
+            setRouteUnitData(nextData);
+            const nextGroups = Array.isArray(nextData?.groups) ? nextData.groups : [];
+            setSelectedRouteUnitKey(prev => (
+                nextGroups.some(item => item.key === prev) ? prev : (nextGroups[0]?.key || '')
+            ));
+        } catch (err) {
+            setRouteUnitError(err.message || '구간단가 조회 실패');
+        } finally {
+            setRouteUnitLoading(false);
+        }
+    }, [routeUnitMonth, routeUnitScope, routeUnitYear]);
+
+    useEffect(() => {
+        if (activeTab !== 'analytics' || analysisView !== 'route-unit') return;
+        fetchRouteUnitData();
+    }, [activeTab, analysisView, fetchRouteUnitData]);
 
     const syncNow = async () => {
         setSyncing(true);
@@ -1403,7 +1731,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
         <div className={styles.container}>
             <div className={styles.topBar}>
                 <div className={styles.titleBlock}>
-                    <h2 className={styles.title}>연간실적</h2>
+                    <h2 className={styles.title}>{title}</h2>
                     <div className={styles.metaLine}>
                         <span>파일 {fmtTs(payload?.file_modified_at)}</span>
                         {elapsed && <span className={styles.elapsed}>{elapsed}</span>}
@@ -1455,17 +1783,19 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                         </div>
                     </section>
 
-                    <ScopeControls
-                        mode={scopeMode}
-                        setMode={setScopeMode}
-                        start={scopeStart}
-                        end={scopeEnd}
-                        setStart={setScopeStart}
-                        setEnd={setScopeEnd}
-                        periods={periodOptions}
-                        bounds={scopeBounds}
-                        rowCount={analysisRows}
-                    />
+                    {analysisView !== 'route-unit' && (
+                        <ScopeControls
+                            mode={scopeMode}
+                            setMode={setScopeMode}
+                            start={scopeStart}
+                            end={scopeEnd}
+                            setStart={setScopeStart}
+                            setEnd={setScopeEnd}
+                            periods={periodOptions}
+                            bounds={scopeBounds}
+                            rowCount={analysisRows}
+                        />
+                    )}
 
                     <div className={styles.analysisTabs} aria-label="연간실적 분석 섹션">
                         {ANALYSIS_VIEWS.map(view => (
@@ -1652,6 +1982,26 @@ export default function AsanAnnualPerformance({ searchHandoff = null }) {
                             </div>
                             <YearMonthHeatmap monthly={scopedMonthly} onSelectPeriod={period => openDetailSearch([period], 'and')} />
                         </section>
+                    )}
+
+                    {analysisView === 'route-unit' && (
+                        <RouteUnitPricePanel
+                            data={routeUnitData}
+                            loading={routeUnitLoading}
+                            error={routeUnitError}
+                            scope={routeUnitScope}
+                            setScope={setRouteUnitScope}
+                            years={routeUnitYears}
+                            year={routeUnitYear}
+                            setYear={setRouteUnitYear}
+                            months={routeUnitMonths}
+                            month={routeUnitMonth}
+                            setMonth={setRouteUnitMonth}
+                            selectedKey={selectedRouteUnitKey}
+                            setSelectedKey={setSelectedRouteUnitKey}
+                            onRefresh={fetchRouteUnitData}
+                            onOpenDetail={openDetailSearch}
+                        />
                     )}
 
                     {analysisView === 'segments' && (

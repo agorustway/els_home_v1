@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { proxyToBackend } from '../../../../els/proxyToBackend';
 import {
+    queryAsanAnnualRouteUnitPriceFromSupabase,
     queryAsanAnnualPerformanceDashboardFromSupabase,
     queryAsanAnnualPerformanceFromSupabase,
 } from '@/lib/asan-branch-db';
@@ -21,9 +22,15 @@ export async function GET(req) {
     if (source !== 'excel') {
         try {
             const dashboard = ['1', 'true', 'yes'].includes(String(url.searchParams.get('dashboard') || '').toLowerCase());
-            const data = dashboard
-                ? await queryAsanAnnualPerformanceDashboardFromSupabase(url.searchParams)
-                : await queryAsanAnnualPerformanceFromSupabase(url.searchParams);
+            const analysis = String(url.searchParams.get('analysis') || '').trim().toLowerCase();
+            let data;
+            if (analysis === 'route-unit-price') {
+                data = await queryAsanAnnualRouteUnitPriceFromSupabase(url.searchParams);
+            } else if (dashboard) {
+                data = await queryAsanAnnualPerformanceDashboardFromSupabase(url.searchParams);
+            } else {
+                data = await queryAsanAnnualPerformanceFromSupabase(url.searchParams);
+            }
             return NextResponse.json({ data });
         } catch (error) {
             return NextResponse.json({ error: error.message || '연간실적 DB 조회 실패' }, { status: 500 });
