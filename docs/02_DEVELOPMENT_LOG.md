@@ -1,3 +1,21 @@
+## [2026-05-28] GLAPS 코드 화면 키값/검수 안내 정리 (v5.14.253)
+### 핵심
+- GLAPS 요약 카드를 운송경로 전체/확정/조정필요/코드없음/원본시트 필터 버튼으로 바꿨습니다.
+- `매핑항목`은 코드 용도, `검수메모`는 매칭 키가 아닌 출처·용도·기본값 참고 메모임을 화면과 수정양식 설명서에 표시했습니다.
+- `운송경로코드`와 `최종코드(BP)`는 수정 가능한 핵심 키값이므로 회색 보호칸 대신 초록 키 컬럼으로 표시하고, 수정양식에서도 초록 키 칸으로 내려받게 했습니다.
+- `NAS 마스터 반영`과 `마스터 업로드`는 회색 `마스터 반영(레거시)` 버튼 안쪽 패널로 접고, NAS 파일 위치를 패널에서 수정할 수 있게 했습니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 아산 구간단가 숨김 기준 통합과 도구줄 정렬 (v5.14.252)
 ### 핵심
 - 구간단가 표의 `묶음 항목` 바를 제거하고, 숨김 드롭존이 컬럼 숨김과 집계 기준 제외를 함께 담당하도록 정리했습니다.

@@ -15,19 +15,23 @@ export const revalidate = 0;
 const PAGE_SIZE = 1000;
 const TEMPLATE_HEADER_ROW_NUMBER = 3;
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
-const ROUTE_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', '운송경로코드', '운송경로명', '경유지', '수정출처', '수정일시']);
+const ROUTE_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', '운송경로명', '경유지', '수정출처', '수정일시']);
+const ROUTE_KEY_TEMPLATE_COLUMNS = new Set(['운송경로코드']);
 const ALIAS_PROTECTED_TEMPLATE_COLUMNS = new Set([
   'ID',
   'GLAPS 디스크립션(설명)',
-  '최종코드(BP)',
   'GLAPS명',
   'GLAPS코드',
   '수정출처',
   '수정일시',
 ]);
+const ALIAS_KEY_TEMPLATE_COLUMNS = new Set(['최종코드(BP)']);
 const PROTECTED_CELL_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
 const PROTECTED_HEADER_FONT = { bold: true, color: { argb: 'FF334155' } };
 const PROTECTED_CELL_FONT = { color: { argb: 'FF475569' } };
+const KEY_CELL_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+const KEY_HEADER_FONT = { bold: true, color: { argb: 'FF14532D' } };
+const KEY_CELL_FONT = { bold: true, color: { argb: 'FF14532D' } };
 
 function isMissingGlapsTableError(error) {
   const message = String(error?.message || error || '');
@@ -99,11 +103,29 @@ function applyProtectedColumnStyle(sheet, headerRowNumber, protectedColumns = ne
   }
 }
 
+function applyKeyColumnStyle(sheet, headerRowNumber, keyColumns = new Set()) {
+  if (!keyColumns.size) return;
+  const headerRow = sheet.getRow(headerRowNumber);
+  for (let col = 1; col <= sheet.columnCount; col += 1) {
+    const header = String(headerRow.getCell(col).value || '').trim();
+    if (!keyColumns.has(header)) continue;
+    const headerCell = headerRow.getCell(col);
+    headerCell.fill = KEY_CELL_FILL;
+    headerCell.font = KEY_HEADER_FONT;
+    for (let rowNumber = headerRowNumber + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const cell = sheet.getCell(rowNumber, col);
+      cell.fill = KEY_CELL_FILL;
+      cell.font = KEY_CELL_FONT;
+    }
+  }
+}
+
 function styleWorksheet(sheet, {
   headerRowNumber = 1,
   titleRowNumber = null,
   noteRowNumber = null,
   protectedColumns = new Set(),
+  keyColumns = new Set(),
 } = {}) {
   const lastColumnNumber = sheet.columnCount;
   sheet.views = [{
@@ -137,6 +159,7 @@ function styleWorksheet(sheet, {
     alignment: { vertical: 'middle', horizontal: 'center' },
   });
   applyProtectedColumnStyle(sheet, headerRowNumber, protectedColumns);
+  applyKeyColumnStyle(sheet, headerRowNumber, keyColumns);
   sheet.autoFilter = { from: `A${headerRowNumber}`, to: `${sheet.getColumn(lastColumnNumber).letter}${headerRowNumber}` };
   sheet.columns.forEach((column) => {
     const values = (column.values || []).slice(headerRowNumber);
@@ -159,24 +182,28 @@ function addGuideWorksheet(workbook) {
   [
     ['공통', '전체', 'ID', '기존 행은 그대로 둡니다. 새 행 추가 시 비워둡니다.', 'ID가 있으면 기존 행 수정, 비어 있으면 신규 추가'],
     ['공통', '전체', '매칭상태', '확정 / 조정필요 / 코드없음 중 하나를 입력합니다.', '영문 ready / needs_mapping / missing_route_code도 인식'],
-    ['공통', '전체', '검수메모', '검수 메모를 자유 입력합니다.', '업로드 시 DB에 반영'],
+    ['공통', '전체', '검수메모', '매칭 키가 아닙니다. 출처/용도/확인 사유/기본값 표시를 남깁니다.', '검색·필터·작업자 인수인계용'],
     ['공통', '전체', '수정출처', '참고용입니다. 수정하지 않아도 됩니다.', '웹수정 / 업로드수정 / 마스터반영 표시'],
     ['공통', '전체', '수정일시', '참고용입니다. 수정하지 않아도 됩니다.', '업로드 반영 기준 아님'],
     ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다. 행을 지우는 것은 삭제로 처리하지 않습니다.', 'Y 외 값은 삭제로 보지 않음'],
     ['공통', '전체', '회색 음영', '회색 칸은 GLAPS 실제 업로드/원장 기준값입니다. 일반 수정 대상이 아닙니다.', 'ELS 매치코드/ELS 디스크립션/검수메모 중심으로 보정'],
+    ['공통', '전체', '초록 키 칸', 'GLAPS에서 확인한 핵심 코드값을 입력/수정하는 칸입니다.', '운송경로코드, 최종코드(BP)'],
+    ['공통', '화면', '요약 카드', '운송경로/확정/조정필요/코드없음/원본시트 카드는 클릭 시 해당 목록으로 이동합니다.', '어떤 행을 봐야 하는지 찾는 필터 버튼'],
     ['마스터코드', '원본 코드시트', 'ELS코드1~N', '수기 별칭은 컬럼 위치와 무관하게 헤더명으로 읽습니다. 한 칸에 여러 값을 넣을 때는 쉼표 또는 줄바꿈으로 구분합니다.', '새 코드 시트 추가 시 파서 연결 필요'],
-    ['운송경로', '운송경로_수정양식', '운송경로코드', '회색 보호칸입니다. GLAPS 기존 운송경로코드를 유지합니다.', '새 코드를 만들지 말고 원장 코드를 사용'],
+    ['운송경로', '운송경로_수정양식', '운송경로코드', '초록 키 칸입니다. GLAPS에서 찾은 운송경로코드를 입력/수정합니다.', '중복검출/병합 기준'],
+    ['운송경로', '중복검출/병합', '운송경로코드', '운송경로코드가 같은 행만 중복검출/병합 대상입니다. 상차지/경유지/하차지는 중복 기준이 아닙니다.', '같은 값은 1개로, 다른 값은 쉼표로 합침'],
     ['운송경로', '운송경로_수정양식', '운송경로명', '회색 보호칸입니다. GLAPS 운송경로명을 유지합니다.', '참고/검색용'],
     ['운송경로', '운송경로_수정양식', '상차지', '배차 상세의 상차지와 매칭될 값을 입력합니다.', '예: 부산신항, 의왕ICD'],
     ['운송경로', '운송경로_수정양식', '경유지', '회색 보호칸입니다. GLAPS 원장 작업지명을 유지합니다.', '배차판 매칭은 경유지(ELS)로 보정'],
     ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
     ['운송경로', '운송경로_수정양식', '하차지(선적)', '배차 상세의 하차지/선적과 매칭될 값을 입력합니다.', '예: 부산신항, 광양항'],
-    ['항목매핑', '항목매핑_수정양식', '매핑항목', '포트 / 선사 / 컨테이너규격 / 운송사 / 컨샤이니 / 기타 중 하나를 입력합니다.', '영문 port / line / container_type / carrier / consignee / generic도 인식'],
+    ['항목매핑', '항목매핑_수정양식', '매핑항목', '코드가 어느 GLAPS 컬럼에 쓰이는지 정하는 종류입니다. 포트 / 선사 / 컨테이너규격 / 운송사 / 컨샤이니 / 기타 중 하나를 입력합니다.', '영문 port / line / container_type / carrier / consignee / generic도 인식'],
     ['항목매핑', '항목매핑_수정양식', 'ELS 매치코드', '배차판에서 들어오는 짧은 코드값을 입력합니다.', '예: 40HC, CMA, INKAT'],
     ['항목매핑', '항목매핑_수정양식', 'ELS 디스크립션(설명)', '우리 기준 설명 또는 별칭을 입력합니다.', '검색/매칭 보조'],
     ['항목매핑', '항목매핑_수정양식', 'GLAPS 디스크립션(설명)', '회색 보호칸입니다. GLAPS 원장 설명을 유지합니다.', '참고/검색용'],
-    ['항목매핑', '항목매핑_수정양식', '최종코드(BP)', '회색 보호칸입니다. GLAPS 업로드에 들어갈 기존 코드를 유지합니다. 운송사는 BP 값입니다.', '임의 생성 금지'],
-    ['항목매핑', '항목매핑_수정양식', '검수메모', '포트 중복 코드의 기본값은 기본/default/우선 중 하나를 적어 표시합니다.', '상세배차/변동내역 선택목록의 기본값'],
+    ['항목매핑', '항목매핑_수정양식', '최종코드(BP)', '초록 키 칸입니다. GLAPS에서 찾은 최종코드 또는 운송사 BP 값을 입력/수정합니다.', '중복검출/병합 기준'],
+    ['항목매핑', '중복검출/병합', '최종코드(BP)', '최종코드(BP)가 같은 행만 중복검출/병합 대상입니다. 매핑항목/검수메모는 중복 기준이 아닙니다.', '같은 값은 1개로, 다른 ELS 매치코드/설명은 쉼표로 합침'],
+    ['항목매핑', '항목매핑_수정양식', '검수메모', '실출하지코드/운송사코드 같은 원본 출처나 기본/default/우선 같은 선택 기준을 적습니다.', '코드 매칭 조건에는 사용하지 않음'],
   ].forEach(row => sheet.addRow(row));
   sheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2', activePane: 'bottomLeft' }];
   applyRowCellStyle(sheet, 1, 5, {
@@ -276,6 +303,7 @@ export async function GET(request) {
         titleRowNumber: 1,
         noteRowNumber: 2,
         protectedColumns: ROUTE_PROTECTED_TEMPLATE_COLUMNS,
+        keyColumns: ROUTE_KEY_TEMPLATE_COLUMNS,
       });
     }
 
@@ -301,6 +329,7 @@ export async function GET(request) {
         titleRowNumber: 1,
         noteRowNumber: 2,
         protectedColumns: ALIAS_PROTECTED_TEMPLATE_COLUMNS,
+        keyColumns: ALIAS_KEY_TEMPLATE_COLUMNS,
       });
     }
 

@@ -30,6 +30,7 @@ const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const TABLE_COLLATOR = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
 const EMPTY_TABLE_FILTER_VALUE = '__GLAPS_EMPTY_FILTER__';
 const GLAPS_MASTER_PAGE_SIZE = 100;
+const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
 
 const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
@@ -177,6 +178,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const [duplicateOnly, setDuplicateOnly] = useState(false);
     const [selectedDuplicateIds, setSelectedDuplicateIds] = useState([]);
     const [masterDisplayLimit, setMasterDisplayLimit] = useState(GLAPS_MASTER_PAGE_SIZE);
+    const [legacyMasterPanelOpen, setLegacyMasterPanelOpen] = useState(false);
+    const [masterNasPath, setMasterNasPath] = useState(DEFAULT_GLAPS_MASTER_PATH);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
 
@@ -246,11 +249,12 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         },
     }), [aliases.length, routes.length, sheetRows.length]);
 
-    const postWorkbook = async ({ mode, source = 'upload', file = null }) => {
+    const postWorkbook = async ({ mode, source = 'upload', file = null, path = '' }) => {
         const formData = new FormData();
         formData.set('mode', mode);
         formData.set('source', source);
         if (file) formData.set('file', file);
+        if (path) formData.set('path', path);
         setSaving(true);
         try {
             const response = await fetch('/api/branches/asan/glaps/master', { method: 'POST', body: formData });
@@ -437,6 +441,26 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         setTableFilters(prev => ({ ...prev, [activeTable]: {} }));
     };
 
+    const openRouteStatus = (status = '') => {
+        setActiveTable('routes');
+        setStatusFilter(status);
+        setSearchInput('');
+        setEditor(null);
+        setDuplicateOnly(false);
+        setSelectedDuplicateIds([]);
+        setTableFilters(prev => ({ ...prev, routes: {} }));
+    };
+
+    const openSheetRows = () => {
+        setActiveTable('sheets');
+        setStatusFilter('');
+        setSearchInput('');
+        setEditor(null);
+        setDuplicateOnly(false);
+        setSelectedDuplicateIds([]);
+        setTableFilters(prev => ({ ...prev, sheets: {} }));
+    };
+
     const toggleTableSort = (key) => {
         setTableSort(prev => {
             if (prev.table !== activeTable || prev.key !== key) {
@@ -474,8 +498,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name },
                 { key: 'route_key', label: '연결키', value: routeMatchKey },
                 { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
-                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.protectedCell },
-                { key: 'review_note', label: '검수메모', value: row => row.review_note },
+                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.keyCell },
+                { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
                     key: 'actions',
@@ -512,12 +536,12 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     ),
                 },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
-                { key: 'alias_type', label: '매핑항목', value: row => formatGlapsAliasType(row.alias_type) },
+                { key: 'alias_type', label: '매핑항목(용도)', value: row => formatGlapsAliasType(row.alias_type) },
                 { key: 'source_name', label: 'ELS 매치코드', value: row => row.source_name },
                 { key: 'els_name', label: 'ELS 디스크립션(설명)', value: row => row.els_name },
                 { key: 'glaps_name', label: 'GLAPS 디스크립션(설명)', value: row => row.glaps_name, className: styles.protectedCell },
-                { key: 'glaps_code', label: '최종코드(BP)', value: row => row.glaps_code, className: styles.protectedCell },
-                { key: 'review_note', label: '검수메모', value: row => row.review_note },
+                { key: 'glaps_code', label: '최종코드(BP)', value: row => row.glaps_code, className: styles.keyCell },
+                { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
                     key: 'actions',
@@ -723,12 +747,46 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 <div className={styles.actionBar}>
                     <input ref={masterFileRef} type="file" accept=".xlsx,.xlsm" hidden onChange={handleMasterFileChange} />
                     <input ref={templateFileRef} type="file" accept=".xlsx" hidden onChange={handleTemplateFileChange} />
-                    <button type="button" onClick={() => postWorkbook({ mode: 'master', source: 'nas' })} disabled={saving}>NAS 마스터 반영</button>
-                    <button type="button" onClick={() => masterFileRef.current?.click()} disabled={saving}>마스터 업로드</button>
+                    <button
+                        type="button"
+                        className={styles.legacyMasterButton}
+                        onClick={() => setLegacyMasterPanelOpen(open => !open)}
+                        disabled={saving}
+                        aria-expanded={legacyMasterPanelOpen}
+                    >
+                        마스터 반영(레거시)
+                    </button>
                     <button type="button" onClick={downloadTemplate} disabled={saving}>수정양식 내보내기</button>
                     <button type="button" onClick={openTemplateUpload} disabled={saving}>수정양식 업로드</button>
                 </div>
             </div>
+
+            {legacyMasterPanelOpen && (
+                <div className={styles.legacyMasterPanel}>
+                    <div className={styles.legacyMasterTitle}>
+                        <strong>마스터 원장 반영</strong>
+                        <span>운영 중인 GLAPS 마스터 원장을 교체하는 레거시 기능입니다.</span>
+                    </div>
+                    <label className={styles.legacyPathField}>
+                        <span>NAS 파일 위치</span>
+                        <input
+                            value={masterNasPath}
+                            onChange={(event) => setMasterNasPath(event.target.value)}
+                            disabled={saving}
+                        />
+                    </label>
+                    <div className={styles.legacyMasterActions}>
+                        <button
+                            type="button"
+                            onClick={() => postWorkbook({ mode: 'master', source: 'nas', path: masterNasPath.trim() })}
+                            disabled={saving || !masterNasPath.trim()}
+                        >
+                            NAS 마스터 반영
+                        </button>
+                        <button type="button" onClick={() => masterFileRef.current?.click()} disabled={saving}>마스터 업로드</button>
+                    </div>
+                </div>
+            )}
 
             {message && <div className={`${styles.message} ${message.type === 'error' ? styles.messageError : styles.messageSuccess}`}>{message.text}</div>}
             {data?.setupRequired && (
@@ -738,11 +796,21 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             )}
 
             <div className={styles.metricGrid}>
-                <div className={styles.metricCard}><span>운송경로</span><b>{summary.total.toLocaleString()}</b></div>
-                <div className={styles.metricCard}><span>확정</span><b>{summary.ready.toLocaleString()}</b></div>
-                <div className={styles.metricCard}><span>조정필요</span><b>{summary.needsMapping.toLocaleString()}</b></div>
-                <div className={styles.metricCard}><span>코드없음</span><b>{summary.missingRouteCode.toLocaleString()}</b></div>
-                <div className={styles.metricCard}><span>원본시트</span><b>{sheetSummary.length.toLocaleString()}</b></div>
+                <button type="button" className={`${styles.metricCard} ${activeTable === 'routes' && !statusFilter ? styles.metricCardActive : ''}`} onClick={() => openRouteStatus('')}>
+                    <span>운송경로 전체</span><b>{summary.total.toLocaleString()}</b><small>운송경로 탭</small>
+                </button>
+                <button type="button" className={`${styles.metricCard} ${activeTable === 'routes' && statusFilter === 'ready' ? styles.metricCardActive : ''}`} onClick={() => openRouteStatus('ready')}>
+                    <span>확정</span><b>{summary.ready.toLocaleString()}</b><small>매칭 완료</small>
+                </button>
+                <button type="button" className={`${styles.metricCard} ${activeTable === 'routes' && statusFilter === 'needs_mapping' ? styles.metricCardActive : ''}`} onClick={() => openRouteStatus('needs_mapping')}>
+                    <span>조정필요</span><b>{summary.needsMapping.toLocaleString()}</b><small>검수 대상</small>
+                </button>
+                <button type="button" className={`${styles.metricCard} ${activeTable === 'routes' && statusFilter === 'missing_route_code' ? styles.metricCardActive : ''}`} onClick={() => openRouteStatus('missing_route_code')}>
+                    <span>코드없음</span><b>{summary.missingRouteCode.toLocaleString()}</b><small>코드 미도출</small>
+                </button>
+                <button type="button" className={`${styles.metricCard} ${activeTable === 'sheets' ? styles.metricCardActive : ''}`} onClick={openSheetRows}>
+                    <span>원본시트</span><b>{sheetSummary.length.toLocaleString()}</b><small>원장 행 확인</small>
+                </button>
             </div>
 
             <div className={styles.queryPanel}>
@@ -760,6 +828,11 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     <strong>운송경로</strong>
                     <span>상차지 · 경유지(ELS) · 하차지 · 원장 운송경로</span>
                 </div>
+            </div>
+
+            <div className={styles.fieldGuide}>
+                <span><b>매핑항목</b> 포트·선사·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
+                <span><b>검수메모</b> 매칭 키가 아니라 출처·용도·기본값을 남기는 참고/필터용 메모입니다.</span>
             </div>
 
             <div className={styles.toolbar}>

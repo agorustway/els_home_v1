@@ -59,6 +59,87 @@
     cursor: not-allowed;
 }
 
+.actionBar .legacyMasterButton {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.legacyMasterPanel {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.7fr) minmax(260px, 1.4fr) auto;
+    align-items: end;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.legacyMasterTitle {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.legacyMasterTitle strong {
+    color: #334155;
+    font-size: 0.82rem;
+}
+
+.legacyMasterTitle span {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.legacyPathField {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.legacyPathField span {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.legacyPathField input {
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0 10px;
+}
+
+.legacyMasterActions {
+    display: inline-flex;
+    gap: 7px;
+    justify-content: flex-end;
+}
+
+.legacyMasterActions button {
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0 10px;
+    white-space: nowrap;
+}
+
+.legacyMasterActions button:disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
 .message {
     padding: 9px 12px;
     border-radius: 7px;
@@ -85,25 +166,55 @@
 }
 
 .metricCard {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "label value"
+        "hint value";
     align-items: center;
-    justify-content: space-between;
+    row-gap: 4px;
     min-height: 56px;
     padding: 12px;
     border: 1px solid #dbe3ee;
     border-radius: 8px;
     background: #fff;
+    cursor: pointer;
+    text-align: left;
 }
 
 .metricCard span {
+    grid-area: label;
     color: #64748b;
     font-size: 0.76rem;
     font-weight: 900;
 }
 
 .metricCard b {
+    grid-area: value;
     color: #0f172a;
     font-size: 1.18rem;
+}
+
+.metricCard small {
+    grid-area: hint;
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.metricCard:hover {
+    border-color: #99f6e4;
+    background: #f0fdfa;
+}
+
+.metricCardActive {
+    border-color: #0f766e;
+    background: #ecfdf5;
+}
+
+.metricCardActive span,
+.metricCardActive small {
+    color: #0f766e;
 }
 
 .queryPanel {
@@ -141,6 +252,29 @@
     align-items: center;
     justify-content: center;
     color: #0369a1;
+    font-weight: 900;
+}
+
+.fieldGuide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 9px 11px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.fieldGuide span {
+    color: #475569;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.fieldGuide b {
+    margin-right: 5px;
+    color: #0f172a;
     font-weight: 900;
 }
 
@@ -423,12 +557,23 @@
     font-weight: 800;
 }
 
+.table td.keyCell {
+    background: #dcfce7 !important;
+    color: #14532d;
+    font-weight: 900;
+    box-shadow: inset 0 0 0 1px #86efac;
+}
+
 .inlineEditRow td {
     background: #f8fbff;
 }
 
 .inlineEditRow td.protectedCell {
     background: #e5e7eb !important;
+}
+
+.inlineEditRow td.keyCell {
+    background: #ecfdf5 !important;
 }
 
 .duplicateRow td {
@@ -441,6 +586,12 @@
 
 .duplicateRow td.protectedCell {
     background: #fee2e2 !important;
+}
+
+.duplicateRow td.keyCell {
+    background: #bbf7d0 !important;
+    color: #14532d;
+    box-shadow: inset 0 0 0 1px #22c55e;
 }
 
 .table td.selectCell {
@@ -546,6 +697,18 @@
     .actionBar {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .legacyMasterPanel {
+        grid-template-columns: 1fr;
+    }
+
+    .legacyMasterActions {
+        justify-content: stretch;
+    }
+
+    .legacyMasterActions button {
+        flex: 1;
     }
 
     .metricGrid {
