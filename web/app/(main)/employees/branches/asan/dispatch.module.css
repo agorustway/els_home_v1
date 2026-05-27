@@ -2380,12 +2380,16 @@
 
     /* 합계 바 내부 버튼/필터를 정돈 */
     .summaryRight {
+        flex: 0 0 auto;
+        width: 100%;
         flex-wrap: wrap;
         gap: 6px;
         justify-content: flex-start;
     }
 
     .summaryLeft {
+        flex: 0 0 auto;
+        width: 100%;
         gap: 8px;
         font-size: 0.8rem;
     }

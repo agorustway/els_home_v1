@@ -262,13 +262,17 @@ function findElsCodeIndexes(headers = []) {
     .map(item => item.idx);
 }
 
-function splitMultiValueCell(value) {
+export function splitGlapsAliasValues(value) {
   const text = cleanGlapsText(value);
   if (!text) return [];
   return text
-    .split(/[,，、;\r\n]+/)
+    .split(/[,，、;；\r\n]+/)
     .map(cleanGlapsText)
     .filter(Boolean);
+}
+
+function splitMultiValueCell(value) {
+  return splitGlapsAliasValues(value);
 }
 
 function getRowValues(row, indexes = []) {
@@ -422,6 +426,7 @@ function aliasKey(alias) {
     routePartKey(alias.sourceName),
     routePartKey(alias.elsName),
     cleanGlapsText(alias.routeCode),
+    cleanGlapsText(alias.glapsCode),
   ].join('|');
 }
 

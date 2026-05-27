@@ -1,3 +1,58 @@
+## [2026-05-27] GLAPS 항목매핑 코드기준 병합 (v5.14.232)
+### 핵심
+- GLAPS코드 화면의 항목매핑 중복 기준을 `매핑항목 + 운송경로코드 + 최종코드(BP)`로 바꿔, 같은 GLAPS 코드에 붙은 여러 ELS 매치코드/디스크립션을 미병합 중복으로 빨간색 표시합니다.
+- 선택한 중복 그룹 또는 현재 중복 전체를 병합하는 버튼을 추가했습니다. 병합 시 대표 행 하나에 `ELS 매치코드`, `ELS 디스크립션`, `GLAPS 디스크립션`을 쉼표 구분 다중값으로 합치고 나머지는 비활성화합니다.
+- 상세배차/배차변동 GLAPS lookup과 RAG 코드맵은 병합된 쉼표/세미콜론/줄바꿈 다중값을 각각 별칭으로 나눠 인식합니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsMasterData.mjs" "utils/asanDispatchRag.mjs" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/glapsMasterData.mjs`, `web/utils/asanDispatchRag.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] 모바일 배차판 합계바 공백 제거 (v5.14.231)
+### 핵심
+- 원인: 모바일에서 합계바가 세로 배치로 바뀐 뒤에도 데스크탑용 `.summaryRight { flex: 1 1 480px; }`가 남아 버튼 영역에 480px 높이 공백이 생겼습니다.
+- 조치: 모바일 media query 안에서 `.summaryRight`와 `.summaryLeft`를 `flex: 0 0 auto; width: 100%;`로 고정해 합계/버튼 높이가 내용만큼만 잡히게 했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 36개 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-27] GLAPS코드 중복 오류 판정과 후보 검출 (v5.14.230)
+### 핵심
+- 원인: 직접등록 중 UNIQUE/중복 오류가 나도 에러 메시지에 `glaps_master_aliases` 같은 테이블명이 포함되면 `GLAPS 마스터 테이블이 아직 적용되지 않았습니다`로 오판했습니다.
+- 조치: 테이블 미적용 판정은 실제 missing table/schema cache 코드로 좁히고, 웹 직접등록 전 운송경로코드/연결키/항목매핑 exact duplicate를 409로 먼저 안내하게 했습니다.
+- GLAPS코드 화면에 `중복검출` 필터를 추가해 운송경로 중복과 항목매핑 exact duplicate/복수후보를 바로 묶어 볼 수 있게 했습니다.
+- 동일 ELS 매치코드에 여러 포트 후보코드를 둘 수 있도록 항목매핑 UNIQUE 기준에 `glaps_code`를 포함하는 SQL을 추가했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 45개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsMasterData.mjs" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/utils/glapsMasterData.mjs`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/supabase_sql/20260527_glaps_alias_duplicate_candidates.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-27] 아산 배차판 자동 동기화 수동 조건 통일 (v5.14.229)
 ### 핵심
 - 원인 확인: 수동 NAS 동기화는 `force=True`로 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜`를 순차 실행하지만, 자동 스케줄러는 파일 변경 감지 후 `phase=all` 단일 루틴을 직접 호출해 수동과 조건이 달랐습니다.

@@ -109,6 +109,53 @@ function compareTableValues(a, b) {
     return TABLE_COLLATOR.compare(tableText(a), tableText(b));
 }
 
+function duplicateGroupKey(parts = []) {
+    return parts.map(value => normalizeTableFilter(value)).join('|');
+}
+
+function buildDuplicateInfo(activeTable, rows = []) {
+    const byId = new Map();
+    const groups = [];
+    const addGroup = (label, keyFn, options = {}) => {
+        const grouped = new Map();
+        rows.forEach((row) => {
+            const parts = keyFn(row);
+            if (options.requireParts?.some(index => !normalizeTableFilter(parts[index]))) return;
+            const key = duplicateGroupKey(parts);
+            if (!key.replace(/\|/g, '')) return;
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key).push(row);
+        });
+        grouped.forEach((items) => {
+            if (items.length < 2) return;
+            if (options.requireDifferentCodes) {
+                const codes = new Set(items.map(item => normalizeTableFilter(item.glaps_code)));
+                if (codes.size < 2) return;
+            }
+            groups.push({ label, count: items.length });
+            items.forEach((item) => {
+                if (!item.id) return;
+                const labels = byId.get(item.id) || [];
+                labels.push(`${label} ${items.length}건`);
+                byId.set(item.id, labels);
+            });
+        });
+    };
+
+    if (activeTable === 'routes') {
+        addGroup('운송경로코드 중복', row => [row.route_code]);
+        addGroup('연결키 중복', row => [routeMatchKey(row)]);
+    } else if (activeTable === 'aliases') {
+        addGroup('코드기준 미병합', row => [row.alias_type, row.route_code, row.glaps_code], { requireParts: [0, 2] });
+    }
+
+    return {
+        byId,
+        rowCount: byId.size,
+        groupCount: groups.length,
+    };
+}
+
 function routeToEditorValues(row = {}) {
     return {
         routeCode: row.route_code || '',
@@ -163,6 +210,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const [editor, setEditor] = useState(null);
     const [tableFilters, setTableFilters] = useState({});
     const [tableSort, setTableSort] = useState({ table: 'routes', key: '', direction: 'asc' });
+    const [duplicateOnly, setDuplicateOnly] = useState(false);
+    const [selectedAliasIds, setSelectedAliasIds] = useState([]);
     const [masterDisplayLimit, setMasterDisplayLimit] = useState(GLAPS_MASTER_PAGE_SIZE);
     const masterFileRef = useRef(null);
     const templateFileRef = useRef(null);
@@ -192,6 +241,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
 
     useEffect(() => {
         setEditor(null);
+        setDuplicateOnly(false);
+        setSelectedAliasIds([]);
     }, [activeTable]);
 
     const routes = data?.routes || [];
@@ -202,6 +253,19 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
 
     const tableRows = activeTable === 'routes' ? routes : (activeTable === 'aliases' ? aliases : sheetRows);
     const version = data?.version || null;
+    const duplicateInfo = useMemo(() => buildDuplicateInfo(activeTable, tableRows), [activeTable, tableRows]);
+    const hasDuplicateRows = duplicateInfo.rowCount > 0;
+    const selectedAliasIdSet = useMemo(() => new Set(selectedAliasIds), [selectedAliasIds]);
+    const selectedDuplicateAliasCount = selectedAliasIds.filter(id => duplicateInfo.byId.has(id)).length;
+
+    useEffect(() => {
+        if (activeTable !== 'aliases') return;
+        const validIds = new Set(tableRows.map(row => row.id).filter(Boolean));
+        setSelectedAliasIds((prev) => {
+            const next = prev.filter(id => validIds.has(id));
+            return next.length === prev.length ? prev : next;
+        });
+    }, [activeTable, tableRows]);
 
     const tableInfo = useMemo(() => ({
         routes: {
@@ -348,6 +412,50 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
     }, [activeTable, editor?.id, fetchData, onMasterChanged]);
 
+    const toggleAliasSelection = useCallback((rowId) => {
+        const id = tableText(rowId).trim();
+        if (!id) return;
+        setSelectedAliasIds(prev => (
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        ));
+    }, []);
+
+    const mergeAliasDuplicates = useCallback(async ({ selectedOnly = false } = {}) => {
+        if (activeTable !== 'aliases') return;
+        const ids = selectedOnly ? selectedAliasIds : [];
+        if (selectedOnly && ids.length === 0) {
+            setMessage({ type: 'error', text: '병합할 항목을 먼저 선택해주세요.' });
+            return;
+        }
+        const label = selectedOnly ? `선택한 ${ids.length.toLocaleString()}건의 코드그룹` : `현재 코드기준 중복 ${duplicateInfo.groupCount.toLocaleString()}그룹`;
+        if (!window.confirm(`${label}을 병합할까요?`)) return;
+        setSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/glaps/master', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: 'aliases',
+                    action: 'merge_by_glaps_code',
+                    ids,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'GLAPS 코드기준 병합 실패');
+            setMessage({
+                type: 'success',
+                text: `코드기준 병합 ${Number(payload.mergedGroups || 0).toLocaleString()}그룹 / ${Number(payload.mergedRows || 0).toLocaleString()}행 반영 완료`,
+            });
+            setSelectedAliasIds([]);
+            await fetchData();
+            onMasterChanged?.();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setSaving(false);
+        }
+    }, [activeTable, duplicateInfo.groupCount, fetchData, onMasterChanged, selectedAliasIds]);
+
     const updateTableFilter = (key, value) => {
         setTableFilters(prev => {
             const nextTableFilters = { ...(prev[activeTable] || {}) };
@@ -402,6 +510,24 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (activeTable === 'aliases') {
             return [
+                {
+                    key: 'select',
+                    label: '선택',
+                    value: row => (selectedAliasIdSet.has(row.id) ? '선택' : ''),
+                    filterable: false,
+                    sortable: false,
+                    className: styles.selectCell,
+                    render: row => (
+                        <input
+                            type="checkbox"
+                            className={styles.rowSelectCheckbox}
+                            checked={selectedAliasIdSet.has(row.id)}
+                            onChange={() => toggleAliasSelection(row.id)}
+                            disabled={saving || !duplicateInfo.byId.has(row.id)}
+                            aria-label="병합 항목 선택"
+                        />
+                    ),
+                },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
                 { key: 'alias_type', label: '매핑항목', value: row => formatGlapsAliasType(row.alias_type) },
                 { key: 'source_name', label: 'ELS 매치코드', value: row => row.source_name },
@@ -430,7 +556,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : '') },
             { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {} },
         ];
-    }, [activeTable, beginEditRow, deleteRow, saving]);
+    }, [activeTable, beginEditRow, deleteRow, duplicateInfo.byId, saving, selectedAliasIdSet, toggleAliasSelection]);
 
     const activeTableFilters = useMemo(() => tableFilters[activeTable] || {}, [activeTable, tableFilters]);
     const hasTableFilters = Object.values(activeTableFilters).some(value => normalizeTableFilter(value));
@@ -457,11 +583,14 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     }, [tableColumns, tableRows]);
     const visibleTableRows = useMemo(() => {
         const filterableColumns = tableColumns.filter(column => column.filterable !== false);
-        const filteredRows = tableRows.filter(row => filterableColumns.every(column => {
-            const filterValue = activeTableFilters[column.key];
-            if (!filterValue) return true;
-            return tableFilterKey(column.value?.(row)) === filterValue;
-        }));
+        const filteredRows = tableRows.filter(row => {
+            if (duplicateOnly && !duplicateInfo.byId.has(row.id)) return false;
+            return filterableColumns.every(column => {
+                const filterValue = activeTableFilters[column.key];
+                if (!filterValue) return true;
+                return tableFilterKey(column.value?.(row)) === filterValue;
+            });
+        });
         if (!activeSort.key) return filteredRows;
         const sortColumn = tableColumns.find(column => column.key === activeSort.key && column.sortable !== false);
         if (!sortColumn) return filteredRows;
@@ -469,11 +598,11 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             const direction = activeSort.direction === 'desc' ? -1 : 1;
             return compareTableValues(sortColumn.value?.(a), sortColumn.value?.(b)) * direction;
         });
-    }, [activeSort.direction, activeSort.key, activeTableFilters, tableColumns, tableRows]);
+    }, [activeSort.direction, activeSort.key, activeTableFilters, duplicateInfo.byId, duplicateOnly, tableColumns, tableRows]);
 
     useEffect(() => {
         setMasterDisplayLimit(GLAPS_MASTER_PAGE_SIZE);
-    }, [activeTable, statusFilter, searchInput, activeTableFilters, activeSort.key, activeSort.direction]);
+    }, [activeTable, statusFilter, searchInput, activeTableFilters, activeSort.key, activeSort.direction, duplicateOnly]);
 
     const visibleLimitedRows = useMemo(
         () => visibleTableRows.slice(0, masterDisplayLimit),
@@ -664,6 +793,36 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 {(activeTable === 'routes' || activeTable === 'aliases') && (
                     <button type="button" className={styles.primaryButton} onClick={beginNewRow} disabled={saving}>추가</button>
                 )}
+                {(activeTable === 'routes' || activeTable === 'aliases') && (
+                    <button
+                        type="button"
+                        className={`${styles.duplicateButton} ${duplicateOnly ? styles.duplicateButtonActive : ''}`}
+                        onClick={() => setDuplicateOnly(value => !value)}
+                        disabled={!hasDuplicateRows}
+                    >
+                        {duplicateOnly ? '중복해제' : '중복검출'} {duplicateInfo.rowCount.toLocaleString()}
+                    </button>
+                )}
+                {activeTable === 'aliases' && (
+                    <>
+                        <button
+                            type="button"
+                            className={styles.mergeButton}
+                            onClick={() => mergeAliasDuplicates({ selectedOnly: true })}
+                            disabled={saving || selectedDuplicateAliasCount === 0}
+                        >
+                            선택병합 {selectedDuplicateAliasCount.toLocaleString()}
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.mergeButton}
+                            onClick={() => mergeAliasDuplicates({ selectedOnly: false })}
+                            disabled={saving || duplicateInfo.groupCount === 0}
+                        >
+                            일괄병합 {duplicateInfo.groupCount.toLocaleString()}
+                        </button>
+                    </>
+                )}
                 <span className={styles.tableMeta}>표시 {Math.min(visibleTableRows.length, masterDisplayLimit).toLocaleString()} / 필터 {visibleTableRows.length.toLocaleString()} / 전체 {tableRows.length.toLocaleString()}</span>
                 {hasTableFilters && (
                     <button type="button" onClick={clearTableFilters}>테이블 필터해제</button>
@@ -722,19 +881,24 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         </thead>
                         <tbody>
                             {editor?.mode === activeTable && !editor.id && renderInlineEditorRow(`${activeTable}-new-editor`)}
-                            {visibleLimitedRows.map((row, rowIndex) => (
-                                editor?.mode === activeTable && editor.id === row.id
+                            {visibleLimitedRows.map((row, rowIndex) => {
+                                const duplicateMessages = duplicateInfo.byId.get(row.id) || [];
+                                return editor?.mode === activeTable && editor.id === row.id
                                     ? renderInlineEditorRow(row.id || `${activeTable}-${rowIndex}-editor`)
                                     : (
-                                        <tr key={row.id || `${activeTable}-${rowIndex}`}>
+                                        <tr
+                                            key={row.id || `${activeTable}-${rowIndex}`}
+                                            className={duplicateMessages.length ? styles.duplicateRow : ''}
+                                            title={duplicateMessages.join(' / ') || undefined}
+                                        >
                                             {tableColumns.map(column => (
                                                 <td key={column.key} className={column.className || ''}>
                                                     {column.render ? column.render(row) : tableText(column.value?.(row))}
                                                 </td>
                                             ))}
                                         </tr>
-                                    )
-                            ))}
+                                    );
+                            })}
                         </tbody>
                     </table>
                 )}

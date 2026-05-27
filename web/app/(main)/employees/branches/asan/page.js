@@ -35,6 +35,7 @@ import {
     buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
     normalizeGlapsKey,
+    splitGlapsAliasValues,
 } from '@/utils/glapsMasterData.mjs';
 import { createClient as createBrowserSupabaseClient } from '@/utils/supabase/client';
 
@@ -706,7 +707,7 @@ function buildGlapsAliasCodeMap(aliases = [], aliasType) {
     aliases
         .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
         .forEach((alias) => {
-            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].forEach((value) => {
+            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].flatMap(splitGlapsAliasValues).forEach((value) => {
                 const key = normalizeGlapsKey(value);
                 if (key && !map.has(key)) map.set(key, alias.glaps_code);
             });
@@ -736,7 +737,7 @@ function buildGlapsAliasCodeOptionsMap(aliases = [], aliasType) {
     aliases
         .filter(alias => alias?.alias_type === aliasType && alias?.glaps_code)
         .forEach((alias) => {
-            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].forEach(value => pushOption(value, alias));
+            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].flatMap(splitGlapsAliasValues).forEach(value => pushOption(value, alias));
         });
     map.forEach((options, key) => {
         options.sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.code.localeCompare(b.code));

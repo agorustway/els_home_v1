@@ -95,11 +95,28 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_aliases (
     updated_by TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (branch_id, version_id, alias_type, source_name, route_code)
+    UNIQUE (branch_id, version_id, alias_type, source_name, route_code, glaps_code)
 );
 
 ALTER TABLE public.glaps_master_aliases
     DROP CONSTRAINT IF EXISTS glaps_master_aliases_alias_type_check;
+
+ALTER TABLE public.glaps_master_aliases
+    DROP CONSTRAINT IF EXISTS glaps_master_aliases_branch_id_version_id_alias_type_source_name_route_code_key;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'glaps_master_aliases_branch_version_alias_source_route_code_key'
+          AND conrelid = 'public.glaps_master_aliases'::regclass
+    ) THEN
+        ALTER TABLE public.glaps_master_aliases
+            ADD CONSTRAINT glaps_master_aliases_branch_version_alias_source_route_code_key
+            UNIQUE (branch_id, version_id, alias_type, source_name, route_code, glaps_code);
+    END IF;
+END $$;
 
 ALTER TABLE public.glaps_master_aliases
     ADD CONSTRAINT glaps_master_aliases_alias_type_check

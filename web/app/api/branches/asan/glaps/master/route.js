@@ -12,6 +12,7 @@ import {
   parseGlapsAliasTemplateSheets,
   parseGlapsMasterSheets,
   parseGlapsRouteTemplateSheets,
+  splitGlapsAliasValues,
   summarizeGlapsRoutes,
 } from '@/utils/glapsMasterData.mjs';
 
@@ -26,13 +27,17 @@ const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['port', 'line', 'container_type'
 const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
 
 function isMissingGlapsTableError(error) {
-  const message = String(error?.message || error || '');
-  return message.includes('glaps_master_versions')
-    || message.includes('glaps_transport_routes')
-    || message.includes('glaps_master_aliases')
-    || message.includes('glaps_master_sheet_rows')
-    || message.includes('does not exist')
-    || message.includes('schema cache');
+  const code = String(error?.code || '');
+  const message = String(error?.message || error || '').toLowerCase();
+  const isGlapsObject = /glaps_(master_versions|transport_routes|master_aliases|master_sheet_rows)/.test(message);
+  if (['42P01', '42703', 'PGRST205', 'PGRST204'].includes(code)) return isGlapsObject || message.includes('schema cache');
+  return isGlapsObject && (message.includes('does not exist') || message.includes('schema cache'));
+}
+
+function isDuplicateConstraintError(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || error || '').toLowerCase();
+  return code === '23505' || message.includes('duplicate key') || message.includes('unique constraint');
 }
 
 function jsonError(message, status = 500, extra = {}) {
@@ -41,6 +46,30 @@ function jsonError(message, status = 500, extra = {}) {
 
 function cleanText(value) {
   return String(value ?? '').normalize('NFKC').trim();
+}
+
+function duplicateKeyPart(value) {
+  return cleanText(value).replace(/\s+/g, ' ').toUpperCase();
+}
+
+function aliasExactDuplicateKey(row = {}) {
+  return [
+    row.alias_type,
+    row.source_name,
+    row.route_code,
+    row.glaps_code,
+  ].map(duplicateKeyPart).join('|');
+}
+
+function summarizeDuplicateRows(rows = [], formatter = row => row.id) {
+  return rows.slice(0, 5).map(formatter).filter(Boolean);
+}
+
+function duplicateJsonError(message, duplicates = []) {
+  return jsonError(message, 409, {
+    duplicate: true,
+    duplicates,
+  });
 }
 
 function normalizeReviewStatus(value, fallback = 'needs_mapping') {
@@ -583,16 +612,177 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
   return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
 }
 
+async function findRouteDirectDuplicates(adminSupabase, versionId, dbRow, id = '') {
+  const routeCodeKey = duplicateKeyPart(dbRow.route_code);
+  const fingerprintKey = duplicateKeyPart(dbRow.route_fingerprint);
+  if (!routeCodeKey && !fingerprintKey) return [];
+
+  let query = adminSupabase
+    .from('glaps_transport_routes')
+    .select('id, route_code, route_name, start_location_name, waypoint_els_name, destination_name, route_fingerprint')
+    .eq('version_id', versionId)
+    .eq('active', true);
+  if (id) query = query.neq('id', id);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).filter((row) => (
+    (routeCodeKey && duplicateKeyPart(row.route_code) === routeCodeKey)
+    || (fingerprintKey && duplicateKeyPart(row.route_fingerprint) === fingerprintKey)
+  ));
+}
+
+async function findAliasDirectDuplicates(adminSupabase, versionId, dbRow, id = '') {
+  const exactKey = aliasExactDuplicateKey(dbRow);
+  if (!duplicateKeyPart(dbRow.alias_type) || !duplicateKeyPart(dbRow.source_name)) return [];
+
+  let query = adminSupabase
+    .from('glaps_master_aliases')
+    .select('id, alias_type, source_name, els_name, glaps_name, glaps_code, route_code')
+    .eq('version_id', versionId)
+    .eq('active', true)
+    .eq('alias_type', dbRow.alias_type)
+    .eq('source_name', dbRow.source_name)
+    .eq('route_code', dbRow.route_code || '');
+  if (id) query = query.neq('id', id);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data || []).filter(row => aliasExactDuplicateKey(row) === exactKey);
+}
+
+function aliasMergeGroupKey(row = {}) {
+  const aliasType = duplicateKeyPart(row.alias_type);
+  const glapsCode = duplicateKeyPart(row.glaps_code);
+  if (!aliasType || !glapsCode) return '';
+  return [
+    aliasType,
+    duplicateKeyPart(row.route_code),
+    glapsCode,
+  ].join('|');
+}
+
+function mergeAliasFieldValues(values = []) {
+  const seen = new Set();
+  const merged = [];
+  values.flatMap(splitGlapsAliasValues).forEach((value) => {
+    const key = duplicateKeyPart(value);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(cleanText(value));
+  });
+  return merged.join(', ');
+}
+
+function aliasMergeSortScore(row = {}) {
+  return [
+    isWebEditedRow(row) ? '0' : '1',
+    cleanText(row.created_at),
+    cleanText(row.id),
+  ].join('|');
+}
+
+function buildMergedAliasRow(group = [], actor) {
+  const sorted = [...group].sort((a, b) => aliasMergeSortScore(a).localeCompare(aliasMergeSortScore(b)));
+  const mergedSourceName = mergeAliasFieldValues(sorted.map(row => row.source_name));
+  const survivor = sorted.find(row => cleanText(row.source_name) === mergedSourceName) || sorted[0];
+  const loserIds = sorted.map(row => cleanText(row.id)).filter(id => id && id !== cleanText(survivor.id));
+  return {
+    survivor,
+    loserIds,
+    update: {
+      source_name: mergedSourceName,
+      els_name: mergeAliasFieldValues(sorted.map(row => row.els_name)),
+      glaps_name: mergeAliasFieldValues(sorted.map(row => row.glaps_name)),
+      glaps_code: cleanText(survivor.glaps_code),
+      route_code: cleanText(survivor.route_code),
+      review_status: cleanText(survivor.glaps_code) ? 'ready' : normalizeReviewStatus(survivor.review_status, 'needs_mapping'),
+      review_note: mergeAliasFieldValues(sorted.map(row => row.review_note)),
+      active: true,
+      updated_by: actor,
+    },
+  };
+}
+
+async function mergeAliasRowsByGlapsCode(adminSupabase, { version, ids = [], userEmail }) {
+  const actor = buildEditActor('web', userEmail);
+  const selectedIds = new Set((Array.isArray(ids) ? ids : [ids]).map(cleanText).filter(Boolean));
+  const rows = await fetchPagedGlapsRows(() => adminSupabase
+    .from('glaps_master_aliases')
+    .select('id, alias_type, source_name, els_name, glaps_name, glaps_code, route_code, review_status, review_note, updated_by, created_at')
+    .eq('version_id', version.id)
+    .eq('active', true));
+
+  const selectedGroupKeys = new Set();
+  rows.forEach((row) => {
+    if (!selectedIds.has(cleanText(row.id))) return;
+    const key = aliasMergeGroupKey(row);
+    if (key) selectedGroupKeys.add(key);
+  });
+  if (selectedIds.size > 0 && selectedGroupKeys.size === 0) {
+    return { success: true, mode: 'aliases', action: 'merge_by_glaps_code', mergedGroups: 0, mergedRows: 0, deactivatedRows: 0 };
+  }
+
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const key = aliasMergeGroupKey(row);
+    if (!key) return;
+    if (selectedIds.size > 0 && !selectedGroupKeys.has(key)) return;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  });
+
+  let mergedGroups = 0;
+  let mergedRows = 0;
+  let deactivatedRows = 0;
+  for (const group of grouped.values()) {
+    if (group.length < 2) continue;
+    const { survivor, loserIds, update } = buildMergedAliasRow(group, actor);
+    const { error: updateError } = await adminSupabase
+      .from('glaps_master_aliases')
+      .update(update)
+      .eq('id', survivor.id)
+      .eq('version_id', version.id);
+    if (updateError) throw updateError;
+    if (loserIds.length > 0) {
+      const { error: inactiveError } = await adminSupabase
+        .from('glaps_master_aliases')
+        .update({ active: false, updated_by: actor })
+        .eq('version_id', version.id)
+        .in('id', loserIds);
+      if (inactiveError) throw inactiveError;
+    }
+    mergedGroups += 1;
+    mergedRows += group.length;
+    deactivatedRows += loserIds.length;
+  }
+
+  await refreshVersionCounts(adminSupabase, version.id);
+  return {
+    success: true,
+    mode: 'aliases',
+    action: 'merge_by_glaps_code',
+    mergedGroups,
+    mergedRows,
+    deactivatedRows,
+  };
+}
+
 async function handleDirectMutation({ adminSupabase, payload, version, branchId, userEmail }) {
   const mode = cleanText(payload.mode);
   const action = cleanText(payload.action || 'upsert');
   const target = mode === 'route' || mode === 'routes' ? 'routes' : (mode === 'alias' || mode === 'aliases' ? 'aliases' : '');
   if (!target) return { error: jsonError('지원하지 않는 직접수정 대상입니다.', 400) };
-  if (!['upsert', 'delete'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
+  if (!['upsert', 'delete', 'merge_by_glaps_code'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
 
   const actor = buildEditActor('web', userEmail);
   const row = payload.row || {};
   const id = cleanText(payload.id || row.id);
+  if (action === 'merge_by_glaps_code') {
+    if (target !== 'aliases') return { error: jsonError('항목매핑만 코드기준 병합할 수 있습니다.', 400) };
+    const result = await mergeAliasRowsByGlapsCode(adminSupabase, { version, ids: payload.ids || [], userEmail });
+    return { result };
+  }
   if (action === 'delete') {
     if (!id) return { error: jsonError('삭제할 ID가 없습니다.', 400) };
     const table = target === 'routes' ? 'glaps_transport_routes' : 'glaps_master_aliases';
@@ -605,20 +795,52 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
   if (target === 'routes') {
     const route = directRouteFromPayload(row);
     const dbRow = toRouteDbRow(route, { branchId, versionId: version.id, userEmail: actor });
+    const duplicates = await findRouteDirectDuplicates(adminSupabase, version.id, dbRow, id);
+    if (duplicates.length > 0) {
+      return {
+        error: duplicateJsonError(
+          '이미 같은 운송경로코드 또는 상차지·경유지(ELS)·하차지 연결키가 등록되어 있습니다.',
+          summarizeDuplicateRows(duplicates, duplicate => `${duplicate.route_code || '-'} ${duplicate.route_name || ''}`.trim()),
+        ),
+      };
+    }
     const { data, error } = id
       ? await adminSupabase.from('glaps_transport_routes').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
       : await adminSupabase.from('glaps_transport_routes').insert(dbRow).select('*').single();
-    if (error) throw error;
+    if (error) {
+      if (isDuplicateConstraintError(error)) {
+        return { error: duplicateJsonError('이미 같은 운송경로가 등록되어 있습니다.') };
+      }
+      throw error;
+    }
     await refreshVersionCounts(adminSupabase, version.id);
     return { result: { success: true, mode: target, action, updated: 1, deleted: 0, row: data } };
   }
 
   const alias = directAliasFromPayload(row);
   const dbRow = toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: actor });
+  const duplicates = await findAliasDirectDuplicates(adminSupabase, version.id, dbRow, id);
+  if (duplicates.length > 0) {
+    return {
+      error: duplicateJsonError(
+        '이미 같은 매핑항목·ELS 매치코드·최종코드(BP)가 등록되어 있습니다.',
+        summarizeDuplicateRows(duplicates, duplicate => `${duplicate.alias_type || '-'} ${duplicate.source_name || ''} ${duplicate.glaps_code || ''}`.trim()),
+      ),
+    };
+  }
   const { data, error } = id
     ? await adminSupabase.from('glaps_master_aliases').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
     : await adminSupabase.from('glaps_master_aliases').insert(dbRow).select('*').single();
-  if (error) throw error;
+  if (error) {
+    if (isDuplicateConstraintError(error)) {
+      return {
+        error: duplicateJsonError(
+          '이미 같은 매핑항목·ELS 매치코드·운송경로코드가 등록되어 있습니다. 최종코드(BP)가 다른 후보를 추가하려면 GLAPS 항목매핑 중복후보 SQL을 적용해야 합니다.',
+        ),
+      };
+    }
+    throw error;
+  }
   await refreshVersionCounts(adminSupabase, version.id);
   return { result: { success: true, mode: target, action, updated: 1, deleted: 0, row: data } };
 }

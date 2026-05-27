@@ -6,6 +6,7 @@ import {
   buildGlapsDispatchRouteFingerprints,
   buildGlapsRouteFingerprint,
   normalizeGlapsKey,
+  splitGlapsAliasValues,
 } from './glapsMasterData.mjs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1021,7 +1022,7 @@ function buildCodeMap(entries = [], pickValues) {
   for (const entry of entries || []) {
     const code = String(entry?.glaps_code || entry?.glapsCode || '').trim();
     if (!code) continue;
-    for (const value of pickValues(entry)) {
+    for (const value of pickValues(entry).flatMap(splitGlapsAliasValues)) {
       const key = normalizeGlapsKey(value);
       if (key && !map.has(key)) map.set(key, code);
     }

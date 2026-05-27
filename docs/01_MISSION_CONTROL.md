@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.229 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.232 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차판 자동 동기화가 파일 변경 감지 후 수동 NAS 동기화와 같은 1순위 우선 절차를 타도록 맞췄다.
+> 최신 업데이트: GLAPS 항목매핑을 최종코드(BP) 기준으로 선택/일괄 병합하고 미병합 중복은 빨간색으로 계속 표시한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.229
+- **웹 버전**: v5.14.232
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **GLAPS 목표**: 배차판 상세라인에서 `상차지 + 경유지(ELS/작업지) + 하차지(선적)`으로 기존 GLAPS 운송경로코드를 도출하고, 최종 업로드용 코드 컬럼을 검수한다.
@@ -15,7 +15,7 @@
 - GLAPS 업로드용 코드는 새로 만들지 않는다. 마스터 원장의 기존 코드를 도출하기 위해 ELS 별칭만 보강한다.
 - 운송사코드는 `운송사코드` 시트의 `GLAPS 코드`가 아니라 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
 - 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
-- 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. `검수메모` 기본표시 행을 기본값으로 쓰고 상세배차/배차변동에서 행별 선택한다. 모비스는 CODE를 통합 `포트(CODE)`, 상세/변동 `포트(DIST)`로 쓰며 배차판/상세/변동 고객사는 `국가 도착항`으로 표시한다.
+- 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. 항목매핑 UNIQUE는 `glaps_code`까지 포함하며, `검수메모` 기본표시 행을 기본값으로 쓰고 상세배차/배차변동에서 행별 선택한다. 모비스는 CODE를 통합 `포트(CODE)`, 상세/변동 `포트(DIST)`로 쓴다.
 - 이번 마스터 보강 확인값: `ELS -> B000005273`, `CMA -> CMA`, `MAE -> MAE`, `40HC -> 4510`, `INKAT/USMOB -> 동일 코드`, `KIN -> GA0196`, `HMMA -> UH03`.
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - 화주사코드는 운송경로 원장 기준으로 `글로비스KD외/글로비스 -> 현대글로비스주식회사(KR10)`, `모비스/모비스AS -> 현대모비스`를 매칭한다.
@@ -28,7 +28,7 @@
 - 1순위 완료 신호(`quick_done`)를 받으면 웹은 즉시 새로고침해 상세배차/배차변동에 최신 자료를 도출한다. 전/후 작업일과 나머지 날짜는 백그라운드에서 순차 반영한다.
 - 백그라운드 동기화 중에도 1순위 완료 후 1분 쿨다운이 끝나면 NAS 동기화를 다시 요청할 수 있다. 이때 기존 백그라운드는 시트 단위로 중단하고 1순위 작업일을 다시 동기화한다.
 - 상차지는 datalist 직접입력과 키보드 방향키 이동을 지원한다. 운송사코드는 기본 `ELS`의 BP 값을 다른 코드 컬럼처럼 표시만 한다.
-- GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
+- GLAPS 코드 웹 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다. 직접등록은 같은 운송경로/항목매핑 중복을 사전 검출해 409로 안내하고, 항목매핑 미병합 중복은 최종코드(BP) 기준으로 선택/일괄 병합한다.
 - GLAPS 수정양식은 항상 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받고 전체 업로드로 반영한다.
 - GLAPS 수정양식에서 상차지/경유지/하차지 경로 정보는 `운송경로_수정양식`에서만 수정한다. `항목매핑_수정양식`은 포트/라인/타입/운송사/컨샤이니 등 별도 코드표만 노출하고 `운송경로코드` 컬럼은 숨긴다.
 - GLAPS 수정양식의 작업 시트는 1행 제목, 2행 설명, 3행 컬럼명 구조이며, 좌측 A열부터 열리고 입력 시작 셀은 A4로 둔다.
@@ -69,19 +69,19 @@
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
 ## RECENT CHANGES
+- **v5.14.232**: GLAPS 항목매핑에서 같은 `매핑항목+운송경로코드+최종코드(BP)` 행을 빨간색 미병합 중복으로 표시하고, 선택/일괄 병합 시 ELS 매치코드와 디스크립션을 다중값으로 합쳐 상세배차 매칭에서 각각 인식하게 했다.
+- **v5.14.231**: 모바일 배차판 합계바에서 데스크탑용 `summaryRight` flex-basis가 세로 높이로 적용되어 생기던 큰 공백을 제거했다.
+- **v5.14.230**: GLAPS 직접등록 중복/UNIQUE 오류를 `마스터 테이블 미적용`으로 오판하던 판정을 좁히고, 운송경로/항목매핑 중복·복수후보 필터와 포트 후보용 `glaps_code` 포함 UNIQUE SQL을 추가했다.
 - **v5.14.229**: 자동 배차판 동기화는 파일 mtime/size 변경이 안정화되면 수동 NAS 동기화와 같은 `1순위 작업일 -> 전/후 작업일 -> 나머지 날짜` 순서로 실행한다.
 - **v5.14.228**: 아산 배차판/상세배차/배차변동/GLAPS코드 테이블의 데이터 행 padding, input/select, BKG 배지, GLAPS 관리 버튼 높이를 줄이고 헤더 톤을 짙은 청록 계열로 맞췄다.
 - **v5.14.227**: 모비스 통합현황/전체/엑셀의 `고객사(국가)` 표시값을 `국가 도착항`으로 병기한다. 현황판 고객사 집계는 기존처럼 `국가/국가명` 기준을 유지한다.
 - **v5.14.226**: 배차판 컬럼 필터/정렬 상태에서 BKG를 입력할 때 같은 row_index의 다른 행 WEB 셀이 갱신되지 않도록 서버 row_index fallback에 row_context 호환 검사를 추가했다.
-- **v5.14.225**: 모비스 `CODE`를 글로비스 포트 축과 합쳐 통합현황에는 `포트(CODE)`, 상세배차/배차변동/RAG에는 `포트(DIST)`로 노출한다. 모비스 개별 화면의 국가는 유지하고, 상세/변동 고객사 컬럼에는 `국가 도착항`을 표시해 CODE 입력/검수 공간을 분리했다.
-- **v5.14.224**: 상세배차/배차변동/GLAPS코드 화면의 데스크탑 높이 고정과 내부 세로 스크롤을 해제해 테이블 하단이 페이지 스크롤로 보이게 했고, GLAPS코드 원장 테이블은 100건 단위 더보기/전체 표시로 렌더링 부담을 줄였다.
-- **v5.14.223**: GLAPS 포트 항목매핑에서 동일 ELS 매치값의 복수 GLAPS 코드를 후보로 유지하고, 검수메모 기본표시 행을 기본값으로 적용하며 상세배차/배차변동에서 행별 포트코드를 선택 저장하게 했다. 상차지 입력칸 폭도 줄였다.
 ## VERIFICATION
-- `node --test web/tests/asanDashboardView.test.mjs`: 35개 통과
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
 - 번들 Python AST 검사 `docker/els-backend/app_core.py`: 통과
 - `node --test web/tests/asanDispatchWebCells.test.mjs web/tests/asanDashboardView.test.mjs`: 54개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "app/api/branches/asan/export/route.js" "tests/asanDashboardView.test.mjs" "tests/asanDispatchWebCells.test.mjs"`: 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsMasterData.mjs" "utils/asanDispatchRag.mjs" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과
 
 ## IN-PROGRESS

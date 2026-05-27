@@ -194,6 +194,38 @@
     color: #fff !important;
 }
 
+.duplicateButton {
+    border-color: #fecdd3 !important;
+    background: #fff1f2 !important;
+    color: #be123c !important;
+}
+
+.duplicateButton:disabled {
+    border-color: #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
+
+.duplicateButtonActive {
+    border-color: #fb7185 !important;
+    background: #ffe4e6 !important;
+    color: #be123c !important;
+}
+
+.mergeButton {
+    border-color: #bae6fd !important;
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
+}
+
+.mergeButton:disabled {
+    border-color: #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
+
 .rowActions {
     display: inline-flex;
     gap: 4px;
@@ -397,6 +429,30 @@
 
 .inlineEditRow td.protectedCell {
     background: #e5e7eb !important;
+}
+
+.duplicateRow td {
+    background: #fff1f2;
+}
+
+.duplicateRow td:first-child {
+    box-shadow: inset 3px 0 0 #e11d48;
+}
+
+.duplicateRow td.protectedCell {
+    background: #fee2e2 !important;
+}
+
+.table td.selectCell {
+    text-align: center;
+}
+
+.rowSelectCheckbox {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: #0f766e;
+    vertical-align: middle;
 }
 
 .table td.inlineEditCell {
