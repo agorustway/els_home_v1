@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.240 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.241 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차변동 sync에 schema version 방어를 추가해 구버전 탭이 2026-05-27 변동내역을 되돌리지 못하게 했다.
+> 최신 업데이트: 아산 `구간단가`를 월간 마감자료 DB 전용으로 유지하되 TYPE/연도별 조회/제목열 필터·정렬을 보강했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.240
+- **웹 버전**: v5.14.241
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -22,8 +22,9 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
-- `구간단가`는 월간실적 current 원장만 사용한다. 기본은 최신 월별 조회이고, 필요 시 전체 월간 원장으로 확장한다.
-- 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, 청구처, 하불처`다. 화면은 테이블 필터/정렬 중심으로 운영한다.
+- `구간단가`는 월간 마감자료 current 원장만 사용한다. 연간 원장 36만 행은 DB 부하와 컬럼 신뢰도 문제로 합산하지 않는다.
+- 구간단가 조회 범위는 `전체/연도별/월별`이며, 제목열 클릭 정렬과 컬럼별 필터를 제공한다.
+- 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, TYPE, 청구처, 하불처`다. 금액 검색은 천단위 구분 없이 숫자만 입력해도 찾을 수 있다.
 - 구간단가 API는 dashboard snapshot을 만들지 않고 `asan_monthly_route_unit_amount_payload` RPC를 우선 사용한다. 실패 시 월간 current 행을 1000행 단위로만 읽는 JS fallback을 사용한다.
 - 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
 - 페이지 로딩 문구와 폰트는 아산 하위 페이지에서 동일 톤으로 유지한다.
@@ -51,6 +52,7 @@
 - 배차변동 sync payload는 `changeSchemaVersion=2` 이상만 반영한다. 구버전으로 열린 탭이 transportRemark 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.241**: 구간단가에 TYPE 묶음/컬럼을 추가하고, 전체/연도별/월별 조회와 제목열 정렬·컬럼별 필터를 지원한다.
 - **v5.14.240**: 배차변동 스냅샷에 schema version을 붙이고, 구버전 클라이언트 재동기화가 5/27 변동내역을 순증 8건으로 되돌리는 문제를 차단했다.
 - **v5.14.239**: 구간단가를 월간실적 current 원장 전용 청구/하불 금액표로 재구성하고, 연간 원장/기간별 단가 차트/dashboard snapshot 의존을 제거했다.
 - **v5.14.238**: 배차변동 비교에서 BKG/비고/GLAPS 파생값 변화를 제외하고, 변경 이벤트는 고객사·포트·라인·TYPE 기준으로만 만들며 변경 셀은 붉은색으로 표시한다.
@@ -68,8 +70,8 @@
 - `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
 - `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
 - `cd web; npm.cmd run build`: 통과
-- 로컬 API `analysis=route-unit-price&unit_scope=month&unit_month=2026-01&refresh_snapshot=1`: RPC 5.1초, 2,518행/795묶음 확인.
-- 로컬 API `analysis=route-unit-price&unit_scope=all&refresh_snapshot=1`: RPC 1.5초, 12,178행/3,051묶음 확인.
+- Supabase RPC `asan_monthly_route_unit_amount_payload('month', 2026, 1, 5)`: `type=40RF`, 2,518행/803묶음 확인.
+- 로컬 API 월별/연도별/전체: 각각 2,518행/803묶음, 11,620행/2,974묶음, 12,178행/3,066묶음 확인.
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 46개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" tests/asanDashboardView.test.mjs`: 통과
 - `cd web; npm run build`: 통과

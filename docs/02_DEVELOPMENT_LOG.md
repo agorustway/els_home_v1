@@ -1,3 +1,25 @@
+## [2026-05-27] 아산 구간단가 TYPE/기간/필터 보강 (v5.14.241)
+### 핵심
+- 구간단가는 DB 부하와 컬럼 신뢰도를 고려해 월간 마감자료 current 원장 전용으로 유지했습니다. 연간 36만 행 원장은 합산하지 않습니다.
+- 조회 범위를 `전체/연도별/월별`로 확장하고, 묶음 기준에 `TYPE`을 추가했습니다.
+- 표 제목열 클릭 정렬과 컬럼별 필터 입력을 추가했습니다. 금액 검색은 `650000`처럼 천단위 구분 없이 숫자만 입력해도 매칭됩니다.
+- Supabase RPC `asan_monthly_route_unit_amount_payload`를 TYPE 포함 반환 구조로 재생성했습니다.
+### 검증
+- Supabase RPC `asan_monthly_route_unit_amount_payload('month', 2026, 1, 5)`: 2,518행/803묶음, 첫 TYPE `40RF` 확인
+- 로컬 API 월별/연도별/전체: 2,518행/803묶음, 11,620행/2,974묶음, 12,178행/3,066묶음 확인
+- `node --test web\tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260527_asan_monthly_route_unit_amount_rows.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/11_ASAN_PERFORMANCE_PIPELINE.md`
+
+---
+
 ## [2026-05-27] 아산 구간단가 월간 금액표 재구성 (v5.14.239)
 ### 핵심
 - 구간단가를 연간 대용량 원장과 기간별 단가 차트에서 분리하고, 월간실적 `is_current=true` 원장만 사용하는 청구/하불 금액표로 다시 구성했습니다.

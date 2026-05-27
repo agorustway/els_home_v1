@@ -1315,20 +1315,23 @@ function routeUnitPeriod(row = {}) {
 
 function normalizeRouteUnitScope(searchParams, periods = []) {
     const mode = String(searchParams.get('unit_scope') || 'all').toLowerCase();
-    const normalizedMode = ['all', 'month'].includes(mode) ? mode : 'all';
+    const normalizedMode = ['all', 'year', 'month'].includes(mode) ? mode : 'all';
     const years = Array.from(new Set(periods.map(period => String(period).slice(0, 4)).filter(Boolean))).sort();
     const latestPeriod = periods[periods.length - 1] || '';
     const requestedYear = String(searchParams.get('unit_year') || '').trim();
     const requestedMonth = String(searchParams.get('unit_month') || '').trim();
     const year = requestedYear || (latestPeriod ? latestPeriod.slice(0, 4) : years[years.length - 1] || '');
     const month = requestedMonth || (latestPeriod || '');
+    const label = normalizedMode === 'month'
+        ? `${month || '-'} 마감월`
+        : (normalizedMode === 'year' ? `${year || '-'}년` : '전체 기간');
     return {
         mode: normalizedMode,
         year,
         month,
         years,
         months: periods,
-        label: normalizedMode === 'month' ? `${month || '-'} 마감월` : '전체 기간',
+        label,
     };
 }
 
@@ -1415,12 +1418,12 @@ function routeUnitAmountRpcRowsToPayload({
         const periods = Array.isArray(row.periods) ? row.periods.filter(Boolean).sort() : [];
         const revenueAmount = numberValue(row.revenue_amount);
         const purchaseAmount = numberValue(row.purchase_amount);
-        const routeLabel = [row.sales_item, row.region, row.work_site, row.pickup, row.shipment]
+        const routeLabel = [row.sales_item, row.region, row.work_site, row.pickup, row.shipment, row.type]
             .map(value => normalizeRouteUnitText(value))
             .filter(value => value && value !== '-')
             .join(' · ') || '-';
         return {
-            key: row.key || [revenueAmount, purchaseAmount, row.sales_item, row.region, row.work_site, row.carrier, row.category, row.pickup, row.billing_pickup, row.shipment, row.bill_to, row.pay_to].join('||'),
+            key: row.key || [revenueAmount, purchaseAmount, row.sales_item, row.region, row.work_site, row.carrier, row.category, row.pickup, row.billing_pickup, row.shipment, row.type, row.bill_to, row.pay_to].join('||'),
             routeLabel,
             revenueAmount,
             purchaseAmount,
@@ -1432,6 +1435,7 @@ function routeUnitAmountRpcRowsToPayload({
             pickup: normalizeRouteUnitText(row.pickup),
             billingPickup: normalizeRouteUnitText(row.billing_pickup),
             shipment: normalizeRouteUnitText(row.shipment),
+            type: normalizeRouteUnitText(row.type),
             billTo: normalizeRouteUnitText(row.bill_to),
             payTo: normalizeRouteUnitText(row.pay_to),
             rowCount: numberValue(row.row_count),
@@ -1535,7 +1539,7 @@ function routeUnitSummaryFromMetas(metas = []) {
     const summary = mergeAnnualSummaries(metas);
     return {
         ...summary,
-        datasetBasis: '월간실적 current 원장',
+            datasetBasis: '월간 마감자료 current 원장',
         periodStart: allPeriods[0] || summary.periodStart || '',
         periodEnd: allPeriods[allPeriods.length - 1] || summary.periodEnd || '',
         annualFileCount: 0,
@@ -1603,12 +1607,12 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
     ));
     const groups = new Map();
     const totals = { revenue: 0, purchase: 0, profit: 0, rowCount: 0 };
-    const routeColumns = ['매출', '지역', '작업지', '운송사(명의)', '구분', '픽업', '청구픽업', '선적', '청구처', '하불처'];
+    const routeColumns = ['매출', '지역', '작업지', '운송사(명의)', '구분', '픽업', '청구픽업', '선적', 'TYPE', '청구처', '하불처'];
     const descriptorColumns = ['청구', '하불'];
     const amountColumns = ['청구', '하불'];
     const batchSize = 1000;
     const maxRows = 200000;
-    const maxGroups = 5000;
+    const maxGroups = 10000;
     let scannedRows = 0;
 
     if (!metas.length) {
@@ -1660,9 +1664,10 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
             const pickup = routeUnitPriceField(row, ['픽업']);
             const billingPickup = routeUnitPriceField(row, ['청구픽업', '청구 픽업']);
             const shipment = routeUnitPriceField(row, ['선적', '선적지', '선적항']);
+            const type = routeUnitPriceField(row, ['TYPE', '타입', '규격']);
             const billTo = routeUnitPriceField(row, ['청구처', '거래처', '화주']);
             const payTo = routeUnitPriceField(row, ['하불처', '지급처', '하불거래처']);
-            const routeLabel = [salesItem, region, workSite, pickup, shipment].filter(value => value && value !== '-').join(' · ') || '-';
+            const routeLabel = [salesItem, region, workSite, pickup, shipment, type].filter(value => value && value !== '-').join(' · ') || '-';
             const key = [
                 revenueAmount,
                 purchaseAmount,
@@ -1674,6 +1679,7 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
                 pickup,
                 billingPickup,
                 shipment,
+                type,
                 billTo,
                 payTo,
             ].join('||');
@@ -1691,6 +1697,7 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
                     pickup,
                     billingPickup,
                     shipment,
+                    type,
                     billTo,
                     payTo,
                 }));

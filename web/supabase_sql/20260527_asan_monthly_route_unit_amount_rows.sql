@@ -1,3 +1,6 @@
+DROP FUNCTION IF EXISTS public.asan_monthly_route_unit_amount_payload(TEXT, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.asan_monthly_route_unit_amount_rows(TEXT, INTEGER, INTEGER, INTEGER);
+
 CREATE OR REPLACE FUNCTION public.asan_monthly_route_unit_amount_rows(
     p_scope TEXT DEFAULT 'all',
     p_year INTEGER DEFAULT NULL,
@@ -17,6 +20,7 @@ RETURNS TABLE (
     pickup TEXT,
     billing_pickup TEXT,
     shipment TEXT,
+    type TEXT,
     bill_to TEXT,
     pay_to TEXT,
     row_count BIGINT,
@@ -72,6 +76,7 @@ mapped AS (
         coalesce(nullif(row_data ->> '픽업', ''), '-') AS pickup,
         coalesce(nullif(row_data ->> '청구픽업', ''), nullif(row_data ->> '청구 픽업', ''), '-') AS billing_pickup,
         coalesce(nullif(row_data ->> '선적', ''), nullif(row_data ->> '선적지', ''), nullif(row_data ->> '선적항', ''), '-') AS shipment,
+        coalesce(nullif(row_data ->> 'TYPE', ''), nullif(row_data ->> '타입', ''), nullif(row_data ->> '규격', ''), '-') AS type,
         coalesce(nullif(row_data ->> '청구처', ''), nullif(row_data ->> '거래처', ''), nullif(row_data ->> '화주', ''), '-') AS bill_to,
         coalesce(nullif(row_data ->> '하불처', ''), nullif(row_data ->> '지급처', ''), nullif(row_data ->> '하불거래처', ''), '-') AS pay_to,
         period_value
@@ -96,6 +101,7 @@ grouped AS (
             pickup,
             billing_pickup,
             shipment,
+            type,
             bill_to,
             pay_to
         )) AS key,
@@ -110,6 +116,7 @@ grouped AS (
         pickup,
         billing_pickup,
         shipment,
+        type,
         bill_to,
         pay_to,
         count(*)::BIGINT AS row_count,
@@ -131,6 +138,7 @@ grouped AS (
         pickup,
         billing_pickup,
         shipment,
+        type,
         bill_to,
         pay_to
 ),
@@ -191,6 +199,7 @@ SELECT jsonb_build_object(
                 'pickup', pickup,
                 'billing_pickup', billing_pickup,
                 'shipment', shipment,
+                'type', type,
                 'bill_to', bill_to,
                 'pay_to', pay_to,
                 'row_count', row_count,

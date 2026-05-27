@@ -44,6 +44,25 @@ const ROUTE_UNIT_SORT_OPTIONS = [
     { key: 'rowCount_desc', label: '건수 많은순', field: 'rowCount', direction: 'desc' },
     { key: 'route_asc', label: '조건명순', field: 'routeLabel', direction: 'asc' },
 ];
+const ROUTE_UNIT_NUMERIC_FIELDS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount']);
+const ROUTE_UNIT_COLUMNS = [
+    { key: 'revenueAmount', label: '청구', numeric: true },
+    { key: 'purchaseAmount', label: '하불', numeric: true },
+    { key: 'unitProfit', label: '차액', numeric: true },
+    { key: 'salesItem', label: '매출' },
+    { key: 'region', label: '지역' },
+    { key: 'workSite', label: '작업지' },
+    { key: 'carrier', label: '운송사' },
+    { key: 'category', label: '구분' },
+    { key: 'pickup', label: '픽업' },
+    { key: 'billingPickup', label: '청구픽업' },
+    { key: 'shipment', label: '선적' },
+    { key: 'type', label: 'TYPE' },
+    { key: 'billTo', label: '청구처' },
+    { key: 'payTo', label: '하불처' },
+    { key: 'rowCount', label: '건수', numeric: true },
+    { key: 'periodLabel', label: '기간' },
+];
 
 function fmtTs(value) {
     if (!value) return '-';
@@ -159,21 +178,44 @@ function sumField(items = [], field) {
 }
 
 function compareRouteUnitItems(a = {}, b = {}, sortKey = 'revenueAmount_desc') {
-    const option = ROUTE_UNIT_SORT_OPTIONS.find(item => item.key === sortKey) || ROUTE_UNIT_SORT_OPTIONS[0];
-    if (option.field === 'routeLabel') {
-        return String(a.routeLabel || '').localeCompare(String(b.routeLabel || ''), 'ko-KR');
+    const option = ROUTE_UNIT_SORT_OPTIONS.find(item => item.key === sortKey);
+    const [fieldFromKey, directionFromKey] = String(sortKey || '').match(/^(.+)_(asc|desc)$/)?.slice(1) || [];
+    const field = option?.field || fieldFromKey || 'revenueAmount';
+    const direction = option?.direction || directionFromKey || 'desc';
+    if (ROUTE_UNIT_NUMERIC_FIELDS.has(field)) {
+        const diff = safeNumber(a[field]) - safeNumber(b[field]);
+        return direction === 'asc' ? diff : -diff;
     }
-    const diff = safeNumber(a[option.field]) - safeNumber(b[option.field]);
-    return option.direction === 'asc' ? diff : -diff;
+    const diff = String(a[field] || '').localeCompare(String(b[field] || ''), 'ko-KR', { numeric: true });
+    return direction === 'asc' ? diff : -diff;
 }
 
-function routeUnitMatchesFilter(item = {}, filter = '') {
+function normalizeRouteUnitSearchPart(value) {
+    const text = String(value ?? '').trim().toLowerCase();
+    const numeric = text.replace(/[^0-9.-]/g, '');
+    return { text, numeric };
+}
+
+function routeUnitSearchBlob(values = []) {
+    return values.flatMap((value) => {
+        const { text, numeric } = normalizeRouteUnitSearchPart(value);
+        return numeric && numeric !== text ? [text, numeric] : [text];
+    }).filter(Boolean).join(' ');
+}
+
+function routeUnitTermMatches(values = [], rawTerm = '') {
+    const { text, numeric } = normalizeRouteUnitSearchPart(rawTerm);
+    if (!text) return true;
+    const blob = routeUnitSearchBlob(values);
+    return blob.includes(text) || Boolean(numeric && blob.includes(numeric));
+}
+
+function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
     const terms = String(filter || '')
         .split(/[;,，；]+/)
-        .map(part => part.trim().toLowerCase())
+        .map(part => part.trim())
         .filter(Boolean);
-    if (!terms.length) return true;
-    const haystack = [
+    const globalValues = [
         item.routeLabel,
         item.salesItem,
         item.region,
@@ -183,12 +225,21 @@ function routeUnitMatchesFilter(item = {}, filter = '') {
         item.pickup,
         item.billingPickup,
         item.shipment,
+        item.type,
         item.billTo,
         item.payTo,
         item.revenueAmount,
         item.purchaseAmount,
-    ].map(value => String(value || '').toLowerCase()).join(' ');
-    return terms.every(term => haystack.includes(term));
+        item.unitProfit,
+        item.rowCount,
+        item.periodLabel,
+    ];
+    if (terms.length && !terms.every(term => routeUnitTermMatches(globalValues, term))) return false;
+    return ROUTE_UNIT_COLUMNS.every((column) => {
+        const value = columnFilters[column.key];
+        if (!String(value || '').trim()) return true;
+        return routeUnitTermMatches([item[column.key]], value);
+    });
 }
 
 function getPerformanceGrade(profitRate) {
@@ -909,26 +960,48 @@ function RouteUnitPricePanel({
     error,
     scope,
     setScope,
+    years,
+    year,
+    setYear,
     months,
     month,
     setMonth,
     onRefresh,
 }) {
     const [unitFilter, setUnitFilter] = useState('');
+    const [columnFilters, setColumnFilters] = useState({});
     const [unitSort, setUnitSort] = useState('revenueAmount_desc');
     const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
     const visibleGroups = useMemo(() => groups
-        .filter(item => routeUnitMatchesFilter(item, unitFilter))
+        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters))
         .slice()
         .sort((a, b) => compareRouteUnitItems(a, b, unitSort) || String(a.routeLabel || '').localeCompare(String(b.routeLabel || ''), 'ko-KR')),
-    [groups, unitFilter, unitSort]);
+    [columnFilters, groups, unitFilter, unitSort]);
     const revenueAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.revenueAmount))).size, [groups]);
     const purchaseAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.purchaseAmount))).size, [groups]);
     const scopeButtons = [
         { key: 'all', label: '전체' },
+        { key: 'year', label: '연도별' },
         { key: 'month', label: '월별' },
     ];
     const summary = data?.summary || {};
+    const activeSortMatch = String(unitSort || '').match(/^(.+)_(asc|desc)$/);
+    const activeSortField = activeSortMatch?.[1] || '';
+    const activeSortDirection = activeSortMatch?.[2] || '';
+    const toggleColumnSort = (field) => {
+        const nextDirection = activeSortField === field && activeSortDirection === 'desc' ? 'asc' : 'desc';
+        setUnitSort(`${field}_${nextDirection}`);
+    };
+    const updateColumnFilter = (field, value) => {
+        setColumnFilters(prev => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+    const resetFilters = () => {
+        setUnitFilter('');
+        setColumnFilters({});
+    };
 
     return (
         <div className={styles.routeUnitShell}>
@@ -936,7 +1009,7 @@ function RouteUnitPricePanel({
                 <div>
                     <span>자료기준</span>
                     <strong>{data?.scope?.label || (scope === 'all' ? '전체 기간' : '-')}</strong>
-                    <em>{data?.datasetBasis || '월간실적 current 원장'} · 금액표</em>
+                    <em>{data?.datasetBasis || '월간 마감자료 current 원장'} · 금액표</em>
                 </div>
                 <div className={styles.routeUnitScopeButtons}>
                     {scopeButtons.map(item => (
@@ -950,6 +1023,14 @@ function RouteUnitPricePanel({
                     ))}
                 </div>
                 <select
+                    aria-label="구간단가 연도"
+                    disabled={scope !== 'year'}
+                    value={year || ''}
+                    onChange={event => setYear(event.target.value)}
+                >
+                    {years.map(item => <option key={item} value={item}>{item}년</option>)}
+                </select>
+                <select
                     aria-label="구간단가 마감월"
                     disabled={scope !== 'month'}
                     value={month || ''}
@@ -962,7 +1043,7 @@ function RouteUnitPricePanel({
                 </button>
             </section>
             <div className={styles.routeUnitPrinciple}>
-                월간실적 current 원장만 사용합니다. 청구/하불 금액과 매출·지역·작업지·운송사·구분·픽업·청구픽업·선적·청구처·하불처 조건이 같은 행을 하나의 금액표로 묶습니다.
+                월간 마감자료 DB만 사용합니다. 청구/하불 금액과 매출·지역·작업지·운송사·구분·픽업·청구픽업·선적·TYPE·청구처·하불처 조건이 같은 행을 하나의 금액표로 묶습니다.
             </div>
 
             {error && <div className={styles.errorBox}>{error}</div>}
@@ -986,7 +1067,7 @@ function RouteUnitPricePanel({
                             type="search"
                             value={unitFilter}
                             onChange={event => setUnitFilter(event.target.value)}
-                            placeholder="금액, 지역, 작업지, 운송사, 청구처 (, ; 조건)"
+                            placeholder="금액, TYPE, 작업지, 운송사, 청구처 (, ; 조건)"
                         />
                     </label>
                     <label>
@@ -997,6 +1078,9 @@ function RouteUnitPricePanel({
                             ))}
                         </select>
                     </label>
+                    <button className={styles.ghostBtn} onClick={resetFilters} disabled={!unitFilter && !Object.values(columnFilters).some(Boolean)}>
+                        필터 초기화
+                    </button>
                     <em>{visibleGroups.length.toLocaleString('ko-KR')} / {groups.length.toLocaleString('ko-KR')}개</em>
                 </div>
                 {loading && !groups.length ? (
@@ -1008,21 +1092,30 @@ function RouteUnitPricePanel({
                 ) : (
                     <div className={styles.routeUnitRows}>
                         <div className={styles.routeUnitHead}>
-                            <span>청구</span>
-                            <span>하불</span>
-                            <span>차액</span>
-                            <span>매출</span>
-                            <span>지역</span>
-                            <span>작업지</span>
-                            <span>운송사</span>
-                            <span>구분</span>
-                            <span>픽업</span>
-                            <span>청구픽업</span>
-                            <span>선적</span>
-                            <span>청구처</span>
-                            <span>하불처</span>
-                            <span>건수</span>
-                            <span>기간</span>
+                            {ROUTE_UNIT_COLUMNS.map(column => (
+                                <button
+                                    key={column.key}
+                                    type="button"
+                                    className={activeSortField === column.key ? styles.routeUnitSortActive : ''}
+                                    onClick={() => toggleColumnSort(column.key)}
+                                    title={`${column.label} 기준 정렬`}
+                                >
+                                    {column.label}
+                                    {activeSortField === column.key && <em>{activeSortDirection === 'asc' ? '▲' : '▼'}</em>}
+                                </button>
+                            ))}
+                        </div>
+                        <div className={styles.routeUnitFilterRow}>
+                            {ROUTE_UNIT_COLUMNS.map(column => (
+                                <input
+                                    key={column.key}
+                                    value={columnFilters[column.key] || ''}
+                                    onChange={event => updateColumnFilter(column.key, event.target.value)}
+                                    placeholder={column.numeric ? '숫자' : '필터'}
+                                    inputMode={column.numeric ? 'numeric' : 'text'}
+                                    aria-label={`${column.label} 필터`}
+                                />
+                            ))}
                         </div>
                         {visibleGroups.map(item => (
                             <div key={item.key} className={styles.routeUnitRow}>
@@ -1037,6 +1130,7 @@ function RouteUnitPricePanel({
                                 <span>{item.pickup}</span>
                                 <span>{item.billingPickup}</span>
                                 <span>{item.shipment}</span>
+                                <span>{item.type}</span>
                                 <span title={item.billTo}>{item.billTo}</span>
                                 <span title={item.payTo}>{item.payTo}</span>
                                 <em>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</em>
@@ -1071,6 +1165,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
     const [scopeStart, setScopeStart] = useState('');
     const [scopeEnd, setScopeEnd] = useState('');
     const [routeUnitScope, setRouteUnitScope] = useState('month');
+    const [routeUnitYear, setRouteUnitYear] = useState('');
     const [routeUnitMonth, setRouteUnitMonth] = useState('');
     const [routeUnitData, setRouteUnitData] = useState(null);
     const [routeUnitLoading, setRouteUnitLoading] = useState(false);
@@ -1322,10 +1417,16 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
     const periodOptions = useMemo(() => getPeriodOptions(monthly), [monthly]);
     const routeUnitPeriodOptions = useMemo(() => {
         const routeMonths = Array.isArray(routeUnitData?.scope?.months) ? routeUnitData.scope.months : [];
-        const merged = routeMonths.length ? routeMonths : periodOptions;
-        return Array.from(new Set(merged.map(period => String(period || '').trim()).filter(Boolean))).sort();
-    }, [periodOptions, routeUnitData?.scope?.months]);
+        return Array.from(new Set(routeMonths.map(period => String(period || '').trim()).filter(Boolean))).sort();
+    }, [routeUnitData?.scope?.months]);
     const routeUnitMonths = routeUnitPeriodOptions;
+    const routeUnitYears = useMemo(() => {
+        const routeYears = Array.isArray(routeUnitData?.scope?.years) ? routeUnitData.scope.years : [];
+        const merged = routeYears.length
+            ? routeYears
+            : routeUnitMonths.map(period => String(period || '').slice(0, 4));
+        return Array.from(new Set(merged.map(item => String(item || '').trim()).filter(Boolean))).sort();
+    }, [routeUnitData?.scope?.years, routeUnitMonths]);
     const scopeBounds = useMemo(() => getScopeBounds({
         mode: scopeMode,
         periods: periodOptions,
@@ -1448,6 +1549,13 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
     }, [periodOptions, scopeEnd, scopeStart]);
 
     useEffect(() => {
+        if (!routeUnitYears.length) return;
+        if (!routeUnitYear || !routeUnitYears.includes(routeUnitYear)) {
+            setRouteUnitYear(routeUnitYears[routeUnitYears.length - 1]);
+        }
+    }, [routeUnitYear, routeUnitYears]);
+
+    useEffect(() => {
         if (!routeUnitMonths.length) return;
         if (!routeUnitMonth || !routeUnitMonths.includes(routeUnitMonth)) {
             setRouteUnitMonth(routeUnitMonths[routeUnitMonths.length - 1]);
@@ -1455,8 +1563,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
     }, [routeUnitMonth, routeUnitMonths]);
 
     const fetchRouteUnitData = useCallback(async (options = {}) => {
-        const effectiveScope = routeUnitScope === 'month' ? 'month' : 'all';
-        if (effectiveScope === 'month' && !routeUnitMonth) return;
+        const effectiveScope = ['year', 'month'].includes(routeUnitScope) ? routeUnitScope : 'all';
         setRouteUnitLoading(true);
         setRouteUnitError('');
         try {
@@ -1465,7 +1572,10 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
                 analysis: 'route-unit-price',
                 unit_scope: effectiveScope,
             });
-            if (effectiveScope === 'month') {
+            if (effectiveScope === 'year' && routeUnitYear) {
+                params.set('unit_year', routeUnitYear);
+            }
+            if (effectiveScope === 'month' && routeUnitMonth) {
                 params.set('unit_month', routeUnitMonth);
                 params.set('unit_year', routeUnitMonth.slice(0, 4));
             }
@@ -1479,7 +1589,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
         } finally {
             setRouteUnitLoading(false);
         }
-    }, [routeUnitMonth, routeUnitScope]);
+    }, [routeUnitMonth, routeUnitScope, routeUnitYear]);
 
     useEffect(() => {
         if (activeTab !== 'analytics' || analysisView !== 'route-unit') return;
@@ -1920,6 +2030,9 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
                             error={routeUnitError}
                             scope={routeUnitScope}
                             setScope={setRouteUnitScope}
+                            years={routeUnitYears}
+                            year={routeUnitYear}
+                            setYear={setRouteUnitYear}
                             months={routeUnitMonths}
                             month={routeUnitMonth}
                             setMonth={setRouteUnitMonth}
