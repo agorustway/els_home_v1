@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.261 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.262 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 운송경로 수정양식 안내문 헤더 오인으로 생긴 UUID 오염 행 540건을 운영 DB에서 정리하고 파서 방어 로직을 추가했다.
+> 최신 업데이트: GLAPS 항목매핑 수정양식 업로드가 같은 DB 키를 신규 insert로 보내 UNIQUE 충돌하던 문제를 기존행 업데이트/업로드 내 병합으로 전환했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.261
+- **웹 버전**: v5.14.262
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -45,6 +45,7 @@
 - GLAPS 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받는다. 삭제는 행 삭제가 아니라 `삭제(Y)` 입력으로만 처리한다.
 - GLAPS 수정양식 업로드 파서는 안내문처럼 여러 헤더명이 한 셀에 들어간 행을 헤더로 보지 않는다. UUID가 운송경로 필드 전체로 복제된 오염 행은 저장 전에 버린다.
+- GLAPS 항목매핑 수정양식 업로드는 같은 `매핑항목+ELS 매치코드+운송경로코드+최종코드(BP)`가 기존 DB에 있으면 신규 insert 대신 기존행 업데이트로 처리하고, 같은 파일 안의 반복 키는 한 행으로 병합한다.
 - `WEB수정` 행은 업로드 변경/삭제에서 제외하고, 마스터 업로드/NAS 반영 시 새 활성 버전으로 보존한다.
 - GLAPS 마스터 반영은 새 버전을 비활성으로 만든 뒤 모든 insert가 성공한 경우에만 active 전환한다. 같은 원장 행이 중복 파싱되면 insert 전에 정리하고 결과 메시지에 `원장 중복행 N건 정리`로 알린다.
 - 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다.
@@ -64,6 +65,7 @@
 - 배차변동 sync payload는 `changeSchemaVersion=2` 이상만 반영한다. 구버전으로 열린 탭이 transportRemark 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.262**: 항목매핑 수정양식 업로드 시 ID가 비어 있거나 같은 키가 반복되어 `glaps_master_aliases_branch_version_alias_source_route_code_key` UNIQUE 오류가 나던 문제를 수정했다. 기존 키는 기존 ID 업데이트로 연결하고 업로드 내부 반복은 병합한다.
 - **v5.14.261**: 운송경로 수정양식 안내문이 헤더로 오인되어 ID UUID가 상차지/경유지/하차지에 들어간 운영 DB 오염 행 540건을 비활성 처리했다. 파서는 서로 다른 3개 이상 열에서 헤더가 잡힐 때만 수정양식으로 인정하고 UUID 복제 행을 저장 전 제외한다.
 - **v5.14.260**: GLAPS 항목매핑 중복후보 SQL에 구버전 `alias_type_source` 제약 drop을 추가하고 운영 Supabase에 적용했다. 업로드 API는 구버전 제약이 남아 있으면 SQL 파일을 안내한다.
 - **v5.14.259**: 배차변동 삭제 감지가 같은 고객사/포트/라인/타입 행과 과매칭되어 삭제가 숨겨질 수 있던 문제를 수정했다. 반복행 1건 삭제와 업체 교체 회귀 테스트를 추가했다.
@@ -71,18 +73,16 @@
 - **v5.14.257**: 구간단가 제목열 필터 팝오버는 선택값을 유지한 채 다른 영역 클릭 또는 ESC 입력 시 닫히도록 했다.
 - **v5.14.256**: 구간단가 전역 검색에서 영문 포함 조건의 숫자 보조검색을 끄고, 표 헤더를 선적관리형 진한 남색으로 정리했다. 청구금액은 파란색, 하불금액은 빨간색으로 표시한다.
 - **v5.14.255**: 구간단가 컬럼 필터를 다중 선택으로 전환했다. 같은 컬럼 안에서는 선택값을 OR로 묶고, 서로 다른 컬럼 조건은 AND로 적용해 지역/TYPE/거래처 등을 동시에 좁혀 볼 수 있게 했다.
-- **v5.14.254**: 선적관리 default prefs 미보유 사용자에게만 최병훈 P1을 fallback으로 적용한다. 엑셀/프리셋에 섞인 `COL1`, `COLS2`류 익명 컬럼은 헤더 정규화 단계에서 제거해 모바일 P1 로드에도 표시되지 않게 했다.
 ## VERIFICATION
-- `cd web; node --test --test-name-pattern "선적관리 액션바|선적관리 숨김 컬럼|선적관리 레이아웃|선적관리 사용자 prefs" tests\asanShippingFlow.test.mjs`: 4개 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/user/prefs/route.js" "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
 - `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
-- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 54개 통과
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 51개 통과
 - `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - `cd web; node --test tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 14개 통과
 - `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/glapsMasterData.test.mjs"`: 통과
 - `cd web; npx eslint "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs"`: 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; npm run build`: 통과
 
 ## IN-PROGRESS

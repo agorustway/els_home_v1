@@ -553,6 +553,49 @@ function isAliasTemplateRowChanged(existing = {}, next = {}) {
   ]);
 }
 
+function mergeAliasUploadRows(base = {}, next = {}) {
+  const baseId = cleanText(base.id);
+  const nextId = cleanText(next.id);
+  return {
+    ...base,
+    ...next,
+    id: baseId || nextId || undefined,
+    els_name: mergeAliasFieldValues([base.els_name, next.els_name]),
+    glaps_name: mergeAliasFieldValues([base.glaps_name, next.glaps_name]),
+    review_note: mergeAliasFieldValues([base.review_note, next.review_note]),
+    review_status: normalizeReviewStatus(
+      next.review_status || base.review_status,
+      cleanText(next.glaps_code || base.glaps_code) ? 'ready' : 'needs_mapping',
+    ),
+  };
+}
+
+function coalesceAliasUploadRows(rows = []) {
+  const byKey = new Map();
+  const passthrough = [];
+  let mergedDuplicateRows = 0;
+
+  rows.forEach((row) => {
+    const key = aliasInsertConstraintKey(row);
+    if (!key) {
+      passthrough.push(row);
+      return;
+    }
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, row);
+      return;
+    }
+    byKey.set(key, mergeAliasUploadRows(existing, row));
+    mergedDuplicateRows += 1;
+  });
+
+  return {
+    rows: [...passthrough, ...byKey.values()],
+    mergedDuplicateRows,
+  };
+}
+
 async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
   const actor = buildEditActor(editSource, userEmail);
   const deleteIds = rows.filter(row => row.deleteFlag && row.id).map(row => cleanText(row.id)).filter(Boolean);
@@ -618,16 +661,33 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
       const dbRow = toAliasDbRow(row, { branchId, versionId, userEmail: actor });
       return row.id ? { id: cleanText(row.id), ...dbRow } : dbRow;
     });
-  const existingById = await fetchRowsByIds(
-    adminSupabase,
-    'glaps_master_aliases',
-    versionId,
-    [...deleteIds, ...candidateRows.map(row => row.id)],
-  );
+  const existingRows = await fetchPagedGlapsRows(() => adminSupabase
+    .from('glaps_master_aliases')
+    .select('*')
+    .eq('version_id', versionId));
+  const existingById = new Map(existingRows.map(row => [cleanText(row.id), row]));
+  const existingByConstraintKey = new Map();
+  existingRows.forEach((row) => {
+    const key = aliasInsertConstraintKey(row);
+    if (key && !existingByConstraintKey.has(key)) existingByConstraintKey.set(key, row);
+  });
+  let matchedExistingByKey = 0;
+  const rowsResolvedByConstraint = candidateRows.map((row) => {
+    const key = aliasInsertConstraintKey(row);
+    const existingByKey = key ? existingByConstraintKey.get(key) : null;
+    if (!existingByKey) return row;
+    const rowId = cleanText(row.id);
+    const existingId = cleanText(existingByKey.id);
+    if (rowId && rowId === existingId) return row;
+    matchedExistingByKey += 1;
+    return mergeAliasUploadRows({ id: existingId, ...existingByKey }, row);
+  });
+  const coalesced = coalesceAliasUploadRows(rowsResolvedByConstraint);
+  const uploadRows = coalesced.rows;
   const upsertRows = [];
   let unchanged = 0;
   let skippedWebProtected = 0;
-  candidateRows.forEach((row) => {
+  uploadRows.forEach((row) => {
     if (!row.id) {
       upsertRows.push(row);
       return;
@@ -662,7 +722,14 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
     const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows, { onConflict: 'id' });
     if (error) throw error;
   }
-  return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
+  return {
+    updated: upsertRows.length,
+    deleted: allowedDeleteIds.length,
+    unchanged,
+    skippedWebProtected,
+    matchedExistingByKey,
+    mergedDuplicateRows: coalesced.mergedDuplicateRows,
+  };
 }
 
 async function findRouteDirectDuplicates(adminSupabase, versionId, dbRow, id = '') {

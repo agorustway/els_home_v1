@@ -1,3 +1,19 @@
+## [2026-05-28] GLAPS 항목매핑 업로드 중복키 처리 (v5.14.262)
+### 핵심
+- 항목매핑 수정양식 업로드 시 `glaps_master_aliases_branch_version_alias_source_route_code_key` UNIQUE 오류가 계속 발생하던 원인을 확인했습니다.
+- DB 제약은 정상적으로 `매핑항목 + ELS 매치코드 + 운송경로코드 + 최종코드(BP)`를 허용 기준으로 잡고 있었지만, 업로드 API가 ID 기준으로만 upsert해 ID가 비어 있거나 같은 키가 반복된 행을 신규 insert로 보내고 있었습니다.
+- 업로드 전 현재 버전의 기존 항목매핑 키를 읽어 같은 키가 있으면 기존 ID 업데이트로 연결하고, 같은 파일 안에서 같은 키가 반복되면 `ELS 디스크립션`, `GLAPS 디스크립션`, `검수메모`를 병합한 1행으로 처리합니다.
+- WEB수정 보호 정책은 유지해 기존 WEB수정 행과 충돌하는 업로드 변경은 계속 제외합니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 운송경로 수정양식 UUID 오염 정리 (v5.14.261)
 ### 핵심
 - 수정양식 업로드 실패 중 `ID` UUID가 운송경로코드/상차지/경유지(ELS)/하차지에 복제된 운영 DB 오염 행이 생성된 것을 확인했습니다.
