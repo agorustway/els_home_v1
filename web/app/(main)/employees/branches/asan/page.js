@@ -1635,7 +1635,19 @@ function AsanDispatchContent() {
             targetDate: activeItem.target_date,
         };
     }, [activeItem?.target_date, isAllTab, viewType]);
+    const detailSourceConfirmationToken = useMemo(() => {
+        if (!detailScope || detailScope.dispatchType !== 'integrated') return '';
+        return ['glovis', 'mobis']
+            .map((dispatchType) => dispatchConfirmationMap[dispatchConfirmationMapKey(detailScope.targetDate, dispatchType)])
+            .filter((confirmation) => confirmation?.active)
+            .map((confirmation) => confirmation.id)
+            .join('|');
+    }, [detailScope, dispatchConfirmationMap]);
     const detailConfirmationLocked = Boolean(detailConfirmation?.active);
+    const detailChangeSyncConfirmationToken = detailConfirmation?.active
+        ? detailConfirmation.id
+        : detailSourceConfirmationToken;
+    const detailChangeSyncEnabled = Boolean(detailChangeSyncConfirmationToken);
     const getDetailAuthHeaders = useCallback(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
@@ -2207,10 +2219,10 @@ function AsanDispatchContent() {
     }, [detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
 
     useEffect(() => {
-        if (!detailScope || !detailConfirmation?.id || !detailConfirmation.active) return undefined;
+        if (!detailScope || !detailChangeSyncEnabled) return undefined;
         if (detailChangeSetupRequired || detailConfirmationSetupRequired || detailSnapshotLines.length === 0) return undefined;
         if (loading || refreshing || detailStateLoading || glapsLookupLoading) return undefined;
-        const signature = `${detailConfirmation.id}:${detailSnapshotSignature}`;
+        const signature = `${detailChangeSyncConfirmationToken}:${detailSnapshotSignature}`;
         if (!detailSnapshotSignature || detailChangeSyncRef.current === signature) return undefined;
 
         let cancelled = false;
@@ -2250,8 +2262,8 @@ function AsanDispatchContent() {
         };
     }, [
         detailChangeSetupRequired,
-        detailConfirmation?.active,
-        detailConfirmation?.id,
+        detailChangeSyncConfirmationToken,
+        detailChangeSyncEnabled,
         detailConfirmationSetupRequired,
         detailScope,
         detailSnapshotLines,

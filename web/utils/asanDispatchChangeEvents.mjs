@@ -284,6 +284,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     targetVessel: line.targetVessel || '',
     note: line.note || '',
     detailUpdatedAt: line.detailUpdatedAt || '',
+    sourceType: line.sourceType || '',
     sourceRowIndex: line.sourceRowIndex ?? null,
     sourceRegion: line.sourceRegion || '',
     sourceText: line.sourceText || '',

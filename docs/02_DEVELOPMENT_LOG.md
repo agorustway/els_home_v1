@@ -1,3 +1,21 @@
+## [2026-05-28] 통합 배차변동 원본 확정분 동기화 (v5.14.258)
+### 핵심
+- 통합현황에서 `integrated` 배차확정이 없으면 변동 sync가 멈춰, 이미 확정된 `glovis/mobis` 변동이 보이지 않던 문제를 수정했습니다.
+- 상세배차 라인에 원본 `sourceType`을 보존하고, 통합 sync 요청은 확정된 원본 구분별로 현재 라인을 나눠 비교합니다.
+- 통합 변동 조회/일괄확인은 통합확정이 없을 때 glovis/mobis 변동 이벤트도 함께 다룹니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 52개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 구간단가 필터 팝오버 바깥 클릭 닫힘 (v5.14.257)
 ### 핵심
 - 구간단가 제목열 필터 목록이 열린 상태에서 표/검색창/다른 화면 영역을 클릭하면 목록만 닫히도록 했습니다.

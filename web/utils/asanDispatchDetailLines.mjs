@@ -194,6 +194,7 @@ function findExactDispatchDetailHeaderIndex(headers = [], target) {
 
 function buildBaseLine(row, cols, fallbackWorkDate) {
   return {
+    sourceType: cleanText(row?.webCellMeta?.sourceType || ''),
     workDate: detailValue(row, cols, 'date') || fallbackWorkDate || '',
     direction: detailValue(row, cols, 'direction'),
     shipper: detailValue(row, cols, 'shipper'),

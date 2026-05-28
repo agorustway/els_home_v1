@@ -238,13 +238,19 @@ test('상세배차 행 변환은 요청 컬럼 순서를 유지한다', () => {
 });
 
 test('배차변동 스냅샷은 구버전 클라이언트 재동기화 방지용 스키마 버전을 담는다', () => {
+  const sourceRow = Object.assign(
+    ['2026-05-27', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경1'],
+    { webCellMeta: { sourceType: 'glovis' } },
+  );
   const line = buildDispatchDetailLines({
     headers: ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산'],
-    rows: [['2026-05-27', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '민경1']],
+    rows: [sourceRow],
   })[0];
   const snapshot = makeDispatchChangeSnapshotLine(line, 'line-1');
 
   assert.equal(snapshot.rowContext.changeSchemaVersion, DISPATCH_CHANGE_SCHEMA_VERSION);
+  assert.equal(line.sourceType, 'glovis');
+  assert.equal(snapshot.rowContext.sourceType, 'glovis');
 });
 
 test('상세배차 행은 GLAPS 업로드 첫 시트 양식으로 변환하고 같은 부킹은 수량으로 묶는다', () => {

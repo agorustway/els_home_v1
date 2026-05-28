@@ -40,8 +40,10 @@ function detectEventDispatchType(row = {}) {
 }
 
 function eventMatchesRequestedScope(row = {}, payload = {}) {
+    if (payload.dispatchType === 'integrated') {
+        return ['integrated', 'glovis', 'mobis'].includes(row.dispatch_type);
+    }
     if (row.dispatch_type === payload.dispatchType) return true;
-    if (payload.dispatchType === 'integrated') return row.dispatch_type === 'integrated';
     if (row.dispatch_type !== 'integrated') return false;
     return detectEventDispatchType(row) === payload.dispatchType;
 }
@@ -95,6 +97,41 @@ async function fetchConfirmation(adminSupabase, payload) {
     return data || null;
 }
 
+async function fetchConfirmations(adminSupabase, payload) {
+    const { data, error } = await adminSupabase
+        .from('branch_dispatch_confirmations')
+        .select('*')
+        .eq('branch_id', BRANCH_ID)
+        .in('dispatch_type', payload.dispatchTypes || [payload.dispatchType])
+        .eq('target_date', payload.targetDate);
+    if (error) throw error;
+    return data || [];
+}
+
+function isActiveConfirmation(row) {
+    return Boolean(row?.id && row.active);
+}
+
+function detectLineDispatchType(line = {}) {
+    const context = line.rowContext || line.row_context || {};
+    const explicitType = cleanText(context.dispatchType || context.sourceType || line.dispatchType || line.sourceType);
+    if (VALID_TYPES.has(explicitType) && explicitType !== 'integrated') return explicitType;
+    const shipper = cleanText(context.shipper || line.shipper || '');
+    if (shipper.includes('글로비스')) return 'glovis';
+    if (shipper.includes('모비스')) return 'mobis';
+    return '';
+}
+
+function splitCurrentLinesByDispatchType(currentLines = []) {
+    const groups = new Map();
+    for (const type of ['glovis', 'mobis']) groups.set(type, []);
+    currentLines.forEach((line) => {
+        const type = detectLineDispatchType(line);
+        if (groups.has(type)) groups.get(type).push(line);
+    });
+    return groups;
+}
+
 async function fetchSnapshots(adminSupabase, confirmationId) {
     if (!confirmationId) return [];
     const { data, error } = await adminSupabase
@@ -122,6 +159,11 @@ function dbRowToNeutralFilterEvent(row = {}) {
 }
 
 async function fetchEvents(adminSupabase, payload) {
+    const directConfirmation = payload.dispatchType === 'integrated'
+        ? await fetchConfirmation(adminSupabase, payload)
+        : null;
+    const integratedDirectActive = payload.dispatchType === 'integrated' && isActiveConfirmation(directConfirmation);
+
     let query = adminSupabase
         .from('branch_dispatch_detail_change_events')
         .select('*')
@@ -132,10 +174,12 @@ async function fetchEvents(adminSupabase, payload) {
         .order('event_order', { ascending: true });
 
     if (payload.dispatchType === 'integrated') {
-        query = query.eq('dispatch_type', payload.dispatchType);
+        query = integratedDirectActive
+            ? query.eq('dispatch_type', payload.dispatchType)
+            : query.in('dispatch_type', ['integrated', 'glovis', 'mobis']);
     } else {
-        const directConfirmation = await fetchConfirmation(adminSupabase, payload);
-        query = directConfirmation
+        const sourceConfirmation = await fetchConfirmation(adminSupabase, payload);
+        query = sourceConfirmation
             ? query.eq('dispatch_type', payload.dispatchType)
             : query.in('dispatch_type', [payload.dispatchType, 'integrated']);
     }
@@ -378,6 +422,26 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
     await insertMemoOnlyHistory(adminSupabase, confirmation, memoChanges, actor, now);
 }
 
+async function syncChangeEventsForPayload(adminSupabase, payload, actor, now) {
+    const directConfirmation = await fetchConfirmation(adminSupabase, payload);
+    if (payload.dispatchType !== 'integrated' || isActiveConfirmation(directConfirmation)) {
+        await syncChangeEvents(adminSupabase, directConfirmation, payload.currentLines, actor, now);
+        return;
+    }
+
+    const sourceConfirmations = await fetchConfirmations(adminSupabase, {
+        ...payload,
+        dispatchTypes: ['glovis', 'mobis'],
+    });
+    const activeSourceConfirmations = sourceConfirmations.filter(isActiveConfirmation);
+    if (activeSourceConfirmations.length === 0) return;
+
+    const linesByType = splitCurrentLinesByDispatchType(payload.currentLines);
+    for (const confirmation of activeSourceConfirmations) {
+        await syncChangeEvents(adminSupabase, confirmation, linesByType.get(confirmation.dispatch_type) || [], actor, now);
+    }
+}
+
 async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false } = {}) {
     let query = adminSupabase
         .from('branch_dispatch_detail_change_events')
@@ -389,6 +453,7 @@ async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false 
 
     if (payload.eventIds.length > 0) query = query.in('id', payload.eventIds);
     else if (payload.eventId) query = query.eq('id', payload.eventId);
+    else if (payload.dispatchType === 'integrated') query = query.in('dispatch_type', ['integrated', 'glovis', 'mobis']);
     else query = query.eq('dispatch_type', payload.dispatchType);
 
     const { data: targets, error: targetError } = await query;
@@ -532,8 +597,7 @@ export async function POST(request) {
         const now = new Date().toISOString();
 
         if (payload.action === 'sync') {
-            const confirmation = await fetchConfirmation(access.adminSupabase, payload);
-            await syncChangeEvents(access.adminSupabase, confirmation, payload.currentLines, actor, now);
+            await syncChangeEventsForPayload(access.adminSupabase, payload, actor, now);
         } else if (payload.action === 'confirm') {
             await confirmEvents(access.adminSupabase, payload, actor, now);
         } else if (payload.action === 'confirm_all') {
