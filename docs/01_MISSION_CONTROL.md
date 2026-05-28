@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.259 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.260 / APK v5.11.29)
 
-> 최신 업데이트: 배차변동 삭제 비교가 같은 운송조건의 다른 업체/작업지 행과 섞이지 않게 안정 매칭 키를 보강했다.
+> 최신 업데이트: GLAPS 항목매핑 다중 후보용 DB 제약 SQL을 구버전 source 제약까지 제거하도록 보강하고 운영 DB에 적용했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.259
+- **웹 버전**: v5.14.260
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -37,6 +37,7 @@
 - 운송사코드는 `운송사코드` 시트의 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
 - 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
 - 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. 항목매핑 UNIQUE는 `glaps_code`까지 포함한다.
+- 운영 DB 항목매핑 UNIQUE는 `branch_id, version_id, alias_type, source_name, route_code, glaps_code` 단일 제약이다.
 - GLAPS 중복 판정/병합 기준은 운송경로=`운송경로코드`, 항목매핑=`최종코드(BP)` 단독 반복이다. 상차지/하차지/공장/매핑항목 등 다른 컬럼은 중복 판정에서 제외한다.
 - GLAPS `운송경로코드`와 `최종코드(BP)`는 수정 가능한 핵심 키값이므로 화면/수정양식에서 초록 키 칸으로 표시한다.
 - GLAPS 요약 카드는 운송경로 상태/원본시트로 이동하는 필터 버튼이며, `검수메모`는 매칭 키가 아니라 출처·용도·기본값 확인용 메모다.
@@ -62,6 +63,7 @@
 - 배차변동 sync payload는 `changeSchemaVersion=2` 이상만 반영한다. 구버전으로 열린 탭이 transportRemark 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.260**: GLAPS 항목매핑 중복후보 SQL에 구버전 `alias_type_source` 제약 drop을 추가하고 운영 Supabase에 적용했다. 업로드 API는 구버전 제약이 남아 있으면 SQL 파일을 안내한다.
 - **v5.14.259**: 배차변동 삭제 감지가 같은 고객사/포트/라인/타입 행과 과매칭되어 삭제가 숨겨질 수 있던 문제를 수정했다. 반복행 1건 삭제와 업체 교체 회귀 테스트를 추가했다.
 - **v5.14.258**: 통합 배차변동내역이 `integrated` 확정만 찾느라 확정된 glovis/mobis 변동을 놓치던 문제를 수정했다. 상세라인에 원본 sourceType을 보존하고, 통합 sync 요청은 확정된 원본 구분별로 분리 계산한다.
 - **v5.14.257**: 구간단가 제목열 필터 팝오버는 선택값을 유지한 채 다른 영역 클릭 또는 ESC 입력 시 닫히도록 했다.
@@ -70,9 +72,6 @@
 - **v5.14.254**: 선적관리 default prefs 미보유 사용자에게만 최병훈 P1을 fallback으로 적용한다. 엑셀/프리셋에 섞인 `COL1`, `COLS2`류 익명 컬럼은 헤더 정규화 단계에서 제거해 모바일 P1 로드에도 표시되지 않게 했다.
 - **v5.14.253**: GLAPS 요약 카드를 운송경로 상태/원본시트 필터 버튼으로 바꾸고, 매핑항목·검수메모 용도를 화면/수정양식 설명서에 추가했다. `운송경로코드`와 `최종코드(BP)`는 회색 보호칸 대신 초록 키값 컬럼으로 표시하고, NAS 마스터 반영/업로드는 회색 레거시 버튼 안쪽 패널로 접었다.
 - **v5.14.252**: 구간단가의 별도 `묶음 항목` 바를 제거하고 숨김 드롭존으로 집계 제외를 통합했다. 필터 입력칸은 버튼 높이에 맞춘 인라인형으로 줄이고 도구 버튼과 간격을 정리했다.
-- **v5.14.251**: 선적관리 일별 화면은 100건 더보기 없이 전체 행을 기본 표시한다. 배차확정된 상세는 BKG확정/원본 BKG/포트코드까지 입력 잠금하고, 확인완료된 변동내역 행은 회색 배경으로 잠금 상태를 표시한다.
-- **v5.14.250**: 구간단가 표를 선적관리 리스트 형식으로 정리했다. 숨김 드롭존/열 이동/P1·P2 저장·로드/엑셀/새로고침을 제공하고, 숨긴 묶음 열은 집계 기준에서도 제외한다.
-- **v5.14.249**: GLAPS 일반 목록의 빨간 중복 강조를 제거하고, 중복검출 모드에서만 `운송경로코드`/`최종코드(BP)` 중복 그룹을 표시한다.
 ## VERIFICATION
 - `cd web; node --test --test-name-pattern "선적관리 액션바|선적관리 숨김 컬럼|선적관리 레이아웃|선적관리 사용자 prefs" tests\asanShippingFlow.test.mjs`: 4개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanShipping.js" "app/api/user/prefs/route.js" "utils/asanShippingView.mjs" "tests/asanShippingFlow.test.mjs"`: 통과
@@ -81,8 +80,9 @@
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 54개 통과
 - `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
-- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 47개 통과
+- `cd web; node --test tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 12개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs"`: 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/glapsMasterData.test.mjs"`: 통과
 - `cd web; npm run build`: 통과
 
 ## IN-PROGRESS

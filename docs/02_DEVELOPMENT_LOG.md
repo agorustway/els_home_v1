@@ -1,3 +1,22 @@
+## [2026-05-28] GLAPS 항목매핑 다중 후보 제약 보강 (v5.14.260)
+### 핵심
+- 코드 엑셀 업로드 시 `glaps_master_aliases_branch_id_version_id_alias_type_source_key` 중복 오류가 발생한 원인은 운영 DB에 구버전 `매핑항목+ELS 매치코드` 단일 제약이 남아 있었기 때문입니다.
+- `20260527_glaps_alias_duplicate_candidates.sql`과 기본 GLAPS SQL에 구버전 source 제약명 drop을 추가했습니다.
+- 운영 Supabase에 migration을 적용해 항목매핑 UNIQUE를 `branch_id, version_id, alias_type, source_name, route_code, glaps_code`로 정리했습니다.
+- 업로드 API는 구버전 제약이 남아 있으면 원시 DB 오류 대신 중복후보 SQL 파일을 안내합니다.
+### 검증
+- Supabase 확인: `glaps_master_aliases_branch_version_alias_source_route_code_key = UNIQUE (branch_id, version_id, alias_type, source_name, route_code, glaps_code)`
+- `cd web; node --test tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/glapsMasterData.test.mjs"`: 통과
+### 변경 파일
+- `web/supabase_sql/20260527_glaps_alias_duplicate_candidates.sql`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/glapsMasterData.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 배차변동 삭제 안정 매칭 보강 (v5.14.259)
 ### 핵심
 - 배차변동 비교 첫 단계가 `고객사/포트/라인/타입`만 같은 행을 같은 행으로 매칭해, 같은 운송조건 안의 업체 교체나 삭제가 숨겨질 수 있던 문제를 수정했습니다.

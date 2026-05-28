@@ -44,6 +44,13 @@ function isDuplicateConstraintError(error) {
   return code === '23505' || message.includes('duplicate key') || message.includes('unique constraint');
 }
 
+function isLegacyAliasSourceConstraintError(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  return isDuplicateConstraintError(error)
+    && message.includes('glaps_master_aliases')
+    && message.includes('alias_type_source');
+}
+
 function jsonError(message, status = 500, extra = {}) {
   return NextResponse.json({ error: message, ...extra }, { status });
 }
@@ -1326,6 +1333,13 @@ export async function POST(request) {
         error: 'GLAPS 마스터 테이블이 아직 적용되지 않았습니다.',
         sqlFile: 'web/supabase_sql/20260523_asan_glaps_master_codes.sql',
       }, { status: 503 });
+    }
+    if (isLegacyAliasSourceConstraintError(error)) {
+      return jsonError(
+        '현재 DB가 같은 매핑항목·ELS 매치코드를 1개만 허용하는 구버전 제약을 사용 중입니다. 같은 ELS 매치코드에 여러 GLAPS 후보코드를 넣으려면 GLAPS 항목매핑 중복후보 SQL을 적용해야 합니다.',
+        409,
+        { sqlFile: 'web/supabase_sql/20260527_glaps_alias_duplicate_candidates.sql' },
+      );
     }
     console.error('[asan-glaps-master] POST failed:', error);
     return jsonError(error.message || 'GLAPS 마스터 반영 실패');
