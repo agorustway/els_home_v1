@@ -152,6 +152,8 @@ const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
   ['온산항', ['KRONS']],
 ]);
 
+const UUID_TEXT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function cleanGlapsText(value) {
   return String(value ?? '').normalize('NFKC').trim();
 }
@@ -709,11 +711,14 @@ export function parseGlapsMasterSheets(sheets = []) {
 }
 
 function findTemplateHeaderRowIndex(rows = [], aliases = {}) {
-  const keys = Object.values(aliases).flat();
+  const columnCandidates = Object.values(aliases);
   for (let idx = 0; idx < Math.min(rows.length, 8); idx += 1) {
     const row = rows[idx] || [];
-    const matches = keys.filter(key => findGlapsHeaderIndex(row, [key]) >= 0).length;
-    if (matches >= 3) return idx;
+    const matchedColumns = columnCandidates
+      .map(candidates => findGlapsHeaderIndex(row, candidates))
+      .filter(col => col >= 0);
+    const distinctColumns = new Set(matchedColumns);
+    if (matchedColumns.length >= 3 && distinctColumns.size >= 3) return idx;
   }
   return -1;
 }
@@ -737,6 +742,19 @@ function templateRowsFromSheet(sheet = {}, aliases = {}, options = {}) {
     .filter(({ row }) => row.some(cell => cleanGlapsText(cell)));
 }
 
+function isUuidText(value) {
+  return UUID_TEXT_PATTERN.test(cleanGlapsText(value));
+}
+
+function isCorruptedRouteTemplateRow(route = {}) {
+  return [
+    route.routeCode,
+    route.startLocationName,
+    route.waypointElsName,
+    route.destinationName,
+  ].every(isUuidText);
+}
+
 export function parseGlapsRouteTemplateSheets(sheets = []) {
   return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ROUTE_TEMPLATE_ALIASES, {
     requiredKeys: ['routeCode', 'startLocationName', 'waypointElsName', 'destinationName'],
@@ -757,7 +775,7 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
     route.routeFingerprint = buildGlapsRouteFingerprint(route);
     route.reviewStatus = normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getGlapsRouteReviewStatus(route));
     return route;
-  }));
+  }).filter(route => !isCorruptedRouteTemplateRow(route)));
 }
 
 export function parseGlapsAliasTemplateSheets(sheets = []) {

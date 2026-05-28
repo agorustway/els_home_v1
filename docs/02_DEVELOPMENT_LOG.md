@@ -1,3 +1,20 @@
+## [2026-05-28] GLAPS 운송경로 수정양식 UUID 오염 정리 (v5.14.261)
+### 핵심
+- 수정양식 업로드 실패 중 `ID` UUID가 운송경로코드/상차지/경유지(ELS)/하차지에 복제된 운영 DB 오염 행이 생성된 것을 확인했습니다.
+- 원인은 `운송경로_수정양식` 2행 안내문에 `상차지 + 경유지(ELS) + 하차지(선적) + 운송경로코드`가 한 셀에 들어 있어, 파서가 안내문을 헤더로 오인할 수 있었기 때문입니다.
+- 운영 Supabase 활성 GLAPS 버전 `6724943a-5c6c-416e-bab0-bbac487b8c4c`에서 UUID 오염 운송경로 540건을 `active=false`로 정리하고 카운트를 `운송경로 541 / 항목매핑 2249 / 원본행 1177`로 갱신했습니다.
+- 수정양식 파서는 헤더명이 서로 다른 3개 이상 열에서 잡힐 때만 헤더로 인정하고, UUID가 운송경로 필드 전체에 복제된 행은 저장 전에 제외합니다.
+### 검증
+- Supabase 확인: 활성 버전 `active_routes=541`, `remaining_bad_routes=0`, `cleaned_inactive_routes=540`, `active_aliases=2249`
+- `cd web; node --test tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 14개 통과
+- `cd web; npx eslint "utils/glapsMasterData.mjs" "tests/glapsMasterData.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/tests/glapsMasterData.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 항목매핑 다중 후보 제약 보강 (v5.14.260)
 ### 핵심
 - 코드 엑셀 업로드 시 `glaps_master_aliases_branch_id_version_id_alias_type_source_key` 중복 오류가 발생한 원인은 운영 DB에 구버전 `매핑항목+ELS 매치코드` 단일 제약이 남아 있었기 때문입니다.
