@@ -1,3 +1,19 @@
+## [2026-05-28] GLAPS 항목매핑 업로드 빈 ID 제거 (v5.14.263)
+### 핵심
+- 항목매핑 수정양식 업로드에서 `null value in column "id" of relation "glaps_master_aliases" violates not-null constraint` 오류가 발생한 원인을 확인했습니다.
+- 같은 업로드 파일 안의 반복 키를 병합할 때 두 행 모두 ID가 비어 있으면 병합 객체에 `id: undefined`가 남았고, Supabase upsert가 이를 `id=null` insert로 보내 DB 기본 UUID 생성을 막았습니다.
+- 신규/병합 row를 upsert하기 직전에 빈 ID 필드를 제거하는 `omitBlankId()`를 추가해, ID 없는 신규행은 DB의 `gen_random_uuid()` 기본값으로 생성되게 했습니다.
+- 운송경로와 항목매핑 upsert 모두 같은 보호 처리를 적용했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 항목매핑 업로드 중복키 처리 (v5.14.262)
 ### 핵심
 - 항목매핑 수정양식 업로드 시 `glaps_master_aliases_branch_version_alias_source_route_code_key` UNIQUE 오류가 계속 발생하던 원인을 확인했습니다.

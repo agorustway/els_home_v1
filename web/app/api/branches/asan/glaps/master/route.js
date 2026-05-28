@@ -556,10 +556,9 @@ function isAliasTemplateRowChanged(existing = {}, next = {}) {
 function mergeAliasUploadRows(base = {}, next = {}) {
   const baseId = cleanText(base.id);
   const nextId = cleanText(next.id);
-  return {
+  const merged = {
     ...base,
     ...next,
-    id: baseId || nextId || undefined,
     els_name: mergeAliasFieldValues([base.els_name, next.els_name]),
     glaps_name: mergeAliasFieldValues([base.glaps_name, next.glaps_name]),
     review_note: mergeAliasFieldValues([base.review_note, next.review_note]),
@@ -568,6 +567,16 @@ function mergeAliasUploadRows(base = {}, next = {}) {
       cleanText(next.glaps_code || base.glaps_code) ? 'ready' : 'needs_mapping',
     ),
   };
+  const id = baseId || nextId;
+  if (id) merged.id = id;
+  else delete merged.id;
+  return merged;
+}
+
+function omitBlankId(row = {}) {
+  const normalized = { ...row };
+  if (!cleanText(normalized.id)) delete normalized.id;
+  return normalized;
 }
 
 function coalesceAliasUploadRows(rows = []) {
@@ -646,7 +655,7 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows, { onConflict: 'id' });
+    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows.map(omitBlankId), { onConflict: 'id' });
     if (error) throw error;
   }
   return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
@@ -719,7 +728,7 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows, { onConflict: 'id' });
+    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows.map(omitBlankId), { onConflict: 'id' });
     if (error) throw error;
   }
   return {
