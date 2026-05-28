@@ -837,6 +837,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /displayRows\.slice\(0, effectiveDisplayLimit\)/);
   assert.match(source, /detailRowsForDisplay\.slice\(0, effectiveDisplayLimit\)/);
   assert.match(source, /detailChangeRows\.slice\(0, effectiveDisplayLimit\)/);
+  assert.match(source, /detailHeaderFilters/);
+  assert.match(source, /toggleDetailHeaderFilterValue/);
+  assert.match(source, /data-detail-header-filter-root="true"/);
+  assert.match(source, /detailRowMatchesHeaderFilters\(detailLineToRow\(line\), DISPATCH_DETAIL_HEADERS, activeFilters\)/);
+  assert.match(source, /detailRowMatchesHeaderFilters\(values, DISPATCH_CHANGE_HEADERS, activeFilters\)/);
+  assert.match(source, /detailChangeRowsBase\.length > 0/);
   assert.match(source, /변경건/);
   assert.match(source, /onMasterChanged=\{handleGlapsMasterChanged\}/);
   assert.match(glapsMasterSource, /onMasterChanged = null/);
@@ -899,6 +905,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangeInput/);
   assert.match(css, /\.detailComboInput\s*{[\s\S]*border: 1px solid transparent;/);
   assert.match(css, /\.detailTable thead th\s*{[\s\S]*position: sticky;[\s\S]*top: 0;/);
+  assert.match(css, /\.detailFilterDropdown\s*{[\s\S]*max-height: 300px;/);
+  assert.match(css, /\.detailFilterOption\s*{[\s\S]*grid-template-columns: 16px minmax\(92px, 1fr\) auto;/);
   assert.match(css, /\.detailStartColumn,\s*\n\.detailStartCell\s*{[\s\S]*width: 92px;[\s\S]*max-width: 92px;/);
   assert.match(css, /\.detailStartInput\s*{[\s\S]*text-overflow: ellipsis;/);
   assert.match(css, /\.detailPortCandidateCell\s*{[\s\S]*background: #fef3c7;/);

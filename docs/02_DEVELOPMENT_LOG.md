@@ -1,3 +1,39 @@
+## [2026-05-28] 상세배차/변동내역 헤더 다중 필터 추가 (v5.14.272)
+### 핵심
+- 상세배차내역과 배차변동내역 표 헤더를 클릭하면 해당 컬럼 값 목록이 드롭다운으로 열리도록 했습니다.
+- 목록은 체크박스 다중 선택 방식이며, 같은 컬럼에서 여러 값을 동시에 고를 수 있습니다.
+- 드롭다운을 보다가 표 밖의 다른 영역을 클릭하면 자동으로 닫히고, 필터 결과가 0건이어도 헤더는 유지해 해제할 수 있게 했습니다.
+- 날짜/기간 전환이나 현황판 이슈 이동 시 상세/변동 헤더 필터도 기존 검색필터와 함께 초기화되도록 정리했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 37개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-28] 글로비스 셀맥 작업지명 일괄 정리
+### 핵심
+- NAS 글로비스 배차 원본 `/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외).xlsm`의 모든 시트 셀 값에서 `셀맥`을 `셀맥(KIA)오성`으로 변경했습니다.
+- `.xlsm`은 `openpyxl.save()`를 쓰지 않고 OOXML zip 내부의 `sharedStrings.xml`과 `workbook.xml`만 직접 수정해 VBA 바이너리와 기존 서식을 보존했습니다.
+- 통합 문서 계산 설정을 `calcMode=auto`, `fullCalcOnLoad=1`, `forceFullCalc=1`, `calcOnSave=1`로 보정해 수식 재계산이 자동으로 걸리게 했습니다.
+- Supabase WEB 배차판 DB도 `branch_dispatch`, `branch_dispatch_web_cells`, `branch_dispatch_web_cell_history`에서 동일 명칭으로 정리했고, WEB 셀 오버레이가 끊기지 않도록 변경 대상 3건의 `row_signature`를 새 작업지명 기준으로 재계산했습니다.
+- NAS 원본 백업: `/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외).backup-cellmac-20260528-120506Z.xlsm`
+### 검증
+- 원본 `.xlsm` 패치 결과: `sharedStrings.xml` 3건 치환, `vbaProject.bin` SHA-256 보존, 업로드 후 해시 일치 확인.
+- 계산 설정 검증: `xl/workbook.xml`에 `calcMode=auto`, `fullCalcOnLoad=1`, `forceFullCalc=1`, `calcOnSave=1` 적용 확인.
+- Supabase 업데이트: `branch_dispatch` 6행, `branch_dispatch_web_cells` 3행, `branch_dispatch_web_cell_history` 3행 변경.
+- Supabase 잔여 검증: `셀맥(KIA)오성`을 제외한 기존 `셀맥` 잔여 0건.
+### 변경 파일
+- NAS 원본 `.xlsm`, Supabase 운영 DB
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 아산 배차 테이블 하단 공간 활용 확대 (v5.14.271)
 ### 핵심
 - 배차판, 상세배차내역, 배차변동내역이 공통으로 쓰는 테이블 스크롤 높이 기준을 키웠습니다.

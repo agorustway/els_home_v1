@@ -1069,6 +1069,64 @@ function scrollDateTabHorizontally(tabsEl, tabEl) {
     tabsEl.scrollTo({ left: targetLeft, behavior: 'smooth' });
 }
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const DETAIL_HEADER_FILTER_MODES = Object.freeze({
+    detail: 'detail',
+    change: 'detail-change',
+});
+function normalizeDetailFilterValue(value) {
+    return String(value ?? '').trim();
+}
+function displayDetailFilterValue(value) {
+    const normalized = normalizeDetailFilterValue(value);
+    return normalized || '(빈값)';
+}
+function sanitizeDetailHeaderFilters(filters = {}) {
+    const next = {};
+    Object.values(DETAIL_HEADER_FILTER_MODES).forEach((mode) => {
+        const modeFilters = filters?.[mode] || {};
+        const cleanMode = {};
+        Object.entries(modeFilters).forEach(([header, values]) => {
+            const cleanValues = [...new Set((Array.isArray(values) ? values : [values])
+                .map(normalizeDetailFilterValue))];
+            if (cleanValues.length > 0) cleanMode[header] = cleanValues;
+        });
+        next[mode] = cleanMode;
+    });
+    return next;
+}
+function getDetailHeaderFilterValues(filters = {}, mode, header) {
+    const values = filters?.[mode]?.[header] || [];
+    return Array.isArray(values) ? values : [];
+}
+function countDetailHeaderFilterValues(modeFilters = {}) {
+    return Object.values(modeFilters || {}).reduce((sum, values) => sum + (Array.isArray(values) ? values.length : 0), 0);
+}
+function detailRowMatchesHeaderFilters(rowValues = [], headers = [], modeFilters = {}) {
+    return Object.entries(modeFilters || {}).every(([header, values]) => {
+        if (!Array.isArray(values) || values.length === 0) return true;
+        const idx = headers.indexOf(header);
+        if (idx < 0) return true;
+        return values.includes(normalizeDetailFilterValue(rowValues[idx]));
+    });
+}
+function buildDetailHeaderFilterOptions(rows = [], headers = []) {
+    const optionMap = {};
+    headers.forEach((header, idx) => {
+        const counts = new Map();
+        rows.forEach((row) => {
+            const value = normalizeDetailFilterValue(row?.[idx]);
+            counts.set(value, (counts.get(value) || 0) + 1);
+        });
+        optionMap[header] = [...counts.entries()]
+            .map(([value, count]) => ({ value, count }))
+            .sort((a, b) => {
+                if (!a.value && b.value) return -1;
+                if (a.value && !b.value) return 1;
+                return displayDetailFilterValue(a.value).localeCompare(displayDetailFilterValue(b.value), 'ko');
+            });
+    });
+    return optionMap;
+}
 function consumeAsanDispatchReloadState() {
     if (typeof window === 'undefined') return null;
     try {
@@ -1133,6 +1191,8 @@ function AsanDispatchContent() {
     const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
     const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
     const [detailIssueFilter, setDetailIssueFilter] = useState(reloadRestoreState.detailIssueFilter || '');
+    const [detailHeaderFilters, setDetailHeaderFilters] = useState(() => sanitizeDetailHeaderFilters(reloadRestoreState.detailHeaderFilters));
+    const [detailHeaderFilterDropdown, setDetailHeaderFilterDropdown] = useState(null);
     const [detailChangeEvents, setDetailChangeEvents] = useState([]);
     const [detailChangeDrafts, setDetailChangeDrafts] = useState({});
     const [detailChangePortOverrides, setDetailChangePortOverrides] = useState({});
@@ -1327,6 +1387,7 @@ function AsanDispatchContent() {
             columnFilters,
             colorFilter,
             detailIssueFilter,
+            detailHeaderFilters,
             detailChangeStatusFilter,
             scrollX: window.scrollX || 0,
             scrollY: window.scrollY || 0,
@@ -1453,6 +1514,8 @@ function AsanDispatchContent() {
             setSearchTerm('');
             setColumnFilters({});
             setColorFilter(null);
+            setDetailHeaderFilters(sanitizeDetailHeaderFilters());
+            setDetailHeaderFilterDropdown(null);
         }
     }, [fetchData, viewType]);
     useEffect(() => {
@@ -1771,6 +1834,17 @@ function AsanDispatchContent() {
         loadDispatchConfirmations();
         return () => { cancelled = true; };
     }, [activeItem?.target_date, detailStateRefreshToken, getDetailAuthHeaders, isAllTab]);
+
+    useEffect(() => {
+        if (!detailHeaderFilterDropdown) return undefined;
+        const closeOnOutsidePointer = (event) => {
+            const target = event.target;
+            if (target?.closest?.('[data-detail-header-filter-root="true"]')) return;
+            setDetailHeaderFilterDropdown(null);
+        };
+        document.addEventListener('mousedown', closeOnOutsidePointer);
+        return () => document.removeEventListener('mousedown', closeOnOutsidePointer);
+    }, [detailHeaderFilterDropdown]);
 
     // 경과 시간 카운터 (1초마다 업데이트)
     useEffect(() => {
@@ -2124,9 +2198,16 @@ function AsanDispatchContent() {
         return detailDisplayLines.filter(line => detailLineToRow(line).some((value) => String(value || '').toLowerCase().includes(term)));
     }, [detailDisplayLines, searchTerm]);
 
-    const filteredDetailLines = useMemo(() => {
+    const detailLinesBeforeHeaderFilter = useMemo(() => {
         return searchedDetailLines.filter((line) => matchesDetailIssueFilter(line, detailIssueFilter));
     }, [searchedDetailLines, detailIssueFilter]);
+
+    const filteredDetailLines = useMemo(() => {
+        const activeFilters = detailHeaderFilters[DETAIL_HEADER_FILTER_MODES.detail] || {};
+        return detailLinesBeforeHeaderFilter.filter(line => (
+            detailRowMatchesHeaderFilters(detailLineToRow(line), DISPATCH_DETAIL_HEADERS, activeFilters)
+        ));
+    }, [detailHeaderFilters, detailLinesBeforeHeaderFilter]);
 
     const detailSummary = useMemo(() => ({
         ...summarizeDispatchDetailLines(detailDisplayLines),
@@ -2189,7 +2270,7 @@ function AsanDispatchContent() {
         return detailLineToRow(line);
     }, [enrichDetailLine]);
 
-    const detailChangeRows = useMemo(() => {
+    const detailChangeRowsBase = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
         return (detailChangeEvents || [])
             .filter(event => !detailChangeStatusFilter || event.event_status === detailChangeStatusFilter)
@@ -2229,6 +2310,24 @@ function AsanDispatchContent() {
             })
             .filter(({ values }) => !term || values.some(value => String(value || '').toLowerCase().includes(term)));
     }, [detailChangeDrafts, detailChangeEvents, detailChangePortOverrides, detailChangeStatusFilter, enrichDetailLine, searchTerm]);
+
+    const detailChangeRows = useMemo(() => {
+        const activeFilters = detailHeaderFilters[DETAIL_HEADER_FILTER_MODES.change] || {};
+        return detailChangeRowsBase.filter(({ values }) => (
+            detailRowMatchesHeaderFilters(values, DISPATCH_CHANGE_HEADERS, activeFilters)
+        ));
+    }, [detailChangeRowsBase, detailHeaderFilters]);
+
+    const detailHeaderFilterOptions = useMemo(() => ({
+        [DETAIL_HEADER_FILTER_MODES.detail]: buildDetailHeaderFilterOptions(
+            detailLinesBeforeHeaderFilter.map(line => detailLineToRow(line)),
+            DISPATCH_DETAIL_HEADERS,
+        ),
+        [DETAIL_HEADER_FILTER_MODES.change]: buildDetailHeaderFilterOptions(
+            detailChangeRowsBase.map(({ values }) => values),
+            DISPATCH_CHANGE_HEADERS,
+        ),
+    }), [detailChangeRowsBase, detailLinesBeforeHeaderFilter]);
 
     useEffect(() => {
         if (!detailScope || !detailChangeSyncEnabled) return undefined;
@@ -2679,6 +2778,33 @@ function AsanDispatchContent() {
         else setColumnFilters(prev => ({ ...prev, [ci]: val }));
         setFilterDropdown(null);
     };
+    const toggleDetailHeaderFilter = useCallback((mode, header) => {
+        setDetailHeaderFilterDropdown(prev => (
+            prev?.mode === mode && prev?.header === header ? null : { mode, header }
+        ));
+    }, []);
+    const toggleDetailHeaderFilterValue = useCallback((mode, header, value) => {
+        const normalizedValue = normalizeDetailFilterValue(value);
+        setDetailHeaderFilters((prev) => {
+            const next = sanitizeDetailHeaderFilters(prev);
+            const modeFilters = { ...(next[mode] || {}) };
+            const selected = new Set(modeFilters[header] || []);
+            if (selected.has(normalizedValue)) selected.delete(normalizedValue);
+            else selected.add(normalizedValue);
+            if (selected.size === 0) delete modeFilters[header];
+            else modeFilters[header] = [...selected];
+            return { ...next, [mode]: modeFilters };
+        });
+    }, []);
+    const clearDetailHeaderFilter = useCallback((mode, header = '') => {
+        setDetailHeaderFilters((prev) => {
+            const next = sanitizeDetailHeaderFilters(prev);
+            if (!header) return { ...next, [mode]: {} };
+            const modeFilters = { ...(next[mode] || {}) };
+            delete modeFilters[header];
+            return { ...next, [mode]: modeFilters };
+        });
+    }, []);
     const hideCol = (name) => { setHiddenCols(prev => new Set([...prev, name])); setFilterDropdown(null); };
     const showCol = (name) => { setHiddenCols(prev => { const n = new Set(prev); n.delete(name); return n; }); };
     const resetPrefs = () => { setHiddenCols(new Set()); setColWidths({}); localStorage.removeItem(`${PREFS_KEY}_${viewType}`); };
@@ -2717,6 +2843,8 @@ function AsanDispatchContent() {
         setColumnFilters({});
         setColorFilter(null);
         setFilterDropdown(null);
+        setDetailHeaderFilters(sanitizeDetailHeaderFilters());
+        setDetailHeaderFilterDropdown(null);
         setDisplayLimit(100);
         const keyword = issue.search || issue.title || '';
         setSearchInput(keyword);
@@ -2741,6 +2869,8 @@ function AsanDispatchContent() {
         setSearchTerm('');
         setColumnFilters({});
         setFilterDropdown(null);
+        setDetailHeaderFilters(sanitizeDetailHeaderFilters());
+        setDetailHeaderFilterDropdown(null);
         setDisplayLimit(100);
     }, []);
 
@@ -2799,6 +2929,61 @@ function AsanDispatchContent() {
         }
         selectTotalPeriod();
     }, [activeItem?.target_date, periodOptions, selectDailyDate, selectMonthOption, selectTotalPeriod, selectWeekOption, todayKey]);
+
+    const renderDetailFilterHeader = (mode, header) => {
+        const activeValues = getDetailHeaderFilterValues(detailHeaderFilters, mode, header);
+        const options = detailHeaderFilterOptions?.[mode]?.[header] || [];
+        const isOpen = detailHeaderFilterDropdown?.mode === mode && detailHeaderFilterDropdown?.header === header;
+        const activeValueSet = new Set(activeValues);
+        const headerClasses = [
+            detailColumnClass(header),
+            styles.detailFilterHeader,
+            activeValues.length > 0 ? styles.filteredHeader : '',
+            isOpen ? styles.detailFilterHeaderOpen : '',
+        ].filter(Boolean).join(' ');
+        return (
+            <th
+                key={header}
+                className={headerClasses}
+                data-detail-header-filter-root="true"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    toggleDetailHeaderFilter(mode, header);
+                }}
+                title={`${header} 필터`}
+            >
+                <span className={styles.thText}>
+                    {header}{activeValues.length > 0 && <span className={styles.filterIcon}>▼{activeValues.length}</span>}
+                </span>
+                {isOpen && (
+                    <div className={styles.detailFilterDropdown} onClick={event => event.stopPropagation()}>
+                        <div className={styles.detailFilterActions}>
+                            <button type="button" onClick={() => clearDetailHeaderFilter(mode, header)}>전체</button>
+                            <span>{options.length.toLocaleString()}개 값</span>
+                        </div>
+                        <div className={styles.detailFilterList}>
+                            {options.length > 0 ? options.map(option => (
+                                <label
+                                    key={`${header}-${option.value}`}
+                                    className={`${styles.detailFilterOption} ${activeValueSet.has(option.value) ? styles.detailFilterOptionActive : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={activeValueSet.has(option.value)}
+                                        onChange={() => toggleDetailHeaderFilterValue(mode, header, option.value)}
+                                    />
+                                    <span title={displayDetailFilterValue(option.value)}>{displayDetailFilterValue(option.value)}</span>
+                                    <em>{option.count.toLocaleString()}</em>
+                                </label>
+                            )) : (
+                                <div className={styles.detailFilterEmpty}>선택할 값 없음</div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </th>
+        );
+    };
 
     const dateControls = (
         <>
@@ -3015,6 +3200,9 @@ function AsanDispatchContent() {
                                 </>
                             )}
                             {searchTerm && <span className={styles.summaryItem}><b>검색표시</b> {detailSummary.visible.toLocaleString()}건</span>}
+                            {countDetailHeaderFilterValues(detailHeaderFilters[DETAIL_HEADER_FILTER_MODES.detail]) > 0 && (
+                                <span className={styles.summaryItem}><b>헤더필터</b> {detailSummary.visible.toLocaleString()}건</span>
+                            )}
                             <span className={`${styles.summaryItem} ${detailSummary.manualStartLocationCount > 0 ? styles.summaryWarn : ''}`}>
                                 <b>상차지 선택필요</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
                             </span>
@@ -3087,7 +3275,7 @@ function AsanDispatchContent() {
                             <table className={`${styles.table} ${styles.detailTable}`}>
                                 <thead>
                                     <tr>
-                                        {DISPATCH_DETAIL_HEADERS.map((header) => <th key={header} className={detailColumnClass(header)}>{header}</th>)}
+                                        {DISPATCH_DETAIL_HEADERS.map((header) => renderDetailFilterHeader(DETAIL_HEADER_FILTER_MODES.detail, header))}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -3270,6 +3458,9 @@ function AsanDispatchContent() {
                             </span>
                             <span className={styles.summaryItem}><b>확인완료</b> {detailChangeSummary.confirmed.toLocaleString()}건</span>
                             <span className={styles.summaryItem}><b>최종수량</b> {detailChangeSummary.finalTotal.toLocaleString()}건</span>
+                            {countDetailHeaderFilterValues(detailHeaderFilters[DETAIL_HEADER_FILTER_MODES.change]) > 0 && (
+                                <span className={styles.summaryItem}><b>헤더필터</b> {detailChangeRows.length.toLocaleString()}건</span>
+                            )}
                         </div>
                         <div className={styles.summaryRight}>
                             <div className={styles.detailIssueGroup}>
@@ -3312,7 +3503,7 @@ function AsanDispatchContent() {
                             )}
                         </div>
                     </div>
-                    {detailChangeRows.length > 0 ? (
+                    {detailChangeRowsBase.length > 0 ? (
                         <div className={styles.tableWrap}>
                             <div className={styles.tableScroll}>
                                 <datalist id={DETAIL_START_LOCATION_DATALIST_ID}>
@@ -3323,7 +3514,7 @@ function AsanDispatchContent() {
                                 <table className={`${styles.table} ${styles.detailTable}`}>
                                     <thead>
                                         <tr>
-                                            {DISPATCH_CHANGE_HEADERS.map((header) => <th key={header} className={detailColumnClass(header)}>{header}</th>)}
+                                            {DISPATCH_CHANGE_HEADERS.map((header) => renderDetailFilterHeader(DETAIL_HEADER_FILTER_MODES.change, header))}
                                         </tr>
                                     </thead>
                                     <tbody>
