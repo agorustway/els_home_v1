@@ -1,3 +1,20 @@
+## [2026-05-28] 상세배차 테이블 상차지 축약 및 포트 후보 강조 (v5.14.266)
+### 핵심
+- 상세배차내역/배차변동내역 테이블의 `상차지` 컬럼을 58px 폭으로 줄이고, 긴 값은 말줄임으로 표시하도록 했습니다.
+- 상세/변동 테이블 헤더 sticky를 명시해 스크롤 시 컬럼 제목을 계속 볼 수 있게 했습니다.
+- 포트코드 후보가 2개 이상인 셀은 노란색 배경으로 표시하고, select 표시문구는 `NLRTM · COOVAX`처럼 반복 설명을 붙이지 않고 GLAPS 코드만 보이게 정리했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 57개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 운송경로 화주사코드 매칭 추가 (v5.14.265)
 ### 핵심
 - GLAPS 운송경로 원장에서 `화주사코드`를 헤더명 기반으로 파싱하고 raw payload에 보존하도록 했습니다.

@@ -771,6 +771,11 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /fieldKey: DETAIL_PORT_OVERRIDE_FIELD_KEY/);
   assert.match(source, /header === '포트코드' && \(line\.glapsPortCodeOptions \|\| \[\]\)\.length > 1/);
   assert.match(source, /formatGlapsPortOptionLabel/);
+  assert.match(source, /return code \? `\$\{code\}\$\{defaultMark\}` : option\.label \|\| '';/);
+  assert.match(source, /function detailColumnClass\(header\)/);
+  assert.match(source, /styles\.detailStartColumn/);
+  assert.match(source, /styles\.detailStartInput/);
+  assert.match(source, /styles\.detailPortCandidateCell/);
   assert.doesNotMatch(source, /glapsPortCode: glapsPortCode \|\| line\.port/);
   assert.match(source, /DETAIL_ISSUE_GROUPS\.map/);
   assert.match(source, /group: 'missing'/);
@@ -893,6 +898,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.webCellLockedTd/);
   assert.match(css, /\.detailChangeInput/);
   assert.match(css, /\.detailComboInput\s*{[\s\S]*border: 1px solid transparent;/);
+  assert.match(css, /\.detailTable thead th\s*{[\s\S]*position: sticky;[\s\S]*top: 0;/);
+  assert.match(css, /\.detailStartColumn,\s*\n\.detailStartCell\s*{[\s\S]*width: 58px;[\s\S]*max-width: 58px;/);
+  assert.match(css, /\.detailStartInput\s*{[\s\S]*text-overflow: ellipsis;/);
+  assert.match(css, /\.detailPortCandidateCell\s*{[\s\S]*background: #fef3c7;/);
   assert.match(css, /\.detailBkgConfirmInput\s*{[\s\S]*border: 1px solid transparent;/);
   assert.match(css, /\.webCellEditableTd\s*{[\s\S]*padding: 0 !important;/);
   assert.match(css, /\.detailChangeInlinePanel/);

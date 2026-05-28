@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.265 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.266 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 운송경로 매칭키에 `화주사코드`를 포함해 같은 경로라도 화주별 운송경로코드를 구분한다.
+> 최신 업데이트: 상세배차/배차변동 테이블의 상차지 폭을 줄이고 포트코드 다중 후보 셀을 노란색으로 표시한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.265
+- **웹 버전**: v5.14.266
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -66,8 +66,10 @@
 - 미확인 add/delete가 같은 항목·같은 수량으로 상쇄되면 숨긴다. 확인완료된 변동은 상쇄되어도 노출을 유지한다.
 - 배차확정 후 `BKG확정`은 확정 스냅샷 또는 WEB 수기값으로 고정한다. 원본 BKG1~3/TARGET VESSEL/비고가 바뀌면 상세/변동 표의 원본칸만 최신값으로 보이고 memo 이력과 붉은 표시를 남긴다.
 - 배차변동 sync payload는 `changeSchemaVersion=3` 이상만 반영한다. 구버전으로 열린 탭이 시간 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
+- 상세배차/배차변동 표의 `상차지`는 좁은 폭에서 말줄임 표시하고, 포트코드 후보가 2개 이상이면 해당 셀을 노란색으로 표시한다.
 
 ## RECENT CHANGES
+- **v5.14.266**: 상세배차/배차변동 테이블에서 상차지 칸을 58px 폭으로 축소하고 말줄임 처리했다. 테이블 헤더 sticky를 명시하고, 포트코드 다중 후보 셀은 노란색으로 표시하며 select 표시문구는 GLAPS 코드만 노출한다.
 - **v5.14.265**: GLAPS 운송경로 원장/수정양식/상세배차 매칭에 `화주사코드`를 추가했다. 운송경로 fingerprint는 화주사코드가 있을 때 이를 포함하고, 상세배차는 화주사코드까지 맞는 운송경로만 도출한다.
 - **v5.14.264**: 상세배차/배차변동에 `시간` 컬럼을 추가했다. 지역칸 메모에서 단일 시간 목록 또는 업체 라벨별 시간 목록을 읽어 수량별 라인에 배정하고, 시간 변경은 배차변동 `변경` 이벤트로 감지한다. GLAPS 업로드 시트의 `배차요청시간`에도 연결했다.
 - **v5.14.263**: 항목매핑 업로드 내부 병합 결과에 빈 `id` 키가 남아 `id=null` insert가 발생하던 문제를 수정했다. 신규행은 ID 필드를 제거해 DB UUID 기본값이 생성되게 한다.
@@ -78,6 +80,8 @@
 - **v5.14.258**: 통합 배차변동내역이 `integrated` 확정만 찾느라 확정된 glovis/mobis 변동을 놓치던 문제를 수정했다. 상세라인에 원본 sourceType을 보존하고, 통합 sync 요청은 확정된 원본 구분별로 분리 계산한다.
 - **v5.14.257**: 구간단가 제목열 필터 팝오버는 선택값을 유지한 채 다른 영역 클릭 또는 ESC 입력 시 닫히도록 했다.
 ## VERIFICATION
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 57개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; node --test tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 69개 통과
 - `cd web; npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 57개 통과

@@ -604,9 +604,11 @@ function getDetailBkgValue(line, source) {
 }
 function formatGlapsPortOptionLabel(option = {}) {
     const code = option.code || '';
-    const label = option.label && option.label !== code ? ` · ${option.label}` : '';
     const defaultMark = option.isDefault ? ' (기본)' : '';
-    return `${code}${defaultMark}${label}`;
+    return code ? `${code}${defaultMark}` : option.label || '';
+}
+function detailColumnClass(header) {
+    return header === '상차지' ? styles.detailStartColumn : '';
 }
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
@@ -3085,7 +3087,7 @@ function AsanDispatchContent() {
                             <table className={`${styles.table} ${styles.detailTable}`}>
                                 <thead>
                                     <tr>
-                                        {DISPATCH_DETAIL_HEADERS.map((header) => <th key={header}>{header}</th>)}
+                                        {DISPATCH_DETAIL_HEADERS.map((header) => <th key={header} className={detailColumnClass(header)}>{header}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -3099,9 +3101,9 @@ function AsanDispatchContent() {
                                                     const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
                                                     if (header === '상차지') {
                                                         return (
-                                                            <td key={header} className={!line.startLocation ? styles.detailManualCell : ''}>
+                                                            <td key={header} className={[styles.detailStartCell, !line.startLocation ? styles.detailManualCell : ''].filter(Boolean).join(' ')}>
                                                                 <input
-                                                                    className={styles.detailComboInput}
+                                                                    className={`${styles.detailComboInput} ${styles.detailStartInput}`}
                                                                     list={DETAIL_START_LOCATION_DATALIST_ID}
                                                                     data-detail-row-index={detailRowIdx}
                                                                     data-detail-col-index={colIdx}
@@ -3174,7 +3176,7 @@ function AsanDispatchContent() {
                                                     }
                                                     if (header === '포트코드' && (line.glapsPortCodeOptions || []).length > 1) {
                                                         return (
-                                                            <td key={header} className={styles.detailPortCodeCell}>
+                                                            <td key={header} className={`${styles.detailPortCodeCell} ${styles.detailPortCandidateCell}`}>
                                                                 <select
                                                                     className={styles.detailPortSelect}
                                                                     value={line.glapsPortCode || ''}
@@ -3321,7 +3323,7 @@ function AsanDispatchContent() {
                                 <table className={`${styles.table} ${styles.detailTable}`}>
                                     <thead>
                                         <tr>
-                                            {DISPATCH_CHANGE_HEADERS.map((header) => <th key={header}>{header}</th>)}
+                                            {DISPATCH_CHANGE_HEADERS.map((header) => <th key={header} className={detailColumnClass(header)}>{header}</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -3342,9 +3344,9 @@ function AsanDispatchContent() {
                                                         const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : memoCellClass;
                                                         if (isDetailValue && header === '상차지') {
                                                             return (
-                                                                <td key={header} className={[!line.startLocation ? styles.detailManualCell : '', changedCellClass].filter(Boolean).join(' ')}>
+                                                                <td key={header} className={[styles.detailStartCell, !line.startLocation ? styles.detailManualCell : '', changedCellClass].filter(Boolean).join(' ')}>
                                                                     <input
-                                                                        className={styles.detailComboInput}
+                                                                        className={`${styles.detailComboInput} ${styles.detailStartInput}`}
                                                                         list={DETAIL_START_LOCATION_DATALIST_ID}
                                                                         data-detail-row-index={rowIdx}
                                                                         data-detail-col-index={colIdx}
@@ -3361,7 +3363,7 @@ function AsanDispatchContent() {
                                                         if (isDetailValue && header === '포트코드' && (line.glapsPortCodeOptions || []).length > 1) {
                                                             const selectedPortCode = getDetailRowValue(rawValues, '포트코드') || line.glapsPortCode || '';
                                                             return (
-                                                                <td key={header} className={[styles.detailPortCodeCell, changedCellClass].filter(Boolean).join(' ')}>
+                                                                <td key={header} className={[styles.detailPortCodeCell, styles.detailPortCandidateCell, changedCellClass].filter(Boolean).join(' ')}>
                                                                     <select
                                                                         className={styles.detailPortSelect}
                                                                         value={selectedPortCode}

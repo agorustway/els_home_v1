@@ -1649,8 +1649,21 @@
     background: #1f5673;
 }
 
+.detailTable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+}
+
 .detailTable td {
     height: 24px;
+}
+
+.detailStartColumn,
+.detailStartCell {
+    width: 58px;
+    min-width: 58px;
+    max-width: 58px;
 }
 
 .detailTable td:has(.detailSelect),
@@ -1674,6 +1687,15 @@
     padding: 0 5px;
 }
 
+.detailStartInput {
+    min-width: 0;
+    width: 58px;
+    max-width: 58px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .detailSelect:focus,
 .detailComboInput:focus {
     outline: none;
@@ -1684,6 +1706,11 @@
 
 .detailPortCodeCell {
     padding: 0 !important;
+}
+
+.detailPortCandidateCell {
+    background: #fef3c7;
+    box-shadow: inset 0 0 0 1px #facc15;
 }
 
 .detailPortSelect {
@@ -1697,6 +1724,10 @@
     font: inherit;
     font-weight: 800;
     padding: 0 4px;
+}
+
+.detailPortCandidateCell .detailPortSelect {
+    background: transparent;
 }
 
 .detailPortSelect:focus {
@@ -2372,6 +2403,12 @@
         height: 24px;
         min-width: 88px;
         font-size: 0.68rem;
+    }
+
+    .detailStartInput {
+        min-width: 0;
+        width: 58px;
+        max-width: 58px;
     }
 
     .detailPortSelect {
