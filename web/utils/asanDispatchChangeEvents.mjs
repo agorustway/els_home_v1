@@ -1,6 +1,11 @@
-import { DISPATCH_DETAIL_HEADERS, detailLineToRow } from './asanDispatchDetailLines.mjs';
+import {
+  DISPATCH_DETAIL_HEADERS,
+  DISPATCH_DETAIL_TIME_HEADER,
+  detailLineToRow,
+  normalizeDispatchDetailRowValues,
+} from './asanDispatchDetailLines.mjs';
 
-export const DISPATCH_CHANGE_SCHEMA_VERSION = 2;
+export const DISPATCH_CHANGE_SCHEMA_VERSION = 3;
 
 export const DISPATCH_CHANGE_TYPE_LABELS = Object.freeze({
   add: '추가',
@@ -42,6 +47,7 @@ const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '포트(DIST)',
   '라인',
   '타입',
+  DISPATCH_DETAIL_TIME_HEADER,
 ]);
 const TRANSPORT_CHANGE_CONTEXT_KEYS = Object.freeze([]);
 const MEMO_ONLY_HEADERS = new Set([
@@ -80,6 +86,7 @@ const NEUTRAL_ADD_DELETE_HEADERS = Object.freeze([
   '라인',
   '타입',
   '업체명',
+  DISPATCH_DETAIL_TIME_HEADER,
 ]);
 
 export function isDispatchDerivedGlapsHeader(header = '') {
@@ -100,7 +107,7 @@ function cleanText(value = '') {
 }
 
 function normalizeValues(values = []) {
-  return DISPATCH_DETAIL_HEADERS.map((_, idx) => cleanText(values[idx] ?? ''));
+  return normalizeDispatchDetailRowValues(values);
 }
 
 function valuesByHeader(values = []) {
@@ -282,6 +289,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     line: line.line || '',
     containerType: line.containerType || '',
     company: line.company || '',
+    dispatchTime: line.dispatchTime || '',
     bkg1: line.bkg1 || '',
     bkg2: line.bkg2 || '',
     bkg3: line.bkg3 || '',

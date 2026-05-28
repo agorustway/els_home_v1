@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.263 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.264 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 항목매핑 업로드 병합행의 빈 ID가 null로 insert되던 문제를 제거해 DB 기본 UUID가 생성되도록 했다.
+> 최신 업데이트: 상세배차/배차변동에 `시간` 컬럼을 추가하고 지역칸 메모 시간을 업체별 수량 라인에 분배한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.263
+- **웹 버전**: v5.14.264
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -56,16 +56,18 @@
 - NAS 동기화 버튼은 수동 요청 시 글로비스/모비스 모두 1순위 작업일을 먼저 반영한다. 1순위는 오늘 시트, 없으면 오늘 이후 첫 작업일, 그래도 없으면 가장 최근 과거 작업일이다.
 - 1순위 완료 신호(`quick_done`)를 받으면 웹은 즉시 새로고침한다. 전/후 작업일과 나머지 날짜는 백그라운드에서 순차 반영한다.
 - 상세배차/배차변동 다운로드는 기존 우리 기준 시트와 별도로 `GLAPS_업로드` 시트를 추가한다.
+- 상세배차/배차변동은 `업체명` 다음에 `시간` 컬럼을 표시한다. 지역 배차칸 메모가 `13 14 15`면 단일 업체 수량에 순서 배정하고, `이지: 13 14 대신: 16 18 19`처럼 업체 라벨이 있으면 업체별로 배정한다.
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채운다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
 - 통합현황에서 통합확정이 없더라도 glovis/mobis 중 확정된 원본 구분이 있으면 해당 구분만 분리해 변동내역을 동기화하고 통합 변동탭에 노출한다.
-- 배차변동 비교의 동일행 매칭은 `작업일자/구분/화주/상차지/작업지/하차지/고객사/포트/라인/타입/업체명` 기준이다. 같은 운송조건이어도 업체·작업지가 다르면 삭제/추가로 본다.
+- 배차변동 비교의 동일행 매칭은 `작업일자/구분/화주/상차지/작업지/하차지/고객사/포트/라인/타입/업체명/시간` 기준이다. 같은 운송조건이어도 업체·작업지·시간이 다르면 변경 또는 삭제/추가로 본다.
 - 미확인 add/delete가 같은 항목·같은 수량으로 상쇄되면 숨긴다. 확인완료된 변동은 상쇄되어도 노출을 유지한다.
 - 배차확정 후 `BKG확정`은 확정 스냅샷 또는 WEB 수기값으로 고정한다. 원본 BKG1~3/TARGET VESSEL/비고가 바뀌면 상세/변동 표의 원본칸만 최신값으로 보이고 memo 이력과 붉은 표시를 남긴다.
-- 배차변동 sync payload는 `changeSchemaVersion=2` 이상만 반영한다. 구버전으로 열린 탭이 transportRemark 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
+- 배차변동 sync payload는 `changeSchemaVersion=3` 이상만 반영한다. 구버전으로 열린 탭이 시간 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.264**: 상세배차/배차변동에 `시간` 컬럼을 추가했다. 지역칸 메모에서 단일 시간 목록 또는 업체 라벨별 시간 목록을 읽어 수량별 라인에 배정하고, 시간 변경은 배차변동 `변경` 이벤트로 감지한다. GLAPS 업로드 시트의 `배차요청시간`에도 연결했다.
 - **v5.14.263**: 항목매핑 업로드 내부 병합 결과에 빈 `id` 키가 남아 `id=null` insert가 발생하던 문제를 수정했다. 신규행은 ID 필드를 제거해 DB UUID 기본값이 생성되게 한다.
 - **v5.14.262**: 항목매핑 수정양식 업로드 시 ID가 비어 있거나 같은 키가 반복되어 `glaps_master_aliases_branch_version_alias_source_route_code_key` UNIQUE 오류가 나던 문제를 수정했다. 기존 키는 기존 ID 업데이트로 연결하고 업로드 내부 반복은 병합한다.
 - **v5.14.261**: 운송경로 수정양식 안내문이 헤더로 오인되어 ID UUID가 상차지/경유지/하차지에 들어간 운영 DB 오염 행 540건을 비활성 처리했다. 파서는 서로 다른 3개 이상 열에서 헤더가 잡힐 때만 수정양식으로 인정하고 UUID 복제 행을 저장 전 제외한다.
@@ -73,11 +75,9 @@
 - **v5.14.259**: 배차변동 삭제 감지가 같은 고객사/포트/라인/타입 행과 과매칭되어 삭제가 숨겨질 수 있던 문제를 수정했다. 반복행 1건 삭제와 업체 교체 회귀 테스트를 추가했다.
 - **v5.14.258**: 통합 배차변동내역이 `integrated` 확정만 찾느라 확정된 glovis/mobis 변동을 놓치던 문제를 수정했다. 상세라인에 원본 sourceType을 보존하고, 통합 sync 요청은 확정된 원본 구분별로 분리 계산한다.
 - **v5.14.257**: 구간단가 제목열 필터 팝오버는 선택값을 유지한 채 다른 영역 클릭 또는 ESC 입력 시 닫히도록 했다.
-- **v5.14.256**: 구간단가 전역 검색에서 영문 포함 조건의 숫자 보조검색을 끄고, 표 헤더를 선적관리형 진한 남색으로 정리했다. 청구금액은 파란색, 하불금액은 빨간색으로 표시한다.
 ## VERIFICATION
-- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
-- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
-- `cd web; node --test tests\asanDashboardView.test.mjs tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 51개 통과
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 57개 통과
+- `cd web; npx eslint "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "utils/asanGlapsUploadExport.mjs" "app/(main)/employees/branches/asan/page.js" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
 - `cd web; node --test tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 14개 통과

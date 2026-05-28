@@ -111,6 +111,7 @@ function detailRowToGlapsUploadRow(headerIndex, row = []) {
   setUploadValue(uploadRow, '반입지(도착)코드', getByHeader(row, headerIndex, ['반입지(도착)코드']));
   setUploadValue(uploadRow, '운송경로 코드', getByHeader(row, headerIndex, ['운송경로코드']));
   setUploadValue(uploadRow, '운송서비스 코드 ', getByHeader(row, headerIndex, ['운송서비스코드']));
+  setUploadValue(uploadRow, '배차요청시간', getByHeader(row, headerIndex, ['시간']));
   setUploadValue(uploadRow, '운송사 코드', getByHeader(row, headerIndex, ['운송사코드']));
   setUploadValue(uploadRow, '부킹번호', bookingNumber);
   setUploadValue(uploadRow, 'POD', portCode);

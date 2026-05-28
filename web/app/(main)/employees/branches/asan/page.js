@@ -17,6 +17,7 @@ import {
     GLAPS_START_LOCATION_OPTIONS,
     buildDispatchDetailLines,
     detailLineToRow,
+    normalizeDispatchDetailRowValues,
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
 import {
@@ -608,7 +609,8 @@ function formatGlapsPortOptionLabel(option = {}) {
 }
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
-    return idx >= 0 ? String(values[idx] ?? '').trim() : '';
+    const normalized = normalizeDispatchDetailRowValues(values);
+    return idx >= 0 ? String(normalized[idx] ?? '').trim() : '';
 }
 function getConfirmationSnapshotValues(snapshot = {}) {
     return snapshot?.rowValues
@@ -652,7 +654,7 @@ function getDetailPortRowValue(values = []) {
 }
 function setDetailRowValue(values = [], header, value) {
     const idx = DETAIL_HEADER_INDEX[header];
-    const next = DISPATCH_DETAIL_HEADERS.map((_, valueIdx) => String(values[valueIdx] ?? '').trim());
+    const next = normalizeDispatchDetailRowValues(values);
     if (idx >= 0) next[idx] = String(value ?? '').trim();
     return next;
 }
@@ -690,6 +692,7 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         line: getDetailRowValue(values, '라인') || context.line || '',
         containerType: getDetailRowValue(values, '타입') || context.containerType || '',
         company: getDetailRowValue(values, '업체명') || context.company || '',
+        dispatchTime: getDetailRowValue(values, '시간') || context.dispatchTime || '',
         confirmedBkg,
         confirmedBkgSource: inferBkgSourceFromDetailValues(values),
         bkg1: getDetailRowValue(values, 'BKG1') || context.bkg1 || '',
@@ -721,6 +724,7 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         line: getDetailRowValue(rowValues, '라인'),
         containerType: getDetailRowValue(rowValues, '타입'),
         company: getDetailRowValue(rowValues, '업체명'),
+        dispatchTime: getDetailRowValue(rowValues, '시간'),
         bkg1: getDetailRowValue(rowValues, 'BKG1'),
         bkg2: getDetailRowValue(rowValues, 'BKG2'),
         bkg3: getDetailRowValue(rowValues, 'BKG3'),
@@ -741,6 +745,7 @@ function buildDetailLineContext(line = {}) {
         transportRemark: line.transportRemark || '',
         glapsPortCode: line.glapsPortCode || '',
         company: line.company || '',
+        dispatchTime: line.dispatchTime || '',
         bkg1: line.bkg1 || '',
         bkg2: line.bkg2 || '',
         bkg3: line.bkg3 || '',
@@ -1970,7 +1975,8 @@ function AsanDispatchContent() {
         headers,
         rows: processedData,
         workDate: isAllTab ? '' : activeItem?.target_date || '',
-    }), [headers, processedData, isAllTab, activeItem?.target_date]);
+        comments,
+    }), [headers, processedData, isAllTab, activeItem?.target_date, comments]);
 
     const glapsRouteMap = useMemo(() => {
         const map = new Map();

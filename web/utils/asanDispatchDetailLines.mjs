@@ -1,4 +1,5 @@
 export const DISPATCH_DETAIL_PORT_HEADER = '포트(DIST)';
+export const DISPATCH_DETAIL_TIME_HEADER = '시간';
 
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '작업일자',
@@ -17,6 +18,7 @@ export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '타입',
   '타입코드',
   '업체명',
+  DISPATCH_DETAIL_TIME_HEADER,
   'BKG확정',
   'BKG1',
   'BKG2',
@@ -66,6 +68,7 @@ const DISPATCH_REGION_HEADERS = Object.freeze([
 ]);
 
 const MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '아산', '중부']);
+const DISPATCH_DETAIL_TIME_INDEX = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_TIME_HEADER);
 
 function cleanText(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -73,6 +76,19 @@ function cleanText(value) {
 
 function normalizeHeader(value) {
   return cleanText(value).replace(/\s+/g, '').toUpperCase();
+}
+
+export function normalizeDispatchDetailRowValues(values = []) {
+  const rawValues = Array.isArray(values) ? values : [];
+  const hasLegacyLength = rawValues.length === DISPATCH_DETAIL_HEADERS.length - 1;
+  const sourceValues = hasLegacyLength && DISPATCH_DETAIL_TIME_INDEX >= 0
+    ? [
+        ...rawValues.slice(0, DISPATCH_DETAIL_TIME_INDEX),
+        '',
+        ...rawValues.slice(DISPATCH_DETAIL_TIME_INDEX),
+      ]
+    : rawValues;
+  return DISPATCH_DETAIL_HEADERS.map((_, idx) => cleanText(sourceValues[idx] ?? ''));
 }
 
 export function findDispatchDetailHeaderIndex(headers = [], candidates = []) {
@@ -126,6 +142,65 @@ function splitCompanySuffix(companyToken, region) {
   return {
     company: cleanText(match[1]) || text,
     suffix,
+  };
+}
+
+function commentText(value = '') {
+  if (Array.isArray(value)) return cleanText(value.join(' '));
+  if (value && typeof value === 'object') {
+    return cleanText(value.text || value.comment || value.note || value.value || '');
+  }
+  return cleanText(value);
+}
+
+function getDispatchCellComment(comments = {}, rowIndex, columnIndex) {
+  if (!comments || rowIndex === undefined || columnIndex === undefined) return '';
+  return commentText(comments[`${rowIndex}:${columnIndex}`]);
+}
+
+function normalizeTimeLabel(value = '') {
+  return cleanText(value).replace(/\s+/g, '').toUpperCase();
+}
+
+function extractDispatchTimeTokens(value = '') {
+  const text = String(value ?? '').normalize('NFKC');
+  return (text.match(/\b\d{1,2}(?::\d{1,2})?\b/g) || []).map(cleanText).filter(Boolean);
+}
+
+function parseDispatchTimeGroups(value = '') {
+  const text = String(value ?? '')
+    .normalize('NFKC')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/[，、；;]/g, ' ');
+  const groups = new Map();
+  const groupRegex = /([^\d\s:：,;][^:：]*?)\s*[:：]\s*([\d\s,，、;；:\/.-]*?)(?=\s+[^\d\s:：,;][^:：]*?\s*[:：]|$)/g;
+  let match;
+  while ((match = groupRegex.exec(text)) !== null) {
+    const label = normalizeTimeLabel(match[1]);
+    const times = extractDispatchTimeTokens(match[2]);
+    if (!label || times.length === 0) continue;
+    groups.set(label, times);
+  }
+  return groups;
+}
+
+function createDispatchTimeResolver(comment = '', assignmentCount = 0) {
+  const text = commentText(comment);
+  const labeledGroups = parseDispatchTimeGroups(text);
+  const fallbackTimes = labeledGroups.size > 0 ? [] : extractDispatchTimeTokens(text);
+  let fallbackCursor = 0;
+
+  return ({ company = '', rawCompany = '', count = 0 } = {}) => {
+    const labels = [company, rawCompany].map(normalizeTimeLabel).filter(Boolean);
+    const matchedLabel = labels.find(label => labeledGroups.has(label));
+    if (matchedLabel) return (labeledGroups.get(matchedLabel) || []).slice(0, count);
+    if (assignmentCount === 1 && labeledGroups.size === 1) {
+      return [...labeledGroups.values()][0].slice(0, count);
+    }
+    if (labeledGroups.size > 0) return [];
+    const times = fallbackTimes.slice(fallbackCursor, fallbackCursor + count);
+    fallbackCursor += count;
+    return times;
   };
 }
 
@@ -213,7 +288,7 @@ function buildBaseLine(row, cols, fallbackWorkDate) {
   };
 }
 
-export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '' } = {}) {
+export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '', comments = {} } = {}) {
   const cols = getDetailColumns(headers);
   const regionCols = DISPATCH_REGION_HEADERS
     .map((region) => ({
@@ -228,10 +303,20 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
     const baseLine = buildBaseLine(row, cols, workDate);
     regionCols.forEach(({ region, idx }) => {
       const assignments = parseDispatchAssignmentCell(row[idx]);
+      const sourceRowIndex = Number.isFinite(row.origIdx) ? row.origIdx : rowIndex;
+      const resolveTime = createDispatchTimeResolver(
+        getDispatchCellComment(comments, sourceRowIndex, idx),
+        assignments.length,
+      );
       assignments.forEach((assignment) => {
         const { company, suffix } = splitCompanySuffix(assignment.companyToken, region);
         const startLocation = resolveGlapsStartLocation(region, suffix);
         const unitCount = Math.max(0, Math.round(assignment.count));
+        const dispatchTimes = resolveTime({
+          company,
+          rawCompany: assignment.companyToken,
+          count: unitCount,
+        });
         for (let unitIndex = 0; unitIndex < unitCount; unitIndex += 1) {
           detailLines.push({
             ...baseLine,
@@ -239,9 +324,10 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
             startRegion: region,
             startSuffix: suffix,
             company,
+            dispatchTime: dispatchTimes[unitIndex] || '',
             rawCompany: assignment.companyToken,
             sourceText: assignment.rawText,
-            sourceRowIndex: Number.isFinite(row.origIdx) ? row.origIdx : rowIndex,
+            sourceRowIndex,
             sourceUnitIndex: unitIndex + 1,
             needsStartLocationSelection: MANUAL_START_REGIONS.has(region) || !startLocation,
           });
@@ -274,6 +360,7 @@ export function detailLineToRow(line = {}) {
     line.containerType || '',
     line.glapsTypeCode || '',
     line.company || '',
+    line.dispatchTime || '',
     line.confirmedBkg || line.bkg1 || '',
     line.bkg1 || '',
     line.bkg2 || '',

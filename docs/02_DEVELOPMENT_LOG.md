@@ -1,3 +1,22 @@
+## [2026-05-28] 상세배차 시간 컬럼 및 메모 시간 분배 (v5.14.264)
+### 핵심
+- 상세배차/배차변동 표에서 `업체명`과 `BKG확정` 사이에 `시간` 컬럼을 추가했습니다.
+- 배차 지역칸 메모가 `13 14 15`처럼 단일 업체용 시간 목록이면 수량별 라인에 순서대로 배정하고, `이지: 13 14 대신: 16 18 19`처럼 업체 라벨이 있으면 업체별 수량 라인에 맞춰 배정합니다.
+- 기존 확정 스냅샷/변동 payload는 시간 컬럼이 없던 구버전 배열이므로, 읽을 때 시간 칸을 빈값으로 끼워 넣어 BKG 컬럼 밀림을 방지했습니다.
+- 시간 변경은 고객사/포트/라인/타입 변경과 같은 `변경` 이벤트로 감지하며, GLAPS 업로드 시트의 `배차요청시간`으로도 출력합니다.
+### 검증
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 57개 통과
+- `cd web; npx eslint "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "utils/asanGlapsUploadExport.mjs" "app/(main)/employees/branches/asan/page.js" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/utils/asanGlapsUploadExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS 항목매핑 업로드 빈 ID 제거 (v5.14.263)
 ### 핵심
 - 항목매핑 수정양식 업로드에서 `null value in column "id" of relation "glaps_master_aliases" violates not-null constraint` 오류가 발생한 원인을 확인했습니다.
