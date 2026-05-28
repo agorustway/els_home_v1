@@ -1,3 +1,20 @@
+## [2026-05-28] 구간단가 필터 팝오버 바깥 클릭 닫힘 (v5.14.257)
+### 핵심
+- 구간단가 제목열 필터 목록이 열린 상태에서 표/검색창/다른 화면 영역을 클릭하면 목록만 닫히도록 했습니다.
+- 선택된 필터 조건은 유지하고, 같은 필터 영역 안에서 다중 선택을 이어갈 때는 팝오버가 닫히지 않게 했습니다.
+- `Escape` 키로도 열린 필터 목록을 닫을 수 있게 했습니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- 로컬 `http://localhost:3000/employees/branches/asan?debug=true`: 구간단가 TYPE 필터 열림 상태에서 검색창 클릭 시 팝오버 0개로 닫힘, 다시 열고 ESC 입력 시 0개로 닫힘 확인
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 구간단가 TYPE 검색/표 대비 보강 (v5.14.256)
 ### 핵심
 - `20RF`처럼 영문이 포함된 TYPE 검색어는 숫자 보조검색을 끄도록 조정했습니다. 이제 `20RF`가 `2026-05`의 `20`에 과매칭되어 40HC 행까지 남는 문제가 없어집니다.

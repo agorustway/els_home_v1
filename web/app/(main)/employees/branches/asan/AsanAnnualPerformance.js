@@ -1181,6 +1181,26 @@ function RouteUnitPricePanel({
     const activeSortDirection = activeSortMatch?.[2] || '';
     const hasColumnFilters = useMemo(() => Object.values(columnFilters)
         .some(value => normalizeRouteUnitColumnFilterValues(value).length), [columnFilters]);
+    useEffect(() => {
+        if (!openFilterColumn || typeof document === 'undefined') return undefined;
+        const closeOpenFilter = (event) => {
+            const target = event.target;
+            const filterRoot = typeof target?.closest === 'function'
+                ? target.closest('[data-route-unit-filter-root="true"]')
+                : null;
+            if (filterRoot) return;
+            setOpenFilterColumn('');
+        };
+        const closeOpenFilterByKey = (event) => {
+            if (event.key === 'Escape') setOpenFilterColumn('');
+        };
+        document.addEventListener('pointerdown', closeOpenFilter);
+        document.addEventListener('keydown', closeOpenFilterByKey);
+        return () => {
+            document.removeEventListener('pointerdown', closeOpenFilter);
+            document.removeEventListener('keydown', closeOpenFilterByKey);
+        };
+    }, [openFilterColumn]);
     const toggleColumnSort = (field) => {
         const nextDirection = activeSortField === field && activeSortDirection === 'desc' ? 'asc' : 'desc';
         setUnitSort(`${field}_${nextDirection}`);
@@ -1499,7 +1519,7 @@ function RouteUnitPricePanel({
                                             {activeSortField === column.key && <em>{activeSortDirection === 'asc' ? '▲' : '▼'}</em>}
                                         </button>
                                         {canFilter && (
-                                            <div className={styles.routeUnitFilterSlot}>
+                                            <div className={styles.routeUnitFilterSlot} data-route-unit-filter-root="true">
                                                 <button
                                                     type="button"
                                                     className={`${styles.routeUnitFilterButton} ${filterActive ? styles.routeUnitFilterButtonActive : ''}`}
