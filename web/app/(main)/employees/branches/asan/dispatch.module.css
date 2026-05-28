@@ -1555,13 +1555,14 @@
 }
 
 .tableScroll {
-    overflow-x: auto;
-    overflow-y: visible;
+    overflow: auto;
     display: block;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     height: auto;
-    max-height: none;
+    max-height: clamp(260px, calc(100vh - 440px), 760px);
     min-height: 0;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
 }
 
 .table {

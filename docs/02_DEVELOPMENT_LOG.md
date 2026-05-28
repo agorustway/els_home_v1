@@ -1,3 +1,20 @@
+## [2026-05-28] 상세/GLAPS 표 가로 스크롤 적응형 조정 (v5.14.267)
+### 핵심
+- 상세배차내역/배차변동내역 표는 화면 높이에 맞춰 `max-height`만 제한하고, 긴 표에서는 내부 세로/가로 스크롤이 같이 나타나도록 조정했습니다.
+- GLAPS코드 표도 같은 방식으로 내부 스크롤을 적용해, 100건 단위 목록에서도 가로 스크롤바가 화면 하단 안쪽에 유지되도록 했습니다.
+- 기존처럼 표 자체 높이를 고정하지 않아 짧은 목록은 자연 높이로 보이고, 작은 브라우저 창에서는 표 내부 스크롤로 작업할 수 있습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 57개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 상세배차 테이블 상차지 축약 및 포트 후보 강조 (v5.14.266)
 ### 핵심
 - 상세배차내역/배차변동내역 테이블의 `상차지` 컬럼을 58px 폭으로 줄이고, 긴 값은 말줄임으로 표시하도록 했습니다.

@@ -410,9 +410,10 @@
     position: relative;
     min-height: 300px;
     height: auto;
-    max-height: none;
-    overflow-x: auto;
-    overflow-y: visible;
+    max-height: clamp(300px, calc(100vh - 360px), 760px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #fff;
