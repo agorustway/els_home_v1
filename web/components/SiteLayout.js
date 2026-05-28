@@ -153,8 +153,8 @@ export default function SiteLayout({ children }) {
                 <main className={styles.mainContent}>{children}</main>
             </div>
 
-            {/* 푸터 영역: 인트라넷 모바일 환경에서는 낭비되는 면적을 줄이기 위해 푸터를 숨김 */}
-            {!(isEmployees && isMobile) && <Footer />}
+            {/* 푸터 영역: 인트라넷은 업무 화면 공간 확보를 위해 공개 사이트 푸터를 렌더링하지 않음 */}
+            {!isEmployees && <Footer />}
             <ApprovalModal isOpen={showModal} onClose={() => setShowModal(false)} />
             <IntranetEventReminderPopup
                 enabled={Boolean(isEmployees && !loading && ((profile && profile.role !== 'visitor') || hasDebugCookie))}

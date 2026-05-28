@@ -1,3 +1,17 @@
+## [2026-05-28] 인트라넷 공개 푸터 숨김 및 하단 여백 축소 (v5.14.269)
+### 핵심
+- 인트라넷/관리 경로에서는 공개 사이트용 푸터를 렌더링하지 않도록 정리했습니다.
+- 인트라넷 본문 영역의 최소 높이와 하단 패딩을 줄여 화면 하단의 빈 공간을 축소했습니다.
+### 검증
+- `cd web; npm.cmd run lint -- "components/SiteLayout.js"`: 통과
+- `git diff --check -- "web/components/SiteLayout.js" "web/components/SiteLayout.module.css"`: 통과
+### 변경 파일
+- `web/components/SiteLayout.js`
+- `web/components/SiteLayout.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] GLAPS코드 일괄선택 및 일괄수정 추가 (v5.14.268)
 ### 핵심
 - GLAPS코드 표의 선택 체크박스를 중복 병합 전용에서 일반 행 선택으로 분리했습니다.

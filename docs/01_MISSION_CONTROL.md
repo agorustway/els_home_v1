@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.268 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.269 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS코드 표에 필터 기준 일괄선택과 선택행 일괄수정 기능을 추가했다.
+> 최신 업데이트: 인트라넷 경로에서는 공개 사이트 푸터를 숨기고 본문 하단 죽은 공간을 줄였다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.268
+- **웹 버전**: v5.14.269
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -70,6 +70,7 @@
 - 상세배차/배차변동 표의 `상차지`는 좁은 폭에서 말줄임 표시하고, 포트코드 후보가 2개 이상이면 해당 셀을 노란색으로 표시한다. 표가 화면보다 길면 내부 세로/가로 스크롤로 전환해 가로 스크롤바를 화면 안에 유지한다.
 
 ## RECENT CHANGES
+- **v5.14.269**: 인트라넷/관리 경로에서 공개 사이트 푸터를 렌더링하지 않도록 정리하고, 인트라넷 본문 최소 높이와 하단 패딩을 줄여 화면 하단의 빈 공간을 축소했다.
 - **v5.14.268**: GLAPS코드 표의 선택 체크박스를 중복 전용에서 일반 선택으로 분리했다. 현재 필터 결과 일괄선택/선택해제와 선택행 단일 항목 일괄수정을 추가하고, 병합은 선택행 중 중복 대상만 집계한다.
 - **v5.14.267**: 상세배차/배차변동/GLAPS코드 표에 적응형 내부 스크롤을 적용했다. 짧은 표는 자연 높이를 유지하고, 긴 표나 작은 브라우저에서는 표 안에서 세로/가로 스크롤이 같이 보이도록 했다.
 - **v5.14.266**: 상세배차/배차변동 테이블에서 상차지 칸을 58px 폭으로 축소하고 말줄임 처리했다. 테이블 헤더 sticky를 명시하고, 포트코드 다중 후보 셀은 노란색으로 표시하며 select 표시문구는 GLAPS 코드만 노출한다.
@@ -81,6 +82,8 @@
 - **v5.14.260**: GLAPS 항목매핑 중복후보 SQL에 구버전 `alias_type_source` 제약 drop을 추가하고 운영 Supabase에 적용했다. 업로드 API는 구버전 제약이 남아 있으면 SQL 파일을 안내한다.
 - **v5.14.259**: 배차변동 삭제 감지가 같은 고객사/포트/라인/타입 행과 과매칭되어 삭제가 숨겨질 수 있던 문제를 수정했다. 반복행 1건 삭제와 업체 교체 회귀 테스트를 추가했다.
 ## VERIFICATION
+- `cd web; npm.cmd run lint -- "components/SiteLayout.js"`: 통과
+- `git diff --check -- "web/components/SiteLayout.js" "web/components/SiteLayout.module.css"`: 통과
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 57개 통과
 - `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; npm run build`: 통과
