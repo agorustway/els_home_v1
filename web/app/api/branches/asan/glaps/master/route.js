@@ -30,6 +30,28 @@ const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'port', '
 const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
 const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['port', 'line', 'container_type', 'carrier', 'consignee']);
 const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
+const ROUTE_DIRECT_BULK_FIELDS = new Set([
+  'shipperCode',
+  'routeCode',
+  'routeName',
+  'startLocationName',
+  'waypointElsName',
+  'destinationName',
+  'reviewStatus',
+  'reviewNote',
+]);
+const ALIAS_DIRECT_BULK_FIELDS = new Set([
+  'aliasType',
+  'sourceName',
+  'elsName',
+  'glapsName',
+  'glapsCode',
+  'routeCode',
+  'reviewStatus',
+  'reviewNote',
+]);
+const ROUTE_DIRECT_DUPLICATE_FIELDS = new Set(['routeCode']);
+const ALIAS_DIRECT_DUPLICATE_FIELDS = new Set(['aliasType', 'sourceName', 'routeCode', 'glapsCode']);
 
 function isMissingGlapsTableError(error) {
   const code = String(error?.code || '');
@@ -162,6 +184,19 @@ function directAliasFromPayload(row = {}) {
   };
   alias.reviewStatus = normalizeReviewStatus(row.reviewStatus ?? row.review_status, alias.elsName || alias.glapsCode ? 'ready' : 'needs_mapping');
   return alias;
+}
+
+function normalizeDirectBulkPatch(target, payload = {}) {
+  const allowedFields = target === 'routes' ? ROUTE_DIRECT_BULK_FIELDS : ALIAS_DIRECT_BULK_FIELDS;
+  const rawPatch = payload.patch && typeof payload.patch === 'object'
+    ? payload.patch
+    : { [cleanText(payload.field)]: payload.value ?? '' };
+  return Object.entries(rawPatch).reduce((acc, [field, value]) => {
+    const key = cleanText(field);
+    if (!allowedFields.has(key)) return acc;
+    acc[key] = value ?? '';
+    return acc;
+  }, {});
 }
 
 async function requireGlapsUser({ write = false } = {}) {
@@ -1002,12 +1037,90 @@ async function mergeAliasRowsByGlapsCode(adminSupabase, { version, ids = [], use
   };
 }
 
+async function bulkUpdateDirectRows(adminSupabase, { target, version, branchId, ids = [], patch = {}, userEmail }) {
+  const actor = buildEditActor('web', userEmail);
+  const table = target === 'routes' ? 'glaps_transport_routes' : 'glaps_master_aliases';
+  const uniqueIds = [...new Set((Array.isArray(ids) ? ids : [ids]).map(cleanText).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { error: jsonError('일괄수정할 ID가 없습니다.', 400) };
+  }
+
+  const existingById = await fetchRowsByIds(adminSupabase, table, version.id, uniqueIds);
+  const existingRows = uniqueIds.map(id => existingById.get(id)).filter(row => row && row.active !== false);
+  if (existingRows.length === 0) {
+    return { error: jsonError('일괄수정할 활성 행을 찾지 못했습니다.', 404) };
+  }
+
+  const dbRows = existingRows.map((existing) => {
+    const nextPayload = { ...existing, ...patch, id: existing.id };
+    if (target === 'routes') {
+      const route = directRouteFromPayload(nextPayload);
+      return { id: existing.id, ...toRouteDbRow(route, { branchId, versionId: version.id, userEmail: actor }) };
+    }
+    const alias = directAliasFromPayload(nextPayload);
+    return { id: existing.id, ...toAliasDbRow(alias, { branchId, versionId: version.id, userEmail: actor }) };
+  });
+
+  const duplicateFields = target === 'routes' ? ROUTE_DIRECT_DUPLICATE_FIELDS : ALIAS_DIRECT_DUPLICATE_FIELDS;
+  const shouldCheckDuplicates = Object.keys(patch).some(field => duplicateFields.has(field));
+  if (shouldCheckDuplicates) {
+    const keyFn = target === 'routes' ? routeMergeGroupKey : aliasExactDuplicateKey;
+    const grouped = new Map();
+    dbRows.forEach((row) => {
+      const key = keyFn(row);
+      if (!key) return;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(row);
+    });
+    const internalDuplicate = [...grouped.values()].find(group => group.length > 1);
+    if (internalDuplicate) {
+      return {
+        error: duplicateJsonError(
+          '일괄수정 결과가 선택 행 안에서 중복됩니다. 먼저 값을 나누거나 병합해 주세요.',
+          summarizeDuplicateRows(internalDuplicate, row => target === 'routes' ? `${row.route_code || '-'} ${row.route_name || ''}`.trim() : `${row.alias_type || '-'} ${row.source_name || ''} ${row.glaps_code || ''}`.trim()),
+        ),
+      };
+    }
+
+    for (const dbRow of dbRows) {
+      const duplicates = target === 'routes'
+        ? await findRouteDirectDuplicates(adminSupabase, version.id, dbRow, dbRow.id)
+        : await findAliasDirectDuplicates(adminSupabase, version.id, dbRow, dbRow.id);
+      if (duplicates.length > 0) {
+        return {
+          error: duplicateJsonError(
+            target === 'routes'
+              ? '이미 같은 운송경로코드가 등록되어 있습니다.'
+              : '이미 같은 매핑항목·ELS 매치코드·최종코드(BP)가 등록되어 있습니다.',
+            summarizeDuplicateRows(duplicates, duplicate => target === 'routes'
+              ? `${duplicate.route_code || '-'} ${duplicate.route_name || ''}`.trim()
+              : `${duplicate.alias_type || '-'} ${duplicate.source_name || ''} ${duplicate.glaps_code || ''}`.trim()),
+          ),
+        };
+      }
+    }
+  }
+
+  const { error } = await adminSupabase.from(table).upsert(dbRows, { onConflict: 'id' });
+  if (error) throw error;
+  await refreshVersionCounts(adminSupabase, version.id);
+  return {
+    result: {
+      success: true,
+      mode: target,
+      action: 'bulk_update',
+      updated: dbRows.length,
+      deleted: 0,
+    },
+  };
+}
+
 async function handleDirectMutation({ adminSupabase, payload, version, branchId, userEmail }) {
   const mode = cleanText(payload.mode);
   const action = cleanText(payload.action || 'upsert');
   const target = mode === 'route' || mode === 'routes' ? 'routes' : (mode === 'alias' || mode === 'aliases' ? 'aliases' : '');
   if (!target) return { error: jsonError('지원하지 않는 직접수정 대상입니다.', 400) };
-  if (!['upsert', 'delete', 'merge_by_key', 'merge_by_glaps_code'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
+  if (!['upsert', 'delete', 'merge_by_key', 'merge_by_glaps_code', 'bulk_update'].includes(action)) return { error: jsonError('지원하지 않는 직접수정 동작입니다.', 400) };
 
   const actor = buildEditActor('web', userEmail);
   const row = payload.row || {};
@@ -1017,6 +1130,18 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
       ? await mergeRouteRowsByConnectionKey(adminSupabase, { version, ids: payload.ids || [], userEmail })
       : await mergeAliasRowsByGlapsCode(adminSupabase, { version, ids: payload.ids || [], userEmail });
     return { result };
+  }
+  if (action === 'bulk_update') {
+    const patch = normalizeDirectBulkPatch(target, payload);
+    if (Object.keys(patch).length === 0) return { error: jsonError('일괄수정할 항목이 없습니다.', 400) };
+    return bulkUpdateDirectRows(adminSupabase, {
+      target,
+      version,
+      branchId,
+      ids: payload.ids || [],
+      patch,
+      userEmail,
+    });
   }
   if (action === 'delete') {
     if (!id) return { error: jsonError('삭제할 ID가 없습니다.', 400) };

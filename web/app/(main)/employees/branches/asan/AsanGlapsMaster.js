@@ -26,6 +26,28 @@ const ALIAS_TYPE_OPTIONS = [
     ['generic', '기타'],
 ];
 
+const ROUTE_BULK_FIELD_OPTIONS = [
+    { field: 'reviewStatus', label: '상태', type: 'reviewStatus' },
+    { field: 'shipperCode', label: '화주사코드', type: 'text' },
+    { field: 'routeCode', label: '운송경로코드', type: 'text' },
+    { field: 'routeName', label: '운송경로명', type: 'text' },
+    { field: 'startLocationName', label: '상차지', type: 'text' },
+    { field: 'waypointElsName', label: '경유지(ELS)', type: 'text' },
+    { field: 'destinationName', label: '하차지', type: 'text' },
+    { field: 'reviewNote', label: '검수메모', type: 'text' },
+];
+
+const ALIAS_BULK_FIELD_OPTIONS = [
+    { field: 'reviewStatus', label: '상태', type: 'reviewStatus' },
+    { field: 'aliasType', label: '매핑항목', type: 'aliasType' },
+    { field: 'sourceName', label: 'ELS 매치코드', type: 'text' },
+    { field: 'elsName', label: 'ELS 디스크립션', type: 'text' },
+    { field: 'glapsName', label: 'GLAPS 디스크립션', type: 'text' },
+    { field: 'glapsCode', label: '최종코드(BP)', type: 'text' },
+    { field: 'routeCode', label: '운송경로코드', type: 'text' },
+    { field: 'reviewNote', label: '검수메모', type: 'text' },
+];
+
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const TABLE_COLLATOR = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
 const EMPTY_TABLE_FILTER_VALUE = '__GLAPS_EMPTY_FILTER__';
@@ -152,6 +174,17 @@ function aliasToEditorValues(row = {}) {
     };
 }
 
+function bulkFieldOptions(activeTable) {
+    if (activeTable === 'routes') return ROUTE_BULK_FIELD_OPTIONS;
+    if (activeTable === 'aliases') return ALIAS_BULK_FIELD_OPTIONS;
+    return [];
+}
+
+function defaultBulkEditor(activeTable) {
+    const [firstOption] = bulkFieldOptions(activeTable);
+    return firstOption ? { field: firstOption.field, value: firstOption.type === 'reviewStatus' ? 'ready' : '' } : null;
+}
+
 function downloadTemplate() {
     window.location.href = '/api/branches/asan/glaps/master/template';
 }
@@ -187,7 +220,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const [tableFilters, setTableFilters] = useState({});
     const [tableSort, setTableSort] = useState({ table: 'routes', key: '', direction: 'asc' });
     const [duplicateOnly, setDuplicateOnly] = useState(false);
-    const [selectedDuplicateIds, setSelectedDuplicateIds] = useState([]);
+    const [selectedRowIds, setSelectedRowIds] = useState([]);
+    const [bulkEditor, setBulkEditor] = useState(null);
     const [masterDisplayLimit, setMasterDisplayLimit] = useState(GLAPS_MASTER_PAGE_SIZE);
     const [legacyMasterPanelOpen, setLegacyMasterPanelOpen] = useState(false);
     const [masterNasPath, setMasterNasPath] = useState(DEFAULT_GLAPS_MASTER_PATH);
@@ -220,7 +254,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     useEffect(() => {
         setEditor(null);
         setDuplicateOnly(false);
-        setSelectedDuplicateIds([]);
+        setSelectedRowIds([]);
+        setBulkEditor(null);
     }, [activeTable]);
 
     const routes = data?.routes || [];
@@ -233,13 +268,14 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const version = data?.version || null;
     const duplicateInfo = useMemo(() => buildDuplicateInfo(activeTable, tableRows), [activeTable, tableRows]);
     const hasDuplicateRows = duplicateInfo.rowCount > 0;
-    const selectedDuplicateIdSet = useMemo(() => new Set(selectedDuplicateIds), [selectedDuplicateIds]);
-    const selectedDuplicateCount = selectedDuplicateIds.filter(id => duplicateInfo.byId.has(id)).length;
+    const selectedRowIdSet = useMemo(() => new Set(selectedRowIds), [selectedRowIds]);
+    const selectedRowCount = selectedRowIds.filter(id => tableRows.some(row => row.id === id)).length;
+    const selectedDuplicateCount = selectedRowIds.filter(id => duplicateInfo.byId.has(id)).length;
 
     useEffect(() => {
         if (activeTable !== 'routes' && activeTable !== 'aliases') return;
         const validIds = new Set(tableRows.map(row => row.id).filter(Boolean));
-        setSelectedDuplicateIds((prev) => {
+        setSelectedRowIds((prev) => {
             const next = prev.filter(id => validIds.has(id));
             return next.length === prev.length ? prev : next;
         });
@@ -391,17 +427,17 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
     }, [activeTable, editor?.id, fetchData, onMasterChanged]);
 
-    const toggleDuplicateSelection = useCallback((rowId) => {
+    const toggleRowSelection = useCallback((rowId) => {
         const id = tableText(rowId).trim();
         if (!id) return;
-        setSelectedDuplicateIds(prev => (
+        setSelectedRowIds(prev => (
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         ));
     }, []);
 
     const mergeDuplicateRows = useCallback(async ({ selectedOnly = false } = {}) => {
         if (activeTable !== 'routes' && activeTable !== 'aliases') return;
-        const ids = selectedOnly ? selectedDuplicateIds : [];
+        const ids = selectedOnly ? selectedRowIds.filter(id => duplicateInfo.byId.has(id)) : [];
         if (selectedOnly && ids.length === 0) {
             setMessage({ type: 'error', text: '병합할 항목을 먼저 선택해주세요.' });
             return;
@@ -426,7 +462,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 type: 'success',
                 text: `${basis} 병합 ${Number(payload.mergedGroups || 0).toLocaleString()}그룹 / ${Number(payload.mergedRows || 0).toLocaleString()}행 반영 완료`,
             });
-            setSelectedDuplicateIds([]);
+            setSelectedRowIds([]);
             await fetchData();
             onMasterChanged?.();
         } catch (error) {
@@ -434,7 +470,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         } finally {
             setSaving(false);
         }
-    }, [activeTable, duplicateInfo.groupCount, fetchData, onMasterChanged, selectedDuplicateIds]);
+    }, [activeTable, duplicateInfo.byId, duplicateInfo.groupCount, fetchData, onMasterChanged, selectedRowIds]);
 
     const updateTableFilter = (key, value) => {
         setTableFilters(prev => {
@@ -458,7 +494,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         setSearchInput('');
         setEditor(null);
         setDuplicateOnly(false);
-        setSelectedDuplicateIds([]);
+        setSelectedRowIds([]);
+        setBulkEditor(null);
         setTableFilters(prev => ({ ...prev, routes: {} }));
     };
 
@@ -468,7 +505,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         setSearchInput('');
         setEditor(null);
         setDuplicateOnly(false);
-        setSelectedDuplicateIds([]);
+        setSelectedRowIds([]);
+        setBulkEditor(null);
         setTableFilters(prev => ({ ...prev, sheets: {} }));
     };
 
@@ -488,7 +526,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 {
                     key: 'select',
                     label: '선택',
-                    value: row => (selectedDuplicateIdSet.has(row.id) ? '선택' : ''),
+                    value: row => (selectedRowIdSet.has(row.id) ? '선택' : ''),
                     filterable: false,
                     sortable: false,
                     className: styles.selectCell,
@@ -496,10 +534,10 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         <input
                             type="checkbox"
                             className={styles.rowSelectCheckbox}
-                            checked={selectedDuplicateIdSet.has(row.id)}
-                            onChange={() => toggleDuplicateSelection(row.id)}
-                            disabled={saving || !duplicateInfo.byId.has(row.id)}
-                            aria-label="병합 항목 선택"
+                            checked={selectedRowIdSet.has(row.id)}
+                            onChange={() => toggleRowSelection(row.id)}
+                            disabled={saving || !row.id}
+                            aria-label="행 선택"
                         />
                     ),
                 },
@@ -532,7 +570,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 {
                     key: 'select',
                     label: '선택',
-                    value: row => (selectedDuplicateIdSet.has(row.id) ? '선택' : ''),
+                    value: row => (selectedRowIdSet.has(row.id) ? '선택' : ''),
                     filterable: false,
                     sortable: false,
                     className: styles.selectCell,
@@ -540,10 +578,10 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                         <input
                             type="checkbox"
                             className={styles.rowSelectCheckbox}
-                            checked={selectedDuplicateIdSet.has(row.id)}
-                            onChange={() => toggleDuplicateSelection(row.id)}
-                            disabled={saving || !duplicateInfo.byId.has(row.id)}
-                            aria-label="병합 항목 선택"
+                            checked={selectedRowIdSet.has(row.id)}
+                            onChange={() => toggleRowSelection(row.id)}
+                            disabled={saving || !row.id}
+                            aria-label="행 선택"
                         />
                     ),
                 },
@@ -575,7 +613,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : '') },
             { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {} },
         ];
-    }, [activeTable, beginEditRow, deleteRow, duplicateInfo.byId, saving, selectedDuplicateIdSet, toggleDuplicateSelection]);
+    }, [activeTable, beginEditRow, deleteRow, saving, selectedRowIdSet, toggleRowSelection]);
 
     const activeTableFilters = useMemo(() => tableFilters[activeTable] || {}, [activeTable, tableFilters]);
     const hasTableFilters = Object.values(activeTableFilters).some(value => normalizeTableFilter(value));
@@ -627,6 +665,77 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             return compareTableValues(sortColumn.value?.(a), sortColumn.value?.(b)) * direction;
         });
     }, [activeSort.direction, activeSort.key, activeTable, activeTableFilters, duplicateInfo.byId, duplicateInfo.keyById, duplicateOnly, tableColumns, tableRows]);
+    const selectableVisibleRowIds = useMemo(
+        () => visibleTableRows.map(row => tableText(row.id).trim()).filter(Boolean),
+        [visibleTableRows],
+    );
+    const selectedVisibleCount = selectableVisibleRowIds.filter(id => selectedRowIdSet.has(id)).length;
+    const bulkOptions = useMemo(() => bulkFieldOptions(activeTable), [activeTable]);
+    const activeBulkField = bulkOptions.find(option => option.field === bulkEditor?.field) || bulkOptions[0] || null;
+
+    const selectFilteredRows = useCallback(() => {
+        if (selectableVisibleRowIds.length === 0) return;
+        setSelectedRowIds(prev => [...new Set([...prev, ...selectableVisibleRowIds])]);
+    }, [selectableVisibleRowIds]);
+
+    const clearSelectedRows = useCallback(() => {
+        setSelectedRowIds([]);
+        setBulkEditor(null);
+    }, []);
+
+    const openBulkEditor = useCallback(() => {
+        if (activeTable !== 'routes' && activeTable !== 'aliases') return;
+        setBulkEditor(prev => prev || defaultBulkEditor(activeTable));
+    }, [activeTable]);
+
+    const updateBulkField = (field) => {
+        const option = bulkOptions.find(item => item.field === field);
+        setBulkEditor({
+            field,
+            value: option?.type === 'reviewStatus' ? 'ready' : (option?.type === 'aliasType' ? 'port' : ''),
+        });
+    };
+
+    const submitBulkEditor = async (event) => {
+        event?.preventDefault?.();
+        if (!bulkEditor || (activeTable !== 'routes' && activeTable !== 'aliases')) return;
+        const ids = selectedRowIds.filter(id => tableRows.some(row => row.id === id));
+        if (ids.length === 0) {
+            setMessage({ type: 'error', text: '일괄수정할 항목을 먼저 선택해주세요.' });
+            return;
+        }
+        const field = activeBulkField?.field;
+        if (!field) {
+            setMessage({ type: 'error', text: '일괄수정할 항목을 선택해주세요.' });
+            return;
+        }
+        const displayValue = bulkEditor.value ? `"${bulkEditor.value}"` : '빈값';
+        if (!window.confirm(`선택한 ${ids.length.toLocaleString()}건의 ${activeBulkField.label}을 ${displayValue}으로 일괄수정할까요?`)) return;
+        setSaving(true);
+        try {
+            const response = await fetch('/api/branches/asan/glaps/master', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: activeTable,
+                    action: 'bulk_update',
+                    ids,
+                    patch: { [field]: bulkEditor.value },
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || 'GLAPS 일괄수정 실패');
+            setMessage({ type: 'success', text: `웹수정 ${Number(payload.updated || 0).toLocaleString()}건 일괄 반영 완료` });
+            setSelectedRowIds([]);
+            setBulkEditor(null);
+            await fetchData();
+            onMasterChanged?.();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setSaving(false);
+        }
+    };
 
     useEffect(() => {
         setMasterDisplayLimit(GLAPS_MASTER_PAGE_SIZE);
@@ -886,6 +995,34 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     <>
                         <button
                             type="button"
+                            className={styles.selectButton}
+                            onClick={selectFilteredRows}
+                            disabled={saving || selectableVisibleRowIds.length === 0 || selectedVisibleCount === selectableVisibleRowIds.length}
+                        >
+                            필터선택 {selectableVisibleRowIds.length.toLocaleString()}
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.selectButton}
+                            onClick={clearSelectedRows}
+                            disabled={saving || selectedRowCount === 0}
+                        >
+                            선택해제 {selectedRowCount.toLocaleString()}
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.bulkEditButton}
+                            onClick={openBulkEditor}
+                            disabled={saving || selectedRowCount === 0}
+                        >
+                            일괄수정 {selectedRowCount.toLocaleString()}
+                        </button>
+                    </>
+                )}
+                {(activeTable === 'routes' || activeTable === 'aliases') && (
+                    <>
+                        <button
+                            type="button"
                             className={styles.mergeButton}
                             onClick={() => mergeDuplicateRows({ selectedOnly: true })}
                             disabled={saving || selectedDuplicateCount === 0}
@@ -907,6 +1044,48 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     <button type="button" onClick={clearTableFilters}>테이블 필터해제</button>
                 )}
             </div>
+            {bulkEditor && (activeTable === 'routes' || activeTable === 'aliases') && (
+                <form className={styles.bulkEditPanel} onSubmit={submitBulkEditor}>
+                    <strong>선택 {selectedRowCount.toLocaleString()}건 일괄수정</strong>
+                    <select
+                        value={bulkEditor.field}
+                        onChange={(event) => updateBulkField(event.target.value)}
+                        disabled={saving}
+                        aria-label="일괄수정 항목"
+                    >
+                        {bulkOptions.map(option => <option key={option.field} value={option.field}>{option.label}</option>)}
+                    </select>
+                    {activeBulkField?.type === 'reviewStatus' ? (
+                        <select
+                            value={bulkEditor.value}
+                            onChange={(event) => setBulkEditor(prev => ({ ...(prev || {}), value: event.target.value }))}
+                            disabled={saving}
+                            aria-label="일괄수정 값"
+                        >
+                            {REVIEW_STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                    ) : activeBulkField?.type === 'aliasType' ? (
+                        <select
+                            value={bulkEditor.value}
+                            onChange={(event) => setBulkEditor(prev => ({ ...(prev || {}), value: event.target.value }))}
+                            disabled={saving}
+                            aria-label="일괄수정 값"
+                        >
+                            {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                    ) : (
+                        <input
+                            value={bulkEditor.value}
+                            onChange={(event) => setBulkEditor(prev => ({ ...(prev || {}), value: event.target.value }))}
+                            disabled={saving}
+                            placeholder="일괄 적용할 값"
+                            aria-label="일괄수정 값"
+                        />
+                    )}
+                    <button type="submit" className={styles.primaryButton} disabled={saving || selectedRowCount === 0}>적용</button>
+                    <button type="button" onClick={() => setBulkEditor(null)} disabled={saving}>닫기</button>
+                </form>
+            )}
 
             <div className={styles.tableWrap}>
                 {loading ? (

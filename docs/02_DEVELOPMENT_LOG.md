@@ -1,3 +1,22 @@
+## [2026-05-28] GLAPS코드 일괄선택 및 일괄수정 추가 (v5.14.268)
+### 핵심
+- GLAPS코드 표의 선택 체크박스를 중복 병합 전용에서 일반 행 선택으로 분리했습니다.
+- 현재 필터 결과를 한 번에 선택하는 `필터선택`, 전체 선택 해제, 선택행 단일 항목 `일괄수정`을 추가했습니다.
+- 중복 병합은 기존 정책을 유지하되, 선택된 행 중 실제 중복 대상만 `선택병합` 카운트에 반영합니다.
+- API에 `bulk_update` 직접수정 동작을 추가해 선택된 운송경로/항목매핑 행을 WEB수정 출처로 일괄 업데이트합니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\glapsMasterData.test.mjs tests\glapsDuplicateGroups.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 상세/GLAPS 표 가로 스크롤 적응형 조정 (v5.14.267)
 ### 핵심
 - 상세배차내역/배차변동내역 표는 화면 높이에 맞춰 `max-height`만 제한하고, 긴 표에서는 내부 세로/가로 스크롤이 같이 나타나도록 조정했습니다.

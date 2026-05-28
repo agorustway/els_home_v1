@@ -360,6 +360,65 @@
     cursor: not-allowed;
 }
 
+.selectButton {
+    border-color: #dbe3ee !important;
+    background: #fff !important;
+    color: #475569 !important;
+}
+
+.selectButton:disabled {
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
+
+.bulkEditButton {
+    border-color: #c4b5fd !important;
+    background: #f5f3ff !important;
+    color: #6d28d9 !important;
+}
+
+.bulkEditButton:disabled {
+    border-color: #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
+
+.bulkEditPanel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 9px;
+    border: 1px solid #ddd6fe;
+    border-radius: 8px;
+    background: #fbfaff;
+}
+
+.bulkEditPanel strong {
+    color: #4c1d95;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.bulkEditPanel select,
+.bulkEditPanel input,
+.bulkEditPanel button {
+    height: 30px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 0 9px;
+}
+
+.bulkEditPanel input {
+    min-width: 220px;
+    flex: 1;
+}
+
 .rowActions {
     display: inline-flex;
     gap: 4px;
