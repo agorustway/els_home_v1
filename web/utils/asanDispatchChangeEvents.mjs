@@ -140,6 +140,11 @@ function makeRowFingerprint(headerMap = {}, rowContext = {}) {
   ]);
 }
 
+function makeStableDispatchContentKey(record = {}) {
+  const headerMap = record.rowByHeader || valuesByHeader(record.rowValues || []);
+  return makeKey(NEUTRAL_ADD_DELETE_HEADERS.map(header => headerMap[header] || ''));
+}
+
 export function getDispatchChangeDiffHeaders(beforeValues = [], afterValues = [], beforeContext = {}, afterContext = {}) {
   const beforeMap = valuesByHeader(beforeValues);
   const afterMap = valuesByHeader(afterValues);
@@ -354,7 +359,7 @@ function getEventKeyBase(type, beforeRecord, afterRecord) {
   const anchor = afterRecord || beforeRecord || {};
   return type === 'change'
     ? anchor.identityKey || anchor.groupKey || anchor.detailLineKey
-    : anchor.groupKey || anchor.identityKey || anchor.detailLineKey;
+    : makeStableDispatchContentKey(anchor) || anchor.groupKey || anchor.identityKey || anchor.detailLineKey;
 }
 
 function buildEvent(type, beforeRecord, afterRecord, slot, occurredAt) {
@@ -392,10 +397,20 @@ export function diffDispatchChangeLines(snapshotLines = [], currentLines = [], o
     events.push(buildEvent(type, beforeRecord, afterRecord, nextSlot, occurredAt));
   };
 
-  const beforeByFingerprint = groupIndexed(before, 'rowFingerprint');
-  const afterByFingerprint = groupIndexed(after, 'rowFingerprint');
-  beforeByFingerprint.forEach((beforeIndexes, fingerprint) => {
-    const afterIndexes = afterByFingerprint.get(fingerprint) || [];
+  const beforeByStableContent = new Map();
+  before.forEach((record, index) => {
+    const key = makeStableDispatchContentKey(record);
+    if (!beforeByStableContent.has(key)) beforeByStableContent.set(key, []);
+    beforeByStableContent.get(key).push(index);
+  });
+  const afterByStableContent = new Map();
+  after.forEach((record, index) => {
+    const key = makeStableDispatchContentKey(record);
+    if (!afterByStableContent.has(key)) afterByStableContent.set(key, []);
+    afterByStableContent.get(key).push(index);
+  });
+  beforeByStableContent.forEach((beforeIndexes, stableKey) => {
+    const afterIndexes = afterByStableContent.get(stableKey) || [];
     beforeIndexes.forEach((beforeIndex) => {
       if (matchedBefore.has(beforeIndex)) return;
       const afterIndex = takeFirstUnmatched(afterIndexes, matchedAfter);

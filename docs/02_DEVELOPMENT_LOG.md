@@ -1,3 +1,18 @@
+## [2026-05-28] 배차변동 삭제 안정 매칭 보강 (v5.14.259)
+### 핵심
+- 배차변동 비교 첫 단계가 `고객사/포트/라인/타입`만 같은 행을 같은 행으로 매칭해, 같은 운송조건 안의 업체 교체나 삭제가 숨겨질 수 있던 문제를 수정했습니다.
+- 동일행 매칭 기준을 `작업일자/구분/화주/상차지/작업지/하차지/고객사/포트/라인/타입/업체명`으로 보강했습니다.
+- 반복행 중 1건 삭제, 같은 운송조건 안의 업체 교체를 회귀 테스트로 고정했습니다.
+### 검증
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 54개 통과
+- `cd web; npx eslint "utils/asanDispatchChangeEvents.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 통합 배차변동 원본 확정분 동기화 (v5.14.258)
 ### 핵심
 - 통합현황에서 `integrated` 배차확정이 없으면 변동 sync가 멈춰, 이미 확정된 `glovis/mobis` 변동이 보이지 않던 문제를 수정했습니다.

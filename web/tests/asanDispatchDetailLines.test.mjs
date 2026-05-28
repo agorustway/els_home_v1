@@ -367,6 +367,41 @@ test('배차변동 비교는 수량 감소를 삭제 이벤트로 감지한다',
   assert.equal(events.reduce((sum, event) => sum + event.quantityDelta, 0), -3);
 });
 
+test('배차변동 비교는 같은 운송조건 안의 업체 교체를 삭제/추가로 감지한다', () => {
+  const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
+  const beforeLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-28', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '칸1', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `before-${index}`));
+  const afterLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-28', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '이지1', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `after-${index}`));
+
+  const events = diffDispatchChangeLines(beforeLines, afterLines, { occurredAt: '2026-05-28T01:00:00Z' });
+
+  assert.deepEqual([...events.map(event => event.changeType)].sort(), ['add', 'delete']);
+  assert.ok(events.some(event => event.changeType === 'delete' && event.beforeSnapshot.rowValues[15] === '칸'));
+  assert.ok(events.some(event => event.changeType === 'add' && event.afterSnapshot.rowValues[15] === '이지'));
+});
+
+test('배차변동 비교는 반복 행 중 1건 삭제를 같은 운송조건의 다른 행과 섞지 않는다', () => {
+  const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
+  const beforeLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-28', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '칸1,이지1', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `before-${index}`));
+  const afterLines = buildDispatchDetailLines({
+    headers,
+    rows: [['2026-05-28', '수출', '글로비스', 'KCC글라스', '부산신항', 'KAGA', 'USSAV', 'EMC', '40HC', '이지1', 'BKG-A']],
+  }).map((line, index) => makeDispatchChangeSnapshotLine(line, `after-${index}`));
+
+  const events = diffDispatchChangeLines(beforeLines, afterLines, { occurredAt: '2026-05-28T01:00:00Z' });
+
+  assert.deepEqual(events.map(event => event.changeType), ['delete']);
+  assert.equal(events[0].beforeSnapshot.rowValues[15], '칸');
+});
+
 test('배차변동 비교는 같은 항목의 미확인 추가/삭제 순증감 0건을 숨긴다', () => {
   const headers = ['작업일자', '구분', '화주', '작업지', '선적', '고객사', '포트', '라인', 'TYPE', '부산', 'BKG1'];
   const [line] = buildDispatchDetailLines({
