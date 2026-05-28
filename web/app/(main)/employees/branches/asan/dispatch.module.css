@@ -1559,7 +1559,7 @@
     display: block;
     flex: 0 1 auto;
     height: auto;
-    max-height: clamp(260px, calc(100vh - 440px), 760px);
+    max-height: clamp(360px, calc(100dvh - 300px), 980px);
     min-height: 0;
     scrollbar-gutter: stable;
     overscroll-behavior: contain;

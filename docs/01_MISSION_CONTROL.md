@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.270 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.271 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동 표의 상차지 말줄임 폭을 6글자 수준으로 넓혔다.
+> 최신 업데이트: 배차판, 상세배차내역, 배차변동내역 테이블이 화면 하단 공간을 더 크게 쓰도록 조정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.270
+- **웹 버전**: v5.14.271
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -68,8 +68,10 @@
 - 배차확정 후 `BKG확정`은 확정 스냅샷 또는 WEB 수기값으로 고정한다. 원본 BKG1~3/TARGET VESSEL/비고가 바뀌면 상세/변동 표의 원본칸만 최신값으로 보이고 memo 이력과 붉은 표시를 남긴다.
 - 배차변동 sync payload는 `changeSchemaVersion=3` 이상만 반영한다. 구버전으로 열린 탭이 시간 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 - 상세배차/배차변동 표의 `상차지`는 6글자 수준 폭에서 말줄임 표시하고, 포트코드 후보가 2개 이상이면 해당 셀을 노란색으로 표시한다. 표가 화면보다 길면 내부 세로/가로 스크롤로 전환해 가로 스크롤바를 화면 안에 유지한다.
+- 배차판/상세배차/배차변동 공통 테이블 스크롤 높이는 `clamp(360px, calc(100dvh - 300px), 980px)` 기준으로 화면 하단 여백을 최소화한다.
 
 ## RECENT CHANGES
+- **v5.14.271**: 배차판, 상세배차내역, 배차변동내역 공통 테이블 스크롤 높이를 키워 데스크톱 화면 하단의 빈 공간을 줄이고 더 많은 행을 한 번에 보이게 했다.
 - **v5.14.270**: 상세배차/배차변동 표의 `상차지` 칸을 92px로 넓혀 한글 6글자 수준까지 보이게 하고 나머지는 말줄임 처리한다.
 - **v5.14.269**: 인트라넷/관리 경로에서 공개 사이트 푸터를 렌더링하지 않도록 정리하고, 인트라넷 본문 최소 높이와 하단 패딩을 줄여 화면 하단의 빈 공간을 축소했다.
 - **v5.14.268**: GLAPS코드 표의 선택 체크박스를 중복 전용에서 일반 선택으로 분리했다. 현재 필터 결과 일괄선택/선택해제와 선택행 단일 항목 일괄수정을 추가하고, 병합은 선택행 중 중복 대상만 집계한다.
@@ -79,6 +81,9 @@
 - **v5.14.264**: 상세배차/배차변동에 `시간` 컬럼을 추가했다. 지역칸 메모에서 단일 시간 목록 또는 업체 라벨별 시간 목록을 읽어 수량별 라인에 배정하고, 시간 변경은 배차변동 `변경` 이벤트로 감지한다. GLAPS 업로드 시트의 `배차요청시간`에도 연결했다.
 - **v5.14.263**: 항목매핑 업로드 내부 병합 결과에 빈 `id` 키가 남아 `id=null` insert가 발생하던 문제를 수정했다. 신규행은 ID 필드를 제거해 DB UUID 기본값이 생성되게 한다.
 ## VERIFICATION
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/dispatch.module.css" "web/tests/asanDashboardView.test.mjs" docs/01_MISSION_CONTROL.md docs/02_DEVELOPMENT_LOG.md`: 통과
 - `cd web; npm.cmd run lint -- "components/SiteLayout.js"`: 통과
 - `git diff --check -- "web/components/SiteLayout.js" "web/components/SiteLayout.module.css"`: 통과
 - `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 57개 통과

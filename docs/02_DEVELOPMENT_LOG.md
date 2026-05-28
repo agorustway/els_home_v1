@@ -1,3 +1,19 @@
+## [2026-05-28] 아산 배차 테이블 하단 공간 활용 확대 (v5.14.271)
+### 핵심
+- 배차판, 상세배차내역, 배차변동내역이 공통으로 쓰는 테이블 스크롤 높이 기준을 키웠습니다.
+- 기존 `calc(100vh - 440px)` 기준을 `calc(100dvh - 300px)`로 조정해 데스크톱 화면 하단의 빈 공간을 줄이고 더 많은 행을 한 번에 보이게 했습니다.
+- 상세배차/배차변동의 상차지 92px 폭 보정은 유지했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `git diff --check -- "web/app/(main)/employees/branches/asan/dispatch.module.css" "web/tests/asanDashboardView.test.mjs" docs/01_MISSION_CONTROL.md docs/02_DEVELOPMENT_LOG.md`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 상세배차 상차지 말줄임 폭 조정 (v5.14.270)
 ### 핵심
 - 상세배차내역/배차변동내역의 `상차지` 컬럼 폭을 58px에서 92px로 조정했습니다.
