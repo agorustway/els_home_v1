@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './glapsMaster.module.css';
 import { buildGlapsDuplicateInfo } from '@/utils/glapsDuplicateGroups.mjs';
-import { formatGlapsAliasType } from '@/utils/glapsMasterData.mjs';
+import { formatGlapsAliasType, getGlapsRouteShipperCode } from '@/utils/glapsMasterData.mjs';
 
 const STATUS_LABELS = {
     ready: '확정',
@@ -33,6 +33,7 @@ const GLAPS_MASTER_PAGE_SIZE = 100;
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
 
 const EMPTY_ROUTE_EDITOR = {
+    shipperCode: '',
     routeCode: '',
     routeName: '',
     startLocationName: '',
@@ -81,8 +82,17 @@ function sourceClass(updatedBy = '') {
     return '';
 }
 
+function routeValue(row = {}, snakeKey, camelKey = snakeKey) {
+    return row[snakeKey] ?? row[camelKey] ?? '';
+}
+
 function routeMatchKey(row) {
-    return [row.start_location_name, row.waypoint_els_name || row.waypoint_name, row.destination_name]
+    return [
+        getGlapsRouteShipperCode(row),
+        routeValue(row, 'start_location_name', 'startLocationName'),
+        routeValue(row, 'waypoint_els_name', 'waypointElsName') || routeValue(row, 'waypoint_name', 'waypointName'),
+        routeValue(row, 'destination_name', 'destinationName'),
+    ]
         .filter(Boolean)
         .join(' → ');
 }
@@ -117,6 +127,7 @@ function buildDuplicateInfo(activeTable, rows = []) {
 
 function routeToEditorValues(row = {}) {
     return {
+        shipperCode: getGlapsRouteShipperCode(row),
         routeCode: row.route_code || '',
         routeName: row.route_name || '',
         startLocationName: row.start_location_name || '',
@@ -493,6 +504,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     ),
                 },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
+                { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: styles.keyCell },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name },
@@ -630,6 +642,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         if (editor?.mode === 'routes') {
             return ({
                 status: 'reviewStatus',
+                shipper_code: 'shipperCode',
                 start_location_name: 'startLocationName',
                 waypoint_els_name: 'waypointElsName',
                 destination_name: 'destinationName',
@@ -667,6 +680,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (column.key === 'route_key') {
             return routeMatchKey({
+                shipperCode: editor.values.shipperCode,
                 start_location_name: editor.values.startLocationName,
                 waypoint_els_name: editor.values.waypointElsName,
                 waypoint_name: editor.values.waypointName,
@@ -816,7 +830,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.queryPanel}>
                 <div className={styles.queryNode}>
                     <strong>상세배차</strong>
-                    <span>상차지 · 경유지(ELS) · 하차지(선적)</span>
+                    <span>화주사코드 · 상차지 · 경유지(ELS) · 하차지(선적)</span>
                 </div>
                 <div className={styles.queryArrow}>→</div>
                 <div className={styles.queryNode}>
@@ -826,7 +840,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 <div className={styles.queryArrow}>→</div>
                 <div className={styles.queryNode}>
                     <strong>운송경로</strong>
-                    <span>상차지 · 경유지(ELS) · 하차지 · 원장 운송경로</span>
+                    <span>화주사코드 · 상차지 · 경유지(ELS) · 하차지 · 원장 운송경로</span>
                 </div>
             </div>
 

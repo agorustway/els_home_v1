@@ -1,3 +1,24 @@
+## [2026-05-28] GLAPS 운송경로 화주사코드 매칭 추가 (v5.14.265)
+### 핵심
+- GLAPS 운송경로 원장에서 `화주사코드`를 헤더명 기반으로 파싱하고 raw payload에 보존하도록 했습니다.
+- 운송경로 fingerprint와 상세배차 매칭키를 `화주사코드 + 상차지 + 경유지(ELS) + 하차지(선적)`로 확장했습니다. 같은 상차/경유/하차라도 화주가 다르면 다른 운송경로코드로 도출됩니다.
+- `GLAPS코드` 운송경로 테이블과 인라인 수정, `운송경로_수정양식` 다운로드/업로드에 `화주사코드` 컬럼을 추가했습니다.
+- 기존 DB 컬럼 추가 없이 `raw_payload`에서 화주사코드를 읽도록 해, SQL 미적용 상태에서도 기존 운영 테이블 구조와 충돌하지 않게 했습니다.
+### 검증
+- `cd web; node --test tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 69개 통과
+- `cd web; npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 상세배차 시간 컬럼 및 메모 시간 분배 (v5.14.264)
 ### 핵심
 - 상세배차/배차변동 표에서 `업체명`과 `BKG확정` 사이에 `시간` 컬럼을 추가했습니다.

@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_GLAPS_BRANCH_ID,
   buildGlapsRouteFingerprint,
+  getGlapsRouteShipperCode,
   getGlapsRouteReviewStatus,
   getGlapsRouteMatchQuery,
   normalizeGlapsAliasType,
@@ -122,8 +123,10 @@ function aliasProtectionKey(row = {}) {
 }
 
 function directRouteFromPayload(row = {}) {
+  const shipperCode = cleanText(row.shipperCode ?? row.shipper_code) || getGlapsRouteShipperCode(row);
   const route = {
     id: cleanText(row.id),
+    shipperCode,
     routeCode: cleanText(row.routeCode ?? row.route_code),
     routeName: cleanText(row.routeName ?? row.route_name),
     startLocationName: cleanText(row.startLocationName ?? row.start_location_name),
@@ -135,6 +138,8 @@ function directRouteFromPayload(row = {}) {
     sourceRowNumber: Number(row.sourceRowNumber ?? row.source_row_number) || null,
     rawPayload: {
       ...(row.rawPayload || row.raw_payload || {}),
+      shipper_code: shipperCode,
+      '화주사코드': shipperCode,
       edit_source: 'web',
     },
   };
@@ -242,6 +247,15 @@ async function loadPlainSheetsFromForm(formData) {
 }
 
 function toRouteDbRow(route, { branchId, versionId, userEmail }) {
+  const shipperCode = getGlapsRouteShipperCode(route);
+  const routeFingerprint = buildGlapsRouteFingerprint({
+    ...route,
+    shipperCode,
+  });
+  const rawPayload = {
+    ...(route.rawPayload || {}),
+    ...(shipperCode ? { shipper_code: shipperCode, '화주사코드': shipperCode } : {}),
+  };
   return {
     branch_id: branchId,
     version_id: versionId,
@@ -251,12 +265,12 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
     waypoint_name: cleanText(route.waypointName),
     waypoint_els_name: cleanText(route.waypointElsName),
     destination_name: cleanText(route.destinationName),
-    route_fingerprint: cleanText(route.routeFingerprint),
+    route_fingerprint: cleanText(routeFingerprint || route.routeFingerprint),
     review_status: normalizeReviewStatus(route.reviewStatus, 'needs_mapping'),
     review_note: cleanText(route.reviewNote),
     source_sheet: cleanText(route.sourceSheet),
     source_row_number: route.sourceRowNumber || null,
-    raw_payload: route.rawPayload || {},
+    raw_payload: rawPayload,
     active: true,
     updated_by: userEmail,
   };
@@ -526,6 +540,7 @@ function hasDbValueChanged(existing = {}, next = {}, fields = []) {
 
 function isRouteTemplateRowChanged(existing = {}, next = {}) {
   if (!existing?.id || existing.active === false) return true;
+  if (getGlapsRouteShipperCode(existing) !== getGlapsRouteShipperCode(next)) return true;
   return hasDbValueChanged(existing, next, [
     ['route_code'],
     ['route_name'],

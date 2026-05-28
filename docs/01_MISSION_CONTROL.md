@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.264 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.265 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동에 `시간` 컬럼을 추가하고 지역칸 메모 시간을 업체별 수량 라인에 분배한다.
+> 최신 업데이트: GLAPS 운송경로 매칭키에 `화주사코드`를 포함해 같은 경로라도 화주별 운송경로코드를 구분한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.264
+- **웹 버전**: v5.14.265
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -36,6 +36,7 @@
 - `GLAPS코드` 화면은 아산 배차판 내부 탭으로 유지한다. 상위 메뉴로 올리지 않는다.
 - 운송사코드는 `운송사코드` 시트의 `BP` 컬럼을 사용한다. 기본 `ELS`는 `B000005273`.
 - 운송서비스코드는 배차판 `구분`으로 도출한다. 기본값은 `수출=5010001`, `수출(보관)=5010002`, `수입=5020001`, `수입(보관)=5020002`, `반품=311101`, `내수/석회석=6032001`.
+- 운송경로 매칭키는 `화주사코드 + 상차지 + 경유지(ELS) + 하차지(선적)`이다. 같은 상차/경유/하차라도 화주사코드가 다르면 다른 GLAPS 운송경로로 본다.
 - 포트코드는 동일 ELS 매치값에 여러 GLAPS코드를 둘 수 있다. 항목매핑 UNIQUE는 `glaps_code`까지 포함한다.
 - 운영 DB 항목매핑 UNIQUE는 `branch_id, version_id, alias_type, source_name, route_code, glaps_code` 단일 제약이다.
 - GLAPS 중복 판정/병합 기준은 운송경로=`운송경로코드`, 항목매핑=`최종코드(BP)` 단독 반복이다. 상차지/하차지/공장/매핑항목 등 다른 컬럼은 중복 판정에서 제외한다.
@@ -67,6 +68,7 @@
 - 배차변동 sync payload는 `changeSchemaVersion=3` 이상만 반영한다. 구버전으로 열린 탭이 시간 없는 payload를 보내면 기존 변동 이벤트를 건드리지 않는다.
 
 ## RECENT CHANGES
+- **v5.14.265**: GLAPS 운송경로 원장/수정양식/상세배차 매칭에 `화주사코드`를 추가했다. 운송경로 fingerprint는 화주사코드가 있을 때 이를 포함하고, 상세배차는 화주사코드까지 맞는 운송경로만 도출한다.
 - **v5.14.264**: 상세배차/배차변동에 `시간` 컬럼을 추가했다. 지역칸 메모에서 단일 시간 목록 또는 업체 라벨별 시간 목록을 읽어 수량별 라인에 배정하고, 시간 변경은 배차변동 `변경` 이벤트로 감지한다. GLAPS 업로드 시트의 `배차요청시간`에도 연결했다.
 - **v5.14.263**: 항목매핑 업로드 내부 병합 결과에 빈 `id` 키가 남아 `id=null` insert가 발생하던 문제를 수정했다. 신규행은 ID 필드를 제거해 DB UUID 기본값이 생성되게 한다.
 - **v5.14.262**: 항목매핑 수정양식 업로드 시 ID가 비어 있거나 같은 키가 반복되어 `glaps_master_aliases_branch_version_alias_source_route_code_key` UNIQUE 오류가 나던 문제를 수정했다. 기존 키는 기존 ID 업데이트로 연결하고 업로드 내부 반복은 병합한다.
@@ -76,6 +78,8 @@
 - **v5.14.258**: 통합 배차변동내역이 `integrated` 확정만 찾느라 확정된 glovis/mobis 변동을 놓치던 문제를 수정했다. 상세라인에 원본 sourceType을 보존하고, 통합 sync 요청은 확정된 원본 구분별로 분리 계산한다.
 - **v5.14.257**: 구간단가 제목열 필터 팝오버는 선택값을 유지한 채 다른 영역 클릭 또는 ESC 입력 시 닫히도록 했다.
 ## VERIFICATION
+- `cd web; node --test tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 69개 통과
+- `cd web; npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 57개 통과
 - `cd web; npx eslint "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "utils/asanGlapsUploadExport.mjs" "app/(main)/employees/branches/asan/page.js" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
 - `cd web; npx eslint "app/api/branches/asan/dispatch/change-events/route.js" "utils/asanDispatchChangeEvents.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과

@@ -2,6 +2,7 @@ export const DEFAULT_GLAPS_BRANCH_ID = 'asan';
 
 export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
   'ID',
+  '화주사코드',
   '상차지',
   '경유지(ELS)',
   '하차지(선적)',
@@ -48,6 +49,7 @@ export const GLAPS_REVIEW_STATUS_LABELS = Object.freeze({
 });
 
 const ROUTE_HEADER_CANDIDATES = Object.freeze({
+  shipperCode: ['화주사코드', '화주사 코드', '화주사', '화주코드', '화주 코드', 'SHIPPER CODE', 'SHIPPERCODE'],
   routeCode: ['운송경로코드', '경로코드', 'ROUTE CODE', 'ROUTECODE'],
   routeName: ['운송경로명', '경로명', 'ROUTE NAME', 'ROUTENAME'],
   startLocationName: ['상차지', '상차지명', '출발지', '출발지명'],
@@ -59,6 +61,7 @@ const ROUTE_HEADER_CANDIDATES = Object.freeze({
 
 const ROUTE_TEMPLATE_ALIASES = Object.freeze({
   id: ['id', 'ID'],
+  shipperCode: ['shipper_code', 'shipperCode', '화주사코드', '화주사 코드', '화주사'],
   routeCode: ['route_code', '운송경로코드', '경로코드'],
   routeName: ['route_name', '운송경로명', '경로명'],
   startLocationName: ['start_location_name', '상차지'],
@@ -187,19 +190,22 @@ export function getGlapsRouteLocationCodeCandidates(value = '') {
 }
 
 export function buildGlapsDispatchRouteFingerprints({
+  shipperCode = '',
   startLocationName = '',
   waypointElsName = '',
   waypointName = '',
   destinationName = '',
 } = {}) {
+  const shippers = cleanGlapsText(shipperCode) ? [cleanGlapsText(shipperCode)] : [''];
   const starts = getGlapsRouteLocationCodeCandidates(startLocationName);
   const destinations = getGlapsRouteLocationCodeCandidates(destinationName);
   const waypoint = waypointElsName || waypointName;
-  return starts.flatMap(start => destinations.map(destination => buildGlapsRouteFingerprint({
+  return shippers.flatMap(shipper => starts.flatMap(start => destinations.map(destination => buildGlapsRouteFingerprint({
+    shipperCode: shipper,
     startLocationName: start,
     waypointElsName: waypoint,
     destinationName: destination,
-  })));
+  }))));
 }
 
 function isElsHeader(value) {
@@ -303,21 +309,56 @@ function buildRawPayload(headers = [], row = []) {
   }, {});
 }
 
+function getPayloadCandidateValue(payload = {}, candidates = []) {
+  for (const candidate of candidates) {
+    const direct = payload[candidate];
+    if (direct) return cleanGlapsText(direct);
+    const found = Object.entries(payload).find(([key]) => normalizeGlapsKey(key) === normalizeGlapsKey(candidate));
+    if (found?.[1]) return cleanGlapsText(found[1]);
+  }
+  return '';
+}
+
+export function getGlapsRouteShipperCode(route = {}) {
+  route = route || {};
+  const payload = route.raw_payload || route.rawPayload || {};
+  return cleanGlapsText(
+    route.shipperCode
+    || route.shipper_code
+    || getPayloadCandidateValue(payload, ROUTE_HEADER_CANDIDATES.shipperCode)
+    || '',
+  );
+}
+
+function withRouteShipperPayload(rawPayload = {}, shipperCode = '') {
+  const code = cleanGlapsText(shipperCode);
+  if (!code) return rawPayload;
+  return {
+    ...rawPayload,
+    shipper_code: code,
+    '화주사코드': code,
+  };
+}
+
 export function buildGlapsRouteFingerprint({
+  shipperCode = '',
   startLocationName = '',
   waypointElsName = '',
   waypointName = '',
   destinationName = '',
 } = {}) {
-  return [
+  const shipperKey = routePartKey(shipperCode);
+  const routeParts = [
     routePartKey(startLocationName),
     routePartKey(waypointElsName || waypointName),
     routePartKey(destinationName),
-  ].join('|');
+  ];
+  return (shipperKey ? [shipperKey, ...routeParts] : routeParts).join('|');
 }
 
 export function getGlapsRouteReviewStatus(route = {}) {
   if (!cleanGlapsText(route.routeCode)) return 'missing_route_code';
+  if (!getGlapsRouteShipperCode(route)) return 'needs_mapping';
   if (!cleanGlapsText(route.startLocationName) || !cleanGlapsText(route.destinationName)) return 'needs_mapping';
   if (!cleanGlapsText(route.waypointElsName)) return 'needs_mapping';
   return 'ready';
@@ -333,6 +374,7 @@ function normalizeReviewStatus(value, fallback = 'needs_mapping') {
 
 function buildRouteColumns(headers = []) {
   return {
+    shipperCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.shipperCode),
     routeCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeCode),
     routeName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeName),
     startLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.startLocationName),
@@ -361,7 +403,10 @@ export function parseGlapsRouteSheet(sheet = {}) {
     if (!routeCode && !routeName) return;
 
     const inferred = inferGlapsRouteParts(routeName);
+    const shipperCode = getRowValue(row, cols.shipperCode);
+    const rawPayload = withRouteShipperPayload(buildRawPayload(headers, row), shipperCode);
     const route = {
+      shipperCode,
       routeCode,
       routeName,
       startLocationName: getRowValue(row, cols.startLocationName) || inferred.startLocationName,
@@ -371,7 +416,7 @@ export function parseGlapsRouteSheet(sheet = {}) {
       reviewNote: getRowValue(row, cols.reviewNote),
       sourceSheet: cleanGlapsText(sheet.name || '운송경로'),
       sourceRowNumber,
-      rawPayload: buildRawPayload(headers, row),
+      rawPayload,
     };
 
     route.routeFingerprint = buildGlapsRouteFingerprint(route);
@@ -761,6 +806,7 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
   }).map(({ row, cols, sourceRowNumber }) => {
     const route = {
       id: getRowValue(row, cols.id),
+      shipperCode: getRowValue(row, cols.shipperCode),
       routeCode: getRowValue(row, cols.routeCode),
       routeName: getRowValue(row, cols.routeName),
       startLocationName: getRowValue(row, cols.startLocationName),
@@ -772,6 +818,7 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
       sourceSheet: cleanGlapsText(sheet.name),
       sourceRowNumber,
     };
+    route.rawPayload = withRouteShipperPayload({}, route.shipperCode);
     route.routeFingerprint = buildGlapsRouteFingerprint(route);
     route.reviewStatus = normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getGlapsRouteReviewStatus(route));
     return route;
@@ -801,6 +848,7 @@ export function getGlapsRouteMatchQuery() {
   return [
     "branch_id = 'asan'",
     'active_version = true',
+    '상세배차.화주사코드 = route.화주사코드',
     '상세배차.상차지 = route.start_location_name',
     '상세배차.경유지(ELS) = route.waypoint_els_name',
     '상세배차.하차지(선적) = route.destination_name',

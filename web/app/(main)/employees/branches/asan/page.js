@@ -38,6 +38,7 @@ import {
 import {
     buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
+    getGlapsRouteShipperCode,
     normalizeGlapsKey,
     splitGlapsAliasValues,
 } from '@/utils/glapsMasterData.mjs';
@@ -879,7 +880,7 @@ function getGlapsRoutePayload(route = {}, candidates = []) {
 function buildGlapsShipperCodeMap(routes = []) {
     const map = new Map();
     (routes || []).forEach((route) => {
-        const code = getGlapsRoutePayload(route, ['화주사', '화주사코드']);
+        const code = getGlapsRouteShipperCode(route) || getGlapsRoutePayload(route, ['화주사코드', '화주사']);
         const name = getGlapsRoutePayload(route, ['화주명']);
         const elsName = getGlapsRoutePayload(route, ['ELS화주명']);
         [name, elsName, code].forEach(value => setGlapsCodeMapValue(map, value, code));
@@ -1981,7 +1982,8 @@ function AsanDispatchContent() {
     const glapsRouteMap = useMemo(() => {
         const map = new Map();
         (glapsDetailLookup.routes || []).forEach((route) => {
-            const key = route.route_fingerprint || buildGlapsRouteFingerprint({
+            const key = buildGlapsRouteFingerprint({
+                shipperCode: getGlapsRouteShipperCode(route),
                 startLocationName: route.start_location_name,
                 waypointElsName: route.waypoint_els_name || route.waypoint_name,
                 destinationName: route.destination_name,
@@ -2017,7 +2019,9 @@ function AsanDispatchContent() {
             ? options.startLocation || ''
             : line.startLocation || '';
         const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, 'ELS');
+        const lineShipperCode = getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
         const routeKeys = buildGlapsDispatchRouteFingerprints({
+            shipperCode: lineShipperCode,
             startLocationName: startLocation,
             waypointElsName: line.workplace,
             destinationName: line.destination,
@@ -2032,8 +2036,8 @@ function AsanDispatchContent() {
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
         const glapsOrderTypeCode = getGlapsAliasCode(glapsAliasMaps.orderType, line.direction);
         const glapsTransportServiceCode = inferGlapsTransportServiceCode(glapsAliasMaps.transportService, line.direction);
-        const routeShipperCode = getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
-        const glapsShipperCode = routeShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
+        const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
+        const glapsShipperCode = routeShipperCode || lineShipperCode;
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
         const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
