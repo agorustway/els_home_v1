@@ -1662,9 +1662,9 @@
 
 .detailStartColumn,
 .detailStartCell {
-    width: 58px;
-    min-width: 58px;
-    max-width: 58px;
+    width: 92px;
+    min-width: 92px;
+    max-width: 92px;
 }
 
 .detailTable td:has(.detailSelect),
@@ -1690,8 +1690,8 @@
 
 .detailStartInput {
     min-width: 0;
-    width: 58px;
-    max-width: 58px;
+    width: 92px;
+    max-width: 92px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2408,8 +2408,8 @@
 
     .detailStartInput {
         min-width: 0;
-        width: 58px;
-        max-width: 58px;
+        width: 92px;
+        max-width: 92px;
     }
 
     .detailPortSelect {

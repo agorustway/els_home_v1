@@ -1,3 +1,18 @@
+## [2026-05-28] 상세배차 상차지 말줄임 폭 조정 (v5.14.270)
+### 핵심
+- 상세배차내역/배차변동내역의 `상차지` 컬럼 폭을 58px에서 92px로 조정했습니다.
+- `부산신항`, `의왕ICD`처럼 짧은 상차지는 그대로 읽히고, 긴 값은 한글 6글자 수준까지 보인 뒤 말줄임 처리됩니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 37개 통과
+- `cd web; npx eslint "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 인트라넷 공개 푸터 숨김 및 하단 여백 축소 (v5.14.269)
 ### 핵심
 - 인트라넷/관리 경로에서는 공개 사이트용 푸터를 렌더링하지 않도록 정리했습니다.

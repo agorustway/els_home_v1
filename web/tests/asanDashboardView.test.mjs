@@ -899,7 +899,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangeInput/);
   assert.match(css, /\.detailComboInput\s*{[\s\S]*border: 1px solid transparent;/);
   assert.match(css, /\.detailTable thead th\s*{[\s\S]*position: sticky;[\s\S]*top: 0;/);
-  assert.match(css, /\.detailStartColumn,\s*\n\.detailStartCell\s*{[\s\S]*width: 58px;[\s\S]*max-width: 58px;/);
+  assert.match(css, /\.detailStartColumn,\s*\n\.detailStartCell\s*{[\s\S]*width: 92px;[\s\S]*max-width: 92px;/);
   assert.match(css, /\.detailStartInput\s*{[\s\S]*text-overflow: ellipsis;/);
   assert.match(css, /\.detailPortCandidateCell\s*{[\s\S]*background: #fef3c7;/);
   assert.match(css, /\.detailBkgConfirmInput\s*{[\s\S]*border: 1px solid transparent;/);
