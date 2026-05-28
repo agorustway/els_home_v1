@@ -233,7 +233,8 @@ async function attachDriverMeta(supabase, trips = []) {
 }
 
 export async function GET(request) {
-    const supabase = await createClient();
+    const sessionSupabase = await createClient();
+    const supabase = await createAdminClient();
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode') || 'active';
     const month = searchParams.get('month');
@@ -412,7 +413,7 @@ export async function GET(request) {
 
         // ─── mode=my: 본인 기록 ───
         if (mode === 'my') {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await sessionSupabase.auth.getUser();
             const phone = searchParams.get('phone');
             const vNum = searchParams.get('vehicle_number');
             const statusFilter = searchParams.get('status'); // 상태 필터 추가

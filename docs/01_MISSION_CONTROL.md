@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.274 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.275 / APK v5.11.29)
 
-> 최신 업데이트: Supabase 보안 보강 후 디버그 쿠키 기반 API 인증 흐름을 복구했다.
+> 최신 업데이트: 차량관제 테이블 direct Data API 접근을 service role 전용으로 축소했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.274
+- **웹 버전**: v5.14.275
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -74,21 +74,21 @@
 ## SECURITY NOTES
 - Supabase `public` 신규 객체는 `postgres` 기본권한에서 anon/authenticated 자동 GRANT를 제거했다. `supabase_admin` 기본권한은 SQL 권한 부족으로 Dashboard Data API 설정에서 별도 확인한다.
 - 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
+- 차량관제 `vehicle_trips/locations/logs`는 service role 전용 DB 접근으로 제한하고, 웹/앱은 Next API 경유로만 처리한다.
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
 
 ## RECENT CHANGES
+- **v5.14.275**: 차량관제 테이블의 public permissive RLS와 anon/authenticated 직접 grant를 제거했다. 차량관제 API 조회 라우트는 service role client로 전환했다.
 - **v5.14.274**: 운영 웹 스모크에서 디버그 페이지는 열리지만 내부 데이터 API가 401로 떨어지는 흐름을 확인했다. 서버 Supabase client가 `__debug_mode` 쿠키도 읽도록 보정했다.
 - **v5.14.273**: Supabase public schema RLS를 켜고 내부 데이터 테이블의 anon 접근과 authenticated DML을 차단했다. 공개 웹진/식단/긴급공지 SELECT는 유지하고, 내부 API는 인증 후 service role 경유로 조정했다.
 - **v5.14.272**: 상세배차/배차변동내역 표 헤더에 목록형 다중 선택 필터를 추가했다. 헤더 목록은 체크박스로 여러 값을 동시에 고를 수 있고, 바깥을 클릭하면 닫힌다.
 - **운영데이터 2026-05-28**: 글로비스 원본 `.xlsm`과 WEB 배차판 DB의 `셀맥` 값을 `셀맥(KIA)오성`으로 정리했다. 원본 백업은 NAS 같은 폴더의 `.backup-cellmac-20260528-120506Z.xlsm`.
 - **v5.14.271**: 배차판, 상세배차내역, 배차변동내역 공통 테이블 스크롤 높이를 키워 데스크톱 화면 하단의 빈 공간을 줄이고 더 많은 행을 한 번에 보이게 했다.
 - **v5.14.270**: 상세배차/배차변동 표의 `상차지` 칸을 92px로 넓혀 한글 6글자 수준까지 보이게 하고 나머지는 말줄임 처리한다.
-- **v5.14.269**: 인트라넷/관리 경로에서 공개 사이트 푸터를 렌더링하지 않도록 정리하고, 인트라넷 본문 최소 높이와 하단 패딩을 줄여 화면 하단의 빈 공간을 축소했다.
-- **v5.14.268**: GLAPS코드 표의 선택 체크박스를 중복 전용에서 일반 선택으로 분리했다. 현재 필터 결과 일괄선택/선택해제와 선택행 단일 항목 일괄수정을 추가하고, 병합은 선택행 중 중복 대상만 집계한다.
-- **v5.14.267**: 상세배차/배차변동/GLAPS코드 표에 적응형 내부 스크롤을 적용했다. 짧은 표는 자연 높이를 유지하고, 긴 표나 작은 브라우저에서는 표 안에서 세로/가로 스크롤이 같이 보이도록 했다.
 ## VERIFICATION
+- Supabase Advisor: 차량관제 permissive policy 경고 해소. 남은 WARN은 Auth leaked password protection Dashboard 설정 1건.
 - 운영 웹 스모크: `/`, `/employees/ask?debug=true`, `/api/board?type=webzine` 200. 내부 데이터 API는 비로그인 기준 401로 보호됨을 확인.
-- Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소. 잔여는 차량관제 permissive policy, Auth leaked password dashboard 설정, 의도적 no-policy 테이블.
+- Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소. 잔여는 Auth leaked password dashboard 설정, 의도적 no-policy 테이블.
 - DB 권한 검증: anon은 내부/외부 연락처 SELECT 불가, 공개 `posts/weekly_menus/emergency_notices` SELECT만 가능. route unit RPC는 service_role만 실행 가능.
 - `cd web; npx eslint ...변경 API 라우트`: 통과. `cd web; npm run build`: 통과.
 - 글로비스 원본 `.xlsm` OOXML 패치 검증: `vbaProject.bin` SHA-256 보존, `셀맥` 잔여 0건, 계산 설정 `auto/fullCalcOnLoad/forceFullCalc/calcOnSave` 적용.

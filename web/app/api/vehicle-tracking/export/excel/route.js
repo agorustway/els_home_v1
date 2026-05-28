@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 import { computeReliableRouteStats } from '@/utils/vehicleLocation.mjs';
 import { addIntranetExportWorksheet } from '@/utils/intranetExcelExport.mjs';
 
@@ -40,7 +40,7 @@ export async function GET(request) {
         const keyword = searchParams.get('keyword');
         const status = searchParams.get('status');
 
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
         let query = supabase.from('vehicle_trips').select('*').order('started_at', { ascending: false }).limit(500);
 
         if (status && status !== 'all') query = query.eq('status', status);

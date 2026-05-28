@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 import { computeReliableRouteStats, filterRouteLocations, pickLatestDisplayLocation } from '@/utils/vehicleLocation.mjs';
 
 function pickPositiveMetric(...values) {
@@ -104,7 +104,7 @@ async function syncDriverContact(supabase, trip) {
  * 상세 정보 조회
  */
 export async function GET(request, { params }) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { id } = await params;
 
     try {

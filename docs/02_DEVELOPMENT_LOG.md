@@ -1,3 +1,23 @@
+## [2026-05-29] 차량관제 RLS 직접 접근 축소 (v5.14.275)
+### 핵심
+- Supabase Advisor 잔여 항목 중 `vehicle_trips`, `vehicle_locations`, `vehicle_trip_logs`의 permissive RLS 정책을 점검했습니다.
+- 세 테이블 모두 `public` role 대상 `ALL USING true` 정책과 anon/authenticated 직접 table grant가 남아 있어, Data API 직접 접근면이 과했습니다.
+- 운영 DB에 `vehicle_tracking_rls_tightening_20260529` 마이그레이션을 적용해 기존 permissive 정책을 제거하고 service_role 전용 정책/권한으로 축소했습니다.
+- 차량관제 웹/드라이버 앱은 기존처럼 Next.js `/api/vehicle-tracking/*`를 사용하고, 해당 API 라우트의 DB 조회는 service role client로 전환했습니다.
+### 검증
+- Supabase Advisor: 차량관제 permissive policy WARN 해소.
+- DB 권한 검증: anon/authenticated는 `vehicle_trips`, `vehicle_locations`, `vehicle_trip_logs` 직접 SELECT/INSERT 불가, service_role만 가능.
+- `cd web; npx eslint "app/api/vehicle-tracking/..."`: 통과.
+### 잔여 확인
+- Auth leaked password protection은 SQL이 아닌 Supabase Dashboard Auth 설정에서 활성화 필요.
+- `ai_custom_rules`, `profiles`, `user_els_credentials`의 no-policy INFO는 RLS가 켜져 있어 service role 전용 또는 민감 정보 테이블로 유지합니다.
+### 변경 파일
+- `web/app/api/vehicle-tracking/**`
+- `web/supabase_sql/20260529_vehicle_tracking_rls_tightening.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] 디버그 쿠키 기반 서버 API 인증 보정 (v5.14.274)
 ### 핵심
 - 운영 웹에서 `/employees/ask?debug=true`는 200으로 열리지만, 내부 데이터 API가 비로그인 요청 기준 401로 보호되는 것을 확인했습니다.

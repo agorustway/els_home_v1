@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({
@@ -22,7 +22,7 @@ const BUCKET = process.env.NAS_BUCKET || 'els-files';
 export async function DELETE(request, { params }) {
     const { id } = params;
     const { key } = await request.json();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     if (!key) return NextResponse.json({ error: 'key is required' }, { status: 400 });
 

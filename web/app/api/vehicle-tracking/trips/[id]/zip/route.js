@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import archiver from 'archiver';
 import { Readable } from 'stream';
@@ -18,7 +18,7 @@ const s3 = new S3Client({
 const BUCKET = process.env.NAS_BUCKET || 'els-files';
 
 export async function GET(request, { params }) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { id } = await params;
 
     try {
