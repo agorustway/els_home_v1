@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 
 /** 임직원 인트라넷 전체 검색: posts(자유게시판·업무보고·웹진) 제목·내용 검색 */
 export async function GET(request) {
@@ -13,7 +13,8 @@ export async function GET(request) {
         const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
         const term = esc(q);
 
-        const supabase = await createClient();
+        const { adminSupabase: supabase } = await getAuthenticatedAdminClient();
+        if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { data, error } = await supabase
             .from('posts')
             .select('id, title, board_type')

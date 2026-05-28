@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createAdminClient, createClient } from '@/utils/supabase/server';
 
 
 
 export async function GET(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
+    const sessionSupabase = await createClient();
+    const { data: { user } } = await sessionSupabase.auth.getUser();
+    const supabase = await createAdminClient();
 
     // 1. Fetch Post
     const { data: post, error: postError } = await supabase.from('posts').select('*').eq('id', id).single();
     if (postError) return NextResponse.json({ error: postError.message }, { status: 500 });
     if (!post) return NextResponse.json({ post: null }, { status: 404 });
+    if (post.board_type !== 'webzine' && !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // 2. Fetch Author Info (Robust: ID -> Email -> fallback)
     let authorData = null;
@@ -56,12 +61,13 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const sessionSupabase = await createClient();
+    const { data: { user } } = await sessionSupabase.auth.getUser();
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
+        const supabase = await createAdminClient();
         const body = await request.json();
         const { title, content, attachments } = body;
 
@@ -81,12 +87,13 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const sessionSupabase = await createClient();
+    const { data: { user } } = await sessionSupabase.auth.getUser();
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
+        const supabase = await createAdminClient();
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         const isAdmin = roleData?.role === 'admin';
 

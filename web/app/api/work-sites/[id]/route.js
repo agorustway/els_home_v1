@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 export async function GET(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
+    const { adminSupabase: supabase } = await getAuthenticatedAdminClient();
+    if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data: site, error: siteError } = await supabase.from('work_sites').select('*').eq('id', id).single();
     if (siteError) return NextResponse.json({ error: siteError.message }, { status: 500 });
     if (!site) return NextResponse.json({ item: null }, { status: 404 });
@@ -20,8 +21,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const body = await request.json();
@@ -63,8 +63,7 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
     const { id } = await params;
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     await supabase.from('work_site_managers').delete().eq('work_site_id', id);
     const { error } = await supabase.from('work_sites').delete().eq('id', id);

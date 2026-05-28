@@ -1,16 +1,13 @@
-import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 import {
     applyIntranetExcelBodyCell,
     applyIntranetExcelHeaderCell,
 } from '@/utils/intranetExcelExport.mjs';
 
 export async function GET(request) {
-    const supabase = await createClient();
-
-    // 권한 확인 (관리자, 혹은 권한이 있는지)
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const workbook = new ExcelJS.Workbook();

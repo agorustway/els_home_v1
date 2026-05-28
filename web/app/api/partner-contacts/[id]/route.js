@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 function normalizePartnerContactPayload(body) {
@@ -10,7 +10,8 @@ function normalizePartnerContactPayload(body) {
 }
 
 export async function GET(request, { params }) {
-    const supabase = await createClient();
+    const { adminSupabase: supabase } = await getAuthenticatedAdminClient();
+    if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
     const { data, error } = await supabase
         .from('partner_contacts')
@@ -23,9 +24,8 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-    const supabase = await createClient();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     const { id } = await params;
-    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -46,9 +46,8 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-    const supabase = await createClient();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     const { id } = await params;
-    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

@@ -1,3 +1,33 @@
+## [2026-05-28] Supabase public schema RLS/GRANT 보안 보강 (v5.14.273)
+### 핵심
+- Supabase의 2026-10-30 Data API 자동 노출 변경에 맞춰 public schema 보안 상태를 점검했습니다.
+- 운영 DB에서 RLS가 꺼져 있던 `internal_contacts`, `external_contacts`, `work_docs`, `form_templates`, `work_sites`, `work_site_managers`, `posts`, `weekly_menus`, `emergency_notices`에 RLS를 적용했습니다.
+- 내부 연락처/자료/작업지/협력사/운전원 테이블은 anon 접근을 차단하고 authenticated도 SELECT만 허용했습니다. 쓰기/수정/삭제는 Next.js API가 사용자 확인 후 service role로 처리합니다.
+- 공개 화면에 필요한 `posts` 웹진 SELECT, `weekly_menus` SELECT, `emergency_notices` SELECT는 유지했습니다.
+- `asan_performance_route_unit_price_rows` SECURITY DEFINER RPC는 service_role만 실행 가능하게 바꾸고, mutable search_path 함수와 public schema의 vector extension 경고를 정리했습니다.
+- `postgres` 기본 권한에서 future table/sequence/function의 anon/authenticated 자동 GRANT를 제거했습니다. `supabase_admin` 기본 권한은 SQL 권한 부족으로 직접 변경 불가하여 Dashboard Data API 설정 확인 항목으로 남겼습니다.
+### 웹 작동 보강
+- 내부 데이터 API(`internal/external/partner/driver contacts`, `work-docs`, `form-templates`, `work-sites`, 연락처 엑셀 템플릿, 인트라넷 검색)는 인증 확인 후 admin client로 DB를 조회/수정하도록 전환했습니다.
+- 게시판 API는 `webzine` 조회만 공개로 유지하고, 그 외 게시글 목록/상세 API는 사용자 확인 후 반환하도록 보강했습니다.
+- 식단 업로드/수정은 사용자 확인 후 admin client로 `weekly_menus`를 저장하도록 조정했습니다.
+### 검증
+- Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소.
+- DB 권한 검증: anon은 내부/외부 연락처 SELECT 불가, 공개 `posts/weekly_menus/emergency_notices` SELECT 가능, route unit RPC는 service_role만 EXECUTE 가능.
+- `cd web; npx eslint "lib/api-auth.js" ...변경 API 라우트`: 통과
+- `cd web; npm run build`: 통과
+### 잔여 확인
+- Supabase Auth leaked password protection은 SQL이 아닌 Dashboard Auth 설정에서 활성화 필요.
+- 차량관제 `vehicle_trips`, `vehicle_locations`, `vehicle_trip_logs`의 permissive policy는 드라이버 앱/관제 API 계약을 별도로 정리한 뒤 축소하는 것이 안전합니다.
+- `ai_custom_rules`, `profiles`, `user_els_credentials`의 RLS enabled/no policy는 service role 전용 또는 민감 정보 테이블로 유지했습니다.
+### 변경 파일
+- `web/lib/api-auth.js`
+- `web/app/api/**` 내부 데이터/게시판/식단 라우트
+- `web/supabase_sql/20260528_public_schema_rls_hardening.sql`
+- `web/supabase_sql/20260528_contact_dml_policy_tightening.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] 상세배차/변동내역 헤더 다중 필터 추가 (v5.14.272)
 ### 핵심
 - 상세배차내역과 배차변동내역 표 헤더를 클릭하면 해당 컬럼 값 목록이 드롭다운으로 열리도록 했습니다.

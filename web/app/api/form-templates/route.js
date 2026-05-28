@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 
 export async function GET() {
-    const supabase = await createClient();
+    const { adminSupabase: supabase } = await getAuthenticatedAdminClient();
+    if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data, error } = await supabase
         .from('form_templates')
         .select('*')
@@ -46,8 +47,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const body = await request.json();

@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.272 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.273 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동내역 표 헤더에 목록형 다중 선택 필터를 추가했다.
+> 최신 업데이트: Supabase public schema RLS/GRANT를 보강하고 내부 데이터 API를 인증 후 service role 처리로 전환했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.272
+- **웹 버전**: v5.14.273
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -14,7 +14,7 @@
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
-| Supabase 인증/DB | 정상 | 실적관리 원장 DB + 배차판 WEB 셀 오버레이 + GLAPS 원장 |
+| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 내부 연락처/자료/작업지 DML은 서버 API + service role 경유 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, 선적 컨테이너 백그라운드 job 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
@@ -71,7 +71,12 @@
 - 배차판/상세배차/배차변동 공통 테이블 스크롤 높이는 `clamp(360px, calc(100dvh - 300px), 980px)` 기준으로 화면 하단 여백을 최소화한다.
 - 글로비스 원본 `/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외).xlsm`의 `셀맥`은 `셀맥(KIA)오성`으로 정리했으며, 매크로 보존을 위해 OOXML 직접 패치만 사용한다.
 
+## SECURITY NOTES
+- Supabase `public` 신규 객체는 `postgres` 기본권한에서 anon/authenticated 자동 GRANT를 제거했다. `supabase_admin` 기본권한은 SQL 권한 부족으로 Dashboard Data API 설정에서 별도 확인한다.
+- 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
+
 ## RECENT CHANGES
+- **v5.14.273**: Supabase public schema RLS를 켜고 내부 데이터 테이블의 anon 접근과 authenticated DML을 차단했다. 공개 웹진/식단/긴급공지 SELECT는 유지하고, 내부 API는 인증 후 service role 경유로 조정했다.
 - **v5.14.272**: 상세배차/배차변동내역 표 헤더에 목록형 다중 선택 필터를 추가했다. 헤더 목록은 체크박스로 여러 값을 동시에 고를 수 있고, 바깥을 클릭하면 닫힌다.
 - **운영데이터 2026-05-28**: 글로비스 원본 `.xlsm`과 WEB 배차판 DB의 `셀맥` 값을 `셀맥(KIA)오성`으로 정리했다. 원본 백업은 NAS 같은 폴더의 `.backup-cellmac-20260528-120506Z.xlsm`.
 - **v5.14.271**: 배차판, 상세배차내역, 배차변동내역 공통 테이블 스크롤 높이를 키워 데스크톱 화면 하단의 빈 공간을 줄이고 더 많은 행을 한 번에 보이게 했다.
@@ -81,6 +86,9 @@
 - **v5.14.267**: 상세배차/배차변동/GLAPS코드 표에 적응형 내부 스크롤을 적용했다. 짧은 표는 자연 높이를 유지하고, 긴 표나 작은 브라우저에서는 표 안에서 세로/가로 스크롤이 같이 보이도록 했다.
 - **v5.14.266**: 상세배차/배차변동 테이블에서 상차지 칸을 58px 폭으로 축소하고 말줄임 처리했다. 테이블 헤더 sticky를 명시하고, 포트코드 다중 후보 셀은 노란색으로 표시하며 select 표시문구는 GLAPS 코드만 노출한다.
 ## VERIFICATION
+- Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소. 잔여는 차량관제 permissive policy, Auth leaked password dashboard 설정, 의도적 no-policy 테이블.
+- DB 권한 검증: anon은 내부/외부 연락처 SELECT 불가, 공개 `posts/weekly_menus/emergency_notices` SELECT만 가능. route unit RPC는 service_role만 실행 가능.
+- `cd web; npx eslint ...변경 API 라우트`: 통과. `cd web; npm run build`: 통과.
 - 글로비스 원본 `.xlsm` OOXML 패치 검증: `vbaProject.bin` SHA-256 보존, `셀맥` 잔여 0건, 계산 설정 `auto/fullCalcOnLoad/forceFullCalc/calcOnSave` 적용.
 - Supabase 검증: `branch_dispatch` 6행, `branch_dispatch_web_cells` 3행, `branch_dispatch_web_cell_history` 3행 업데이트. `셀맥(KIA)오성` 외 잔여 `셀맥` 0건.
 - 최근 코드 변경 검증 내역은 `docs/02_DEVELOPMENT_LOG.md` 각 항목 참조.

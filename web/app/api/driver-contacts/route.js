@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedAdminClient } from '@/lib/api-auth';
 import { normalizeKoreanPhoneNumberInput } from '@/utils/koreanPhoneNumber.mjs';
 
 function normalizeDriverContactPayload(body) {
@@ -10,7 +10,8 @@ function normalizeDriverContactPayload(body) {
 }
 
 export async function GET(request) {
-    const supabase = await createClient();
+    const { adminSupabase: supabase } = await getAuthenticatedAdminClient();
+    if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data, error } = await supabase
         .from('driver_contacts')
         .select('*')
@@ -21,8 +22,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, adminSupabase: supabase } = await getAuthenticatedAdminClient();
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

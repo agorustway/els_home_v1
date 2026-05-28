@@ -2,11 +2,18 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 export async function GET(request) {
-    const supabase = await createAdminClient();
+    const sessionSupabase = await createClient();
+    const { data: { user } } = await sessionSupabase.auth.getUser();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'free';
     const branch = searchParams.get('branch');
     const kind = searchParams.get('kind'); // 'daily' | 'monthly' for report
+
+    if (type !== 'webzine' && !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = await createAdminClient();
 
     // 1. Fetch posts (no join)
     let query = supabase
@@ -91,14 +98,15 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const sessionSupabase = await createClient();
+    const { data: { user } } = await sessionSupabase.auth.getUser();
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
+        const supabase = await createAdminClient();
         const body = await request.json();
         const { title, content, board_type, branch_tag, attachments, report_kind, is_anonymous } = body;
 

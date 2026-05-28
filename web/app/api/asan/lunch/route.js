@@ -55,7 +55,8 @@ export async function POST(request) {
 
         await uploadFileToS3(key, buffer, file.type);
 
-        const { data: existing } = await supabase
+        const adminSupabase = await createAdminClient();
+        const { data: existing } = await adminSupabase
             .from('weekly_menus')
             .select('id')
             .eq('branch_code', branch)
@@ -65,7 +66,7 @@ export async function POST(request) {
 
         let result;
         if (existing) {
-            result = await supabase
+            result = await adminSupabase
                 .from('weekly_menus')
                 .update({
                     image_url: key,
@@ -77,7 +78,7 @@ export async function POST(request) {
                 .select()
                 .single();
         } else {
-            result = await supabase
+            result = await adminSupabase
                 .from('weekly_menus')
                 .insert({
                     branch_code: branch,
