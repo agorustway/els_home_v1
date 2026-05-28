@@ -1,3 +1,19 @@
+## [2026-05-29] 디버그 쿠키 기반 서버 API 인증 보정 (v5.14.274)
+### 핵심
+- 운영 웹에서 `/employees/ask?debug=true`는 200으로 열리지만, 내부 데이터 API가 비로그인 요청 기준 401로 보호되는 것을 확인했습니다.
+- 기존 미들웨어는 `?debug=true` 요청 시 `__debug_mode=true` 쿠키를 심고 있었지만, 서버 Supabase client는 환경변수 디버그 모드만 보고 해당 쿠키를 auth mock에 반영하지 않았습니다.
+- `web/utils/supabase/server.js`에서 `__debug_mode` 쿠키와 `DEBUG_MODE` 서버 환경변수도 디버그 모드 판단에 포함하도록 보정했습니다.
+- 디버그 모드는 형의 요청대로 잠그지 않고 유지했습니다.
+### 검증
+- 운영 웹 스모크: `/`, `/employees/ask?debug=true`, `/api/board?type=webzine` 200 확인.
+- 운영 내부 API 스모크: 연락처/작업지/자료/양식/엑셀 템플릿 API는 비로그인 기준 401로 보호됨 확인.
+- `cd web; npx eslint "utils/supabase/server.js" ...관련 API`: 통과.
+### 변경 파일
+- `web/utils/supabase/server.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-28] Supabase public schema RLS/GRANT 보안 보강 (v5.14.273)
 ### 핵심
 - Supabase의 2026-10-30 Data API 자동 노출 변경에 맞춰 public schema 보안 상태를 점검했습니다.

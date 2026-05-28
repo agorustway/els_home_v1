@@ -38,7 +38,12 @@ export async function createClient() {
     )
 
     // 디버그 모드 시 auth.getUser() 모킹 (API 로그 기록 및 보안 우회용)
-    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
+    const hasDebugCookie = allCookies.some(({ name, value }) => name === '__debug_mode' && value === 'true')
+    const isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
+        || process.env.DEBUG_MODE === 'true'
+        || hasDebugCookie
+
+    if (isDebugMode) {
         const originalGetUser = client.auth.getUser.bind(client.auth);
         client.auth.getUser = async (token) => {
             const result = await originalGetUser(token);
