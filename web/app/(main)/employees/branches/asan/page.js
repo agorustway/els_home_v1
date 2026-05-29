@@ -813,22 +813,25 @@ function getGlapsAliasDefaultCode(map, value, preferredCode = '') {
     if (preferred && options.some(option => option.code === preferred)) return preferred;
     return (options.find(option => option.isDefault) || options[0]).code || '';
 }
-function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypointName = '' } = {}) {
+function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypointName = '', waypointElsName = '' } = {}) {
     const normalizedShipper = normalizeGlapsKey(shipperCode);
     if (!normalizedShipper) return '';
-    const normalizedWaypoint = normalizeGlapsKey(waypointName);
+    const requestedWaypointKeys = new Set([waypointName, waypointElsName].map(normalizeGlapsKey).filter(Boolean));
     const candidates = (rules || [])
         .filter(rule => rule?.active !== false && rule?.consignee_code)
         .map(rule => ({
             rule,
             shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
-            waypointKey: normalizeGlapsKey(rule.waypoint_name || rule.waypointName),
+            waypointKeys: [
+                rule.waypoint_name || rule.waypointName,
+                rule.waypoint_els_name || rule.waypointElsName,
+            ].map(normalizeGlapsKey).filter(Boolean),
             priority: Number(rule.priority ?? 100) || 100,
         }))
         .filter(item => item.shipperKey === normalizedShipper)
-        .filter(item => !item.waypointKey || item.waypointKey === normalizedWaypoint)
+        .filter(item => item.waypointKeys.length === 0 || item.waypointKeys.some(key => requestedWaypointKeys.has(key)))
         .sort((a, b) => (
-            Number(Boolean(b.waypointKey)) - Number(Boolean(a.waypointKey))
+            Number(b.waypointKeys.length > 0) - Number(a.waypointKeys.length > 0)
             || a.priority - b.priority
             || String(a.rule.consignee_code || '').localeCompare(String(b.rule.consignee_code || ''))
         ));
@@ -912,6 +915,9 @@ function buildGlapsShipperCodeMap(routes = []) {
             ['글로비스', '글로비스KD외', '현대글로비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
         }
         if (normalizedName.includes('현대모비스')) {
+            ['모비스', '모비스AS', '현대모비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
+        }
+        if (code === 'B000034432' || normalizedName.includes('모비스') || normalizeGlapsKey(elsName).includes('모비스')) {
             ['모비스', '모비스AS', '현대모비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
         }
     });
@@ -2145,7 +2151,8 @@ function AsanDispatchContent() {
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode(glapsSpecialConsigneeRules, {
             shipperCode: glapsShipperCode,
-            waypointName: line.workplace,
+            waypointName: glapsRoute?.waypoint_name || '',
+            waypointElsName: line.workplace || glapsRoute?.waypoint_els_name || '',
         });
         const glapsConsigneeCode = glapsSpecialConsigneeCode || getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
         const confirmedBkg = bkgOverride ? bkgOverride.value : snapshotConfirmedBkg || line.confirmedBkg || line.bkg1 || '';

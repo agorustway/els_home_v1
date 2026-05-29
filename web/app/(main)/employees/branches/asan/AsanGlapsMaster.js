@@ -80,6 +80,7 @@ const EMPTY_ALIAS_EDITOR = {
 const EMPTY_SPECIAL_RULE_EDITOR = {
     shipperCode: '',
     waypointName: '',
+    waypointElsName: '',
     consigneeCode: '',
     priority: '100',
     reviewNote: '',
@@ -186,6 +187,7 @@ function specialRuleToEditorValues(row = {}) {
     return {
         shipperCode: row.shipper_code || '',
         waypointName: row.waypoint_name || '',
+        waypointElsName: row.waypoint_els_name || '',
         consigneeCode: row.consignee_code || '',
         priority: String(row.priority || 100),
         reviewNote: row.review_note || '',
@@ -639,7 +641,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         if (activeTable === 'specialRules') {
             return [
                 { key: 'shipper_code', label: '화주사코드', value: row => row.shipper_code, className: styles.keyCell },
-                { key: 'waypoint_name', label: '경유지 조건', value: row => row.waypoint_name || '(해당 화주사 기본)' },
+                { key: 'waypoint_name', label: '경유지(GLAPS)', value: row => row.waypoint_name || '(해당 화주사 기본)' },
+                { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || '' },
                 { key: 'consignee_code', label: '컨샤이니 우선코드', value: row => row.consignee_code, className: styles.keyCell },
                 { key: 'priority', label: '우선순위', value: row => row.priority ?? 100 },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
@@ -826,6 +829,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             return ({
                 shipper_code: 'shipperCode',
                 waypoint_name: 'waypointName',
+                waypoint_els_name: 'waypointElsName',
                 consignee_code: 'consigneeCode',
                 priority: 'priority',
                 review_note: 'reviewNote',
@@ -1016,7 +1020,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.fieldGuide}>
                 <span><b>매핑항목</b> 포트·선사·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
                 <span><b>검수메모</b> 매칭 키가 아니라 출처·용도·기본값을 남기는 참고/필터용 메모입니다.</span>
-                <span><b>특이적용건</b> 화주사코드와 경유지 조건이 맞으면 일반 컨샤이니 매핑보다 먼저 적용됩니다.</span>
+                <span><b>특이적용건</b> 화주사코드와 경유지(GLAPS/ELS) 조건이 맞으면 일반 컨샤이니 매핑보다 먼저 적용됩니다.</span>
             </div>
 
             <div className={styles.toolbar}>

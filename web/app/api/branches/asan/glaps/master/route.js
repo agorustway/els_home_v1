@@ -36,6 +36,7 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     shipper_code: 'B000034432',
     waypoint_name: '모비스 천안친환경물류센터',
+    waypoint_els_name: '모비스천안친환경물류센터',
     consignee_code: 'GA1588',
     priority: 10,
     review_note: '모비스 특이 경유지 컨샤이니 우선적용',
@@ -47,6 +48,7 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     shipper_code: 'B000034432',
     waypoint_name: '모비스 AS아산센터',
+    waypoint_els_name: '모비스아산수출물류센터',
     consignee_code: 'GA1588',
     priority: 10,
     review_note: '모비스 특이 경유지 컨샤이니 우선적용',
@@ -58,6 +60,7 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     shipper_code: 'B000034432',
     waypoint_name: '모비스 AS천안수출물류센터',
+    waypoint_els_name: '모비스천안(입장)수출물류센터',
     consignee_code: 'GA1588',
     priority: 10,
     review_note: '모비스 특이 경유지 컨샤이니 우선적용',
@@ -69,6 +72,7 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     shipper_code: 'B000034432',
     waypoint_name: '',
+    waypoint_els_name: '',
     consignee_code: 'MOBBEL',
     priority: 999,
     review_note: 'B000034432 기본 컨샤이니',
@@ -237,6 +241,7 @@ function directSpecialConsigneeRuleFromPayload(row = {}) {
     id: cleanText(row.id),
     shipperCode: cleanText(row.shipperCode ?? row.shipper_code),
     waypointName: cleanText(row.waypointName ?? row.waypoint_name),
+    waypointElsName: cleanText(row.waypointElsName ?? row.waypoint_els_name),
     consigneeCode: cleanText(row.consigneeCode ?? row.consignee_code),
     priority: Number(row.priority ?? 100) || 100,
     reviewNote: cleanText(row.reviewNote ?? row.review_note),
@@ -403,6 +408,7 @@ function toSpecialConsigneeRuleDbRow(rule, { branchId, userEmail }) {
     branch_id: branchId,
     shipper_code: cleanText(rule.shipperCode),
     waypoint_name: cleanText(rule.waypointName),
+    waypoint_els_name: cleanText(rule.waypointElsName),
     consignee_code: cleanText(rule.consigneeCode),
     priority: Number(rule.priority) || 100,
     review_note: cleanText(rule.reviewNote),
@@ -486,7 +492,8 @@ async function fetchSpecialConsigneeRules(adminSupabase, branchId) {
       .eq('active', true)
       .order('shipper_code', { ascending: true })
       .order('priority', { ascending: true })
-      .order('waypoint_name', { ascending: true }));
+      .order('waypoint_name', { ascending: true })
+      .order('waypoint_els_name', { ascending: true }));
   } catch (error) {
     if (isMissingGlapsTableError(error)) {
       return DEFAULT_SPECIAL_CONSIGNEE_RULES.filter(row => row.branch_id === branchId);
@@ -1475,6 +1482,7 @@ export async function GET(request) {
       return [
         row.shipper_code,
         row.waypoint_name,
+        row.waypoint_els_name,
         row.consignee_code,
         row.review_note,
       ].some(value => String(value || '').toLowerCase().includes(search));

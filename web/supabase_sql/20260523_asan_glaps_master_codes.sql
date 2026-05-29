@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS public.glaps_special_consignee_rules (
     branch_id TEXT NOT NULL DEFAULT 'asan',
     shipper_code TEXT NOT NULL DEFAULT '',
     waypoint_name TEXT NOT NULL DEFAULT '',
+    waypoint_els_name TEXT NOT NULL DEFAULT '',
     consignee_code TEXT NOT NULL DEFAULT '',
     priority INTEGER NOT NULL DEFAULT 100,
     review_note TEXT NOT NULL DEFAULT '',
@@ -160,8 +161,12 @@ CREATE TABLE IF NOT EXISTS public.glaps_special_consignee_rules (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_glaps_special_consignee_rules_active
-    ON public.glaps_special_consignee_rules (branch_id, shipper_code, waypoint_name)
+ALTER TABLE public.glaps_special_consignee_rules
+    ADD COLUMN IF NOT EXISTS waypoint_els_name TEXT NOT NULL DEFAULT '';
+
+DROP INDEX IF EXISTS public.uniq_glaps_special_consignee_rules_active;
+CREATE UNIQUE INDEX uniq_glaps_special_consignee_rules_active
+    ON public.glaps_special_consignee_rules (branch_id, shipper_code, waypoint_name, waypoint_els_name)
     WHERE active;
 
 CREATE INDEX IF NOT EXISTS idx_glaps_special_consignee_rules_lookup
@@ -175,6 +180,17 @@ ALTER TABLE public.glaps_master_versions
     ALTER COLUMN imported_at SET DEFAULT now(),
     ALTER COLUMN created_at SET DEFAULT now(),
     ALTER COLUMN updated_at SET DEFAULT now();
+
+UPDATE public.glaps_special_consignee_rules
+SET waypoint_els_name = CASE waypoint_name
+    WHEN '모비스 천안친환경물류센터' THEN '모비스천안친환경물류센터'
+    WHEN '모비스 AS아산센터' THEN '모비스아산수출물류센터'
+    WHEN '모비스 AS천안수출물류센터' THEN '모비스천안(입장)수출물류센터'
+    ELSE waypoint_els_name
+END
+WHERE branch_id = 'asan'
+  AND shipper_code = 'B000034432'
+  AND active = TRUE;
 
 ALTER TABLE public.glaps_transport_routes
     ALTER COLUMN id SET DEFAULT gen_random_uuid();
@@ -303,6 +319,7 @@ INSERT INTO public.glaps_special_consignee_rules (
     branch_id,
     shipper_code,
     waypoint_name,
+    waypoint_els_name,
     consignee_code,
     priority,
     review_note,
@@ -311,11 +328,11 @@ INSERT INTO public.glaps_special_consignee_rules (
     updated_by
 )
 VALUES
-    ('asan', 'B000034432', '모비스 천안친환경물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '모비스 AS아산센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '모비스 AS천안수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '', 'MOBBEL', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
-ON CONFLICT (branch_id, shipper_code, waypoint_name) WHERE active
+    ('asan', 'B000034432', '모비스 천안친환경물류센터', '모비스천안친환경물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '모비스 AS아산센터', '모비스아산수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '모비스 AS천안수출물류센터', '모비스천안(입장)수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '', '', 'MOBBEL', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
+ON CONFLICT (branch_id, shipper_code, waypoint_name, waypoint_els_name) WHERE active
 DO UPDATE SET
     consignee_code = EXCLUDED.consignee_code,
     priority = EXCLUDED.priority,

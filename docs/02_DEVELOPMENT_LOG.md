@@ -1,3 +1,26 @@
+## [2026-05-29] GLAPS 특이적용건 경유지 ELS 조건 보강 (v5.14.282)
+### 원인
+- `B000034432` 특이적용건을 GLAPS 디스크립션 기준으로만 저장해, 상세배차의 ELS 작업지명(`모비스아산수출물류센터`, `모비스천안(입장)수출물류센터`, `모비스천안친환경물류센터`)과 일치하지 않았습니다.
+- 그 결과 모비스AS 특이 경유지 행의 컨샤이니가 `GA1588`로 우선 적용되지 않고 빈값으로 남는 케이스가 있었습니다.
+### 조치
+- `glaps_special_consignee_rules`에 `waypoint_els_name` 컬럼을 추가하고 화면에도 `경유지(GLAPS)`, `경유지(ELS)`를 나눠 표시/수정하도록 바꿨습니다.
+- 컨샤이니 우선 적용 resolver가 GLAPS 경유지명 또는 ELS 경유지명 중 하나만 맞아도 특이적용건을 선택하도록 변경했습니다.
+- `B000034432`의 기존 3개 `GA1588` 규칙에 ELS 작업지명을 채웠고, 모비스AS 화주명은 `B000034432`로 안정적으로 매핑되게 보강했습니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- Supabase 운영 DB: `glaps_special_consignee_rules.waypoint_els_name` 추가 및 `B000034432` active 규칙 4건의 ELS 조건 확인
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- Supabase 운영 DB 마이그레이션 `extend_glaps_special_consignee_rules_els_waypoint_20260529`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] GLAPS 특이적용건 컨샤이니 우선순위 구성 (v5.14.281)
 ### 핵심
 - GLAPS 코드 화면에 `특이적용건` 탭을 추가해 화주사코드+경유지 조건별 컨샤이니 우선코드를 추가/수정/삭제할 수 있게 했습니다.
