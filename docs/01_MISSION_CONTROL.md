@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.278 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.279 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차 GLAPS 업로드 시트가 같은 부킹도 1대씩 분리해 컨테이너 수량을 항상 1로 내보내도록 정리했다.
+> 최신 업데이트: GLAPS 엑셀 업로드 신규행은 API에서 UUID를 직접 생성해 운영 DB의 id 기본값 누락에도 실패하지 않게 했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.278
+- **웹 버전**: v5.14.279
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -47,7 +47,7 @@
 - GLAPS 수정양식은 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받는다. 삭제는 행 삭제가 아니라 `삭제(Y)` 입력으로만 처리한다.
 - GLAPS 수정양식 업로드 파서는 안내문처럼 여러 헤더명이 한 셀에 들어간 행을 헤더로 보지 않는다. UUID가 운송경로 필드 전체로 복제된 오염 행은 저장 전에 버린다.
 - GLAPS 항목매핑 수정양식 업로드는 같은 `매핑항목+ELS 매치코드+운송경로코드+최종코드(BP)`가 기존 DB에 있으면 신규 insert 대신 기존행 업데이트로 처리하고, 같은 파일 안의 반복 키는 한 행으로 병합한다.
-- GLAPS 업로드 신규행/병합행은 ID가 비어 있으면 `id` 필드 자체를 제거해 DB 기본 UUID 생성에 맡긴다.
+- GLAPS 업로드 신규행/병합행은 ID가 비어 있으면 API에서 UUID를 직접 생성한다. 기존 운영 DB에 `id DEFAULT`가 누락돼도 엑셀 업로드가 실패하지 않아야 한다.
 - `WEB수정` 행은 업로드 변경/삭제에서 제외하고, 마스터 업로드/NAS 반영 시 새 활성 버전으로 보존한다.
 - GLAPS 마스터 반영은 새 버전을 비활성으로 만든 뒤 모든 insert가 성공한 경우에만 active 전환한다. 같은 원장 행이 중복 파싱되면 insert 전에 정리하고 결과 메시지에 `원장 중복행 N건 정리`로 알린다.
 - 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다.
@@ -78,13 +78,13 @@
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
 
 ## RECENT CHANGES
+- **v5.14.279**: GLAPS 엑셀 수정양식/마스터 업로드에서 신규 `glaps_master_aliases` 행이 `id` 없이 insert되어 not-null 오류가 나던 문제를 막았다. 신규 운송경로/항목매핑/원본행/버전 행은 API에서 UUID를 직접 넣고, SQL에는 기존 테이블도 `id DEFAULT gen_random_uuid()`를 보강하도록 추가했다.
 - **v5.14.278**: GLAPS 업로드 시트의 같은 부킹 자동 병합을 제거했다. 상세배차/배차변동은 이미 1대 단위 라인이므로 컨테이너 수량은 항상 1로 출력한다.
 - **v5.14.277**: 연간실적 원장 테이블 검색에서 컨테이너/씰/부킹/차량/전화번호형 검색어를 DB 정렬·snapshot 스캔 없이 식별번호 인덱스로 후보 조회 후 current snapshot만 서버에서 거르도록 최적화했다.
 - **v5.14.276**: 상세배차/배차변동 시간값을 HH:MM으로 정규화하고, 현재화면/GLAPS 업로드 엑셀 다운로드의 시간 컬럼을 `hh:mm` 서식으로 저장한다.
 - **v5.14.275**: 차량관제 테이블의 public permissive RLS와 anon/authenticated 직접 grant를 제거했다. 차량관제 API 조회 라우트는 service role client로 전환했다.
 - **v5.14.274**: 운영 웹 스모크에서 디버그 페이지는 열리지만 내부 데이터 API가 401로 떨어지는 흐름을 확인했다. 서버 Supabase client가 `__debug_mode` 쿠키도 읽도록 보정했다.
 - **v5.14.273**: Supabase public schema RLS를 켜고 내부 데이터 테이블의 anon 접근과 authenticated DML을 차단했다. 공개 웹진/식단/긴급공지 SELECT는 유지하고, 내부 API는 인증 후 service role 경유로 조정했다.
-- **v5.14.272**: 상세배차/배차변동내역 표 헤더에 목록형 다중 선택 필터를 추가했다. 헤더 목록은 체크박스로 여러 값을 동시에 고를 수 있고, 바깥을 클릭하면 닫힌다.
 ## VERIFICATION
 - Supabase Advisor: 차량관제 permissive policy 경고 해소. 남은 WARN은 Auth leaked password protection Dashboard 설정 1건.
 - 운영 웹 스모크: `/`, `/employees/ask?debug=true`, `/api/board?type=webzine` 200. 내부 데이터 API는 비로그인 기준 401로 보호됨을 확인.

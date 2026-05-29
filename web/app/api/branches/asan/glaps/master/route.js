@@ -623,9 +623,10 @@ function mergeAliasUploadRows(base = {}, next = {}) {
   return merged;
 }
 
-function omitBlankId(row = {}) {
+function withRequiredId(row = {}) {
   const normalized = { ...row };
-  if (!cleanText(normalized.id)) delete normalized.id;
+  const id = cleanText(normalized.id);
+  normalized.id = id || crypto.randomUUID();
   return normalized;
 }
 
@@ -705,7 +706,7 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows.map(omitBlankId), { onConflict: 'id' });
+    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows.map(withRequiredId), { onConflict: 'id' });
     if (error) throw error;
   }
   return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
@@ -778,7 +779,7 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
     if (error) throw error;
   }
   if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows.map(omitBlankId), { onConflict: 'id' });
+    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows.map(withRequiredId), { onConflict: 'id' });
     if (error) throw error;
   }
   return {
@@ -1166,7 +1167,7 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
     }
     const { data, error } = id
       ? await adminSupabase.from('glaps_transport_routes').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
-      : await adminSupabase.from('glaps_transport_routes').insert(dbRow).select('*').single();
+      : await adminSupabase.from('glaps_transport_routes').insert(withRequiredId(dbRow)).select('*').single();
     if (error) {
       if (isDuplicateConstraintError(error)) {
         return { error: duplicateJsonError('이미 같은 운송경로가 등록되어 있습니다.') };
@@ -1190,7 +1191,7 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
   }
   const { data, error } = id
     ? await adminSupabase.from('glaps_master_aliases').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
-    : await adminSupabase.from('glaps_master_aliases').insert(dbRow).select('*').single();
+    : await adminSupabase.from('glaps_master_aliases').insert(withRequiredId(dbRow)).select('*').single();
   if (error) {
     if (isDuplicateConstraintError(error)) {
       return {
@@ -1383,6 +1384,7 @@ export async function POST(request) {
       const { data: version, error: versionError } = await access.adminSupabase
         .from('glaps_master_versions')
         .insert({
+          id: crypto.randomUUID(),
           branch_id: branchId,
           source_name: sourceName,
           source_hash: sourceHash,
@@ -1414,15 +1416,15 @@ export async function POST(request) {
       const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_transport_routes').insert(routeRows);
+        const { error } = await access.adminSupabase.from('glaps_transport_routes').insert(routeRows.map(withRequiredId));
         if (error) throw error;
       }
       if (aliasRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_aliases').insert(aliasRows);
+        const { error } = await access.adminSupabase.from('glaps_master_aliases').insert(aliasRows.map(withRequiredId));
         if (error) throw error;
       }
       if (sheetRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows);
+        const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows.map(withRequiredId));
         if (error) throw error;
       }
       await refreshVersionCounts(access.adminSupabase, version.id);

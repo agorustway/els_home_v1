@@ -145,6 +145,18 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_sheet_rows (
     UNIQUE (branch_id, version_id, sheet_name, row_number)
 );
 
+ALTER TABLE public.glaps_master_versions
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+ALTER TABLE public.glaps_transport_routes
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+ALTER TABLE public.glaps_master_aliases
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+ALTER TABLE public.glaps_master_sheet_rows
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
 CREATE INDEX IF NOT EXISTS idx_glaps_master_sheet_rows_lookup
     ON public.glaps_master_sheet_rows (branch_id, version_id, sheet_name, row_number);
 

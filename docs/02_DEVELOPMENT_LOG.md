@@ -1,3 +1,21 @@
+## [2026-05-29] GLAPS 엑셀 업로드 신규행 UUID 보강 (v5.14.279)
+### 원인
+- 운영 DB의 `glaps_master_aliases.id` 기본값이 기존 테이블 생성 시점에 누락된 상태였습니다.
+- 수정양식 업로드에서 신규 항목매핑 행은 ID가 비어 있으므로 DB 기본 UUID 생성에 맡겼고, 그 결과 `id` not-null 제약 위반으로 업로드가 실패했습니다.
+### 조치
+- 신규 운송경로/항목매핑/원본시트/마스터 버전 insert 시 API에서 `crypto.randomUUID()`를 직접 넣도록 보강했습니다.
+- `glaps_master_aliases`뿐 아니라 GLAPS 관련 테이블의 `id DEFAULT gen_random_uuid()`를 SQL에도 명시 보강했습니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] GLAPS 업로드 시트 컨테이너 수량 병합 제거 (v5.14.278)
 ### 원인
 - 상세배차/배차변동 다운로드의 `GLAPS_업로드` 시트 생성 시 같은 GLAPS 출력값을 가진 행을 하나로 병합하고 `컨테이너 수량`을 합산하는 로직이 남아 있었습니다.
