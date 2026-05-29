@@ -87,6 +87,10 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.equal(annualPagedRowsSource.includes(".order('year_value'"), false);
   assert.match(dbReader, /String\(mode \|\| ''\)\.toLowerCase\(\) === 'and'/);
   assert.match(dbReader, /nextQuery\.ilike\('search_text'/);
+  assert.match(dbReader, /function performanceSearchWebQuery/);
+  assert.match(dbReader, /textSearch\('search_text', webQuery, \{ config: 'simple', type: 'websearch' \}\)/);
+  assert.match(dbReader, /function annualIdentifierSearchClause/);
+  assert.match(dbReader, /applyAnnualIdentifierSearch\(buildQuery\(\{ skipScope: true \}\), search, searchMode\)/);
   assert.match(dbReader, /split\(\/\[;,，；\]\+\//);
   assert.match(dbReader, /replace\(\/\[;,，；\\\\\]\//);
   assert.match(dbReader, /function rowMatchesPerformanceSearch/);
@@ -105,6 +109,8 @@ test('아산 연간실적 Next 라우트는 NAS 백엔드로 프록시한다', (
   assert.match(dbReader, /rowMatchesPerformanceSearch\(mapped, search, searchMode\)/);
   assert.match(dbReader, /row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id/);
   assert.match(annualPagedRowsSource, /if \(shouldFilter\) \{/);
+  assert.match(annualPagedRowsSource, /applyPerformanceTextSearch\(baseQuery, search, searchMode\)/);
+  assert.match(annualPagedRowsSource, /buildDbSearchQuery\('exact'\)/);
   assert.match(annualPagedRowsSource, /scanPerformanceSearchRows/);
   assert.match(dbReader, /totalEstimated/);
   assert.match(dbReader, /total_is_estimated/);
@@ -211,6 +217,7 @@ test('아산 연간실적 Supabase SQL은 누적 원장과 현재 조회 인덱�
   const vehicleScopeSql = read('web/supabase_sql/20260518_asan_performance_vehicle_scope_summary.sql');
   const dashboardSnapshotSql = read('web/supabase_sql/20260521_asan_performance_dashboard_snapshots.sql');
   const routeUnitIndexSql = read('web/supabase_sql/20260527_asan_route_unit_price_period_indexes.sql');
+  const annualSearchIndexSql = read('web/supabase_sql/20260529_asan_annual_performance_search_index.sql');
   assert.match(sql, /CREATE TABLE IF NOT EXISTS branch_performance_files/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS branch_performance_rows/);
   assert.match(sql, /is_current BOOLEAN NOT NULL DEFAULT true/);
@@ -256,6 +263,9 @@ test('아산 연간실적 Supabase SQL은 누적 원장과 현재 조회 인덱�
   assert.match(routeUnitIndexSql, /idx_branch_performance_rows_route_unit_snapshot_period/);
   assert.match(routeUnitIndexSql, /snapshot_id,\s*year_value,\s*month_value,\s*row_index/);
   assert.match(routeUnitIndexSql, /idx_branch_performance_rows_route_unit_current_period/);
+  assert.match(annualSearchIndexSql, /idx_branch_performance_rows_annual_ctn/);
+  assert.match(annualSearchIndexSql, /idx_branch_performance_rows_annual_booking/);
+  assert.match(annualSearchIndexSql, /idx_branch_performance_rows_annual_driver_phone/);
   assert.match(monthlyRouteUnitSql, /DROP FUNCTION IF EXISTS public\.asan_monthly_route_unit_amount_payload/);
   assert.match(monthlyRouteUnitSql, /CREATE OR REPLACE FUNCTION public\.asan_monthly_route_unit_amount_rows/);
   assert.match(monthlyRouteUnitSql, /dataset_type = 'monthly'/);

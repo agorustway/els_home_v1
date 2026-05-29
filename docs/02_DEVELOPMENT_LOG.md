@@ -1,3 +1,22 @@
+## [2026-05-29] 연간실적 테이블 식별번호 검색 timeout 완화 (v5.14.277)
+### 핵심
+- 연간실적 테이블에서 `CMAU...`, `MRSU...`, `KOCU...` 같은 컨테이너/식별번호 검색이 원장 36만 행을 넓게 훑으며 `canceling statement due to statement timeout`으로 떨어지는 문제를 확인했습니다.
+- current snapshot은 `snapshot_id` 기준으로 복구되어 있으나 일부 행의 `is_current` 값이 false인 이력이 있어, 기존 `is_current=true` 부분 검색 인덱스만으로는 현재 표시 데이터 검색을 안정적으로 처리할 수 없었습니다.
+- `C/Tn`, `SEALn`, `BOOKINGNO-`, `영업넘버`, `기사전화번호`에 연간 전용 expression index를 추가하고, 해당 형식 검색어는 DB에서 식별번호 후보만 먼저 가져온 뒤 서버에서 현재 snapshot에 속한 행만 남기도록 변경했습니다.
+- DB 쿼리에서 `snapshot_id/file_path`와 식별번호 OR 조건을 한 번에 묶으면 planner가 무거운 경로를 잡아 timeout이 재현되어, 식별번호 후보 조회와 current snapshot 판정을 분리했습니다.
+### 검증
+- Supabase 운영 DB: `idx_branch_performance_rows_annual_ctn`, `annual_seal`, `annual_booking`, `annual_vehicle_no`, `annual_driver_phone` 인덱스 생성 확인.
+- 로컬 API: `CMAU4194491` 검색 1.2초대 2건, `MRSU7724750,KOCU4631633` 검색 0.9초대 0건으로 timeout 없이 응답.
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과.
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 9개 통과.
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/supabase_sql/20260529_asan_annual_performance_search_index.sql`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] 상세배차 시간 HH:MM 정규화 및 엑셀 시간서식 적용 (v5.14.276)
 ### 핵심
 - 상세배차/배차변동의 `시간` 값을 `08`, `13`처럼 정시만 들어온 경우에도 `08:00`, `13:00`으로 표시하도록 정규화했습니다.

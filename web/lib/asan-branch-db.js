@@ -231,8 +231,10 @@ function searchFilterValue(term) {
 }
 
 const PERFORMANCE_SEARCH_COMPACT_RE = /[\s,，₩￦원()[\]{}<>·ㆍ\-_/\\'"`´“”‘’:：;；.]/g;
+const PERFORMANCE_FTS_TOKEN_RE = /[\p{L}\p{N}_]+/gu;
 const PERFORMANCE_SEARCH_SCAN_BATCH_SIZE = 1000;
 const PERFORMANCE_SEARCH_SCAN_MAX_ROWS = 600000;
+const ANNUAL_IDENTIFIER_SEARCH_COLUMNS = ['C/Tn', 'SEALn', 'BOOKINGNO-', '영업넘버', '기사전화번호'];
 
 function normalizePerformanceSearchText(value) {
     const raw = String(value ?? '').trim().toLocaleLowerCase('ko-KR');
@@ -251,6 +253,56 @@ function performanceSearchTermParts(term) {
         alternatives: Array.from(new Set([raw, compact].filter(Boolean))),
         tokens: Array.from(new Set(spaced.split(/\s+/).filter(Boolean))),
     };
+}
+
+function performanceSearchWebQuery(search, mode = 'or') {
+    const termQueries = searchTerms(search)
+        .map(term => Array.from(new Set(
+            (String(term ?? '').toLocaleLowerCase('ko-KR').match(PERFORMANCE_FTS_TOKEN_RE) || [])
+                .map(piece => piece.trim())
+                .filter(Boolean)
+        )).join(' '))
+        .filter(Boolean);
+    if (!termQueries.length) return '';
+    return String(mode || '').toLowerCase() === 'and'
+        ? termQueries.join(' ')
+        : termQueries.join(' OR ');
+}
+
+function applyPerformanceTextSearch(query, search, mode = 'or') {
+    const webQuery = performanceSearchWebQuery(search, mode);
+    if (!webQuery) return { query, applied: false };
+    return {
+        query: query.textSearch('search_text', webQuery, { config: 'simple', type: 'websearch' }),
+        applied: true,
+    };
+}
+
+function annualIdentifierSearchTerms(search, mode = 'or') {
+    void mode;
+    return searchTerms(search)
+        .map(term => String(term || '').trim())
+        .filter(term => (
+            term.length >= 6
+            && /^[\p{L}\p{N}_-]+$/u.test(term)
+            && /[0-9A-Za-z]/.test(term)
+        ));
+}
+
+function annualIdentifierSearchClause(search, mode = 'or') {
+    const terms = annualIdentifierSearchTerms(search, mode);
+    if (!terms.length || terms.length !== searchTerms(search).length) return '';
+    return terms
+        .flatMap(term => ANNUAL_IDENTIFIER_SEARCH_COLUMNS.map(column => (
+            `row_data->>"${column.replace(/"/g, '""')}".eq.${term}`
+        )))
+        .join(',');
+}
+
+function applyAnnualIdentifierSearch(query, search, mode = 'or') {
+    const clause = annualIdentifierSearchClause(search, mode);
+    if (!clause) return { query, applied: false };
+    return { query: query.or(clause), applied: true };
 }
 
 function collectPerformanceSearchValues(value, bucket) {
@@ -1808,17 +1860,104 @@ async function getAnnualPagedRows({ query, buildQuery, headers, metaBySnapshot, 
         ...row,
         source_headers: metaBySnapshot.get(row.snapshot_id)?.headers || metaBySnapshot.get(`${row.file_path}::${row.sheet_name}`)?.headers || [],
     });
+    const isSourceRow = row => (orderBySnapshot
+        ? metaBySnapshot.has(row.snapshot_id)
+        : metaBySnapshot.has(row.snapshot_id) || metaBySnapshot.has(`${row.file_path}::${row.sheet_name}`));
+    const mapAnnualRow = item => {
+        const row = attachHeaders(item);
+        const mapped = annualRowToValues(row, headers);
+        return { ...row, mapped_values: mapped };
+    };
+    const compareDefaultOrder = (a, b) => {
+        if (orderBySnapshot) {
+            return String(a.snapshot_id || '').localeCompare(String(b.snapshot_id || ''), 'ko-KR')
+                || numberValue(a.row_index) - numberValue(b.row_index);
+        }
+        return String(a.file_path || '').localeCompare(String(b.file_path || ''), 'ko-KR')
+            || String(a.sheet_name || '').localeCompare(String(b.sheet_name || ''), 'ko-KR')
+            || numberValue(a.row_index) - numberValue(b.row_index);
+    };
+    const sortMappedRows = (items = []) => {
+        if (sortIdx < 0) return [...items].sort(compareDefaultOrder);
+        const sortable = [];
+        const blanks = [];
+        for (const item of items) {
+            const value = sortValue(item.mapped_values?.[sortIdx]);
+            if (!value) blanks.push(item);
+            else sortable.push([value, item]);
+        }
+        sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
+        return sortDesc
+            ? sortable.map(([, item]) => item).concat(blanks)
+            : blanks.concat(sortable.map(([, item]) => item));
+    };
     const shouldFilter = searchTerms(search).length > 0;
 
     if (shouldFilter) {
+        if (buildQuery) {
+            const identifierSearch = applyAnnualIdentifierSearch(buildQuery({ skipScope: true }), search, searchMode);
+            if (identifierSearch.applied) {
+                const { data, error } = await identifierSearch.query.range(0, maxSortRows);
+                if (error) throw new Error(error.message);
+                const fetched = (data || []).filter(isSourceRow);
+                const truncated = fetched.length > maxSortRows;
+                const mapped = (truncated ? fetched.slice(0, maxSortRows) : fetched)
+                    .map(mapAnnualRow)
+                    .filter(row => rowMatchesPerformanceSearch(row, search, searchMode));
+                const ordered = sortMappedRows(mapped);
+                return {
+                    rows: ordered.slice(start, end + 1),
+                    total: ordered.length,
+                    totalEstimated: truncated,
+                    sortKey: sortIdx >= 0 ? sortKey : '',
+                    sortDir: sortDesc ? 'desc' : 'asc',
+                };
+            }
+        }
+
+        const buildDbSearchQuery = buildQuery
+            ? (count) => {
+                const baseQuery = buildQuery(count ? { count } : {});
+                const searched = applyPerformanceTextSearch(baseQuery, search, searchMode);
+                return searched.applied ? orderQuery(searched.query) : null;
+            }
+            : null;
+        if (buildDbSearchQuery) {
+            const searchedOrdered = buildDbSearchQuery('exact');
+            if (searchedOrdered) {
+                if (sortIdx >= 0) {
+                    const { data, count, error } = await searchedOrdered.range(0, maxSortRows);
+                    if (error) throw new Error(error.message);
+                    const ordered = sortMappedRows((data || []).map(mapAnnualRow));
+                    return {
+                        rows: ordered.slice(start, end + 1),
+                        total: count ?? ordered.length,
+                        totalEstimated: count == null && ordered.length > maxSortRows,
+                        sortKey,
+                        sortDir: sortDesc ? 'desc' : 'asc',
+                    };
+                }
+
+                const { data, count, error } = await searchedOrdered.range(start, end + 1);
+                if (error) throw new Error(error.message);
+                const rows = data || [];
+                const hasMore = rows.length > pageSize;
+                const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
+                const loadedThrough = start + pageRows.length;
+                return {
+                    rows: pageRows.map(mapAnnualRow),
+                    total: count ?? loadedThrough + (hasMore ? 1 : 0),
+                    totalEstimated: count == null && hasMore,
+                    sortKey: '',
+                    sortDir: sortDesc ? 'desc' : 'asc',
+                };
+            }
+        }
+
         const scanned = await scanPerformanceSearchRows({
             baseOrdered,
             buildOrderedQuery: buildBaseOrdered,
-            mapRow: item => {
-                const row = attachHeaders(item);
-                const mapped = annualRowToValues(row, headers);
-                return { ...row, mapped_values: mapped };
-            },
+            mapRow: mapAnnualRow,
             search,
             searchMode,
             start,
@@ -1838,22 +1977,7 @@ async function getAnnualPagedRows({ query, buildQuery, headers, metaBySnapshot, 
     if (sortIdx >= 0) {
         const { data, error } = await baseOrdered.range(0, maxSortRows);
         if (error) throw new Error(error.message);
-        const mappedRows = (data || []).map(item => {
-            const row = attachHeaders(item);
-            const mapped = annualRowToValues(row, headers);
-            return { ...row, mapped_values: mapped };
-        });
-        const sortable = [];
-        const blanks = [];
-        for (const item of mappedRows) {
-            const value = sortValue(item.mapped_values?.[sortIdx]);
-            if (!value) blanks.push(item);
-            else sortable.push([value, item]);
-        }
-        sortable.sort((a, b) => compareSortTuple(a[0], b[0]) * (sortDesc ? -1 : 1));
-        const ordered = sortDesc
-            ? sortable.map(([, item]) => item).concat(blanks)
-            : blanks.concat(sortable.map(([, item]) => item));
+        const ordered = sortMappedRows((data || []).map(mapAnnualRow));
         return {
             rows: ordered.slice(start, end + 1),
             total: Math.max(numberValue(fallbackTotal), ordered.length),
@@ -1869,10 +1993,7 @@ async function getAnnualPagedRows({ query, buildQuery, headers, metaBySnapshot, 
     const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
     const loadedThrough = start + pageRows.length;
     return {
-        rows: pageRows.map(item => {
-            const row = attachHeaders(item);
-            return { ...row, mapped_values: annualRowToValues(row, headers) };
-        }),
+        rows: pageRows.map(mapAnnualRow),
         total: Math.max(numberValue(fallbackTotal), loadedThrough + (hasMore ? 1 : 0)),
         totalEstimated: hasMore && !numberValue(fallbackTotal),
         sortKey: '',
@@ -2138,16 +2259,22 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
         metaBySnapshot.set(`${meta.file_path}::${meta.sheet_name}`, meta);
     }
     const fallbackTotal = search ? 0 : metas.reduce((sum, meta) => sum + numberValue(meta.current_row_count || meta.row_count || summaryOf(meta).totalRows), 0);
-    const buildRowsQuery = () => {
+    const buildRowsQuery = (options = {}) => {
+        const selectOptions = options.count ? { count: options.count } : undefined;
         let rowsQuery = supabase
             .from('branch_performance_rows')
-            .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id')
+            .select('row_data,row_values,row_index,file_path,sheet_name,year_value,month_value,snapshot_id', selectOptions)
             .eq('branch_id', 'asan')
             .eq('dataset_type', 'annual');
-        if (allMetasHaveSnapshot) {
-            rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
-        } else {
-            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+        if (!options.skipScope && (options.currentOnly || !allMetasHaveSnapshot)) {
+            rowsQuery = rowsQuery.eq('is_current', true);
+        }
+        if (!options.skipScope) {
+            if (allMetasHaveSnapshot) {
+                rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
+            } else {
+                rowsQuery = rowsQuery.in('file_path', metas.map(meta => meta.file_path));
+            }
         }
         return rowsQuery;
     };

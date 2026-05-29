@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.276 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.277 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동 시간값을 HH:MM으로 정규화하고 엑셀 시간 서식을 적용했다.
+> 최신 업데이트: 아산 연간실적 테이블의 식별번호 검색을 인덱스 기반으로 우회시켜 statement timeout을 줄였다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.276
+- **웹 버전**: v5.14.277
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
@@ -29,7 +29,7 @@
 - 구간단가 묶음 기준은 `청구/하불 금액 + 매출, 지역, 작업지, 운송사, 구분, 픽업, 청구픽업, 선적, TYPE, 청구처, 하불처`다. 금액 검색은 천단위 구분 없이 숫자만 입력해도 찾을 수 있다.
 - 구간단가 TYPE처럼 영문이 포함된 검색어는 금액 숫자 보조검색을 적용하지 않아 `20RF`가 기간 `2026`의 `20`에 과매칭되지 않게 한다.
 - 구간단가 API는 dashboard snapshot을 만들지 않고 `asan_monthly_route_unit_amount_payload` RPC를 우선 사용한다. 실패 시 월간 current 행을 1000행 단위로만 읽는 JS fallback을 사용한다.
-- 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, `하나라도 포함/모두 포함` 토글로 OR/AND를 선택한다.
+- 테이블 검색은 `,` 또는 `;`로 조건을 나눌 수 있고, 컨테이너/씰/부킹/차량/전화번호형 검색어는 연간 전용 식별번호 인덱스를 먼저 사용한다.
 - 페이지 로딩 문구와 폰트는 아산 하위 페이지에서 동일 톤으로 유지한다.
 
 ## GLAPS OPERATING NOTES
@@ -78,25 +78,25 @@
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
 
 ## RECENT CHANGES
+- **v5.14.277**: 연간실적 원장 테이블 검색에서 컨테이너/씰/부킹/차량/전화번호형 검색어를 DB 정렬·snapshot 스캔 없이 식별번호 인덱스로 후보 조회 후 current snapshot만 서버에서 거르도록 최적화했다.
 - **v5.14.276**: 상세배차/배차변동 시간값을 HH:MM으로 정규화하고, 현재화면/GLAPS 업로드 엑셀 다운로드의 시간 컬럼을 `hh:mm` 서식으로 저장한다.
 - **v5.14.275**: 차량관제 테이블의 public permissive RLS와 anon/authenticated 직접 grant를 제거했다. 차량관제 API 조회 라우트는 service role client로 전환했다.
 - **v5.14.274**: 운영 웹 스모크에서 디버그 페이지는 열리지만 내부 데이터 API가 401로 떨어지는 흐름을 확인했다. 서버 Supabase client가 `__debug_mode` 쿠키도 읽도록 보정했다.
 - **v5.14.273**: Supabase public schema RLS를 켜고 내부 데이터 테이블의 anon 접근과 authenticated DML을 차단했다. 공개 웹진/식단/긴급공지 SELECT는 유지하고, 내부 API는 인증 후 service role 경유로 조정했다.
 - **v5.14.272**: 상세배차/배차변동내역 표 헤더에 목록형 다중 선택 필터를 추가했다. 헤더 목록은 체크박스로 여러 값을 동시에 고를 수 있고, 바깥을 클릭하면 닫힌다.
 - **운영데이터 2026-05-28**: 글로비스 원본 `.xlsm`과 WEB 배차판 DB의 `셀맥` 값을 `셀맥(KIA)오성`으로 정리했다. 원본 백업은 NAS 같은 폴더의 `.backup-cellmac-20260528-120506Z.xlsm`.
-- **v5.14.271**: 배차판, 상세배차내역, 배차변동내역 공통 테이블 스크롤 높이를 키워 데스크톱 화면 하단의 빈 공간을 줄이고 더 많은 행을 한 번에 보이게 했다.
 ## VERIFICATION
 - Supabase Advisor: 차량관제 permissive policy 경고 해소. 남은 WARN은 Auth leaked password protection Dashboard 설정 1건.
 - 운영 웹 스모크: `/`, `/employees/ask?debug=true`, `/api/board?type=webzine` 200. 내부 데이터 API는 비로그인 기준 401로 보호됨을 확인.
 - Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소. 잔여는 Auth leaked password dashboard 설정, 의도적 no-policy 테이블.
 - DB 권한 검증: anon은 내부/외부 연락처 SELECT 불가, 공개 `posts/weekly_menus/emergency_notices` SELECT만 가능. route unit RPC는 service_role만 실행 가능.
+- 연간실적 검색 API 로컬 검증: `CMAU4194491` 1.2초대 2건, `MRSU7724750,KOCU4631633` 0.9초대 0건으로 timeout 없이 응답.
 - `cd web; npx eslint ...변경 API 라우트`: 통과. `cd web; npm run build`: 통과.
 - 글로비스 원본 `.xlsm` OOXML 패치 검증: `vbaProject.bin` SHA-256 보존, `셀맥` 잔여 0건, 계산 설정 `auto/fullCalcOnLoad/forceFullCalc/calcOnSave` 적용.
 - Supabase 검증: `branch_dispatch` 6행, `branch_dispatch_web_cells` 3행, `branch_dispatch_web_cell_history` 3행 업데이트. `셀맥(KIA)오성` 외 잔여 `셀맥` 0건.
 - 최근 코드 변경 검증 내역은 `docs/02_DEVELOPMENT_LOG.md` 각 항목 참조.
 
 ## IN-PROGRESS
-- 구간단가는 월간 금액표 RPC 운영으로 전환했다. 운영 빌드 후 웹 `구간단가` 탭에서 최신 월 기본 조회와 전체 조회 체감 속도를 확인한다.
 - GLAPS 다음 단계: 실제 GLAPS 업로드 파일로 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
