@@ -623,11 +623,26 @@ function mergeAliasUploadRows(base = {}, next = {}) {
   return merged;
 }
 
-function withRequiredId(row = {}) {
+function withRequiredInsertDefaults(row = {}, { updatedAt = true, importedAt = false } = {}) {
   const normalized = { ...row };
+  const now = new Date().toISOString();
   const id = cleanText(normalized.id);
   normalized.id = id || crypto.randomUUID();
+  if (!cleanText(normalized.created_at)) normalized.created_at = now;
+  if (updatedAt && !cleanText(normalized.updated_at)) normalized.updated_at = now;
+  if (importedAt && !cleanText(normalized.imported_at)) normalized.imported_at = now;
   return normalized;
+}
+
+async function updateRowsById(adminSupabase, table, rows = []) {
+  for (const row of rows) {
+    const id = cleanText(row.id);
+    if (!id) continue;
+    const payload = { ...row };
+    delete payload.id;
+    const { error } = await adminSupabase.from(table).update(payload).eq('id', id);
+    if (error) throw error;
+  }
 }
 
 function coalesceAliasUploadRows(rows = []) {
@@ -671,12 +686,13 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
     versionId,
     [...deleteIds, ...candidateRows.map(row => row.id)],
   );
-  const upsertRows = [];
+  const insertRows = [];
+  const updateRows = [];
   let unchanged = 0;
   let skippedWebProtected = 0;
   candidateRows.forEach((row) => {
     if (!row.id) {
-      upsertRows.push(row);
+      insertRows.push(row);
       return;
     }
     const existing = existingById.get(cleanText(row.id));
@@ -688,7 +704,8 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
       skippedWebProtected += 1;
       return;
     }
-    upsertRows.push(row);
+    if (existing?.id) updateRows.push(row);
+    else insertRows.push(row);
   });
   const allowedDeleteIds = deleteIds.filter((id) => {
     if (isWebEditedRow(existingById.get(id))) {
@@ -705,11 +722,14 @@ async function applyRouteTemplateRows(adminSupabase, rows, { branchId, versionId
       .in('id', allowedDeleteIds);
     if (error) throw error;
   }
-  if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_transport_routes').upsert(upsertRows.map(withRequiredId), { onConflict: 'id' });
+  if (updateRows.length > 0) {
+    await updateRowsById(adminSupabase, 'glaps_transport_routes', updateRows);
+  }
+  if (insertRows.length > 0) {
+    const { error } = await adminSupabase.from('glaps_transport_routes').insert(insertRows.map(row => withRequiredInsertDefaults(row)));
     if (error) throw error;
   }
-  return { updated: upsertRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
+  return { updated: insertRows.length + updateRows.length, deleted: allowedDeleteIds.length, unchanged, skippedWebProtected };
 }
 
 async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId, userEmail, editSource = 'template_upload' }) {
@@ -744,12 +764,13 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
   });
   const coalesced = coalesceAliasUploadRows(rowsResolvedByConstraint);
   const uploadRows = coalesced.rows;
-  const upsertRows = [];
+  const insertRows = [];
+  const updateRows = [];
   let unchanged = 0;
   let skippedWebProtected = 0;
   uploadRows.forEach((row) => {
     if (!row.id) {
-      upsertRows.push(row);
+      insertRows.push(row);
       return;
     }
     const existing = existingById.get(cleanText(row.id));
@@ -761,7 +782,8 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
       skippedWebProtected += 1;
       return;
     }
-    upsertRows.push(row);
+    if (existing?.id) updateRows.push(row);
+    else insertRows.push(row);
   });
   const allowedDeleteIds = deleteIds.filter((id) => {
     if (isWebEditedRow(existingById.get(id))) {
@@ -778,12 +800,15 @@ async function applyAliasTemplateRows(adminSupabase, rows, { branchId, versionId
       .in('id', allowedDeleteIds);
     if (error) throw error;
   }
-  if (upsertRows.length > 0) {
-    const { error } = await adminSupabase.from('glaps_master_aliases').upsert(upsertRows.map(withRequiredId), { onConflict: 'id' });
+  if (updateRows.length > 0) {
+    await updateRowsById(adminSupabase, 'glaps_master_aliases', updateRows);
+  }
+  if (insertRows.length > 0) {
+    const { error } = await adminSupabase.from('glaps_master_aliases').insert(insertRows.map(row => withRequiredInsertDefaults(row)));
     if (error) throw error;
   }
   return {
-    updated: upsertRows.length,
+    updated: insertRows.length + updateRows.length,
     deleted: allowedDeleteIds.length,
     unchanged,
     skippedWebProtected,
@@ -1167,7 +1192,7 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
     }
     const { data, error } = id
       ? await adminSupabase.from('glaps_transport_routes').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
-      : await adminSupabase.from('glaps_transport_routes').insert(withRequiredId(dbRow)).select('*').single();
+      : await adminSupabase.from('glaps_transport_routes').insert(withRequiredInsertDefaults(dbRow)).select('*').single();
     if (error) {
       if (isDuplicateConstraintError(error)) {
         return { error: duplicateJsonError('이미 같은 운송경로가 등록되어 있습니다.') };
@@ -1191,7 +1216,7 @@ async function handleDirectMutation({ adminSupabase, payload, version, branchId,
   }
   const { data, error } = id
     ? await adminSupabase.from('glaps_master_aliases').update(dbRow).eq('id', id).eq('version_id', version.id).select('*').single()
-    : await adminSupabase.from('glaps_master_aliases').insert(withRequiredId(dbRow)).select('*').single();
+    : await adminSupabase.from('glaps_master_aliases').insert(withRequiredInsertDefaults(dbRow)).select('*').single();
   if (error) {
     if (isDuplicateConstraintError(error)) {
       return {
@@ -1383,8 +1408,7 @@ export async function POST(request) {
 
       const { data: version, error: versionError } = await access.adminSupabase
         .from('glaps_master_versions')
-        .insert({
-          id: crypto.randomUUID(),
+        .insert(withRequiredInsertDefaults({
           branch_id: branchId,
           source_name: sourceName,
           source_hash: sourceHash,
@@ -1396,10 +1420,10 @@ export async function POST(request) {
           sheet_row_count: parsed.sheetRows.length,
           metadata: {
             routeSheetName: parsed.routeSheetName,
-            sheetCount: parsed.sourceSheets.length,
-            summary: parsed.summary,
-          },
-        })
+              sheetCount: parsed.sourceSheets.length,
+              summary: parsed.summary,
+            },
+        }, { importedAt: true }))
         .select('*')
         .single();
       if (versionError) throw versionError;
@@ -1416,15 +1440,15 @@ export async function POST(request) {
       const sheetRows = parsed.sheetRows.map(sheetRow => toSheetRowDbRow(sheetRow, { branchId, versionId: version.id }));
 
       if (routeRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_transport_routes').insert(routeRows.map(withRequiredId));
+        const { error } = await access.adminSupabase.from('glaps_transport_routes').insert(routeRows.map(row => withRequiredInsertDefaults(row)));
         if (error) throw error;
       }
       if (aliasRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_aliases').insert(aliasRows.map(withRequiredId));
+        const { error } = await access.adminSupabase.from('glaps_master_aliases').insert(aliasRows.map(row => withRequiredInsertDefaults(row)));
         if (error) throw error;
       }
       if (sheetRows.length > 0) {
-        const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows.map(withRequiredId));
+        const { error } = await access.adminSupabase.from('glaps_master_sheet_rows').insert(sheetRows.map(row => withRequiredInsertDefaults(row, { updatedAt: false })));
         if (error) throw error;
       }
       await refreshVersionCounts(access.adminSupabase, version.id);

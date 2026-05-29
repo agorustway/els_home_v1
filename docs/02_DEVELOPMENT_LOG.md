@@ -1,3 +1,22 @@
+## [2026-05-29] GLAPS 엑셀 업로드 timestamp 기본값 보강 (v5.14.280)
+### 원인
+- 운영 DB 기존 `glaps_master_aliases` 테이블에 `created_at` 기본값도 누락되어, ID 보강 후 신규 항목매핑 행이 다음 not-null 제약에서 다시 실패했습니다.
+- PostgREST upsert는 기존 ID 행이어도 insert 후보 row가 not-null 기본값을 만족해야 하므로, 기본값 없는 운영 DB에서는 upsert 자체가 취약했습니다.
+### 조치
+- 신규 insert 행은 `id`, `created_at`, `updated_at`, 버전 행의 `imported_at`을 API에서 직접 채웁니다.
+- 수정양식 업로드에서 기존 ID 행은 upsert 대신 update로 처리하고, 신규/누락 ID 행만 insert로 분리했습니다.
+- SQL에는 GLAPS 관련 테이블의 `id`, `created_at`, `updated_at`, `imported_at` 기본값 보강을 추가했습니다.
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] GLAPS 엑셀 업로드 신규행 UUID 보강 (v5.14.279)
 ### 원인
 - 운영 DB의 `glaps_master_aliases.id` 기본값이 기존 테이블 생성 시점에 누락된 상태였습니다.
