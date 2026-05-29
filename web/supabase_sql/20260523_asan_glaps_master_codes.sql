@@ -145,6 +145,29 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_sheet_rows (
     UNIQUE (branch_id, version_id, sheet_name, row_number)
 );
 
+CREATE TABLE IF NOT EXISTS public.glaps_special_consignee_rules (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    branch_id TEXT NOT NULL DEFAULT 'asan',
+    shipper_code TEXT NOT NULL DEFAULT '',
+    waypoint_name TEXT NOT NULL DEFAULT '',
+    consignee_code TEXT NOT NULL DEFAULT '',
+    priority INTEGER NOT NULL DEFAULT 100,
+    review_note TEXT NOT NULL DEFAULT '',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by TEXT,
+    updated_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_glaps_special_consignee_rules_active
+    ON public.glaps_special_consignee_rules (branch_id, shipper_code, waypoint_name)
+    WHERE active;
+
+CREATE INDEX IF NOT EXISTS idx_glaps_special_consignee_rules_lookup
+    ON public.glaps_special_consignee_rules (branch_id, shipper_code, priority)
+    WHERE active;
+
 ALTER TABLE public.glaps_master_versions
     ALTER COLUMN id SET DEFAULT gen_random_uuid();
 
@@ -172,6 +195,13 @@ ALTER TABLE public.glaps_master_sheet_rows
 
 ALTER TABLE public.glaps_master_sheet_rows
     ALTER COLUMN created_at SET DEFAULT now();
+
+ALTER TABLE public.glaps_special_consignee_rules
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+ALTER TABLE public.glaps_special_consignee_rules
+    ALTER COLUMN created_at SET DEFAULT now(),
+    ALTER COLUMN updated_at SET DEFAULT now();
 
 CREATE INDEX IF NOT EXISTS idx_glaps_master_sheet_rows_lookup
     ON public.glaps_master_sheet_rows (branch_id, version_id, sheet_name, row_number);
@@ -204,15 +234,23 @@ BEFORE UPDATE ON public.glaps_master_aliases
 FOR EACH ROW
 EXECUTE FUNCTION public.touch_glaps_master_updated_at();
 
+DROP TRIGGER IF EXISTS trg_glaps_special_consignee_rules_updated_at ON public.glaps_special_consignee_rules;
+CREATE TRIGGER trg_glaps_special_consignee_rules_updated_at
+BEFORE UPDATE ON public.glaps_special_consignee_rules
+FOR EACH ROW
+EXECUTE FUNCTION public.touch_glaps_master_updated_at();
+
 ALTER TABLE public.glaps_master_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.glaps_transport_routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.glaps_master_aliases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.glaps_master_sheet_rows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.glaps_special_consignee_rules ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS service_role_glaps_master_versions ON public.glaps_master_versions;
 DROP POLICY IF EXISTS service_role_glaps_transport_routes ON public.glaps_transport_routes;
 DROP POLICY IF EXISTS service_role_glaps_master_aliases ON public.glaps_master_aliases;
 DROP POLICY IF EXISTS service_role_glaps_master_sheet_rows ON public.glaps_master_sheet_rows;
+DROP POLICY IF EXISTS service_role_glaps_special_consignee_rules ON public.glaps_special_consignee_rules;
 
 CREATE POLICY service_role_glaps_master_versions
 ON public.glaps_master_versions
@@ -242,12 +280,45 @@ TO service_role
 USING (true)
 WITH CHECK (true);
 
+CREATE POLICY service_role_glaps_special_consignee_rules
+ON public.glaps_special_consignee_rules
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+
 REVOKE ALL ON TABLE public.glaps_master_versions FROM anon, authenticated;
 REVOKE ALL ON TABLE public.glaps_transport_routes FROM anon, authenticated;
 REVOKE ALL ON TABLE public.glaps_master_aliases FROM anon, authenticated;
 REVOKE ALL ON TABLE public.glaps_master_sheet_rows FROM anon, authenticated;
+REVOKE ALL ON TABLE public.glaps_special_consignee_rules FROM anon, authenticated;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_master_versions TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_transport_routes TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_master_aliases TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_master_sheet_rows TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_special_consignee_rules TO service_role;
+
+INSERT INTO public.glaps_special_consignee_rules (
+    branch_id,
+    shipper_code,
+    waypoint_name,
+    consignee_code,
+    priority,
+    review_note,
+    active,
+    created_by,
+    updated_by
+)
+VALUES
+    ('asan', 'B000034432', '모비스 천안친환경물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '모비스 AS아산센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '모비스 AS천안수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'B000034432', '', 'MOBBEL', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
+ON CONFLICT (branch_id, shipper_code, waypoint_name) WHERE active
+DO UPDATE SET
+    consignee_code = EXCLUDED.consignee_code,
+    priority = EXCLUDED.priority,
+    review_note = EXCLUDED.review_note,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = now();

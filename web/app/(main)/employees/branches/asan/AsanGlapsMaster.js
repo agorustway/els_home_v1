@@ -77,6 +77,14 @@ const EMPTY_ALIAS_EDITOR = {
     reviewNote: '',
 };
 
+const EMPTY_SPECIAL_RULE_EDITOR = {
+    shipperCode: '',
+    waypointName: '',
+    consigneeCode: '',
+    priority: '100',
+    reviewNote: '',
+};
+
 function formatDateTime(value) {
     if (!value) return '-';
     const date = new Date(value);
@@ -174,6 +182,16 @@ function aliasToEditorValues(row = {}) {
     };
 }
 
+function specialRuleToEditorValues(row = {}) {
+    return {
+        shipperCode: row.shipper_code || '',
+        waypointName: row.waypoint_name || '',
+        consigneeCode: row.consignee_code || '',
+        priority: String(row.priority || 100),
+        reviewNote: row.review_note || '',
+    };
+}
+
 function bulkFieldOptions(activeTable) {
     if (activeTable === 'routes') return ROUTE_BULK_FIELD_OPTIONS;
     if (activeTable === 'aliases') return ALIAS_BULK_FIELD_OPTIONS;
@@ -261,10 +279,13 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const routes = data?.routes || [];
     const aliases = (data?.aliases || []).filter(row => !ROUTE_ALIAS_TYPES.has(String(row.alias_type || '').trim()));
     const sheetRows = data?.sheetRows || [];
+    const specialRules = data?.specialRules || [];
     const sheetSummary = data?.sheetSummary || [];
     const summary = data?.summary || { total: 0, ready: 0, needsMapping: 0, missingRouteCode: 0 };
 
-    const tableRows = activeTable === 'routes' ? routes : (activeTable === 'aliases' ? aliases : sheetRows);
+    const tableRows = activeTable === 'routes'
+        ? routes
+        : (activeTable === 'aliases' ? aliases : (activeTable === 'specialRules' ? specialRules : sheetRows));
     const version = data?.version || null;
     const duplicateInfo = useMemo(() => buildDuplicateInfo(activeTable, tableRows), [activeTable, tableRows]);
     const hasDuplicateRows = duplicateInfo.rowCount > 0;
@@ -290,11 +311,15 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             title: '항목매핑',
             count: aliases.length,
         },
+        specialRules: {
+            title: '특이적용건',
+            count: specialRules.length,
+        },
         sheets: {
             title: '원본시트',
             count: sheetRows.length,
         },
-    }), [aliases.length, routes.length, sheetRows.length]);
+    }), [aliases.length, routes.length, sheetRows.length, specialRules.length]);
 
     const postWorkbook = async ({ mode, source = 'upload', file = null, path = '' }) => {
         const formData = new FormData();
@@ -345,6 +370,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             setEditor({ mode: 'routes', id: null, values: { ...EMPTY_ROUTE_EDITOR } });
         } else if (activeTable === 'aliases') {
             setEditor({ mode: 'aliases', id: null, values: { ...EMPTY_ALIAS_EDITOR } });
+        } else if (activeTable === 'specialRules') {
+            setEditor({ mode: 'specialRules', id: null, values: { ...EMPTY_SPECIAL_RULE_EDITOR } });
         }
     };
 
@@ -353,6 +380,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             setEditor({ mode: 'routes', id: row.id, values: routeToEditorValues(row) });
         } else if (activeTable === 'aliases') {
             setEditor({ mode: 'aliases', id: row.id, values: aliasToEditorValues(row) });
+        } else if (activeTable === 'specialRules') {
+            setEditor({ mode: 'specialRules', id: row.id, values: specialRuleToEditorValues(row) });
         }
     }, [activeTable]);
 
@@ -607,6 +636,28 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 },
             ];
         }
+        if (activeTable === 'specialRules') {
+            return [
+                { key: 'shipper_code', label: '화주사코드', value: row => row.shipper_code, className: styles.keyCell },
+                { key: 'waypoint_name', label: '경유지 조건', value: row => row.waypoint_name || '(해당 화주사 기본)' },
+                { key: 'consignee_code', label: '컨샤이니 우선코드', value: row => row.consignee_code, className: styles.keyCell },
+                { key: 'priority', label: '우선순위', value: row => row.priority ?? 100 },
+                { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
+                { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
+                {
+                    key: 'actions',
+                    label: '관리',
+                    filterable: false,
+                    sortable: false,
+                    render: row => (
+                        <div className={styles.rowActions}>
+                            <button type="button" onClick={() => beginEditRow(row)} disabled={saving}>수정</button>
+                            <button type="button" onClick={() => deleteRow(row)} disabled={saving}>삭제</button>
+                        </div>
+                    ),
+                },
+            ];
+        }
         return [
             { key: 'sheet_name', label: '시트', value: row => row.sheet_name },
             { key: 'row_number', label: '행', value: row => row.row_number },
@@ -768,6 +819,15 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 els_name: 'elsName',
                 glaps_name: 'glapsName',
                 glaps_code: 'glapsCode',
+                review_note: 'reviewNote',
+            })[columnKey] || '';
+        }
+        if (editor?.mode === 'specialRules') {
+            return ({
+                shipper_code: 'shipperCode',
+                waypoint_name: 'waypointName',
+                consignee_code: 'consigneeCode',
+                priority: 'priority',
                 review_note: 'reviewNote',
             })[columnKey] || '';
         }
@@ -956,6 +1016,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.fieldGuide}>
                 <span><b>매핑항목</b> 포트·선사·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
                 <span><b>검수메모</b> 매칭 키가 아니라 출처·용도·기본값을 남기는 참고/필터용 메모입니다.</span>
+                <span><b>특이적용건</b> 화주사코드와 경유지 조건이 맞으면 일반 컨샤이니 매핑보다 먼저 적용됩니다.</span>
             </div>
 
             <div className={styles.toolbar}>
@@ -978,7 +1039,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     <option value="missing_route_code">코드없음</option>
                 </select>
                 <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="코드, 작업지, 상차지 검색" />
-                {(activeTable === 'routes' || activeTable === 'aliases') && (
+                {(activeTable === 'routes' || activeTable === 'aliases' || activeTable === 'specialRules') && (
                     <button type="button" className={styles.primaryButton} onClick={beginNewRow} disabled={saving}>추가</button>
                 )}
                 {(activeTable === 'routes' || activeTable === 'aliases') && (

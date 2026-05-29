@@ -1,13 +1,13 @@
-# ELS MISSION CONTROL (v5.14.280 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.281 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 엑셀 업로드 신규행은 API에서 UUID와 생성/수정시각을 직접 넣어 운영 DB 기본값 누락에도 실패하지 않게 했다.
+> 최신 업데이트: GLAPS 특이적용건을 추가해 `B000034432` 모비스 특정 경유지는 컨샤이니 `GA1588`, 그 외는 `MOBBEL`을 일반 컨샤이니 매핑보다 우선 적용한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.280
+- **웹 버전**: v5.14.281
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 연간 원장은 삭제 없이 누적하고 current snapshot만 전환한다.
-- **GLAPS 활성 원장**: `6724943a-5c6c-416e-bab0-bbac487b8c4c` / 8개 시트 / 운송경로 541건 / 항목매핑 2,249건 / 원본행 1,177건.
+- **GLAPS 활성 원장**: `6724943a-5c6c-416e-bab0-bbac487b8c4c` / 8개 시트 / 운송경로 541건 / 항목매핑 2,249건 / 원본행 1,177건 / 특이적용건 4건.
 - **GLAPS NAS 백업**: `/아산지점/A_운송실무/GLAPS_마스터코드_backup_20260523_190603.xlsx`
 
 ## ACTIVE SYSTEMS
@@ -41,7 +41,7 @@
 - 운영 DB 항목매핑 UNIQUE는 `branch_id, version_id, alias_type, source_name, route_code, glaps_code` 단일 제약이다.
 - GLAPS 중복 판정/병합 기준은 운송경로=`운송경로코드`, 항목매핑=`최종코드(BP)` 단독 반복이다. 상차지/하차지/공장/매핑항목 등 다른 컬럼은 중복 판정에서 제외한다.
 - GLAPS `운송경로코드`와 `최종코드(BP)`는 수정 가능한 핵심 키값이므로 화면/수정양식에서 초록 키 칸으로 표시한다.
-- GLAPS 요약 카드는 운송경로 상태/원본시트로 이동하는 필터 버튼이며, `검수메모`는 매칭 키가 아니라 출처·용도·기본값 확인용 메모다.
+- GLAPS 요약 카드는 운송경로 상태/원본시트로 이동하는 필터 버튼이며, `검수메모`는 매칭 키가 아니라 출처·용도·기본값 확인용 메모다. `특이적용건`은 화주사코드+경유지 조건 컨샤이니 우선규칙이며, 경유지 빈값은 해당 화주사 기본값이다.
 - 상세배차 후미 최종 컬럼: `오더구분코드`, `화주사코드`, `반출지(출발)코드`, `작업지(하차지)코드`, `반입지(도착)코드`, `운송서비스코드`, `운송사코드`, `컨샤이니`, `수정일시`.
 - GLAPS 직접수정은 `updated_by = web:<email>`, 수정양식 업로드는 `template_upload:<email>`, 마스터 반영은 `master:<email>`로 구분한다.
 - GLAPS 수정양식은 `설명서`, `운송경로_수정양식`, `항목매핑_수정양식` 시트를 함께 내려받는다. 삭제는 행 삭제가 아니라 `삭제(Y)` 입력으로만 처리한다.
@@ -78,22 +78,12 @@
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
 
 ## RECENT CHANGES
+- **v5.14.281**: GLAPS 특이적용건 테이블/화면/API를 추가했다. `B000034432`는 `모비스 천안친환경물류센터`, `모비스 AS아산센터`, `모비스 AS천안수출물류센터` 경유 시 컨샤이니 `GA1588`, 그 외 경유지는 `MOBBEL`을 우선 적용한다.
+- **운영데이터 2026-05-29**: 글로비스 2026-05-29 `PLMAA/인천/TCR` DB 1행을 원본 엑셀 상태와 맞춰 특이사항 `성도(TCR)`, 라인 `CG`로 보정했다.
 - **v5.14.280**: GLAPS 엑셀 업로드 신규 항목매핑 행이 `created_at` not-null 오류로 막히던 문제를 추가 보정했다. 신규 insert는 `id/created_at/updated_at`을 API에서 채우고, 기존 ID 행은 upsert가 아니라 update로 처리해 DB 기본값 누락 영향을 받지 않게 했다.
-- **v5.14.279**: GLAPS 엑셀 수정양식/마스터 업로드에서 신규 `glaps_master_aliases` 행이 `id` 없이 insert되어 not-null 오류가 나던 문제를 막았다. 신규 운송경로/항목매핑/원본행/버전 행은 API에서 UUID를 직접 넣고, SQL에는 기존 테이블도 `id DEFAULT gen_random_uuid()`를 보강하도록 추가했다.
-- **v5.14.278**: GLAPS 업로드 시트의 같은 부킹 자동 병합을 제거했다. 상세배차/배차변동은 이미 1대 단위 라인이므로 컨테이너 수량은 항상 1로 출력한다.
-- **v5.14.277**: 연간실적 원장 테이블 검색에서 컨테이너/씰/부킹/차량/전화번호형 검색어를 DB 정렬·snapshot 스캔 없이 식별번호 인덱스로 후보 조회 후 current snapshot만 서버에서 거르도록 최적화했다.
-- **v5.14.276**: 상세배차/배차변동 시간값을 HH:MM으로 정규화하고, 현재화면/GLAPS 업로드 엑셀 다운로드의 시간 컬럼을 `hh:mm` 서식으로 저장한다.
-- **v5.14.275**: 차량관제 테이블의 public permissive RLS와 anon/authenticated 직접 grant를 제거했다. 차량관제 API 조회 라우트는 service role client로 전환했다.
-- **v5.14.274**: 운영 웹 스모크에서 디버그 페이지는 열리지만 내부 데이터 API가 401로 떨어지는 흐름을 확인했다. 서버 Supabase client가 `__debug_mode` 쿠키도 읽도록 보정했다.
 ## VERIFICATION
-- Supabase Advisor: 차량관제 permissive policy 경고 해소. 남은 WARN은 Auth leaked password protection Dashboard 설정 1건.
-- 운영 웹 스모크: `/`, `/employees/ask?debug=true`, `/api/board?type=webzine` 200. 내부 데이터 API는 비로그인 기준 401로 보호됨을 확인.
-- Supabase Advisor: `RLS Disabled in Public`, `Function Search Path Mutable`, `Extension in Public`, public `SECURITY DEFINER` RPC 경고 해소. 잔여는 Auth leaked password dashboard 설정, 의도적 no-policy 테이블.
-- DB 권한 검증: anon은 내부/외부 연락처 SELECT 불가, 공개 `posts/weekly_menus/emergency_notices` SELECT만 가능. route unit RPC는 service_role만 실행 가능.
-- 연간실적 검색 API 로컬 검증: `CMAU4194491` 1.2초대 2건, `MRSU7724750,KOCU4631633` 0.9초대 0건으로 timeout 없이 응답.
-- `cd web; npx eslint ...변경 API 라우트`: 통과. `cd web; npm run build`: 통과.
-- 글로비스 원본 `.xlsm` OOXML 패치 검증: `vbaProject.bin` SHA-256 보존, `셀맥` 잔여 0건, 계산 설정 `auto/fullCalcOnLoad/forceFullCalc/calcOnSave` 적용.
-- Supabase 검증: `branch_dispatch` 6행, `branch_dispatch_web_cells` 3행, `branch_dispatch_web_cell_history` 3행 업데이트. `셀맥(KIA)오성` 외 잔여 `셀맥` 0건.
+- 글로비스 원본 `.xlsm`/Supabase 검증: `5.29` 시트와 `branch_dispatch` 2026-05-29 글로비스 `PLMAA/인천` 1행이 `성도(TCR)/CG`로 일치하고 잔여 `TCR` 0건.
+- Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 - 최근 코드 변경 검증 내역은 `docs/02_DEVELOPMENT_LOG.md` 각 항목 참조.
 
 ## IN-PROGRESS

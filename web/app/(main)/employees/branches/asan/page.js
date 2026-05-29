@@ -813,6 +813,27 @@ function getGlapsAliasDefaultCode(map, value, preferredCode = '') {
     if (preferred && options.some(option => option.code === preferred)) return preferred;
     return (options.find(option => option.isDefault) || options[0]).code || '';
 }
+function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypointName = '' } = {}) {
+    const normalizedShipper = normalizeGlapsKey(shipperCode);
+    if (!normalizedShipper) return '';
+    const normalizedWaypoint = normalizeGlapsKey(waypointName);
+    const candidates = (rules || [])
+        .filter(rule => rule?.active !== false && rule?.consignee_code)
+        .map(rule => ({
+            rule,
+            shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
+            waypointKey: normalizeGlapsKey(rule.waypoint_name || rule.waypointName),
+            priority: Number(rule.priority ?? 100) || 100,
+        }))
+        .filter(item => item.shipperKey === normalizedShipper)
+        .filter(item => !item.waypointKey || item.waypointKey === normalizedWaypoint)
+        .sort((a, b) => (
+            Number(Boolean(b.waypointKey)) - Number(Boolean(a.waypointKey))
+            || a.priority - b.priority
+            || String(a.rule.consignee_code || '').localeCompare(String(b.rule.consignee_code || ''))
+        ));
+    return String(candidates[0]?.rule?.consignee_code || '').trim();
+}
 function setGlapsCodeMapValue(map, source, code) {
     const key = normalizeGlapsKey(source);
     if (key && code && !map.has(key)) map.set(key, code);
@@ -1201,7 +1222,7 @@ function AsanDispatchContent() {
     const [detailChangeSaving, setDetailChangeSaving] = useState(false);
     const [detailStateRefreshToken, setDetailStateRefreshToken] = useState(0);
     const [detailStateLoading, setDetailStateLoading] = useState(false);
-    const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [] });
+    const [glapsDetailLookup, setGlapsDetailLookup] = useState({ routes: [], aliases: [], sheetRows: [], specialRules: [] });
     const [glapsMasterRefreshToken, setGlapsMasterRefreshToken] = useState(0);
     const [glapsLookupLoading, setGlapsLookupLoading] = useState(false);
     const tabsRef = useRef(null);
@@ -1245,7 +1266,7 @@ function AsanDispatchContent() {
                 const response = await fetch(`/api/branches/asan/glaps/master?mode=lookup&t=${Date.now()}`, { cache: 'no-store' });
                 const payload = await response.json().catch(() => ({}));
                 if (!response.ok || payload.setupRequired) {
-                    if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
+                    if (!cancelled) setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [], specialRules: [] });
                     return;
                 }
                 if (!cancelled) {
@@ -1253,12 +1274,13 @@ function AsanDispatchContent() {
                         routes: payload.routes || [],
                         aliases: payload.aliases || [],
                         sheetRows: payload.sheetRows || [],
+                        specialRules: payload.specialRules || [],
                     });
                     glapsLookupLoadedTokenRef.current = lookupToken;
                 }
             } catch {
                 if (!cancelled) {
-                    setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [] });
+                    setGlapsDetailLookup({ routes: [], aliases: [], sheetRows: [], specialRules: [] });
                     glapsLookupLoadedTokenRef.current = null;
                 }
             } finally {
@@ -2085,6 +2107,10 @@ function AsanDispatchContent() {
         () => buildGlapsShipperCodeMap(glapsDetailLookup.routes || []),
         [glapsDetailLookup.routes],
     );
+    const glapsSpecialConsigneeRules = useMemo(
+        () => glapsDetailLookup.specialRules || [],
+        [glapsDetailLookup.specialRules],
+    );
 
     const enrichDetailLine = useCallback((line = {}, options = {}) => {
         const bkgOverride = options.bkgOverride || null;
@@ -2117,7 +2143,11 @@ function AsanDispatchContent() {
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
         const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
-        const glapsConsigneeCode = getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
+        const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode(glapsSpecialConsigneeRules, {
+            shipperCode: glapsShipperCode,
+            waypointName: line.workplace,
+        });
+        const glapsConsigneeCode = glapsSpecialConsigneeCode || getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
         const confirmedBkg = bkgOverride ? bkgOverride.value : snapshotConfirmedBkg || line.confirmedBkg || line.bkg1 || '';
         const bkgUpdatedAt = bkgOverride?.updatedAt || '';
         const confirmedAt = options.confirmedAt || '';
@@ -2157,7 +2187,7 @@ function AsanDispatchContent() {
             needsCarrierCodeMapping: !carrierCode,
             needsConsigneeCodeMapping: Boolean(line.customer) && !glapsConsigneeCode,
         };
-    }, [glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap]);
+    }, [glapsAliasMaps, glapsRouteMap, glapsShipperCodeMap, glapsSpecialConsigneeRules]);
 
     const detailConfirmationSnapshotByLineKey = useMemo(() => {
         const map = new Map();

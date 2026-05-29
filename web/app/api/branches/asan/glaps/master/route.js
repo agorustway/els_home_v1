@@ -30,6 +30,52 @@ const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'port', '
 const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
 const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['port', 'line', 'container_type', 'carrier', 'consignee']);
 const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
+const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
+  {
+    id: 'default-b000034432-mobis-cheonan-green-ga1588',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    shipper_code: 'B000034432',
+    waypoint_name: '모비스 천안친환경물류센터',
+    consignee_code: 'GA1588',
+    priority: 10,
+    review_note: '모비스 특이 경유지 컨샤이니 우선적용',
+    active: true,
+    updated_by: 'system:default',
+  },
+  {
+    id: 'default-b000034432-mobis-as-asan-ga1588',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    shipper_code: 'B000034432',
+    waypoint_name: '모비스 AS아산센터',
+    consignee_code: 'GA1588',
+    priority: 10,
+    review_note: '모비스 특이 경유지 컨샤이니 우선적용',
+    active: true,
+    updated_by: 'system:default',
+  },
+  {
+    id: 'default-b000034432-mobis-as-cheonan-export-ga1588',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    shipper_code: 'B000034432',
+    waypoint_name: '모비스 AS천안수출물류센터',
+    consignee_code: 'GA1588',
+    priority: 10,
+    review_note: '모비스 특이 경유지 컨샤이니 우선적용',
+    active: true,
+    updated_by: 'system:default',
+  },
+  {
+    id: 'default-b000034432-mobbel-fallback',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    shipper_code: 'B000034432',
+    waypoint_name: '',
+    consignee_code: 'MOBBEL',
+    priority: 999,
+    review_note: 'B000034432 기본 컨샤이니',
+    active: true,
+    updated_by: 'system:default',
+  },
+]);
 const ROUTE_DIRECT_BULK_FIELDS = new Set([
   'shipperCode',
   'routeCode',
@@ -56,7 +102,7 @@ const ALIAS_DIRECT_DUPLICATE_FIELDS = new Set(['aliasType', 'sourceName', 'route
 function isMissingGlapsTableError(error) {
   const code = String(error?.code || '');
   const message = String(error?.message || error || '').toLowerCase();
-  const isGlapsObject = /glaps_(master_versions|transport_routes|master_aliases|master_sheet_rows)/.test(message);
+  const isGlapsObject = /glaps_(master_versions|transport_routes|master_aliases|master_sheet_rows|special_consignee_rules)/.test(message);
   if (['42P01', '42703', 'PGRST205', 'PGRST204'].includes(code)) return isGlapsObject || message.includes('schema cache');
   return isGlapsObject && (message.includes('does not exist') || message.includes('schema cache'));
 }
@@ -184,6 +230,17 @@ function directAliasFromPayload(row = {}) {
   };
   alias.reviewStatus = normalizeReviewStatus(row.reviewStatus ?? row.review_status, alias.elsName || alias.glapsCode ? 'ready' : 'needs_mapping');
   return alias;
+}
+
+function directSpecialConsigneeRuleFromPayload(row = {}) {
+  return {
+    id: cleanText(row.id),
+    shipperCode: cleanText(row.shipperCode ?? row.shipper_code),
+    waypointName: cleanText(row.waypointName ?? row.waypoint_name),
+    consigneeCode: cleanText(row.consigneeCode ?? row.consignee_code),
+    priority: Number(row.priority ?? 100) || 100,
+    reviewNote: cleanText(row.reviewNote ?? row.review_note),
+  };
 }
 
 function normalizeDirectBulkPatch(target, payload = {}) {
@@ -341,6 +398,19 @@ function toSheetRowDbRow(sheetRow, { branchId, versionId }) {
   };
 }
 
+function toSpecialConsigneeRuleDbRow(rule, { branchId, userEmail }) {
+  return {
+    branch_id: branchId,
+    shipper_code: cleanText(rule.shipperCode),
+    waypoint_name: cleanText(rule.waypointName),
+    consignee_code: cleanText(rule.consigneeCode),
+    priority: Number(rule.priority) || 100,
+    review_note: cleanText(rule.reviewNote),
+    active: true,
+    updated_by: userEmail,
+  };
+}
+
 function routeDbRowFromExisting(row = {}, { branchId, versionId }) {
   return {
     branch_id: branchId,
@@ -405,6 +475,24 @@ async function fetchPagedGlapsRows(buildQuery) {
     if (!data || data.length < PAGE_SIZE) break;
   }
   return rows;
+}
+
+async function fetchSpecialConsigneeRules(adminSupabase, branchId) {
+  try {
+    return await fetchPagedGlapsRows(() => adminSupabase
+      .from('glaps_special_consignee_rules')
+      .select('*')
+      .eq('branch_id', branchId)
+      .eq('active', true)
+      .order('shipper_code', { ascending: true })
+      .order('priority', { ascending: true })
+      .order('waypoint_name', { ascending: true }));
+  } catch (error) {
+    if (isMissingGlapsTableError(error)) {
+      return DEFAULT_SPECIAL_CONSIGNEE_RULES.filter(row => row.branch_id === branchId);
+    }
+    throw error;
+  }
 }
 
 async function refreshVersionCounts(adminSupabase, versionId) {
@@ -1141,6 +1229,50 @@ async function bulkUpdateDirectRows(adminSupabase, { target, version, branchId, 
   };
 }
 
+async function handleSpecialConsigneeRuleMutation({ adminSupabase, payload, branchId, userEmail }) {
+  const action = cleanText(payload.action || 'upsert');
+  if (!['upsert', 'delete'].includes(action)) return { error: jsonError('지원하지 않는 특이적용건 동작입니다.', 400) };
+
+  const actor = buildEditActor('web', userEmail);
+  const row = payload.row || {};
+  const id = cleanText(payload.id || row.id);
+  if (action === 'delete') {
+    if (!id) return { error: jsonError('삭제할 특이적용건 ID가 없습니다.', 400) };
+    const { error } = await adminSupabase
+      .from('glaps_special_consignee_rules')
+      .update({ active: false, updated_by: actor })
+      .eq('id', id)
+      .eq('branch_id', branchId);
+    if (error) throw error;
+    return { result: { success: true, mode: 'specialRules', action, updated: 0, deleted: 1 } };
+  }
+
+  const rule = directSpecialConsigneeRuleFromPayload(row);
+  if (!rule.shipperCode) return { error: jsonError('화주사코드는 필수입니다.', 400) };
+  if (!rule.consigneeCode) return { error: jsonError('컨샤이니 우선코드는 필수입니다.', 400) };
+  const dbRow = toSpecialConsigneeRuleDbRow(rule, { branchId, userEmail: actor });
+  const { data, error } = id
+    ? await adminSupabase
+      .from('glaps_special_consignee_rules')
+      .update(dbRow)
+      .eq('id', id)
+      .eq('branch_id', branchId)
+      .select('*')
+      .single()
+    : await adminSupabase
+      .from('glaps_special_consignee_rules')
+      .insert(withRequiredInsertDefaults({ ...dbRow, created_by: actor }))
+      .select('*')
+      .single();
+  if (error) {
+    if (isDuplicateConstraintError(error)) {
+      return { error: duplicateJsonError('이미 같은 화주사코드·경유지 조건의 특이적용건이 있습니다.') };
+    }
+    throw error;
+  }
+  return { result: { success: true, mode: 'specialRules', action, updated: 1, deleted: 0, row: data } };
+}
+
 async function handleDirectMutation({ adminSupabase, payload, version, branchId, userEmail }) {
   const mode = cleanText(payload.mode);
   const action = cleanText(payload.action || 'upsert');
@@ -1245,12 +1377,14 @@ export async function GET(request) {
   try {
     const version = await getActiveVersion(access.adminSupabase, branchId);
     if (!version) {
+      const specialRules = await fetchSpecialConsigneeRules(access.adminSupabase, branchId);
       return NextResponse.json({
         setupRequired: false,
         version: null,
         routes: [],
         aliases: [],
         sheetRows: [],
+        specialRules,
         sheetSummary: [],
         summary: summarizeGlapsRoutes([]),
         matchQuery: getGlapsRouteMatchQuery(),
@@ -1258,7 +1392,7 @@ export async function GET(request) {
     }
 
     if (mode === 'lookup') {
-      const [routeRows, aliasRows, sheetRows] = await Promise.all([
+      const [routeRows, aliasRows, sheetRows, specialRules] = await Promise.all([
         fetchPagedGlapsRows(() => access.adminSupabase
           .from('glaps_transport_routes')
           .select('id, route_code, route_name, start_location_name, waypoint_name, waypoint_els_name, destination_name, route_fingerprint, raw_payload')
@@ -1280,6 +1414,7 @@ export async function GET(request) {
           .in('sheet_name', GLAPS_LOOKUP_SHEET_NAMES)
           .order('sheet_name', { ascending: true })
           .order('row_number', { ascending: true })),
+        fetchSpecialConsigneeRules(access.adminSupabase, branchId),
       ]);
 
       return NextResponse.json({
@@ -1293,11 +1428,12 @@ export async function GET(request) {
         routes: routeRows || [],
         aliases: aliasRows || [],
         sheetRows: sheetRows || [],
+        specialRules: specialRules || [],
         matchQuery: getGlapsRouteMatchQuery(),
       });
     }
 
-    const [routeRows, aliasRows, sheetRows] = await Promise.all([
+    const [routeRows, aliasRows, sheetRows, specialRules] = await Promise.all([
       fetchPagedGlapsRows(() => access.adminSupabase
         .from('glaps_transport_routes')
         .select('*')
@@ -1317,6 +1453,7 @@ export async function GET(request) {
         .eq('version_id', version.id)
         .order('sheet_name', { ascending: true })
         .order('row_number', { ascending: true })),
+      fetchSpecialConsigneeRules(access.adminSupabase, branchId),
     ]);
 
     const filterRow = (row) => {
@@ -1333,10 +1470,20 @@ export async function GET(request) {
         JSON.stringify(row.row_payload || {}),
       ].some(value => String(value || '').toLowerCase().includes(search));
     };
+    const filterSpecialRule = (row) => {
+      if (!search) return true;
+      return [
+        row.shipper_code,
+        row.waypoint_name,
+        row.consignee_code,
+        row.review_note,
+      ].some(value => String(value || '').toLowerCase().includes(search));
+    };
 
     const routes = (routeRows || []).filter(filterRow);
     const aliases = (aliasRows || []).filter(filterRow);
     const filteredSheetRows = (sheetRows || []).filter(filterSheetRow);
+    const filteredSpecialRules = (specialRules || []).filter(filterSpecialRule);
     const activeRoutes = (routeRows || []).map(row => ({
       reviewStatus: row.review_status,
       routeCode: row.route_code,
@@ -1349,6 +1496,7 @@ export async function GET(request) {
       routes,
       aliases,
       sheetRows: filteredSheetRows,
+      specialRules: filteredSpecialRules,
       sheetSummary: buildSheetSummary(sheetRows || []),
       summary: summarizeGlapsRoutes(activeRoutes),
       matchQuery: getGlapsRouteMatchQuery(),
@@ -1377,6 +1525,17 @@ export async function POST(request) {
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const payload = await request.json().catch(() => ({}));
+      const mode = cleanText(payload.mode);
+      if (['specialRule', 'specialRules', 'special_consignee_rules'].includes(mode)) {
+        const mutation = await handleSpecialConsigneeRuleMutation({
+          adminSupabase: access.adminSupabase,
+          payload,
+          branchId,
+          userEmail: access.user.email,
+        });
+        if (mutation.error) return mutation.error;
+        return NextResponse.json(mutation.result);
+      }
       const version = await getActiveVersion(access.adminSupabase, branchId);
       if (!version) return jsonError('활성 GLAPS 마스터 버전이 없습니다. 먼저 마스터 엑셀을 반영하세요.', 400);
       const mutation = await handleDirectMutation({

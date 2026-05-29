@@ -1,3 +1,47 @@
+## [2026-05-29] GLAPS 특이적용건 컨샤이니 우선순위 구성 (v5.14.281)
+### 핵심
+- GLAPS 코드 화면에 `특이적용건` 탭을 추가해 화주사코드+경유지 조건별 컨샤이니 우선코드를 추가/수정/삭제할 수 있게 했습니다.
+- 상세배차 GLAPS 코드 산출 시 일반 컨샤이니 항목매핑보다 특이적용건을 먼저 적용합니다. 경유지가 정확히 맞는 규칙이 빈 경유지 기본 규칙보다 우선이고, 같은 조건에서는 `priority` 낮은 값이 우선입니다.
+- 운영 DB에 `glaps_special_consignee_rules` 테이블을 적용하고, `B000034432` 기본 규칙 4건을 시드했습니다.
+### 현재 적용 규칙
+- `B000034432 + 모비스 천안친환경물류센터` → `GA1588`
+- `B000034432 + 모비스 AS아산센터` → `GA1588`
+- `B000034432 + 모비스 AS천안수출물류센터` → `GA1588`
+- `B000034432 + 경유지 빈값 기본` → `MOBBEL`
+### 검증
+- `cd web; node --test tests\glapsDuplicateGroups.test.mjs tests\glapsMasterData.test.mjs tests\asanDashboardView.test.mjs`: 51개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+- Supabase 운영 DB: `glaps_special_consignee_rules` 생성 및 `B000034432` active 규칙 4건 확인
+- 로컬 API: `/api/branches/asan/glaps/master?mode=lookup`에서 UUID가 있는 특이적용건 4건 반환 확인
+- Codex Browser 플러그인은 Windows sandbox `spawn setup refresh` 오류로 실행기가 두 차례 종료되어 화면 직접 캡처는 진행하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- Supabase 운영 DB 마이그레이션 `add_glaps_special_consignee_rules_20260529`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-29] 글로비스 PLMAA 라인 WEB DB 보정
+### 핵심
+- 스크린샷 기준 대상인 글로비스 2026-05-29 `PLMAA / 인천 / TCR` 1행을 WEB 배차판 DB에서 원본 엑셀과 동일하게 보정했습니다.
+- 원본 엑셀 `5.29` 시트는 이미 `PLMAA / 성도(TCR) / 인천 / CG` 상태였으므로 파일 업로드 변경은 수행하지 않았습니다.
+- DB `branch_dispatch.data`의 해당 행만 특이사항 `성도(TCR)`, 라인 `CG`로 수정했습니다.
+- 해당 행에는 WEB 셀 오버레이, 상세배차 스냅샷, 배차변동 이벤트가 없어 추가 row signature 보정은 필요하지 않았습니다.
+### 검증
+- 원본 엑셀 확인: `5.29` 시트 대상 행이 `성도(TCR)/CG`이며 `vbaProject.bin` 변경 없음.
+- Supabase 조회: 2026-05-29 글로비스 `PLMAA/인천` 대상 행이 `성도(TCR)/CG`로 반환됨.
+- Supabase 잔여 조회: 2026-05-29 글로비스 `PLMAA/인천` 라인 `TCR%` 0건.
+### 변경 파일
+- Supabase 운영 DB
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] GLAPS 엑셀 업로드 timestamp 기본값 보강 (v5.14.280)
 ### 원인
 - 운영 DB 기존 `glaps_master_aliases` 테이블에 `created_at` 기본값도 누락되어, ID 보강 후 신규 항목매핑 행이 다음 not-null 제약에서 다시 실패했습니다.
