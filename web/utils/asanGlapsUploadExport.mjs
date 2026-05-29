@@ -128,51 +128,9 @@ function shouldSkipDetailRow(headerIndex, row = [], options = {}) {
   return getByHeader(row, headerIndex, [GLAPS_CHANGE_TYPE_HEADER]) === '삭제';
 }
 
-function canGroupUploadRow(row = []) {
-  const headerIndex = buildHeaderIndex(GLAPS_UPLOAD_HEADERS);
-  return Boolean(
-    getByHeader(row, headerIndex, ['부킹번호'])
-    && getByHeader(row, headerIndex, ['운송경로 코드'])
-    && getByHeader(row, headerIndex, ['선사코드'])
-    && getByHeader(row, headerIndex, ['컨테이너 규격']),
-  );
-}
-
-function makeGroupKey(row = []) {
-  const quantityIdx = GLAPS_UPLOAD_HEADERS.indexOf(GLAPS_UPLOAD_QUANTITY_HEADER);
-  return row.map((value, idx) => (idx === quantityIdx ? '' : cleanText(value))).join('\u001f');
-}
-
-function groupGlapsUploadRows(rows = []) {
-  const quantityIdx = GLAPS_UPLOAD_HEADERS.indexOf(GLAPS_UPLOAD_QUANTITY_HEADER);
-  const grouped = [];
-  const indexByKey = new Map();
-
-  rows.forEach((row) => {
-    if (!canGroupUploadRow(row)) {
-      grouped.push(row);
-      return;
-    }
-    const key = makeGroupKey(row);
-    const existingIdx = indexByKey.get(key);
-    if (existingIdx === undefined) {
-      indexByKey.set(key, grouped.length);
-      grouped.push([...row]);
-      return;
-    }
-    const existing = grouped[existingIdx];
-    const currentQty = Number(existing[quantityIdx] || 0);
-    existing[quantityIdx] = currentQty + Number(row[quantityIdx] || 1);
-  });
-
-  return grouped;
-}
-
 export function buildGlapsUploadRowsFromDetailRows({ headers = [], rows = [], skipDeleted = false } = {}) {
   const headerIndex = buildHeaderIndex(headers);
-  const uploadRows = rows
+  return rows
     .filter(row => !shouldSkipDetailRow(headerIndex, row, { skipDeleted }))
     .map(row => detailRowToGlapsUploadRow(headerIndex, row));
-
-  return groupGlapsUploadRows(uploadRows);
 }

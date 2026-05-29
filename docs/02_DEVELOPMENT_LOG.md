@@ -1,3 +1,23 @@
+## [2026-05-29] GLAPS 업로드 시트 컨테이너 수량 병합 제거 (v5.14.278)
+### 원인
+- 상세배차/배차변동 다운로드의 `GLAPS_업로드` 시트 생성 시 같은 GLAPS 출력값을 가진 행을 하나로 병합하고 `컨테이너 수량`을 합산하는 로직이 남아 있었습니다.
+- 우리 상세배차는 지역칸 업체수량을 이미 1대 단위 라인으로 펼친 자료라, 같은 부킹/운송경로가 반복돼도 GLAPS 업로드에서는 각각 별도 오더 행이어야 합니다.
+- 따라서 오늘 자료에서 동일 조건 2대가 있으면 원본 상세행이 2행이어도 GLAPS 시트에서는 1행, `컨테이너 수량=2`로 보이는 문제가 발생했습니다.
+### 조치
+- `GLAPS_업로드` 행 병합을 제거하고, 상세배차/배차변동 1행이 GLAPS 업로드 1행으로 그대로 나가게 했습니다.
+- `컨테이너 수량`은 모든 GLAPS 업로드 행에서 1로 유지합니다.
+- 기존 테스트명과 기대값도 “같은 부킹도 1대씩 분리” 기준으로 바꿨습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs tests\intranetExcelExport.test.mjs`: 61개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "utils/asanGlapsUploadExport.mjs" "tests/asanDispatchDetailLines.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/utils/asanGlapsUploadExport.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] 연간실적 테이블 식별번호 검색 timeout 완화 (v5.14.277)
 ### 핵심
 - 연간실적 테이블에서 `CMAU...`, `MRSU...`, `KOCU...` 같은 컨테이너/식별번호 검색이 원장 36만 행을 넓게 훑으며 `canceling statement due to statement timeout`으로 떨어지는 문제를 확인했습니다.
