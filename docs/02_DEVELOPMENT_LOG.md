@@ -1,3 +1,24 @@
+## [2026-05-29] 상세배차 상차지/포트코드 override 저장 보강 (v5.14.283)
+### 원인
+- 상세배차 `상차지` 선택값은 화면 local state에만 남고 `branch_dispatch_detail_overrides` 저장 API에 반영되지 않아, 재조회/새로고침 시 원본 계산값으로 초기화됐습니다.
+- `포트코드`는 override 저장 경로는 있었지만 배차확정 후에는 선택 UI가 비활성화되어 확정 이후 GLAPS 검수 보정이 막혔습니다.
+### 조치
+- 상세배차 override API 허용 필드에 `start_location`을 추가하고, 상차지 선택값을 저장/조회/재적용하도록 연결했습니다.
+- 배차확정 후에도 상세배차의 `상차지`, `포트코드`는 수정 가능하게 열어 두고, 확정시각 이후 저장된 보정값은 셀 배경을 붉게 표시합니다.
+- 포트코드 저장도 저장시각을 즉시 반영해 확정 후 변경 표시가 바로 보이도록 보강했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs`: 58개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+- Codex Browser 플러그인은 Windows sandbox `spawn setup refresh` 오류로 두 차례 종료되어 화면 직접 스모크는 진행하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] GLAPS 특이적용건 경유지 ELS 조건 보강 (v5.14.282)
 ### 원인
 - `B000034432` 특이적용건을 GLAPS 디스크립션 기준으로만 저장해, 상세배차의 ELS 작업지명(`모비스아산수출물류센터`, `모비스천안(입장)수출물류센터`, `모비스천안친환경물류센터`)과 일치하지 않았습니다.

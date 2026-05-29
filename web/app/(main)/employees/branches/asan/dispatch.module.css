@@ -1010,12 +1010,21 @@
     box-shadow: inset 0 0 0 1px #fca5a5;
 }
 
+.detailPostConfirmOverrideCell {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    box-shadow: inset 0 0 0 1px #f87171;
+}
+
 .detailChangeDiffCell input,
 .detailChangeDiffCell select,
 .detailChangeDiffCell button,
 .detailMemoDiffCell input,
 .detailMemoDiffCell select,
-.detailMemoDiffCell button {
+.detailMemoDiffCell button,
+.detailPostConfirmOverrideCell input,
+.detailPostConfirmOverrideCell select,
+.detailPostConfirmOverrideCell button {
     color: #991b1b !important;
     font-weight: 900;
 }
@@ -1886,6 +1895,20 @@
     color: #64748b;
     cursor: default;
     box-shadow: none;
+}
+
+.detailLockedRow .detailPostConfirmOverrideCell,
+.detailLockedRow.detailChangedRow td.detailPostConfirmOverrideCell {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    box-shadow: inset 0 0 0 1px #f87171;
+}
+
+.detailLockedRow .detailPostConfirmOverrideCell input,
+.detailLockedRow .detailPostConfirmOverrideCell select,
+.detailLockedRow .detailPostConfirmOverrideCell button {
+    color: #991b1b !important;
+    font-weight: 900;
 }
 
 .webCellEditableTd {

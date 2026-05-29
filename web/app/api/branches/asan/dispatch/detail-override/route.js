@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 const BRANCH_ID = 'asan';
 const VALID_TYPES = new Set(['glovis', 'mobis', 'integrated']);
-const VALID_FIELDS = new Set(['confirmed_bkg', 'glaps_port_code']);
+const VALID_FIELDS = new Set(['confirmed_bkg', 'start_location', 'glaps_port_code']);
 const VALID_SOURCES = new Set(['BKG1', 'BKG2', 'BKG3', 'manual']);
 
 function isMissingOverrideTableError(error) {
@@ -40,7 +40,7 @@ function validateScope(payload, { requireLine = false } = {}) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.targetDate)) return '대상 날짜가 올바르지 않습니다.';
     if (requireLine && !payload.detailLineKey) return '상세배차 행 식별값이 없습니다.';
     if (requireLine && !VALID_FIELDS.has(payload.fieldKey)) return '수정 항목이 올바르지 않습니다.';
-    if (requireLine && !VALID_SOURCES.has(payload.source)) return 'BKG 선택 출처가 올바르지 않습니다.';
+    if (requireLine && !VALID_SOURCES.has(payload.source)) return '수정 출처가 올바르지 않습니다.';
     return '';
 }
 
