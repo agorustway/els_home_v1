@@ -74,6 +74,18 @@ function cleanText(value) {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
 }
 
+export function normalizeDispatchTimeValue(value = '') {
+  const text = cleanText(value).replace(/\s+/g, '');
+  const match = text.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if (!match) return text;
+  const hour = Number(match[1]);
+  const minute = match[2] === undefined ? 0 : Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return text;
+  }
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 function normalizeHeader(value) {
   return cleanText(value).replace(/\s+/g, '').toUpperCase();
 }
@@ -88,7 +100,11 @@ export function normalizeDispatchDetailRowValues(values = []) {
         ...rawValues.slice(DISPATCH_DETAIL_TIME_INDEX),
       ]
     : rawValues;
-  return DISPATCH_DETAIL_HEADERS.map((_, idx) => cleanText(sourceValues[idx] ?? ''));
+  return DISPATCH_DETAIL_HEADERS.map((_, idx) => (
+    idx === DISPATCH_DETAIL_TIME_INDEX
+      ? normalizeDispatchTimeValue(sourceValues[idx])
+      : cleanText(sourceValues[idx] ?? '')
+  ));
 }
 
 export function findDispatchDetailHeaderIndex(headers = [], candidates = []) {
@@ -164,7 +180,9 @@ function normalizeTimeLabel(value = '') {
 
 function extractDispatchTimeTokens(value = '') {
   const text = String(value ?? '').normalize('NFKC');
-  return (text.match(/\b\d{1,2}(?::\d{1,2})?\b/g) || []).map(cleanText).filter(Boolean);
+  return (text.match(/\b\d{1,2}(?::\d{1,2})?\b/g) || [])
+    .map(normalizeDispatchTimeValue)
+    .filter(Boolean);
 }
 
 function parseDispatchTimeGroups(value = '') {
@@ -324,7 +342,7 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
             startRegion: region,
             startSuffix: suffix,
             company,
-            dispatchTime: dispatchTimes[unitIndex] || '',
+            dispatchTime: normalizeDispatchTimeValue(dispatchTimes[unitIndex] || ''),
             rawCompany: assignment.companyToken,
             sourceText: assignment.rawText,
             sourceRowIndex,
@@ -360,7 +378,7 @@ export function detailLineToRow(line = {}) {
     line.containerType || '',
     line.glapsTypeCode || '',
     line.company || '',
-    line.dispatchTime || '',
+    normalizeDispatchTimeValue(line.dispatchTime || ''),
     line.confirmedBkg || line.bkg1 || '',
     line.bkg1 || '',
     line.bkg2 || '',

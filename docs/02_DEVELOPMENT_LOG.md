@@ -1,3 +1,21 @@
+## [2026-05-29] 상세배차 시간 HH:MM 정규화 및 엑셀 시간서식 적용 (v5.14.276)
+### 핵심
+- 상세배차/배차변동의 `시간` 값을 `08`, `13`처럼 정시만 들어온 경우에도 `08:00`, `13:00`으로 표시하도록 정규화했습니다.
+- 지역 배차칸 시간 메모 파싱, 상세 라인 생성, 저장 행 변환 모두 같은 HH:MM 기준을 사용해 기존 `13` 저장값이 불필요한 변동으로 감지되지 않게 했습니다.
+- 현재 화면 기준 엑셀과 GLAPS 업로드 시트의 `시간`, `배차요청시간` 컬럼은 Excel 숫자 시간값으로 저장하고 표시 형식을 `hh:mm`으로 적용했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs tests\asanDispatchDetailLines.test.mjs tests\intranetExcelExport.test.mjs`: 61개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "utils/asanDispatchDetailLines.mjs" "utils/intranetExcelExport.mjs" "tests/asanDashboardView.test.mjs" "tests/asanDispatchDetailLines.test.mjs" "tests/intranetExcelExport.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/utils/intranetExcelExport.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `web/tests/intranetExcelExport.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] 차량관제 RLS 직접 접근 축소 (v5.14.275)
 ### 핵심
 - Supabase Advisor 잔여 항목 중 `vehicle_trips`, `vehicle_locations`, `vehicle_trip_logs`의 permissive RLS 정책을 점검했습니다.

@@ -14,6 +14,9 @@ export const INTRANET_EXCEL_COLORS = Object.freeze({
 const DEFAULT_NUMERIC_HEADERS = new Set(
   ['오더(계)', '오더', '계', '수량', '배차', '상세배차수량', '컨테이너 수량'].map(normalizeExcelHeader),
 );
+const DEFAULT_TIME_HEADERS = new Set(
+  ['시간', '배차요청시간'].map(normalizeExcelHeader),
+);
 
 export function cleanExcelText(value) {
   if (value === null || value === undefined) return '';
@@ -68,9 +71,27 @@ export function isIntranetNumericHeader(header, numericHeaders = []) {
   return set.has(normalizeExcelHeader(header));
 }
 
+export function isIntranetTimeHeader(header) {
+  return DEFAULT_TIME_HEADERS.has(normalizeExcelHeader(header));
+}
+
+export function toIntranetExcelTimeValue(value) {
+  const text = cleanExcelText(value).replace(/\s+/g, '');
+  const match = text.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = match[2] === undefined ? 0 : Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return (hour * 60 + minute) / 1440;
+}
+
 export function toIntranetExcelValue(header, value, numericHeaders = []) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : '';
   const text = cleanExcelText(value);
+  if (isIntranetTimeHeader(header)) {
+    const timeValue = toIntranetExcelTimeValue(text);
+    if (timeValue !== null) return timeValue;
+  }
   if (!isIntranetNumericHeader(header, numericHeaders)) return text;
   const normalized = text.replace(/,/g, '');
   if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return text;
@@ -121,6 +142,7 @@ export function applyIntranetExcelHeaderCell(cell) {
 
 export function applyIntranetExcelBodyCell(cell, options = {}) {
   const numeric = Boolean(options.numeric);
+  const time = Boolean(options.time);
   const existingFont = cell.font || {};
   cell.border = {
     top: { style: 'thin', color: { argb: INTRANET_EXCEL_COLORS.cellBorder } },
@@ -129,7 +151,8 @@ export function applyIntranetExcelBodyCell(cell, options = {}) {
     right: { style: 'thin', color: { argb: INTRANET_EXCEL_COLORS.cellBorder } },
   };
   cell.font = { ...existingFont, size: existingFont.size || 10, name: existingFont.name || '맑은 고딕' };
-  cell.alignment = { vertical: 'middle', horizontal: options.horizontal || (numeric ? 'right' : 'left') };
+  cell.alignment = { vertical: 'middle', horizontal: options.horizontal || (time ? 'center' : numeric ? 'right' : 'left') };
+  if (time) cell.numFmt = 'hh:mm';
   if (numeric) cell.numFmt = '#,##0';
 }
 
@@ -197,6 +220,7 @@ export function addIntranetExportWorksheet(workbook, exportSheet = {}, options =
     for (let colIdx = 1; colIdx <= headers.length; colIdx += 1) {
       applyIntranetExcelBodyCell(excelRow.getCell(colIdx), {
         numeric: isIntranetNumericHeader(headers[colIdx - 1], numericHeaders),
+        time: isIntranetTimeHeader(headers[colIdx - 1]),
       });
     }
   });
