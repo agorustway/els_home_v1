@@ -875,7 +875,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /배차확정 후 포트코드 변경/);
   assert.match(source, /배차확정 후 \$\{header\} 변경/);
   assert.match(source, /canEditDetailStartLocation/);
-  assert.match(source, /getDisplayChangedHeaderSet/);
+  assert.match(source, /function getDisplayChangedHeaderSet\(event = \{\}\)/);
+  assert.doesNotMatch(source, /change_type === 'add'[\s\S]*DISPATCH_DETAIL_HEADERS\.filter/);
   assert.match(source, /const editDisabled = detailChangeSaving;/);
   assert.match(source, /disabled=\{detailOverrideSetupRequired \|\| !detailScope\}/);
   assert.match(source, /const isDisabledBkg = detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope \|\| !bkgValue;/);
@@ -915,7 +916,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /확정 이후 추가\/삭제\/변경 이벤트가 감지되면 발생 순서대로 표시합니다/);
   assert.match(source, /visibleCols\.map\(ci => headers\[ci\]\)/);
   assert.match(source, /displayRows\.map\(\(\{ row \}\) => visibleCols\.map/);
-  assert.match(source, /GLAPS코드 기존 코드 도출 검수용 상세 라인/);
+  assert.doesNotMatch(source, /GLAPS코드 기존 코드 도출 검수용 상세 라인/);
   assert.match(util, /'BKG확정'/);
   assert.match(util, /'오더구분코드'/);
   assert.match(util, /'화주사코드'/);
@@ -1040,6 +1041,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(changeUtil, /DISPATCH_CHANGE_HEADERS/);
   assert.match(actorNameApi, /profiles/);
   assert.match(actorNameApi, /user_roles/);
+  assert.match(actorNameApi, /allowFallback: false/);
   assert.match(actorNameApi, /fallbackActorName/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_confirmations/);
   assert.match(confirmationSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_detail_overrides/);

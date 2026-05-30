@@ -405,13 +405,8 @@ function getDispatchChangedHeaderSet(event = {}) {
     const afterContext = (event.after_snapshot || event.editable_payload)?.rowContext || {};
     return new Set(getDispatchChangeDiffHeaders(beforeValues, afterValues, beforeContext, afterContext));
 }
-function getDisplayChangedHeaderSet(event = {}, editableValues = []) {
-    const changed = getDispatchChangedHeaderSet(event);
-    if (event.change_type === 'change' || changed.size > 0) return changed;
-    if (event.change_type === 'add' || event.change_type === 'delete') {
-        return new Set(DISPATCH_DETAIL_HEADERS.filter((header, idx) => String(editableValues[idx] ?? '').trim()));
-    }
-    return changed;
+function getDisplayChangedHeaderSet(event = {}) {
+    return getDispatchChangedHeaderSet(event);
 }
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
@@ -2517,7 +2512,7 @@ function AsanDispatchContent() {
                 const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, { portCodeOverride }));
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
-                const changedHeaderSet = getDisplayChangedHeaderSet(event, editableValues);
+                const changedHeaderSet = getDisplayChangedHeaderSet(event);
                 const memoBaseValues = snapshotRowValues(event.before_snapshot);
                 const memoDiffHeaders = memoBaseValues.length > 0
                     ? [...getDetailMemoDiffSet(memoBaseValues, editableValues)]
@@ -3634,7 +3629,6 @@ function AsanDispatchContent() {
                                     </div>
                                 ))}
                             </div>
-                            <span className={styles.detailHint}>GLAPS코드 기존 코드 도출 검수용 상세 라인</span>
                         </div>
                     </div>
                     <div className={styles.tableWrap}>

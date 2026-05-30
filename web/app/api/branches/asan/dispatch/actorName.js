@@ -14,9 +14,10 @@ function metadataName(user = {}) {
     return cleanActorText(metadata.full_name || metadata.name || metadata.display_name);
 }
 
-export async function resolveActorDisplayName(adminSupabase, actor = '') {
+export async function resolveActorDisplayName(adminSupabase, actor = '', options = {}) {
     const text = cleanActorText(actor);
     if (!text) return '';
+    const allowFallback = options.allowFallback !== false;
     if (!text.includes('@')) return text;
 
     const email = text.toLowerCase();
@@ -40,10 +41,12 @@ export async function resolveActorDisplayName(adminSupabase, actor = '') {
         if (roleName) return roleName;
     } catch { /* optional lookup */ }
 
-    return fallbackActorName(text);
+    return allowFallback ? fallbackActorName(text) : '';
 }
 
 export async function getCurrentUserActorName(adminSupabase, user = {}) {
+    const profileName = await resolveActorDisplayName(adminSupabase, user.email || '', { allowFallback: false });
+    if (profileName) return profileName;
     const name = metadataName(user);
     if (name) return name;
     return resolveActorDisplayName(adminSupabase, user.email || user.id || 'unknown');

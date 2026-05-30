@@ -8,9 +8,9 @@
 - 상세배차 상단의 긴 검수 설명 문구를 제거하고, 1200px 이하에서 요약/상태/검수 필터가 좌측 정렬로 자연스럽게 줄바꿈되도록 CSS를 정리했습니다.
 - 확정/취소 작업자명은 `profiles`, `user_roles`에 등록된 이름을 먼저 쓰고, DB 이름이 없을 때만 OAuth 메타데이터 또는 이메일 fallback을 사용하도록 순서를 바꿨습니다.
 ### 검증
-- 진행 예정: `cd web; node --test tests/asanDashboardView.test.mjs`
-- 진행 예정: `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/actorName.js" "tests/asanDashboardView.test.mjs"`
-- 진행 예정: `cd web; npm run build`
+- `cd web; node --test tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/actorName.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/page.js`
 - `web/app/(main)/employees/branches/asan/dispatch.module.css`

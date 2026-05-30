@@ -73,6 +73,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
 }
 
 .fileMod {
@@ -82,6 +85,7 @@
     font-size: 0.72rem;
     color: #64748b;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .fileMod .label {
@@ -620,14 +624,14 @@
     gap: 16px;
     align-items: center;
     flex-wrap: wrap;
-    flex: 0 1 auto;
+    flex: 1 1 360px;
     min-width: 0;
 }
 
 .summaryRight {
     display: flex;
-    gap: 4px;
-    align-items: center;
+    gap: 6px;
+    align-items: flex-start;
     justify-content: flex-end;
     flex: 1 1 480px;
     min-width: 0;
@@ -736,6 +740,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .summaryItem b {
@@ -777,6 +782,41 @@
     justify-content: flex-end;
     gap: 6px;
     flex-wrap: wrap;
+}
+
+@media (max-width: 1200px) {
+    .compactHeader {
+        align-items: flex-start;
+    }
+
+    .headerStatusArea {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
+
+    .statusInfo {
+        justify-content: flex-start;
+    }
+
+    .summaryBar {
+        align-items: stretch;
+    }
+
+    .summaryLeft,
+    .summaryRight {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .detailConfirmPanel,
+    .detailIssueFilters {
+        justify-content: flex-start;
+    }
+
+    .detailIssueFilters {
+        flex-basis: 100%;
+    }
 }
 
 .detailConfirmBadge,
