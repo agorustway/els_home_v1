@@ -1,3 +1,22 @@
+## [2026-05-30] GLAPS 글로비스 운송경로 KR10 매칭 보강 (v5.14.285)
+### 원인
+- 현재 활성 GLAPS 원장 `GLC00035` 등 글로비스 운송경로는 `raw_payload.화주사코드 = KR10`으로 들어와 있지만, 별도 `화주명` 값은 비어 있습니다.
+- 상세배차의 화주 표시값은 `글로비스`라서, 화면 매칭키가 `KR10 + 상차지 + 경유지 + 하차지`가 아니라 `상차지 + 경유지 + 하차지`로 만들어졌습니다.
+- 그 결과 실제 원장에는 `KR10|KRBNP|KCC글라스|KRBNP` 운송경로가 있어도 상세배차에서는 운송경로/운송경로코드가 비어 보였습니다.
+### 조치
+- 상세배차 GLAPS 화주사코드 맵에서 `KR10`을 `글로비스`, `글로비스KD외`, `현대글로비스`와 연결하도록 보강했습니다.
+- 기존 `B000034432` 모비스 매칭은 유지하고, ELS화주명에 글로비스/모비스가 들어온 경우도 같이 인식합니다.
+### 검증
+- 운영 DB 확인: 활성 버전 `6724943a-5c6c-416e-bab0-bbac487b8c4c`, `GLC00035` 키가 `KR10|KRBNP|KCC글라스|KRBNP`로 존재함을 확인했습니다.
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] 구간단가 입력 필터 조건 방식 선택 추가 (v5.14.284)
 ### 원인
 - 구간단가 금액표 입력 필터가 쉼표/세미콜론으로 나뉜 조건을 `하나라도 맞으면 표시` 방식으로만 처리해, `780000,복화`처럼 금액과 구분을 함께 입력해도 금액만 맞은 행이 남았습니다.
@@ -16,8 +35,6 @@
 - `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
 - `web/tests/asanAnnualPerformance.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
-
----
 
 ## [2026-05-29] 상세배차 상차지/포트코드 override 저장 보강 (v5.14.283)
 ### 원인

@@ -760,6 +760,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /glapsDetailLookup\.specialRules/);
   assert.match(source, /waypoint_els_name \|\| rule\.waypointElsName/);
   assert.match(source, /waypointElsName: line\.workplace \|\| glapsRoute\?\.waypoint_els_name \|\| ''/);
+  assert.match(source, /code === 'KR10'/);
   assert.match(source, /code === 'B000034432'/);
   assert.match(source, /const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode\(glapsSpecialConsigneeRules/);
   assert.match(source, /const glapsConsigneeCode = glapsSpecialConsigneeCode \|\| getGlapsAliasCode\(glapsAliasMaps\.consignee, line\.customer\)/);

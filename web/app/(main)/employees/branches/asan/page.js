@@ -912,13 +912,14 @@ function buildGlapsShipperCodeMap(routes = []) {
         const elsName = getGlapsRoutePayload(route, ['ELS화주명']);
         [name, elsName, code].forEach(value => setGlapsCodeMapValue(map, value, code));
         const normalizedName = normalizeGlapsKey(name);
-        if (normalizedName.includes('현대글로비스')) {
+        const normalizedElsName = normalizeGlapsKey(elsName);
+        if (code === 'KR10' || normalizedName.includes('현대글로비스') || normalizedElsName.includes('글로비스')) {
             ['글로비스', '글로비스KD외', '현대글로비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
         }
-        if (normalizedName.includes('현대모비스')) {
+        if (normalizedName.includes('현대모비스') || normalizedElsName.includes('현대모비스')) {
             ['모비스', '모비스AS', '현대모비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
         }
-        if (code === 'B000034432' || normalizedName.includes('모비스') || normalizeGlapsKey(elsName).includes('모비스')) {
+        if (code === 'B000034432' || normalizedName.includes('모비스') || normalizedElsName.includes('모비스')) {
             ['모비스', '모비스AS', '현대모비스'].forEach(value => setGlapsCodeMapValue(map, value, code));
         }
     });
