@@ -198,17 +198,17 @@ const DETAIL_HEADER_INDEX = Object.freeze(
     DISPATCH_DETAIL_HEADERS.reduce((acc, header, idx) => ({ ...acc, [header]: idx }), {}),
 );
 const DETAIL_ISSUE_FILTERS = Object.freeze([
-    { key: 'start', label: '상차지 선택필요', clearLabel: '상차지 필터해제', countKey: 'manualStartLocationCount', group: 'manual' },
-    { key: 'route', label: '운송경로 미도출', clearLabel: '운송경로 필터해제', countKey: 'routeMissingCount', group: 'missing' },
-    { key: 'orderType', label: '오더구분 미도출', clearLabel: '오더구분 필터해제', countKey: 'orderTypeMissingCount', group: 'missing' },
-    { key: 'shipper', label: '화주사코드 미도출', clearLabel: '화주사코드 필터해제', countKey: 'shipperCodeMissingCount', group: 'missing' },
-    { key: 'routePart', label: '경로세부코드 미도출', clearLabel: '경로세부코드 필터해제', countKey: 'routePartMissingCount', group: 'missing' },
-    { key: 'port', label: '포트코드 미도출', clearLabel: '포트코드 필터해제', countKey: 'portMissingCount', group: 'missing' },
-    { key: 'line', label: '라인코드 미도출', clearLabel: '라인코드 필터해제', countKey: 'lineMissingCount', group: 'missing' },
-    { key: 'type', label: '타입코드 미도출', clearLabel: '타입코드 필터해제', countKey: 'typeMissingCount', group: 'missing' },
-    { key: 'consignee', label: '컨샤이니 미도출', clearLabel: '컨샤이니 필터해제', countKey: 'consigneeMissingCount', group: 'missing' },
-    { key: 'carrier', label: '운송사코드 확인', clearLabel: '운송사코드 필터해제', countKey: 'carrierMissingCount', group: 'check' },
-    { key: 'modified', label: '수정건', clearLabel: '수정건 필터해제', countKey: 'modifiedCount', group: 'modified' },
+    { key: 'start', label: '상차지', clearLabel: '상차지', countKey: 'manualStartLocationCount', group: 'manual' },
+    { key: 'route', label: '운송경로', clearLabel: '운송경로', countKey: 'routeMissingCount', group: 'missing' },
+    { key: 'orderType', label: '오더구분', clearLabel: '오더구분', countKey: 'orderTypeMissingCount', group: 'missing' },
+    { key: 'shipper', label: '화주사코드', clearLabel: '화주사코드', countKey: 'shipperCodeMissingCount', group: 'missing' },
+    { key: 'routePart', label: '경로세부', clearLabel: '경로세부', countKey: 'routePartMissingCount', group: 'missing' },
+    { key: 'port', label: '포트코드', clearLabel: '포트코드', countKey: 'portMissingCount', group: 'missing' },
+    { key: 'line', label: '라인코드', clearLabel: '라인코드', countKey: 'lineMissingCount', group: 'missing' },
+    { key: 'type', label: '타입코드', clearLabel: '타입코드', countKey: 'typeMissingCount', group: 'missing' },
+    { key: 'consignee', label: '컨샤이니', clearLabel: '컨샤이니', countKey: 'consigneeMissingCount', group: 'missing' },
+    { key: 'carrier', label: '운송사코드', clearLabel: '운송사코드', countKey: 'carrierMissingCount', group: 'check' },
+    { key: 'modified', label: '수정', clearLabel: '수정', countKey: 'modifiedCount', group: 'modified' },
 ]);
 const DETAIL_ISSUE_GROUPS = Object.freeze([
     { key: 'manual', label: '입력', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'manual') },
@@ -404,6 +404,14 @@ function getDispatchChangedHeaderSet(event = {}) {
     const beforeContext = event.before_snapshot?.rowContext || {};
     const afterContext = (event.after_snapshot || event.editable_payload)?.rowContext || {};
     return new Set(getDispatchChangeDiffHeaders(beforeValues, afterValues, beforeContext, afterContext));
+}
+function getDisplayChangedHeaderSet(event = {}, editableValues = []) {
+    const changed = getDispatchChangedHeaderSet(event);
+    if (event.change_type === 'change' || changed.size > 0) return changed;
+    if (event.change_type === 'add' || event.change_type === 'delete') {
+        return new Set(DISPATCH_DETAIL_HEADERS.filter((header, idx) => String(editableValues[idx] ?? '').trim()));
+    }
+    return changed;
 }
 function makeDownloadDatePart({ isAllTab, activeItem, allTabMonth, allTabWeek }) {
     if (!isAllTab) return activeItem?.target_date || '';
@@ -2313,7 +2321,10 @@ function AsanDispatchContent() {
         const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
         const glapsShipperCode = routeShipperCode || lineShipperCode;
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
-        const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드']);
+        const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드', '작업지(하차지)코드', '경유지(ELS)', '경유지'])
+            || glapsRoute?.waypoint_els_name
+            || glapsRoute?.waypoint_name
+            || '';
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode(glapsSpecialConsigneeRules, {
             shipperCode: glapsShipperCode,
@@ -2506,7 +2517,7 @@ function AsanDispatchContent() {
                 const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, { portCodeOverride }));
                 const editableValues = detailLineToRow(line);
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
-                const changedHeaderSet = getDispatchChangedHeaderSet(event);
+                const changedHeaderSet = getDisplayChangedHeaderSet(event, editableValues);
                 const memoBaseValues = snapshotRowValues(event.before_snapshot);
                 const memoDiffHeaders = memoBaseValues.length > 0
                     ? [...getDetailMemoDiffSet(memoBaseValues, editableValues)]
@@ -3565,7 +3576,7 @@ function AsanDispatchContent() {
                                 <span className={styles.summaryItem}><b>헤더필터</b> {detailSummary.visible.toLocaleString()}건</span>
                             )}
                             <span className={`${styles.summaryItem} ${detailSummary.manualStartLocationCount > 0 ? styles.summaryWarn : ''}`}>
-                                <b>상차지 선택필요</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
+                                <b>상차지</b> {detailSummary.manualStartLocationCount.toLocaleString()}건
                             </span>
                             {detailIssueFilter && <span className={styles.summaryItem}><b>필터표시</b> {detailSummary.visible.toLocaleString()}건</span>}
                         </div>
@@ -3924,7 +3935,7 @@ function AsanDispatchContent() {
                                             const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             const isDeleteEvent = event.change_type === 'delete';
                                             const isConfirmedEvent = event.event_status === 'confirmed';
-                                            const editDisabled = detailChangeSaving || isConfirmedEvent;
+                                            const editDisabled = detailChangeSaving;
                                             return (
                                                 <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''} ${isConfirmedEvent ? styles.detailChangeConfirmedRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
@@ -4079,7 +4090,7 @@ function AsanDispatchContent() {
                                                                     values[colIdx] || ''
                                                                 ) : isManage ? (
                                                                     <span className={styles.detailChangeActions}>
-                                                                        {hasDraft && !isConfirmedEvent && (
+                                                                        {hasDraft && (
                                                                             <button
                                                                                 type="button"
                                                                                 className={styles.detailChangeActionButton}

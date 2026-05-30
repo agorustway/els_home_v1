@@ -800,6 +800,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /6032001/);
   assert.match(source, /buildGlapsShipperCodeMap/);
   assert.match(source, /getGlapsRoutePayload/);
+  assert.match(source, /getGlapsRoutePayload\(glapsRoute, \['경유지코드', '작업지\(하차지\)코드', '경유지\(ELS\)', '경유지'\]\)/);
+  assert.match(source, /glapsRoute\?\.waypoint_els_name/);
   assert.match(source, /focusDetailGridInput/);
   assert.match(source, /const carrierCode = getGlapsAliasCode\(glapsAliasMaps\.carrier, 'ELS'\)/);
   assert.match(source, /getGlapsAliasDefaultCode\(glapsAliasMaps\.portOptions, line\.port, portCodeOverride\)/);
@@ -845,10 +847,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /배차확정/);
   assert.match(source, /배차확정취소/);
   assert.match(source, /상세배차수량/);
-  assert.match(source, /상차지 선택필요/);
-  assert.match(source, /운송사코드 확인/);
-  assert.match(source, /컨샤이니 미도출/);
-  assert.match(source, /수정건/);
+  assert.match(source, /label: '상차지'/);
+  assert.match(source, /label: '운송사코드'/);
+  assert.match(source, /label: '컨샤이니'/);
+  assert.match(source, /label: '수정'/);
   assert.match(source, /downloadCurrentScreenWorkbook/);
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
   assert.match(source, /buildGlapsUploadRowsFromDetailRows/);
@@ -873,6 +875,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /배차확정 후 포트코드 변경/);
   assert.match(source, /배차확정 후 \$\{header\} 변경/);
   assert.match(source, /canEditDetailStartLocation/);
+  assert.match(source, /getDisplayChangedHeaderSet/);
+  assert.match(source, /const editDisabled = detailChangeSaving;/);
   assert.match(source, /disabled=\{detailOverrideSetupRequired \|\| !detailScope\}/);
   assert.match(source, /const isDisabledBkg = detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope \|\| !bkgValue;/);
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
@@ -955,6 +959,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailChangeTypeCell/);
   assert.match(css, /\.detailChangeDiffCell/);
+  assert.match(css, /\.detailChangeConfirmedRow \.detailChangeDiffCell/);
   assert.match(css, /\.detailChangeDeleteRow td\s*{[\s\S]*background: #e5e7eb !important;/);
   assert.match(css, /\.detailLockedRow td\s*{[\s\S]*background: #f1f5f9 !important;/);
   assert.match(css, /\.detailChangeConfirmedRow td\s*{[\s\S]*background: #f1f5f9 !important;/);

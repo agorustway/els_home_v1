@@ -1004,6 +1004,12 @@
     box-shadow: inset 0 0 0 1px #f59e0b;
 }
 
+.detailChangeConfirmedRow .detailChangeDiffCell {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    box-shadow: inset 0 0 0 1px #f59e0b;
+}
+
 .detailMemoDiffCell {
     background: #fee2e2 !important;
     color: #991b1b !important;

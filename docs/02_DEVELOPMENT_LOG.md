@@ -1,3 +1,25 @@
+## [2026-05-30] 상세배차 검수 배지 압축과 배차변동 수정성 보강 (v5.14.293)
+### 원인
+- 상세배차 검수 배지에 `선택필요`, `미도출`, `확인` 같은 설명 문구가 반복돼 상단 공간을 많이 차지했습니다.
+- 배차변동 확인완료 행은 회색 잠금 스타일과 disabled 처리 때문에 상차지/포트 등 후처리 선택을 계속 수정하기 어려웠고, 확인완료 행에서는 변경 셀 노란색도 회색 스타일에 덮였습니다.
+- `작업지(하차지)코드`는 route raw payload의 `경유지코드`만 보아, GLAPS 원장 경유지 값이 `waypoint_els_name`에 있는 경우 비어 보였습니다.
+### 조치
+- 상세배차 검수 배지를 `상차지`, `운송경로`, `화주사코드`처럼 짧은 코드명 중심으로 압축했습니다.
+- 배차변동 확인완료 행도 상차지/포트/DG/RF/BKG 선택값을 수정할 수 있게 하고, 확인완료 행의 변경 셀은 노란색이 유지되도록 CSS 우선순위를 보강했습니다.
+- 추가/삭제 이벤트는 값이 있는 상세 컬럼을 노란색으로 표시하고, 변경 이벤트는 변경된 컬럼만 노란색으로 표시합니다.
+- `작업지(하차지)코드`는 `경유지코드`가 없으면 `작업지(하차지)코드`, `경유지(ELS)`, `경유지`, `waypoint_els_name`, `waypoint_name` 순서로 fallback합니다.
+### 검증
+- `cd web; node --test tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS 항목매핑 검수메모 승격과 항목별 중복 기준 (v5.14.292)
 ### 원인
 - 기존 항목매핑 중복검출이 `최종코드(BP)` 단독 기준으로 보여, 선사 `EAS`와 실출하지코드 `EAS`처럼 실제 용도가 다른 코드도 같은 중복처럼 보일 수 있었습니다.
