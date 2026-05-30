@@ -15,7 +15,10 @@ export function buildGlapsRouteDuplicateGroupKey(row = {}) {
 }
 
 export function buildGlapsAliasDuplicateGroupKey(row = {}) {
-  return duplicateKeyPart(rowText(row, 'glaps_code', 'glapsCode'));
+  const aliasType = duplicateKeyPart(rowText(row, 'alias_type', 'aliasType'));
+  const glapsCode = duplicateKeyPart(rowText(row, 'glaps_code', 'glapsCode'));
+  if (!aliasType || !glapsCode) return '';
+  return `${aliasType}|${glapsCode}`;
 }
 
 export function buildGlapsDuplicateInfo(activeTable, rows = []) {
@@ -24,7 +27,7 @@ export function buildGlapsDuplicateInfo(activeTable, rows = []) {
   const groups = [];
   const label = activeTable === 'routes'
     ? '운송경로코드 중복'
-    : '최종코드(BP) 중복';
+    : '매핑항목+최종코드(BP) 중복';
   const keyFn = activeTable === 'routes'
     ? buildGlapsRouteDuplicateGroupKey
     : (activeTable === 'aliases' ? buildGlapsAliasDuplicateGroupKey : null);

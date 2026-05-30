@@ -1,3 +1,24 @@
+## [2026-05-30] GLAPS 항목매핑 검수메모 승격과 항목별 중복 기준 (v5.14.292)
+### 원인
+- 기존 항목매핑 중복검출이 `최종코드(BP)` 단독 기준으로 보여, 선사 `EAS`와 실출하지코드 `EAS`처럼 실제 용도가 다른 코드도 같은 중복처럼 보일 수 있었습니다.
+- `기타` 항목 중 `검수메모(참고)`에 수출입/선사/실출하지/포트/규격/운송사/컨샤이니 용도가 이미 들어있는 행은 정식 매핑항목으로 올려야 했습니다.
+### 조치
+- `order_type(수출입코드)`, `actual_unloading(실출하지코드)` 항목 타입을 추가하고, `기타` 행은 검수메모가 알려주는 용도로 자동 승격되게 했습니다.
+- `선사코드, 실출하지코드` 복합 검수메모 행은 잘못된 오분류로 보아 파싱/마이그레이션에서 제외 또는 비활성화 대상으로 처리했습니다.
+- 항목매핑 중복검출/일괄병합 기준을 `매핑항목+최종코드(BP)`로 변경해 같은 `EAS`라도 선사와 실출하지코드는 다른 코드로 봅니다.
+### 검증
+- `node --test web/tests/glapsDuplicateGroups.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 통과
+- Supabase MCP 적용은 커넥터 재인증 필요 상태로 중단. SQL 파일 `web/supabase_sql/20260530_glaps_alias_review_note_promotion.sql` 준비 완료.
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`, `web/utils/glapsDuplicateGroups.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`, `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`, `web/supabase_sql/20260530_glaps_alias_review_note_promotion.sql`
+- `web/tests/glapsDuplicateGroups.test.mjs`, `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] 상세배차 헤더필터 전체선택과 DG 자동인식 (v5.14.291)
 ### 원인
 - 상세배차/배차변동 헤더필터의 `전체` 버튼이 필터 해제만 수행해, 목록 값을 한 번에 모두 선택하는 입력 흐름이 부족했습니다.

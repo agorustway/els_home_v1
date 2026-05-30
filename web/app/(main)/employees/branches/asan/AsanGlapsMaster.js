@@ -18,8 +18,10 @@ const REVIEW_STATUS_OPTIONS = [
 ];
 
 const ALIAS_TYPE_OPTIONS = [
+    ['order_type', '수출입코드'],
     ['port', '포트'],
     ['line', '선사'],
+    ['actual_unloading', '실출하지코드'],
     ['container_type', '컨테이너규격'],
     ['carrier', '운송사'],
     ['consignee', '컨샤이니'],
@@ -473,7 +475,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             setMessage({ type: 'error', text: '병합할 항목을 먼저 선택해주세요.' });
             return;
         }
-        const basis = activeTable === 'routes' ? '운송경로코드' : '최종코드(BP)';
+        const basis = activeTable === 'routes' ? '운송경로코드' : '매핑항목+최종코드(BP)';
         const label = selectedOnly ? `선택한 ${ids.length.toLocaleString()}건의 ${basis} 그룹` : `현재 ${basis} 중복 ${duplicateInfo.groupCount.toLocaleString()}그룹`;
         if (!window.confirm(`${label}을 병합할까요?`)) return;
         setSaving(true);
@@ -1019,8 +1021,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             </div>
 
             <div className={styles.fieldGuide}>
-                <span><b>매핑항목</b> 포트·선사·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
-                <span><b>검수메모</b> 매칭 키가 아니라 출처·용도·기본값을 남기는 참고/필터용 메모입니다.</span>
+                <span><b>매핑항목</b> 수출입코드·포트·선사·실출하지코드·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
+                <span><b>검수메모</b> 출처·참고용 메모입니다. 기존 기타 행은 검수메모가 항목을 말하면 매핑항목으로 승격됩니다.</span>
                 <span><b>특이적용건</b> 컨샤이니 우선코드가 있으면 컨샤이니를 먼저 적용하고, 비어 있으면 경유지(GLAPS/ELS) 기준으로 화주사코드를 보정합니다.</span>
             </div>
 

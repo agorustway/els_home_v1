@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_aliases (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     branch_id TEXT NOT NULL DEFAULT 'asan',
     version_id UUID NOT NULL REFERENCES public.glaps_master_versions(id) ON DELETE CASCADE,
-    alias_type TEXT NOT NULL CHECK (alias_type IN ('start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic')),
+    alias_type TEXT NOT NULL CHECK (alias_type IN ('start', 'waypoint', 'destination', 'order_type', 'port', 'line', 'actual_unloading', 'container_type', 'carrier', 'consignee', 'generic')),
     source_name TEXT NOT NULL DEFAULT '',
     els_name TEXT NOT NULL DEFAULT '',
     glaps_name TEXT NOT NULL DEFAULT '',
@@ -126,7 +126,7 @@ END $$;
 
 ALTER TABLE public.glaps_master_aliases
     ADD CONSTRAINT glaps_master_aliases_alias_type_check
-    CHECK (alias_type IN ('start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic'));
+    CHECK (alias_type IN ('start', 'waypoint', 'destination', 'order_type', 'port', 'line', 'actual_unloading', 'container_type', 'carrier', 'consignee', 'generic'));
 
 CREATE INDEX IF NOT EXISTS idx_glaps_master_aliases_lookup
     ON public.glaps_master_aliases (branch_id, version_id, alias_type, source_name)

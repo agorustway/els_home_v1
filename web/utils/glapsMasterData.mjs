@@ -34,8 +34,10 @@ export const GLAPS_ALIAS_TYPE_LABELS = Object.freeze({
   start: '상차지',
   waypoint: '경유지',
   destination: '하차지',
+  order_type: '수출입코드',
   port: '포트',
   line: '선사',
+  actual_unloading: '실출하지코드',
   container_type: '컨테이너규격',
   carrier: '운송사',
   consignee: '컨샤이니',
@@ -87,8 +89,12 @@ const ALIAS_TEMPLATE_ALIASES = Object.freeze({
 });
 
 const CODE_SHEET_ALIAS_TYPES = Object.freeze([
+  ['수출입코드', 'order_type'],
+  ['수출입', 'order_type'],
   ['컨테이너규격', 'container_type'],
   ['규격', 'container_type'],
+  ['실출하지코드', 'actual_unloading'],
+  ['실출하지', 'actual_unloading'],
   ['프로코드', 'port'],
   ['포트', 'port'],
   ['PORT', 'port'],
@@ -105,8 +111,10 @@ const GLAPS_CODE_ALIAS_TYPES = new Set([
   'start',
   'waypoint',
   'destination',
+  'order_type',
   'port',
   'line',
+  'actual_unloading',
   'container_type',
   'carrier',
   'consignee',
@@ -122,12 +130,18 @@ const GLAPS_ALIAS_TYPE_INPUTS = new Map([
   ['하차지', 'destination'],
   ['도착지', 'destination'],
   ['도착항', 'destination'],
+  ['수출입코드', 'order_type'],
+  ['수출입', 'order_type'],
   ['포트', 'port'],
+  ['포트코드', 'port'],
   ['PORT', 'port'],
   ['프로코드', 'port'],
   ['선사', 'line'],
+  ['선사코드', 'line'],
   ['라인', 'line'],
   ['LINE', 'line'],
+  ['실출하지', 'actual_unloading'],
+  ['실출하지코드', 'actual_unloading'],
   ['컨테이너규격', 'container_type'],
   ['컨테이너', 'container_type'],
   ['규격', 'container_type'],
@@ -139,6 +153,28 @@ const GLAPS_ALIAS_TYPE_INPUTS = new Map([
   ['기타', 'generic'],
   ['공통', 'generic'],
 ].map(([key, value]) => [normalizeGlapsKey(key), value]));
+
+const GLAPS_REVIEW_NOTE_ALIAS_TYPES = new Map([
+  ['수출입코드', 'order_type'],
+  ['수출입', 'order_type'],
+  ['포트코드', 'port'],
+  ['포트', 'port'],
+  ['선사코드', 'line'],
+  ['선사', 'line'],
+  ['실출하지코드', 'actual_unloading'],
+  ['실출하지', 'actual_unloading'],
+  ['컨테이너규격', 'container_type'],
+  ['컨테이너', 'container_type'],
+  ['운송사코드', 'carrier'],
+  ['운송사', 'carrier'],
+  ['컨샤이니', 'consignee'],
+  ['컨사이니', 'consignee'],
+].map(([key, value]) => [normalizeGlapsKey(key), value]));
+
+const DISCARDED_GLAPS_ALIAS_REVIEW_NOTE_KEYS = new Set([
+  '선사코드,실출하지코드',
+  '선사코드，실출하지코드',
+].map(normalizeGlapsKey));
 
 const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
   ['부산신항', ['KRBNP']],
@@ -174,6 +210,24 @@ export function normalizeGlapsAliasType(value, fallback = 'waypoint') {
 
 export function formatGlapsAliasType(value) {
   return GLAPS_ALIAS_TYPE_LABELS[value] || value || '';
+}
+
+export function isDiscardedGlapsAliasReviewNote(value) {
+  return DISCARDED_GLAPS_ALIAS_REVIEW_NOTE_KEYS.has(normalizeGlapsKey(value));
+}
+
+export function inferGlapsAliasTypeFromReviewNote(value, fallback = '') {
+  if (isDiscardedGlapsAliasReviewNote(value)) return '';
+  return GLAPS_REVIEW_NOTE_ALIAS_TYPES.get(normalizeGlapsKey(value)) || fallback;
+}
+
+export function resolveGlapsAliasType(value, reviewNote = '', fallback = 'waypoint') {
+  const aliasType = normalizeGlapsAliasType(value, fallback);
+  if (aliasType === 'generic') {
+    const promoted = inferGlapsAliasTypeFromReviewNote(reviewNote);
+    if (promoted) return promoted;
+  }
+  return aliasType;
 }
 
 function routePartKey(value) {
@@ -528,6 +582,8 @@ export function buildGlapsAliasesFromRoutes(routes = []) {
 export function buildGlapsAliasesFromCodeSheets(sheets = []) {
   const aliases = new Map();
   const addAlias = (alias) => {
+    if (isDiscardedGlapsAliasReviewNote(alias.reviewNote)) return;
+    const aliasType = resolveGlapsAliasType(alias.aliasType, alias.reviewNote, 'generic');
     const glapsCode = cleanGlapsText(alias.glapsCode);
     const names = [
       alias.sourceName,
@@ -537,7 +593,7 @@ export function buildGlapsAliasesFromCodeSheets(sheets = []) {
     ].map(cleanGlapsText).filter(Boolean);
     [...new Set(names)].forEach((name) => {
       const normalized = {
-        aliasType: alias.aliasType,
+        aliasType,
         sourceName: name,
         elsName: name,
         glapsName: cleanGlapsText(alias.glapsName) || name,
@@ -829,20 +885,24 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
 export function parseGlapsAliasTemplateSheets(sheets = []) {
   return sheets.flatMap(sheet => templateRowsFromSheet(sheet, ALIAS_TEMPLATE_ALIASES, {
     requiredKeys: ['aliasType', 'sourceName'],
-  }).map(({ row, cols, sourceRowNumber }) => ({
-    id: getRowValue(row, cols.id),
-    aliasType: normalizeGlapsAliasType(getRowValue(row, cols.aliasType), 'waypoint'),
-    sourceName: getRowValue(row, cols.sourceName),
-    elsName: getRowValue(row, cols.elsName),
-    glapsName: getRowValue(row, cols.glapsName),
-    glapsCode: getRowValue(row, cols.glapsCode),
-    routeCode: getRowValue(row, cols.routeCode),
-    reviewStatus: normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getRowValue(row, cols.elsName) ? 'ready' : 'needs_mapping'),
-    reviewNote: getRowValue(row, cols.reviewNote),
-    deleteFlag: getRowValue(row, cols.deleteFlag).toUpperCase() === 'Y',
-    sourceSheet: cleanGlapsText(sheet.name),
-    sourceRowNumber,
-  })));
+  }).map(({ row, cols, sourceRowNumber }) => {
+    const reviewNote = getRowValue(row, cols.reviewNote);
+    if (isDiscardedGlapsAliasReviewNote(reviewNote)) return null;
+    return {
+      id: getRowValue(row, cols.id),
+      aliasType: resolveGlapsAliasType(getRowValue(row, cols.aliasType), reviewNote, 'generic'),
+      sourceName: getRowValue(row, cols.sourceName),
+      elsName: getRowValue(row, cols.elsName),
+      glapsName: getRowValue(row, cols.glapsName),
+      glapsCode: getRowValue(row, cols.glapsCode),
+      routeCode: getRowValue(row, cols.routeCode),
+      reviewStatus: normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getRowValue(row, cols.elsName) ? 'ready' : 'needs_mapping'),
+      reviewNote,
+      deleteFlag: getRowValue(row, cols.deleteFlag).toUpperCase() === 'Y',
+      sourceSheet: cleanGlapsText(sheet.name),
+      sourceRowNumber,
+    };
+  }).filter(Boolean));
 }
 
 export function getGlapsRouteMatchQuery() {

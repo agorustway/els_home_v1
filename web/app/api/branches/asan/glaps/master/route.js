@@ -13,10 +13,10 @@ import {
   getGlapsRouteShipperCode,
   getGlapsRouteReviewStatus,
   getGlapsRouteMatchQuery,
-  normalizeGlapsAliasType,
   parseGlapsAliasTemplateSheets,
   parseGlapsMasterSheets,
   parseGlapsRouteTemplateSheets,
+  resolveGlapsAliasType,
   splitGlapsAliasValues,
   summarizeGlapsRoutes,
 } from '@/utils/glapsMasterData.mjs';
@@ -26,9 +26,9 @@ export const revalidate = 0;
 
 const DEFAULT_GLAPS_MASTER_PATH = '/아산지점/A_운송실무/GLAPS_마스터코드.xlsx';
 const PAGE_SIZE = 1000;
-const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'port', 'line', 'container_type', 'carrier', 'consignee', 'generic']);
+const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'order_type', 'port', 'line', 'actual_unloading', 'container_type', 'carrier', 'consignee', 'generic']);
 const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
-const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['port', 'line', 'container_type', 'carrier', 'consignee']);
+const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['order_type', 'port', 'line', 'actual_unloading', 'container_type', 'carrier', 'consignee']);
 const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
 const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
   {
@@ -233,7 +233,8 @@ function directRouteFromPayload(row = {}) {
 }
 
 function directAliasFromPayload(row = {}) {
-  const aliasType = normalizeGlapsAliasType(row.aliasType ?? row.alias_type, 'waypoint');
+  const reviewNote = cleanText(row.reviewNote ?? row.review_note);
+  const aliasType = resolveGlapsAliasType(row.aliasType ?? row.alias_type, reviewNote, 'generic');
   const alias = {
     id: cleanText(row.id),
     aliasType,
@@ -242,7 +243,7 @@ function directAliasFromPayload(row = {}) {
     glapsName: cleanText(row.glapsName ?? row.glaps_name),
     glapsCode: cleanText(row.glapsCode ?? row.glaps_code),
     routeCode: cleanText(row.routeCode ?? row.route_code),
-    reviewNote: cleanText(row.reviewNote ?? row.review_note),
+    reviewNote,
   };
   alias.reviewStatus = normalizeReviewStatus(row.reviewStatus ?? row.review_status, alias.elsName || alias.glapsCode ? 'ready' : 'needs_mapping');
   return alias;
@@ -386,11 +387,11 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
 }
 
 function toAliasDbRow(alias, { branchId, versionId, userEmail }) {
-  const aliasType = normalizeGlapsAliasType(alias.aliasType, 'waypoint');
+  const aliasType = resolveGlapsAliasType(alias.aliasType, alias.reviewNote, 'generic');
   return {
     branch_id: branchId,
     version_id: versionId,
-    alias_type: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'waypoint',
+    alias_type: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'generic',
     source_name: cleanText(alias.sourceName),
     els_name: cleanText(alias.elsName),
     glaps_name: cleanText(alias.glapsName),
@@ -455,10 +456,11 @@ function routeDbRowFromExisting(row = {}, { branchId, versionId }) {
 }
 
 function aliasDbRowFromExisting(row = {}, { branchId, versionId }) {
+  const aliasType = resolveGlapsAliasType(row.alias_type, row.review_note, 'generic');
   return {
     branch_id: branchId,
     version_id: versionId,
-    alias_type: GLAPS_ALIAS_TYPES.has(cleanText(row.alias_type)) ? cleanText(row.alias_type) : 'generic',
+    alias_type: GLAPS_ALIAS_TYPES.has(aliasType) ? aliasType : 'generic',
     source_name: cleanText(row.source_name),
     els_name: cleanText(row.els_name),
     glaps_name: cleanText(row.glaps_name),

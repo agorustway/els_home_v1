@@ -13,11 +13,14 @@ import {
   formatGlapsAliasType,
   getGlapsRouteShipperCode,
   getGlapsRouteMatchQuery,
+  inferGlapsAliasTypeFromReviewNote,
   inferGlapsRouteParts,
+  isDiscardedGlapsAliasReviewNote,
   normalizeGlapsAliasType,
   parseGlapsAliasTemplateSheets,
   parseGlapsMasterSheets,
   parseGlapsRouteTemplateSheets,
+  resolveGlapsAliasType,
 } from '../utils/glapsMasterData.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,11 +66,18 @@ test('GLAPS 수정양식 다운로드 헤더는 현업이 읽는 한국어 컬�
 });
 
 test('GLAPS 매핑항목은 한글 표시와 영문 내부값을 서로 변환한다', () => {
+  assert.equal(formatGlapsAliasType('order_type'), '수출입코드');
   assert.equal(formatGlapsAliasType('container_type'), '컨테이너규격');
+  assert.equal(formatGlapsAliasType('actual_unloading'), '실출하지코드');
   assert.equal(formatGlapsAliasType('carrier'), '운송사');
+  assert.equal(normalizeGlapsAliasType('수출입코드'), 'order_type');
   assert.equal(normalizeGlapsAliasType('컨테이너규격'), 'container_type');
+  assert.equal(normalizeGlapsAliasType('실출하지코드'), 'actual_unloading');
   assert.equal(normalizeGlapsAliasType('운송사'), 'carrier');
   assert.equal(normalizeGlapsAliasType('line'), 'line');
+  assert.equal(inferGlapsAliasTypeFromReviewNote('실출하지코드'), 'actual_unloading');
+  assert.equal(resolveGlapsAliasType('기타', '선사코드'), 'line');
+  assert.equal(isDiscardedGlapsAliasReviewNote('선사코드, 실출하지코드'), true);
 });
 
 test('GLAPS 운송경로명은 상차지, 경유지, 하차지를 추론한다', () => {
@@ -120,6 +130,14 @@ test('GLAPS 마스터는 운송경로 외 전 시트를 원본행과 항목 코�
       ],
     },
     {
+      name: '수출입코드',
+      rows: [
+        ['코드', 'ELS코드', '명칭'],
+        ['10', '수입', '수입'],
+        ['20', '수출', '수출'],
+      ],
+    },
+    {
       name: '프로코드',
       rows: [
         ['등록구분', 'GLAPS 코드', 'GLAPS 포트', 'ELS코드1', 'ELS코드2', '명칭(GLOVE)', 'KD보낼값'],
@@ -131,6 +149,13 @@ test('GLAPS 마스터는 운송경로 외 전 시트를 원본행과 항목 코�
       rows: [
         ['선사코드 (GLAPS)', 'ELS코드1', 'ELS코드2', 'ELS코드3', '선사명(영문)'],
         ['CMDU', 'CMA, CMA-CGM\nCMA CGM', '', '', 'CMA CGM'],
+      ],
+    },
+    {
+      name: '실출하지코드',
+      rows: [
+        ['실출하지코드', 'ELS코드', '명칭'],
+        ['EAS', 'EAS실핑', 'EAS실핑, 아산 2포장장아산'],
       ],
     },
     {
@@ -154,15 +179,19 @@ test('GLAPS 마스터는 운송경로 외 전 시트를 원본행과 항목 코�
   assert.equal(parsed.sheetRows.some(row => row.sheetName === '프로코드' && row.rowPayload['GLAPS 포트'] === 'KRBNP'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'container_type' && alias.sourceName === '40HC' && alias.glapsCode === '4510'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'container_type' && alias.sourceName === '40HQ' && alias.glapsCode === '4510'), true);
+  assert.equal(parsed.aliases.some(alias => alias.aliasType === 'order_type' && alias.sourceName === '수입' && alias.glapsCode === '10'), true);
+  assert.equal(parsed.aliases.some(alias => alias.aliasType === 'order_type' && alias.sourceName === '수출' && alias.glapsCode === '20'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'port' && alias.sourceName === 'KRBNP' && alias.glapsCode === 'PNITC'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'port' && alias.sourceName === 'USSAV' && alias.glapsCode === 'PNITC'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'line' && alias.sourceName === 'CMA' && alias.glapsCode === 'CMDU'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'line' && alias.sourceName === 'CMA-CGM' && alias.glapsCode === 'CMDU'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'line' && alias.sourceName === 'CMA, CMA-CGM\nCMA CGM'), false);
+  assert.equal(parsed.aliases.some(alias => alias.aliasType === 'actual_unloading' && alias.sourceName === 'EAS' && alias.glapsCode === 'EAS'), true);
+  assert.equal(parsed.aliases.some(alias => alias.aliasType === 'actual_unloading' && alias.sourceName === 'EAS실핑' && alias.glapsCode === 'EAS'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'carrier' && alias.sourceName === 'ELS' && alias.glapsCode === 'B000005273'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'consignee' && alias.sourceName === 'KIN' && alias.glapsCode === 'GA0196'), true);
   assert.equal(parsed.aliases.some(alias => alias.aliasType === 'consignee' && alias.sourceName === 'HMMA' && alias.glapsCode === 'UH03'), true);
-  assert.deepEqual(parsed.sourceSheets, ['운송경로', '컨테이너규격', '프로코드', '선사코드', '운송사코드', '컨샤이니']);
+  assert.deepEqual(parsed.sourceSheets, ['운송경로', '컨테이너규격', '수출입코드', '프로코드', '선사코드', '실출하지코드', '운송사코드', '컨샤이니']);
 });
 
 test('GLAPS 상세배차 매칭 키는 화주사코드, 상차지, 경유지(ELS), 하차지를 기준으로 만든다', () => {
@@ -207,6 +236,8 @@ test('GLAPS 항목별 수정양식은 운송경로와 매핑 항목을 다시 �
       rows: [
         ['id', '매핑항목', 'ELS 매치코드', 'ELS 디스크립션(설명)', 'GLAPS 디스크립션(설명)', '최종코드(BP)', 'review_status', '검수메모', '수정출처', '수정일시', '삭제(Y)'],
         ['22222222-2222-2222-2222-222222222222', '경유지', '모비스 친환경센터', '모비스친환경센터', '모비스 친환경센터', '', '조정필요', '확인', '업로드수정', '2026-05-24', 'Y'],
+        ['', '기타', 'EAS', 'EAS실핑', 'EAS실핑, 아산 2포장장아산', 'EAS', '확정', '실출하지코드', '', '', ''],
+        ['', '기타', '', '', '', '', '확정', '선사코드, 실출하지코드', '', '', ''],
       ],
     },
   ];
@@ -214,7 +245,7 @@ test('GLAPS 항목별 수정양식은 운송경로와 매핑 항목을 다시 �
   const aliasRows = parseGlapsAliasTemplateSheets(sheets);
 
   assert.equal(routeRows.length, 1);
-  assert.equal(aliasRows.length, 1);
+  assert.equal(aliasRows.length, 2);
   assert.equal(routeRows[0].id, '11111111-1111-1111-1111-111111111111');
   assert.equal(routeRows[0].shipperCode, 'B000034432');
   assert.equal(routeRows[0].reviewStatus, 'ready');
@@ -223,6 +254,8 @@ test('GLAPS 항목별 수정양식은 운송경로와 매핑 항목을 다시 �
   assert.equal(aliasRows[0].aliasType, 'waypoint');
   assert.equal(aliasRows[0].sourceName, '모비스 친환경센터');
   assert.equal(aliasRows[0].elsName, '모비스친환경센터');
+  assert.equal(aliasRows[1].aliasType, 'actual_unloading');
+  assert.equal(aliasRows[1].glapsCode, 'EAS');
 });
 
 test('GLAPS 운송경로 수정양식은 안내문을 헤더로 오인하지 않는다', () => {
@@ -299,6 +332,8 @@ test('GLAPS 항목매핑 중복후보 SQL은 구버전 source 제약까지 제�
   assert.match(migration, /DROP CONSTRAINT IF EXISTS glaps_master_aliases_branch_id_version_id_alias_type_source_name_key/);
   assert.match(migration, /UNIQUE \(branch_id, version_id, alias_type, source_name, route_code, glaps_code\)/);
   assert.match(baseSql, /DROP CONSTRAINT IF EXISTS glaps_master_aliases_branch_id_version_id_alias_type_source_key/);
+  assert.match(baseSql, /order_type/);
+  assert.match(baseSql, /actual_unloading/);
   assert.match(route, /isLegacyAliasSourceConstraintError/);
   assert.match(route, /20260527_glaps_alias_duplicate_candidates\.sql/);
 });
