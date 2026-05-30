@@ -255,7 +255,7 @@ function routeUnitFilterSummary(column = {}, value = '') {
     return values.length === 1 ? first : `${first} 외 ${values.length - 1}개`;
 }
 
-function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
+function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}, matchMode = 'any') {
     const terms = String(filter || '')
         .split(/[;,，；]+/)
         .map(part => part.trim())
@@ -279,7 +279,12 @@ function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}) {
         item.rowCount,
         item.periodLabel,
     ];
-    if (terms.length && !terms.every(term => routeUnitTermMatches(globalValues, term))) return false;
+    if (terms.length) {
+        const matchesTerms = matchMode === 'all'
+            ? terms.every(term => routeUnitTermMatches(globalValues, term))
+            : terms.some(term => routeUnitTermMatches(globalValues, term));
+        if (!matchesTerms) return false;
+    }
     return ROUTE_UNIT_COLUMNS.every((column) => {
         const values = normalizeRouteUnitColumnFilterValues(columnFilters[column.key]);
         if (!values.length) return true;
@@ -1117,6 +1122,7 @@ function RouteUnitPricePanel({
     onRefresh,
 }) {
     const [unitFilter, setUnitFilter] = useState('');
+    const [unitFilterMode, setUnitFilterMode] = useState('any');
     const [columnFilters, setColumnFilters] = useState({});
     const [openFilterColumn, setOpenFilterColumn] = useState('');
     const [includedGroupFields, setIncludedGroupFields] = useState(() => ROUTE_UNIT_DEFAULT_GROUP_KEYS);
@@ -1161,8 +1167,8 @@ function RouteUnitPricePanel({
         return result;
     }, [activeRouteUnitFilterColumns, groups]);
     const filteredGroups = useMemo(() => groups
-        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters)),
-    [columnFilters, groups, unitFilter]);
+        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters, unitFilterMode)),
+    [columnFilters, groups, unitFilter, unitFilterMode]);
     const compressedGroups = useMemo(() => aggregateRouteUnitGroups(filteredGroups, includedGroupFields), [filteredGroups, includedGroupFields]);
     const visibleGroups = useMemo(() => compressedGroups
         .slice()
@@ -1181,6 +1187,9 @@ function RouteUnitPricePanel({
     const activeSortDirection = activeSortMatch?.[2] || '';
     const hasColumnFilters = useMemo(() => Object.values(columnFilters)
         .some(value => normalizeRouteUnitColumnFilterValues(value).length), [columnFilters]);
+    const unitFilterModeHelp = unitFilterMode === 'all'
+        ? '쉼표로 나눈 조건을 모두 만족하는 금액표만 표시합니다.'
+        : '쉼표로 나눈 조건 중 하나라도 맞으면 표시합니다.';
     useEffect(() => {
         if (!openFilterColumn || typeof document === 'undefined') return undefined;
         const closeOpenFilter = (event) => {
@@ -1344,6 +1353,7 @@ function RouteUnitPricePanel({
     };
     const resetFilters = () => {
         setUnitFilter('');
+        setUnitFilterMode('any');
         setColumnFilters({});
         setOpenFilterColumn('');
     };
@@ -1451,15 +1461,35 @@ function RouteUnitPricePanel({
                             <span className={styles.routeUnitHiddenHint}>열 제목을 이곳으로 드롭하면 숨김</span>
                         )}
                     </div>
-                    <label className={styles.routeUnitSearchBox}>
-                        <span>필터</span>
+                    <div className={styles.routeUnitSearchBox}>
+                        <label htmlFor="route-unit-filter-input">필터</label>
                         <input
+                            id="route-unit-filter-input"
                             type="search"
                             value={unitFilter}
                             onChange={event => setUnitFilter(event.target.value)}
                             placeholder="금액, TYPE, 작업지, 운송사, 청구처 (, ; 조건)"
                         />
-                    </label>
+                        <div className={styles.routeUnitSearchMode} role="group" aria-label="필터 조건 방식">
+                            <button
+                                type="button"
+                                className={unitFilterMode === 'any' ? styles.routeUnitSearchModeActive : ''}
+                                onClick={() => setUnitFilterMode('any')}
+                                title="여러 조건 중 하나만 맞아도 표시"
+                            >
+                                하나라도 포함
+                            </button>
+                            <button
+                                type="button"
+                                className={unitFilterMode === 'all' ? styles.routeUnitSearchModeActive : ''}
+                                onClick={() => setUnitFilterMode('all')}
+                                title="여러 조건을 모두 만족할 때만 표시"
+                            >
+                                모두 포함
+                            </button>
+                        </div>
+                        <em className={styles.routeUnitSearchHelp}>{unitFilterModeHelp}</em>
+                    </div>
                     <div className={styles.routeUnitToolButtons}>
                         <button type="button" onClick={() => saveRouteUnitPreset('p1')}>P1 저장</button>
                         <button type="button" onClick={() => loadRouteUnitPreset('p1')}>P1 로드</button>
@@ -1600,7 +1630,7 @@ export default function AsanAnnualPerformance({ searchHandoff = null, initialAna
     const [scopeMode, setScopeMode] = useState('all');
     const [scopeStart, setScopeStart] = useState('');
     const [scopeEnd, setScopeEnd] = useState('');
-    const [routeUnitScope, setRouteUnitScope] = useState('month');
+    const [routeUnitScope, setRouteUnitScope] = useState('all');
     const [routeUnitYear, setRouteUnitYear] = useState('');
     const [routeUnitMonth, setRouteUnitMonth] = useState('');
     const [routeUnitData, setRouteUnitData] = useState(null);

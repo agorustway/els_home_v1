@@ -1,3 +1,24 @@
+## [2026-05-30] 구간단가 입력 필터 조건 방식 선택 추가 (v5.14.284)
+### 원인
+- 구간단가 금액표 입력 필터가 쉼표/세미콜론으로 나뉜 조건을 `하나라도 맞으면 표시` 방식으로만 처리해, `780000,복화`처럼 금액과 구분을 함께 입력해도 금액만 맞은 행이 남았습니다.
+- 구간단가 첫 진입 범위가 월별이라 전체 기준으로 금액표를 먼저 보려는 흐름과 맞지 않았습니다.
+### 조치
+- 구간단가 입력 필터에 `하나라도 포함` / `모두 포함` 선택 버튼과 한글 설명을 추가했습니다.
+- `모두 포함` 선택 시 쉼표/세미콜론으로 나뉜 모든 조건을 만족하는 금액표만 표시하도록 필터 로직을 분리했습니다.
+- 구간단가 첫 진입 범위를 `월별`에서 `전체`로 변경했습니다.
+### 검증
+- `cd web; node --test tests\asanAnnualPerformance.test.mjs`: 12개 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "tests/asanAnnualPerformance.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+- Codex Browser 플러그인은 Windows sandbox `spawn setup refresh` 오류로 연결이 종료되어 화면 직접 스모크는 진행하지 못했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-29] 상세배차 상차지/포트코드 override 저장 보강 (v5.14.283)
 ### 원인
 - 상세배차 `상차지` 선택값은 화면 local state에만 남고 `branch_dispatch_detail_overrides` 저장 API에 반영되지 않아, 재조회/새로고침 시 원본 계산값으로 초기화됐습니다.
