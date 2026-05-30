@@ -3136,6 +3136,20 @@ function AsanDispatchContent() {
             return { ...next, [mode]: modeFilters };
         });
     }, []);
+    const toggleDetailHeaderFilterAll = useCallback((mode, header, options = []) => {
+        const optionValues = [...new Set((options || []).map(option => normalizeDetailFilterValue(option?.value)))];
+        setDetailHeaderFilters((prev) => {
+            const next = sanitizeDetailHeaderFilters(prev);
+            const modeFilters = { ...(next[mode] || {}) };
+            const selected = new Set(modeFilters[header] || []);
+            const allSelected = optionValues.length > 0
+                && optionValues.every(value => selected.has(value))
+                && selected.size === optionValues.length;
+            if (allSelected || optionValues.length === 0) delete modeFilters[header];
+            else modeFilters[header] = optionValues;
+            return { ...next, [mode]: modeFilters };
+        });
+    }, []);
     const clearDetailHeaderFilter = useCallback((mode, header = '') => {
         setDetailHeaderFilters((prev) => {
             const next = sanitizeDetailHeaderFilters(prev);
@@ -3275,6 +3289,10 @@ function AsanDispatchContent() {
         const options = detailHeaderFilterOptions?.[mode]?.[header] || [];
         const isOpen = detailHeaderFilterDropdown?.mode === mode && detailHeaderFilterDropdown?.header === header;
         const activeValueSet = new Set(activeValues);
+        const optionValues = [...new Set(options.map(option => normalizeDetailFilterValue(option.value)))];
+        const allOptionsSelected = optionValues.length > 0
+            && optionValues.every(value => activeValueSet.has(value))
+            && activeValueSet.size === optionValues.length;
         const headerClasses = [
             detailColumnClass(header),
             styles.detailFilterHeader,
@@ -3298,7 +3316,10 @@ function AsanDispatchContent() {
                 {isOpen && (
                     <div className={styles.detailFilterDropdown} onClick={event => event.stopPropagation()}>
                         <div className={styles.detailFilterActions}>
-                            <button type="button" onClick={() => clearDetailHeaderFilter(mode, header)}>전체</button>
+                            <button type="button" onClick={() => toggleDetailHeaderFilterAll(mode, header, options)}>
+                                {allOptionsSelected ? '전체취소' : '전체선택'}
+                            </button>
+                            {activeValues.length > 0 && <button type="button" onClick={() => clearDetailHeaderFilter(mode, header)}>필터해제</button>}
                             <span>{options.length.toLocaleString()}개 값</span>
                         </div>
                         <div className={styles.detailFilterList}>

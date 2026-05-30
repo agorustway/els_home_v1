@@ -1,3 +1,22 @@
+## [2026-05-30] 상세배차 헤더필터 전체선택과 DG 자동인식 (v5.14.291)
+### 원인
+- 상세배차/배차변동 헤더필터의 `전체` 버튼이 필터 해제만 수행해, 목록 값을 한 번에 모두 선택하는 입력 흐름이 부족했습니다.
+- GLAPS 위험물 여부는 `DG` 컬럼으로 분리됐지만, 원본의 `특이사항(Nomi,구간)`에 `DG`가 적힌 건을 자동 Y로 인식해야 했습니다.
+### 조치
+- 헤더필터 드롭다운에 전체 값 선택/취소 토글을 추가했습니다. 전체가 선택된 상태에서 다시 누르면 해당 헤더 필터를 해제합니다.
+- 상세배차 라인 생성 시 `특이사항(Nomi,구간)` 텍스트에 독립된 `DG` 표기가 있으면 `DG=Y`로 기본 산출합니다.
+### 검증
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "utils/asanDispatchDetailLines.mjs" "app/(main)/employees/branches/asan/page.js" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS DG/RF 분리와 업로드 시간 보정 (v5.14.290)
 ### 원인
 - GLAPS 업로드 양식은 `DG = 위험물 여부`, `RF = 냉동 여부`를 별도 컬럼으로 요구하는데, 이전 구현은 `DG.RF` 단일 컬럼으로 묶어 혼동 여지가 있었습니다.

@@ -887,6 +887,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailChangeRows\.slice\(0, effectiveDisplayLimit\)/);
   assert.match(source, /detailHeaderFilters/);
   assert.match(source, /toggleDetailHeaderFilterValue/);
+  assert.match(source, /toggleDetailHeaderFilterAll/);
+  assert.match(source, /전체취소/);
+  assert.match(source, /전체선택/);
   assert.match(source, /data-detail-header-filter-root="true"/);
   assert.match(source, /detailRowMatchesHeaderFilters\(detailLineToRow\(line\), DISPATCH_DETAIL_HEADERS, activeFilters\)/);
   assert.match(source, /detailRowMatchesHeaderFilters\(values, DISPATCH_CHANGE_HEADERS, activeFilters\)/);
@@ -898,6 +901,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(detailOverrideApi, /'dg_rf'/);
   assert.match(util, /DISPATCH_DETAIL_DG_HEADER = 'DG'/);
   assert.match(util, /DISPATCH_DETAIL_RF_HEADER = 'RF'/);
+  assert.match(util, /inferDispatchDgFlag/);
   assert.match(util, /inferDispatchRfFlag/);
   assert.match(changeUtil, /rfFlag: \(line\.rfFlag \?\? line\.dgRfFlag\) \|\| ''/);
   assert.match(css, /\.detailDgRfCell/);

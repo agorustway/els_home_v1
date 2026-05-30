@@ -98,6 +98,11 @@ export function inferDispatchRfFlag(containerType = '') {
   return cleanText(containerType).toUpperCase().includes('R') ? 'Y' : 'N';
 }
 
+export function inferDispatchDgFlag(transportRemark = '') {
+  const text = cleanText(transportRemark).toUpperCase();
+  return /(^|[^A-Z0-9])DG([^A-Z0-9]|$)/.test(text) ? 'Y' : 'N';
+}
+
 export function normalizeDispatchDgValue(value = '') {
   const text = cleanText(value).toUpperCase();
   if (['Y', 'YES', '1', 'TRUE'].includes(text)) return 'Y';
@@ -352,6 +357,7 @@ function findExactDispatchDetailHeaderIndex(headers = [], target) {
 }
 
 function buildBaseLine(row, cols, fallbackWorkDate) {
+  const transportRemark = detailValue(row, cols, 'transportRemark');
   return {
     sourceType: cleanText(row?.webCellMeta?.sourceType || ''),
     workDate: detailValue(row, cols, 'date') || fallbackWorkDate || '',
@@ -361,10 +367,10 @@ function buildBaseLine(row, cols, fallbackWorkDate) {
     destination: detailValue(row, cols, 'destination'),
     customer: buildDetailCustomer(row, cols),
     port: detailValue(row, cols, 'port'),
-    transportRemark: detailValue(row, cols, 'transportRemark'),
+    transportRemark,
     line: detailValue(row, cols, 'line'),
     containerType: detailValue(row, cols, 'containerType'),
-    dgFlag: 'N',
+    dgFlag: inferDispatchDgFlag(transportRemark),
     rfFlag: inferDispatchRfFlag(detailValue(row, cols, 'containerType')),
     bkg1: detailValue(row, cols, 'bkg1'),
     bkg2: detailValue(row, cols, 'bkg2'),
