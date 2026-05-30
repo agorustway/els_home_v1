@@ -288,6 +288,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     transportRemark: line.transportRemark || '',
     line: line.line || '',
     containerType: line.containerType || '',
+    dgRfFlag: line.dgRfFlag || '',
     company: line.company || '',
     dispatchTime: line.dispatchTime || '',
     bkg1: line.bkg1 || '',

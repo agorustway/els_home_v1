@@ -749,6 +749,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /saveDetailStartOverride/);
   assert.match(source, /saveDetailBkgOverride/);
   assert.match(source, /saveDetailBkgManualInput/);
+  assert.match(source, /saveDetailDgRfOverride/);
+  assert.match(source, /DETAIL_DG_RF_OVERRIDE_FIELD_KEY = 'dg_rf'/);
   assert.match(source, /detailBkgSourceBadge/);
   assert.match(source, /detailBkgPickButton/);
   assert.match(source, /detailBkgSelectedCell/);
@@ -798,7 +800,10 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /glapsPortCodeOptions,/);
   assert.match(source, /fieldKey: DETAIL_START_OVERRIDE_FIELD_KEY/);
   assert.match(source, /fieldKey: DETAIL_PORT_OVERRIDE_FIELD_KEY/);
+  assert.match(source, /fieldKey: DETAIL_DG_RF_OVERRIDE_FIELD_KEY/);
   assert.match(source, /header === '포트코드' && \(line\.glapsPortCodeOptions \|\| \[\]\)\.length > 1/);
+  assert.match(source, /header === DISPATCH_DETAIL_DG_RF_HEADER/);
+  assert.match(source, /normalizeDispatchDgRfValue\(line\.dgRfFlag, line\.containerType\)/);
   assert.match(source, /formatGlapsPortOptionLabel/);
   assert.match(source, /return code \? `\$\{code\}\$\{defaultMark\}` : option\.label \|\| '';/);
   assert.match(source, /function detailColumnClass\(header\)/);
@@ -853,10 +858,12 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /saveDetailChangeValues/);
   assert.match(source, /setDetailRowValue\(draft, '상차지'/);
   assert.match(source, /setDetailRowValue\(draft, 'BKG확정'/);
+  assert.match(source, /setDetailRowValue\(rawValues, DISPATCH_DETAIL_DG_RF_HEADER/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS\.includes\(header\)/);
   assert.match(source, /detailPostConfirmOverrideCell/);
   assert.match(source, /배차확정 후 상차지 변경/);
   assert.match(source, /배차확정 후 포트코드 변경/);
+  assert.match(source, /배차확정 후 DG\.RF 변경/);
   assert.match(source, /disabled=\{detailOverrideSetupRequired \|\| !detailScope\}/);
   assert.match(source, /const isDisabledBkg = detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope \|\| !bkgValue;/);
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
@@ -877,6 +884,11 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailChangeRowsBase\.length > 0/);
   assert.match(source, /변경건/);
   assert.match(source, /onMasterChanged=\{handleGlapsMasterChanged\}/);
+  assert.match(detailOverrideApi, /'dg_rf'/);
+  assert.match(util, /DISPATCH_DETAIL_DG_RF_HEADER = 'DG\.RF'/);
+  assert.match(util, /inferDispatchDgRfFlag/);
+  assert.match(changeUtil, /dgRfFlag: line\.dgRfFlag/);
+  assert.match(css, /\.detailDgRfCell/);
   assert.match(glapsMasterSource, /onMasterChanged = null/);
   assert.match(glapsMasterSource, /onMasterChanged\?\.\(\)/);
   assert.match(source, /변동 없음/);

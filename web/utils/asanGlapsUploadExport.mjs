@@ -118,6 +118,7 @@ function detailRowToGlapsUploadRow(headerIndex, row = []) {
   setUploadValue(uploadRow, '최종목적지', portCode);
   setUploadValue(uploadRow, '컨테이너 규격', getByHeader(row, headerIndex, ['타입코드']));
   setUploadValue(uploadRow, GLAPS_UPLOAD_QUANTITY_HEADER, 1);
+  setUploadValue(uploadRow, '냉동 여부', getByHeader(row, headerIndex, ['DG.RF']));
   setUploadValue(uploadRow, '컨사이니', getByHeader(row, headerIndex, ['컨샤이니']));
 
   return uploadRow;

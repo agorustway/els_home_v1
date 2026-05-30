@@ -1,3 +1,26 @@
+## [2026-05-30] 상세배차 DG.RF 선택 칸 추가 (v5.14.289)
+### 원인
+- GLAPS 입력 검수에서 타입코드와 업체명 사이에 냉동/위험물 확인용 `DG.RF` Y/N 값이 필요해졌습니다.
+- RF/RE/RH처럼 TYPE에 `R`이 들어가는 냉동 계열은 기본적으로 RF 여부가 Y여야 합니다.
+### 조치
+- 상세배차/배차변동 공통 헤더에 `DG.RF`를 `타입코드`와 `업체명` 사이에 추가했습니다.
+- 기본값은 `N`, TYPE에 `R`이 포함되면 `Y`로 산출하고, 웹에서 Y/N 선택값을 `branch_dispatch_detail_overrides.field_key = dg_rf`로 저장합니다.
+- GLAPS 업로드 시트의 `냉동 여부` 컬럼에 상세배차 `DG.RF` 값을 반영합니다.
+### 검증
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs`: 통과
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+### 변경 파일
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/utils/asanGlapsUploadExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS 광양 하차지 운송경로 후보 보강 (v5.14.288)
 ### 원인
 - 상세배차 행은 `상차지=광양항`, `하차지(선적)=광양`으로 들어왔고, GLAPS 운송경로 원장은 `KR10 → KRKAN → 글로비스KD센터3포장 → KRKAN` 코드 기준으로 저장돼 있었습니다.

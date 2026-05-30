@@ -1830,6 +1830,13 @@
     padding: 0 !important;
 }
 
+.detailDgRfCell {
+    width: 58px;
+    min-width: 58px;
+    max-width: 58px;
+    padding: 0 !important;
+}
+
 .detailPortCandidateCell {
     background: #fef3c7;
     box-shadow: inset 0 0 0 1px #facc15;
@@ -1846,6 +1853,10 @@
     font: inherit;
     font-weight: 800;
     padding: 0 4px;
+}
+
+.detailDgRfCell .detailPortSelect {
+    min-width: 0;
 }
 
 .detailPortCandidateCell .detailPortSelect {
