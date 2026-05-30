@@ -1,3 +1,25 @@
+## [2026-05-30] 배차변동 변경셀 표시 축소와 확정자명 보정 (v5.14.294)
+### 원인
+- 배차변동 추가/삭제 행까지 값이 있는 칸을 모두 노란색으로 표시해, 실제로 어떤 컬럼이 변경된 것인지 구분하기 어려웠습니다.
+- 상세배차 상단에 긴 GLAPS 검수 설명 문구가 남아 좁은 해상도에서 요약/필터 버튼 줄바꿈을 더 악화시켰습니다.
+- 배차확정자 표시는 로그인 메타데이터 이름을 DB 직원명보다 먼저 사용해, 실제 이름 대신 이상한 표시명이 잡힐 수 있었습니다.
+### 조치
+- 노란 변경셀 표시는 `change` 이벤트에서 before/after diff로 확인된 컬럼에만 적용하고, `add/delete` 행은 행 상태 표시만 남기도록 축소했습니다.
+- 상세배차 상단의 긴 검수 설명 문구를 제거하고, 1200px 이하에서 요약/상태/검수 필터가 좌측 정렬로 자연스럽게 줄바꿈되도록 CSS를 정리했습니다.
+- 확정/취소 작업자명은 `profiles`, `user_roles`에 등록된 이름을 먼저 쓰고, DB 이름이 없을 때만 OAuth 메타데이터 또는 이메일 fallback을 사용하도록 순서를 바꿨습니다.
+### 검증
+- 진행 예정: `cd web; node --test tests/asanDashboardView.test.mjs`
+- 진행 예정: `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/actorName.js" "tests/asanDashboardView.test.mjs"`
+- 진행 예정: `cd web; npm run build`
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/actorName.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] 상세배차 검수 배지 압축과 배차변동 수정성 보강 (v5.14.293)
 ### 원인
 - 상세배차 검수 배지에 `선택필요`, `미도출`, `확인` 같은 설명 문구가 반복돼 상단 공간을 많이 차지했습니다.
@@ -30,7 +52,7 @@
 - 항목매핑 중복검출/일괄병합 기준을 `매핑항목+최종코드(BP)`로 변경해 같은 `EAS`라도 선사와 실출하지코드는 다른 코드로 봅니다.
 ### 검증
 - `node --test web/tests/glapsDuplicateGroups.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 통과
-- Supabase MCP 적용은 커넥터 재인증 필요 상태로 중단. SQL 파일 `web/supabase_sql/20260530_glaps_alias_review_note_promotion.sql` 준비 완료.
+- Supabase 운영 DB 마이그레이션 `glaps_alias_review_note_promotion_20260530` 적용 완료. 활성 원장 기준 `actual_unloading` 26건, `order_type` 2건 확인, 잘못된 `선사코드, 실출하지코드` 활성 행 0건 확인.
 ### 변경 파일
 - `web/utils/glapsMasterData.mjs`, `web/utils/glapsDuplicateGroups.mjs`
 - `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
