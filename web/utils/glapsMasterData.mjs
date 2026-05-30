@@ -147,6 +147,7 @@ const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
   ['인천신항', ['KRINN']],
   ['인천항국제여객터미널', ['KRINF']],
   ['광양항', ['KRKAN']],
+  ['광양', ['KRKAN']],
   ['평택항', ['KRPTK']],
   ['울산신항', ['KRUSN', 'KRUSN_NEW']],
   ['울산구항', ['KRUSN_OLD']],

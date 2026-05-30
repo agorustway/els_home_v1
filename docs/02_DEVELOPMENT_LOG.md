@@ -1,3 +1,20 @@
+## [2026-05-30] GLAPS 광양 하차지 운송경로 후보 보강 (v5.14.288)
+### 원인
+- 상세배차 행은 `상차지=광양항`, `하차지(선적)=광양`으로 들어왔고, GLAPS 운송경로 원장은 `KR10 → KRKAN → 글로비스KD센터3포장 → KRKAN` 코드 기준으로 저장돼 있었습니다.
+- 기존 후보 확장은 `광양항 → KRKAN`만 처리해 `광양 → KRKAN` 목적지 후보를 만들지 못했고, 실제 원장 경로가 있어도 운송경로가 비어 보였습니다.
+### 조치
+- GLAPS 운송경로 상하차지 후보에 `광양 → KRKAN` 별칭을 추가했습니다.
+- `KR10 + 광양항 + 글로비스KD센터3포장 + 광양` 입력이 `KR10|KRKAN|글로비스KD센터3포장|KRKAN` 키를 만들도록 테스트를 추가했습니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "utils/glapsMasterData.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS 현대제철 화주사코드 적용 후보 보강 (v5.14.287)
 ### 원인
 - 특이적용건에는 `경유지(ELS)=현대제철, 화주사코드=N084`가 저장됐지만, 실제 상세배차 행의 현대제철 값은 `작업지`가 아니라 `화주` 컬럼에 들어왔습니다.
