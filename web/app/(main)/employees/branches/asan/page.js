@@ -838,9 +838,9 @@ function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypoi
         ));
     return String(candidates[0]?.rule?.consignee_code || '').trim();
 }
-function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypointElsName = '' } = {}) {
-    const requestedWaypointKeys = new Set([waypointName, waypointElsName].map(normalizeGlapsKey).filter(Boolean));
-    if (requestedWaypointKeys.size === 0) return '';
+function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypointElsName = '', shipperName = '' } = {}) {
+    const requestedMatchKeys = new Set([waypointName, waypointElsName, shipperName].map(normalizeGlapsKey).filter(Boolean));
+    if (requestedMatchKeys.size === 0) return '';
     const candidates = (rules || [])
         .filter(rule => rule?.active !== false && !String(rule?.consignee_code || rule?.consigneeCode || '').trim())
         .map(rule => ({
@@ -853,7 +853,7 @@ function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypoin
             priority: Number(rule.priority ?? 100) || 100,
         }))
         .filter(item => item.shipperCode && item.waypointKeys.length > 0)
-        .filter(item => item.waypointKeys.some(key => requestedWaypointKeys.has(key)))
+        .filter(item => item.waypointKeys.some(key => requestedMatchKeys.has(key)))
         .sort((a, b) => (
             a.priority - b.priority
             || String(a.shipperCode).localeCompare(String(b.shipperCode))
@@ -2173,6 +2173,7 @@ function AsanDispatchContent() {
         const specialShipperCode = resolveGlapsSpecialShipperCode(glapsSpecialConsigneeRules, {
             waypointName: line.workplace,
             waypointElsName: line.workplace,
+            shipperName: line.shipper,
         });
         const lineShipperCode = specialShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
         const routeKeys = buildGlapsDispatchRouteFingerprints({

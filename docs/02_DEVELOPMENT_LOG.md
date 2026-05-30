@@ -1,3 +1,20 @@
+## [2026-05-30] GLAPS 현대제철 화주사코드 적용 후보 보강 (v5.14.287)
+### 원인
+- 특이적용건에는 `경유지(ELS)=현대제철, 화주사코드=N084`가 저장됐지만, 실제 상세배차 행의 현대제철 값은 `작업지`가 아니라 `화주` 컬럼에 들어왔습니다.
+- 기존 보정 함수는 상세행 `작업지`만 매칭 후보로 보아 해당 룰을 찾지 못했습니다.
+### 조치
+- 화주사코드 특이적용건 매칭 후보에 상세행 `화주` 값을 추가했습니다.
+- 컨샤이니 우선코드가 빈 특이적용건은 `작업지/경유지(ELS)/화주명` 중 하나가 맞으면 화주사코드 보정으로 적용됩니다.
+### 검증
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS 현대제철 화주사코드 특이적용 추가 (v5.14.286)
 ### 원인
 - 기존 특이적용건은 `화주사코드 + 경유지(GLAPS/ELS) → 컨샤이니 우선코드`만 처리했습니다.
