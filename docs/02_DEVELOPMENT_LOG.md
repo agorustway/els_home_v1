@@ -1,3 +1,25 @@
+## [2026-05-30] GLAPS 현대제철 화주사코드 특이적용 추가 (v5.14.286)
+### 원인
+- 기존 특이적용건은 `화주사코드 + 경유지(GLAPS/ELS) → 컨샤이니 우선코드`만 처리했습니다.
+- 현대제철 건은 특정 경유지(ELS)를 만나면 컨샤이니가 아니라 GLAPS 화주사코드 자체를 `N084`로 보정해야 합니다.
+### 조치
+- 컨샤이니 우선코드가 빈 특이적용건은 `경유지(GLAPS/ELS) → 화주사코드 보정` 규칙으로 해석하도록 상세배차/배차변동 GLAPS 매칭 로직을 확장했습니다.
+- GLAPS코드 특이적용건 표에 `적용항목` 컬럼을 추가해 컨샤이니 룰과 화주사코드 보정 룰을 구분합니다.
+- 기본 seed와 운영 DB에 `경유지(ELS)=현대제철, 화주사코드=N084, 우선순위=10` 규칙을 추가했습니다.
+### 검증
+- 운영 DB 확인: `N084 / 현대제철 / 컨샤이니 공란 / priority 10 / active true` 1건 저장 확인.
+- `cd web; node --test tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] GLAPS 글로비스 운송경로 KR10 매칭 보강 (v5.14.285)
 ### 원인
 - 현재 활성 GLAPS 원장 `GLC00035` 등 글로비스 운송경로는 `raw_payload.화주사코드 = KR10`으로 들어와 있지만, 별도 `화주명` 값은 비어 있습니다.

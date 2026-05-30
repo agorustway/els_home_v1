@@ -838,6 +838,28 @@ function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypoi
         ));
     return String(candidates[0]?.rule?.consignee_code || '').trim();
 }
+function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypointElsName = '' } = {}) {
+    const requestedWaypointKeys = new Set([waypointName, waypointElsName].map(normalizeGlapsKey).filter(Boolean));
+    if (requestedWaypointKeys.size === 0) return '';
+    const candidates = (rules || [])
+        .filter(rule => rule?.active !== false && !String(rule?.consignee_code || rule?.consigneeCode || '').trim())
+        .map(rule => ({
+            rule,
+            shipperCode: String(rule.shipper_code || rule.shipperCode || '').trim(),
+            waypointKeys: [
+                rule.waypoint_name || rule.waypointName,
+                rule.waypoint_els_name || rule.waypointElsName,
+            ].map(normalizeGlapsKey).filter(Boolean),
+            priority: Number(rule.priority ?? 100) || 100,
+        }))
+        .filter(item => item.shipperCode && item.waypointKeys.length > 0)
+        .filter(item => item.waypointKeys.some(key => requestedWaypointKeys.has(key)))
+        .sort((a, b) => (
+            a.priority - b.priority
+            || String(a.shipperCode).localeCompare(String(b.shipperCode))
+        ));
+    return candidates[0]?.shipperCode || '';
+}
 function setGlapsCodeMapValue(map, source, code) {
     const key = normalizeGlapsKey(source);
     if (key && code && !map.has(key)) map.set(key, code);
@@ -2148,7 +2170,11 @@ function AsanDispatchContent() {
                     : line.startLocation || ''
             );
         const carrierCode = getGlapsAliasCode(glapsAliasMaps.carrier, 'ELS');
-        const lineShipperCode = getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
+        const specialShipperCode = resolveGlapsSpecialShipperCode(glapsSpecialConsigneeRules, {
+            waypointName: line.workplace,
+            waypointElsName: line.workplace,
+        });
+        const lineShipperCode = specialShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
         const routeKeys = buildGlapsDispatchRouteFingerprints({
             shipperCode: lineShipperCode,
             startLocationName: startLocation,

@@ -68,6 +68,18 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     updated_by: 'system:default',
   },
   {
+    id: 'default-n084-hyundai-steel-shipper',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    shipper_code: 'N084',
+    waypoint_name: '',
+    waypoint_els_name: '현대제철',
+    consignee_code: '',
+    priority: 10,
+    review_note: '현대제철 경유지 화주사코드 우선적용',
+    active: true,
+    updated_by: 'system:default',
+  },
+  {
     id: 'default-b000034432-mobbel-fallback',
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     shipper_code: 'B000034432',
@@ -1256,7 +1268,9 @@ async function handleSpecialConsigneeRuleMutation({ adminSupabase, payload, bran
 
   const rule = directSpecialConsigneeRuleFromPayload(row);
   if (!rule.shipperCode) return { error: jsonError('화주사코드는 필수입니다.', 400) };
-  if (!rule.consigneeCode) return { error: jsonError('컨샤이니 우선코드는 필수입니다.', 400) };
+  if (!rule.consigneeCode && !rule.waypointName && !rule.waypointElsName) {
+    return { error: jsonError('컨샤이니 우선코드가 없으면 경유지(GLAPS/ELS) 중 하나는 필수입니다.', 400) };
+  }
   const dbRow = toSpecialConsigneeRuleDbRow(rule, { branchId, userEmail: actor });
   const { data, error } = id
     ? await adminSupabase

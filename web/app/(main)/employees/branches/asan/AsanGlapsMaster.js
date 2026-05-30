@@ -640,6 +640,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (activeTable === 'specialRules') {
             return [
+                { key: 'rule_type', label: '적용항목', value: row => (row.consignee_code ? '컨샤이니' : '화주사코드') },
                 { key: 'shipper_code', label: '화주사코드', value: row => row.shipper_code, className: styles.keyCell },
                 { key: 'waypoint_name', label: '경유지(GLAPS)', value: row => row.waypoint_name || '(해당 화주사 기본)' },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || '' },
@@ -1020,7 +1021,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.fieldGuide}>
                 <span><b>매핑항목</b> 포트·선사·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
                 <span><b>검수메모</b> 매칭 키가 아니라 출처·용도·기본값을 남기는 참고/필터용 메모입니다.</span>
-                <span><b>특이적용건</b> 화주사코드와 경유지(GLAPS/ELS) 조건이 맞으면 일반 컨샤이니 매핑보다 먼저 적용됩니다.</span>
+                <span><b>특이적용건</b> 컨샤이니 우선코드가 있으면 컨샤이니를 먼저 적용하고, 비어 있으면 경유지(GLAPS/ELS) 기준으로 화주사코드를 보정합니다.</span>
             </div>
 
             <div className={styles.toolbar}>
