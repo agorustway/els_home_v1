@@ -66,8 +66,17 @@ export function createNumericHeaderSet(headers = []) {
   return set;
 }
 
+export function createTextHeaderSet(headers = []) {
+  return new Set((headers || []).map(normalizeExcelHeader).filter(Boolean));
+}
+
 export function isIntranetNumericHeader(header, numericHeaders = []) {
   const set = numericHeaders instanceof Set ? numericHeaders : createNumericHeaderSet(numericHeaders);
+  return set.has(normalizeExcelHeader(header));
+}
+
+export function isIntranetTextHeader(header, textHeaders = []) {
+  const set = textHeaders instanceof Set ? textHeaders : createTextHeaderSet(textHeaders);
   return set.has(normalizeExcelHeader(header));
 }
 
@@ -85,9 +94,10 @@ export function toIntranetExcelTimeValue(value) {
   return (hour * 60 + minute) / 1440;
 }
 
-export function toIntranetExcelValue(header, value, numericHeaders = []) {
+export function toIntranetExcelValue(header, value, numericHeaders = [], textHeaders = []) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : '';
   const text = cleanExcelText(value);
+  if (isIntranetTextHeader(header, textHeaders)) return text;
   if (isIntranetTimeHeader(header)) {
     const timeValue = toIntranetExcelTimeValue(text);
     if (timeValue !== null) return timeValue;
@@ -104,9 +114,12 @@ export function normalizeIntranetExcelRows(headers = [], rows = [], options = {}
   const numericHeaders = options.numericHeaders instanceof Set
     ? options.numericHeaders
     : createNumericHeaderSet(options.numericHeaders || []);
+  const textHeaders = options.textHeaders instanceof Set
+    ? options.textHeaders
+    : createTextHeaderSet(options.textHeaders || []);
   return (Array.isArray(rows) ? rows : []).slice(0, maxRows).map(row => {
     const values = Array.isArray(row) ? row : [];
-    return headers.map((header, idx) => toIntranetExcelValue(header, values[idx], numericHeaders));
+    return headers.map((header, idx) => toIntranetExcelValue(header, values[idx], numericHeaders, textHeaders));
   });
 }
 
@@ -115,6 +128,9 @@ export function normalizeIntranetExportSheet(input = {}, options = {}) {
   const numericHeaders = options.numericHeaders instanceof Set
     ? options.numericHeaders
     : createNumericHeaderSet([...(options.numericHeaders || []), ...(input.numericHeaders || [])]);
+  const textHeaders = options.textHeaders instanceof Set
+    ? options.textHeaders
+    : createTextHeaderSet([...(options.textHeaders || []), ...(input.textHeaders || [])]);
   return {
     title: cleanExcelText(input.title),
     generatedAt: cleanExcelText(input.generatedAt),
@@ -123,8 +139,10 @@ export function normalizeIntranetExportSheet(input = {}, options = {}) {
     rows: normalizeIntranetExcelRows(headers, input.rows || [], {
       maxRows: options.maxRows,
       numericHeaders,
+      textHeaders,
     }),
     numericHeaders,
+    textHeaders,
   };
 }
 
@@ -143,6 +161,7 @@ export function applyIntranetExcelHeaderCell(cell) {
 export function applyIntranetExcelBodyCell(cell, options = {}) {
   const numeric = Boolean(options.numeric);
   const time = Boolean(options.time);
+  const text = Boolean(options.text);
   const existingFont = cell.font || {};
   cell.border = {
     top: { style: 'thin', color: { argb: INTRANET_EXCEL_COLORS.cellBorder } },
@@ -151,9 +170,10 @@ export function applyIntranetExcelBodyCell(cell, options = {}) {
     right: { style: 'thin', color: { argb: INTRANET_EXCEL_COLORS.cellBorder } },
   };
   cell.font = { ...existingFont, size: existingFont.size || 10, name: existingFont.name || '맑은 고딕' };
-  cell.alignment = { vertical: 'middle', horizontal: options.horizontal || (time ? 'center' : numeric ? 'right' : 'left') };
-  if (time) cell.numFmt = 'hh:mm';
-  if (numeric) cell.numFmt = '#,##0';
+  cell.alignment = { vertical: 'middle', horizontal: options.horizontal || (time || text ? 'center' : numeric ? 'right' : 'left') };
+  if (text) cell.numFmt = '@';
+  else if (time) cell.numFmt = 'hh:mm';
+  if (!text && numeric) cell.numFmt = '#,##0';
 }
 
 export function fitIntranetExcelColumns(sheet, options = {}) {
@@ -191,6 +211,9 @@ export function addIntranetExportWorksheet(workbook, exportSheet = {}, options =
   const numericHeaders = normalized.numericHeaders instanceof Set
     ? normalized.numericHeaders
     : createNumericHeaderSet([...(options.numericHeaders || []), ...(normalized.numericHeaders || [])]);
+  const textHeaders = normalized.textHeaders instanceof Set
+    ? normalized.textHeaders
+    : createTextHeaderSet([...(options.textHeaders || []), ...(normalized.textHeaders || [])]);
   const sheet = workbook.addWorksheet(uniqueExcelSheetName(workbook, normalized.sheetName || normalized.title));
   let headerRowNumber = 1;
   const mergeColumnCount = Math.max(headers.length, 1);
@@ -220,7 +243,8 @@ export function addIntranetExportWorksheet(workbook, exportSheet = {}, options =
     for (let colIdx = 1; colIdx <= headers.length; colIdx += 1) {
       applyIntranetExcelBodyCell(excelRow.getCell(colIdx), {
         numeric: isIntranetNumericHeader(headers[colIdx - 1], numericHeaders),
-        time: isIntranetTimeHeader(headers[colIdx - 1]),
+        time: isIntranetTimeHeader(headers[colIdx - 1]) && !isIntranetTextHeader(headers[colIdx - 1], textHeaders),
+        text: isIntranetTextHeader(headers[colIdx - 1], textHeaders),
       });
     }
   });

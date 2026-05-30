@@ -1,3 +1,27 @@
+## [2026-05-30] GLAPS DG/RF 분리와 업로드 시간 보정 (v5.14.290)
+### 원인
+- GLAPS 업로드 양식은 `DG = 위험물 여부`, `RF = 냉동 여부`를 별도 컬럼으로 요구하는데, 이전 구현은 `DG.RF` 단일 컬럼으로 묶어 혼동 여지가 있었습니다.
+- `배차요청시간`이 Excel 시간값으로 내려가면 업로드 과정에서 `1:00:00 PM`처럼 해석될 수 있어, GLAPS에는 문자 `HH:MM` 그대로 들어가야 했습니다.
+- 운송경로 매칭에서 `KRKAN`처럼 항목매핑에 최종코드(BP)와 ELS 매치코드가 있어도 운송경로 후보에 충분히 반영되지 않는 케이스가 있었습니다.
+### 조치
+- 상세배차/배차변동 헤더를 `DG`, `RF`로 분리하고 `DG`는 기본 N, `RF`는 TYPE에 R이 포함되면 기본 Y가 되도록 정리했습니다.
+- GLAPS 업로드 시트는 `위험물 여부`에는 `DG`, `냉동 여부`에는 `RF`를 각각 매핑하고, `배차요청시간`은 텍스트 셀 `HH:MM`으로 출력합니다.
+- 운송경로 매칭 후보에 항목매핑 별칭 코드도 함께 사용하도록 보강하고, 배차변동 변경 셀은 노란색으로 표시하게 했습니다.
+- 확정 후 상세배차 상차지 입력은 원래 `기타/철송·기타·아산·중부`처럼 선택 필요였던 행만 수정 가능하게 제한했습니다.
+### 검증
+- `cd web; node --test tests\asanDispatchDetailLines.test.mjs tests\asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "utils/asanDispatchDetailLines.mjs" "utils/asanDispatchChangeEvents.mjs" "utils/asanGlapsUploadExport.mjs" "utils/intranetExcelExport.mjs" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/detail-override/route.js" "tests/asanDispatchDetailLines.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/utils/asanDispatchDetailLines.mjs`, `web/utils/asanDispatchChangeEvents.mjs`, `web/utils/asanGlapsUploadExport.mjs`, `web/utils/intranetExcelExport.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] 상세배차 DG.RF 선택 칸 추가 (v5.14.289)
 ### 원인
 - GLAPS 입력 검수에서 타입코드와 업체명 사이에 냉동/위험물 확인용 `DG.RF` Y/N 값이 필요해졌습니다.

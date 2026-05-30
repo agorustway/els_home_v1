@@ -44,6 +44,8 @@ const DERIVED_GLAPS_HEADERS = new Set([
 ]);
 const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '고객사',
+  '상차지',
+  '하차지(선적)',
   '포트(DIST)',
   '라인',
   '타입',
@@ -288,7 +290,8 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     transportRemark: line.transportRemark || '',
     line: line.line || '',
     containerType: line.containerType || '',
-    dgRfFlag: line.dgRfFlag || '',
+    dgFlag: line.dgFlag || 'N',
+    rfFlag: (line.rfFlag ?? line.dgRfFlag) || '',
     company: line.company || '',
     dispatchTime: line.dispatchTime || '',
     bkg1: line.bkg1 || '',

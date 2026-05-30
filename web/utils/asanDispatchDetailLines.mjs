@@ -1,6 +1,8 @@
 export const DISPATCH_DETAIL_PORT_HEADER = '포트(DIST)';
 export const DISPATCH_DETAIL_TIME_HEADER = '시간';
-export const DISPATCH_DETAIL_DG_RF_HEADER = 'DG.RF';
+export const DISPATCH_DETAIL_DG_HEADER = 'DG';
+export const DISPATCH_DETAIL_RF_HEADER = 'RF';
+export const DISPATCH_DETAIL_DG_RF_HEADER = DISPATCH_DETAIL_RF_HEADER;
 
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '작업일자',
@@ -18,7 +20,8 @@ export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '라인코드',
   '타입',
   '타입코드',
-  DISPATCH_DETAIL_DG_RF_HEADER,
+  DISPATCH_DETAIL_DG_HEADER,
+  DISPATCH_DETAIL_RF_HEADER,
   '업체명',
   DISPATCH_DETAIL_TIME_HEADER,
   'BKG확정',
@@ -70,7 +73,8 @@ const DISPATCH_REGION_HEADERS = Object.freeze([
 ]);
 
 const MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '아산', '중부']);
-const DISPATCH_DETAIL_DG_RF_INDEX = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_DG_RF_HEADER);
+const DISPATCH_DETAIL_DG_INDEX = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_DG_HEADER);
+const DISPATCH_DETAIL_RF_INDEX = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_RF_HEADER);
 const DISPATCH_DETAIL_TYPE_INDEX = DISPATCH_DETAIL_HEADERS.indexOf('타입');
 const DISPATCH_DETAIL_TIME_INDEX = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_TIME_HEADER);
 
@@ -90,16 +94,26 @@ export function normalizeDispatchTimeValue(value = '') {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-export function inferDispatchDgRfFlag(containerType = '') {
+export function inferDispatchRfFlag(containerType = '') {
   return cleanText(containerType).toUpperCase().includes('R') ? 'Y' : 'N';
 }
 
-export function normalizeDispatchDgRfValue(value = '', containerType = '') {
+export function normalizeDispatchDgValue(value = '') {
   const text = cleanText(value).toUpperCase();
   if (['Y', 'YES', '1', 'TRUE'].includes(text)) return 'Y';
   if (['N', 'NO', '0', 'FALSE'].includes(text)) return 'N';
-  return inferDispatchDgRfFlag(containerType);
+  return 'N';
 }
+
+export function normalizeDispatchRfValue(value = '', containerType = '') {
+  const text = cleanText(value).toUpperCase();
+  if (['Y', 'YES', '1', 'TRUE'].includes(text)) return 'Y';
+  if (['N', 'NO', '0', 'FALSE'].includes(text)) return 'N';
+  return inferDispatchRfFlag(containerType);
+}
+
+export const inferDispatchDgRfFlag = inferDispatchRfFlag;
+export const normalizeDispatchDgRfValue = normalizeDispatchRfValue;
 
 function normalizeHeader(value) {
   return cleanText(value).replace(/\s+/g, '').toUpperCase();
@@ -108,34 +122,52 @@ function normalizeHeader(value) {
 export function normalizeDispatchDetailRowValues(values = []) {
   const rawValues = Array.isArray(values) ? values : [];
   let sourceValues = rawValues;
-  if (rawValues.length === DISPATCH_DETAIL_HEADERS.length - 1 && DISPATCH_DETAIL_DG_RF_INDEX >= 0) {
+  if (rawValues.length === DISPATCH_DETAIL_HEADERS.length - 1 && DISPATCH_DETAIL_DG_INDEX >= 0) {
     sourceValues = [
-      ...rawValues.slice(0, DISPATCH_DETAIL_DG_RF_INDEX),
+      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
       '',
-      ...rawValues.slice(DISPATCH_DETAIL_DG_RF_INDEX),
+      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+    ];
+  } else if (rawValues.length === DISPATCH_DETAIL_HEADERS.length - 2 && DISPATCH_DETAIL_DG_INDEX >= 0) {
+    const withDg = [
+      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
+      '',
+      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+    ];
+    sourceValues = [
+      ...withDg.slice(0, DISPATCH_DETAIL_RF_INDEX),
+      '',
+      ...withDg.slice(DISPATCH_DETAIL_RF_INDEX),
     ];
   } else if (
-    rawValues.length === DISPATCH_DETAIL_HEADERS.length - 2
-    && DISPATCH_DETAIL_DG_RF_INDEX >= 0
+    rawValues.length === DISPATCH_DETAIL_HEADERS.length - 3
+    && DISPATCH_DETAIL_DG_INDEX >= 0
     && DISPATCH_DETAIL_TIME_INDEX >= 0
   ) {
-    const withDgRf = [
-      ...rawValues.slice(0, DISPATCH_DETAIL_DG_RF_INDEX),
+    const withDg = [
+      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
       '',
-      ...rawValues.slice(DISPATCH_DETAIL_DG_RF_INDEX),
+      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+    ];
+    const withRf = [
+      ...withDg.slice(0, DISPATCH_DETAIL_RF_INDEX),
+      '',
+      ...withDg.slice(DISPATCH_DETAIL_RF_INDEX),
     ];
     sourceValues = [
-      ...withDgRf.slice(0, DISPATCH_DETAIL_TIME_INDEX),
+      ...withRf.slice(0, DISPATCH_DETAIL_TIME_INDEX),
       '',
-      ...withDgRf.slice(DISPATCH_DETAIL_TIME_INDEX),
+      ...withRf.slice(DISPATCH_DETAIL_TIME_INDEX),
     ];
   }
   return DISPATCH_DETAIL_HEADERS.map((_, idx) => (
     idx === DISPATCH_DETAIL_TIME_INDEX
       ? normalizeDispatchTimeValue(sourceValues[idx])
       : (
-          idx === DISPATCH_DETAIL_DG_RF_INDEX
-            ? normalizeDispatchDgRfValue(sourceValues[idx], sourceValues[DISPATCH_DETAIL_TYPE_INDEX])
+          idx === DISPATCH_DETAIL_DG_INDEX
+            ? normalizeDispatchDgValue(sourceValues[idx])
+            : idx === DISPATCH_DETAIL_RF_INDEX
+              ? normalizeDispatchRfValue(sourceValues[idx], sourceValues[DISPATCH_DETAIL_TYPE_INDEX])
             : cleanText(sourceValues[idx] ?? '')
         )
   ));
@@ -332,7 +364,8 @@ function buildBaseLine(row, cols, fallbackWorkDate) {
     transportRemark: detailValue(row, cols, 'transportRemark'),
     line: detailValue(row, cols, 'line'),
     containerType: detailValue(row, cols, 'containerType'),
-    dgRfFlag: inferDispatchDgRfFlag(detailValue(row, cols, 'containerType')),
+    dgFlag: 'N',
+    rfFlag: inferDispatchRfFlag(detailValue(row, cols, 'containerType')),
     bkg1: detailValue(row, cols, 'bkg1'),
     bkg2: detailValue(row, cols, 'bkg2'),
     bkg3: detailValue(row, cols, 'bkg3'),
@@ -412,7 +445,8 @@ export function detailLineToRow(line = {}) {
     line.glapsLineCode || '',
     line.containerType || '',
     line.glapsTypeCode || '',
-    normalizeDispatchDgRfValue(line.dgRfFlag, line.containerType),
+    normalizeDispatchDgValue(line.dgFlag),
+    normalizeDispatchRfValue(line.rfFlag ?? line.dgRfFlag, line.containerType),
     line.company || '',
     normalizeDispatchTimeValue(line.dispatchTime || ''),
     line.confirmedBkg || line.bkg1 || '',

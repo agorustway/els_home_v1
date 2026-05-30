@@ -12,14 +12,16 @@ import {
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
 import {
-    DISPATCH_DETAIL_DG_RF_HEADER,
+    DISPATCH_DETAIL_DG_HEADER,
     DISPATCH_DETAIL_HEADERS,
     DISPATCH_DETAIL_PORT_HEADER,
+    DISPATCH_DETAIL_RF_HEADER,
     GLAPS_START_LOCATION_OPTIONS,
     buildDispatchDetailLines,
     detailLineToRow,
-    normalizeDispatchDgRfValue,
+    normalizeDispatchDgValue,
     normalizeDispatchDetailRowValues,
+    normalizeDispatchRfValue,
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
 import {
@@ -38,8 +40,8 @@ import {
     buildGlapsUploadRowsFromDetailRows,
 } from '@/utils/asanGlapsUploadExport.mjs';
 import {
-    buildGlapsDispatchRouteFingerprints,
     buildGlapsRouteFingerprint,
+    getGlapsRouteLocationCodeCandidates,
     getGlapsRouteShipperCode,
     normalizeGlapsKey,
     splitGlapsAliasValues,
@@ -170,7 +172,10 @@ const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
 const DETAIL_START_OVERRIDE_FIELD_KEY = 'start_location';
 const DETAIL_PORT_OVERRIDE_FIELD_KEY = 'glaps_port_code';
-const DETAIL_DG_RF_OVERRIDE_FIELD_KEY = 'dg_rf';
+const DETAIL_DG_OVERRIDE_FIELD_KEY = 'dg';
+const DETAIL_RF_OVERRIDE_FIELD_KEY = 'rf';
+const DETAIL_LEGACY_DG_RF_OVERRIDE_FIELD_KEY = 'dg_rf';
+const DETAIL_MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '아산', '중부']);
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
 const DETAIL_SOURCE_MEMO_HEADERS = Object.freeze(['BKG1', 'BKG2', 'BKG3', 'TARGET VESSEL', '비고']);
 const BKG_WEB_CELL_LOCK_FIELDS = new Set([
@@ -665,6 +670,10 @@ function setDetailRowValue(values = [], header, value) {
     if (idx >= 0) next[idx] = String(value ?? '').trim();
     return next;
 }
+function canEditDetailStartLocation(line = {}) {
+    const region = line.startRegion || line.sourceRegion || '';
+    return !line.startLocation || DETAIL_MANUAL_START_REGIONS.has(region);
+}
 function inferBkgSourceFromDetailValues(values = []) {
     const confirmed = getDetailRowValue(values, 'BKG확정');
     if (confirmed && confirmed === getDetailRowValue(values, 'BKG2')) return 'BKG2';
@@ -689,6 +698,7 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         workDate: getDetailRowValue(values, '작업일자') || context.workDate || '',
         direction: getDetailRowValue(values, '구분') || context.direction || '',
         shipper: getDetailRowValue(values, '화주') || context.shipper || '',
+        startRegion: context.startRegion || context.sourceRegion || '',
         startLocation: getDetailRowValue(values, '상차지') || context.startLocation || '',
         workplace: getDetailRowValue(values, '작업지') || context.workplace || '',
         destination: getDetailRowValue(values, '하차지(선적)') || context.destination || '',
@@ -698,7 +708,8 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         glapsPortCodeOverride: options.portCodeOverride || context.glapsPortCodeOverride || '',
         line: getDetailRowValue(values, '라인') || context.line || '',
         containerType: getDetailRowValue(values, '타입') || context.containerType || '',
-        dgRfFlag: normalizeDispatchDgRfValue(getDetailRowValue(values, DISPATCH_DETAIL_DG_RF_HEADER) || context.dgRfFlag, getDetailRowValue(values, '타입') || context.containerType || ''),
+        dgFlag: normalizeDispatchDgValue(getDetailRowValue(values, DISPATCH_DETAIL_DG_HEADER) || context.dgFlag),
+        rfFlag: normalizeDispatchRfValue(getDetailRowValue(values, DISPATCH_DETAIL_RF_HEADER) || context.rfFlag || context.dgRfFlag, getDetailRowValue(values, '타입') || context.containerType || ''),
         company: getDetailRowValue(values, '업체명') || context.company || '',
         dispatchTime: getDetailRowValue(values, '시간') || context.dispatchTime || '',
         confirmedBkg,
@@ -723,6 +734,7 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         workDate: getDetailRowValue(rowValues, '작업일자'),
         direction: getDetailRowValue(rowValues, '구분'),
         shipper: getDetailRowValue(rowValues, '화주'),
+        startRegion: baseContext.startRegion || baseContext.sourceRegion || '',
         startLocation: getDetailRowValue(rowValues, '상차지'),
         workplace: getDetailRowValue(rowValues, '작업지'),
         destination: getDetailRowValue(rowValues, '하차지(선적)'),
@@ -731,7 +743,8 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         transportRemark: baseContext.transportRemark || '',
         line: getDetailRowValue(rowValues, '라인'),
         containerType: getDetailRowValue(rowValues, '타입'),
-        dgRfFlag: normalizeDispatchDgRfValue(getDetailRowValue(rowValues, DISPATCH_DETAIL_DG_RF_HEADER), getDetailRowValue(rowValues, '타입')),
+        dgFlag: normalizeDispatchDgValue(getDetailRowValue(rowValues, DISPATCH_DETAIL_DG_HEADER)),
+        rfFlag: normalizeDispatchRfValue(getDetailRowValue(rowValues, DISPATCH_DETAIL_RF_HEADER), getDetailRowValue(rowValues, '타입')),
         company: getDetailRowValue(rowValues, '업체명'),
         dispatchTime: getDetailRowValue(rowValues, '시간'),
         bkg1: getDetailRowValue(rowValues, 'BKG1'),
@@ -747,13 +760,16 @@ function buildDetailLineContext(line = {}) {
         lineNo: line.lineNo || null,
         workDate: line.workDate || '',
         shipper: line.shipper || '',
+        startRegion: line.startRegion || line.sourceRegion || '',
+        sourceRegion: line.sourceRegion || '',
         workplace: line.workplace || '',
         startLocation: line.startLocation || '',
         destination: line.destination || '',
         port: line.port || '',
         transportRemark: line.transportRemark || '',
         glapsPortCode: line.glapsPortCode || '',
-        dgRfFlag: normalizeDispatchDgRfValue(line.dgRfFlag, line.containerType),
+        dgFlag: normalizeDispatchDgValue(line.dgFlag),
+        rfFlag: normalizeDispatchRfValue(line.rfFlag ?? line.dgRfFlag, line.containerType),
         company: line.company || '',
         dispatchTime: line.dispatchTime || '',
         bkg1: line.bkg1 || '',
@@ -807,6 +823,19 @@ function buildGlapsAliasCodeOptionsMap(aliases = [], aliasType) {
     });
     return map;
 }
+function buildGlapsAliasCodeMapForTypes(aliases = [], aliasTypes = []) {
+    const allowed = new Set(aliasTypes);
+    const map = new Map();
+    aliases
+        .filter(alias => allowed.has(alias?.alias_type) && alias?.glaps_code)
+        .forEach((alias) => {
+            [alias.source_name, alias.els_name, alias.glaps_name, alias.glaps_code].flatMap(splitGlapsAliasValues).forEach((value) => {
+                const key = normalizeGlapsKey(value);
+                if (key && !map.has(key)) map.set(key, alias.glaps_code);
+            });
+        });
+    return map;
+}
 function getGlapsAliasCode(map, value) {
     return map.get(normalizeGlapsKey(value)) || '';
 }
@@ -819,6 +848,37 @@ function getGlapsAliasDefaultCode(map, value, preferredCode = '') {
     const preferred = String(preferredCode || '').trim();
     if (preferred && options.some(option => option.code === preferred)) return preferred;
     return (options.find(option => option.isDefault) || options[0]).code || '';
+}
+function buildRouteLocationCandidates(value = '', aliasMap = new Map()) {
+    const baseCandidates = getGlapsRouteLocationCodeCandidates(value);
+    const aliasCandidate = getGlapsAliasCode(aliasMap, value);
+    return [...new Set([...baseCandidates, aliasCandidate].filter(Boolean))];
+}
+function buildWaypointCandidates(value = '', aliasMap = new Map()) {
+    const aliasCandidate = getGlapsAliasCode(aliasMap, value);
+    return [...new Set([value, aliasCandidate].filter(Boolean))];
+}
+function buildGlapsDispatchRouteFingerprintsWithAliasMaps({
+    shipperCode = '',
+    startLocationName = '',
+    waypointElsName = '',
+    waypointName = '',
+    destinationName = '',
+    routeLocationAliasMap = new Map(),
+    waypointAliasMap = new Map(),
+} = {}) {
+    const shippers = String(shipperCode || '').trim() ? [String(shipperCode).trim()] : [''];
+    const starts = buildRouteLocationCandidates(startLocationName, routeLocationAliasMap);
+    const destinations = buildRouteLocationCandidates(destinationName, routeLocationAliasMap);
+    const waypoints = buildWaypointCandidates(waypointElsName || waypointName, waypointAliasMap);
+    return shippers.flatMap(shipper => starts.flatMap(start => waypoints.flatMap(waypoint => (
+        destinations.map(destination => buildGlapsRouteFingerprint({
+            shipperCode: shipper,
+            startLocationName: start,
+            waypointElsName: waypoint,
+            destinationName: destination,
+        }))
+    ))));
 }
 function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypointName = '', waypointElsName = '' } = {}) {
     const normalizedShipper = normalizeGlapsKey(shipperCode);
@@ -1243,7 +1303,8 @@ function AsanDispatchContent() {
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
     const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
     const [detailPortOverrides, setDetailPortOverrides] = useState({});
-    const [detailDgRfOverrides, setDetailDgRfOverrides] = useState({});
+    const [detailDgOverrides, setDetailDgOverrides] = useState({});
+    const [detailRfOverrides, setDetailRfOverrides] = useState({});
     const [detailOverrideSetupRequired, setDetailOverrideSetupRequired] = useState(false);
     const [detailConfirmation, setDetailConfirmation] = useState(null);
     const [detailConfirmationSetupRequired, setDetailConfirmationSetupRequired] = useState(false);
@@ -1794,7 +1855,8 @@ function AsanDispatchContent() {
             setDetailChangeDrafts({});
             setDetailChangePortOverrides({});
             setDetailPortOverrides({});
-            setDetailDgRfOverrides({});
+            setDetailDgOverrides({});
+            setDetailRfOverrides({});
             detailChangeSyncRef.current = '';
             return undefined;
         }
@@ -1828,7 +1890,8 @@ function AsanDispatchContent() {
                 const nextOverrides = {};
                 const nextStartOverrides = {};
                 const nextPortOverrides = {};
-                const nextDgRfOverrides = {};
+                const nextDgOverrides = {};
+                const nextRfOverrides = {};
                 (overridePayload.data || [])
                     .filter(row => row.field_key === 'confirmed_bkg')
                     .forEach((row) => {
@@ -1860,10 +1923,20 @@ function AsanDispatchContent() {
                         };
                     });
                 (overridePayload.data || [])
-                    .filter(row => row.field_key === DETAIL_DG_RF_OVERRIDE_FIELD_KEY)
+                    .filter(row => row.field_key === DETAIL_DG_OVERRIDE_FIELD_KEY)
                     .forEach((row) => {
-                        nextDgRfOverrides[row.detail_line_key] = {
-                            value: normalizeDispatchDgRfValue(row.value),
+                        nextDgOverrides[row.detail_line_key] = {
+                            value: normalizeDispatchDgValue(row.value),
+                            source: row.source || 'manual',
+                            updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
+                            updatedAt: row.updated_at || row.created_at || '',
+                        };
+                    });
+                (overridePayload.data || [])
+                    .filter(row => row.field_key === DETAIL_RF_OVERRIDE_FIELD_KEY || row.field_key === DETAIL_LEGACY_DG_RF_OVERRIDE_FIELD_KEY)
+                    .forEach((row) => {
+                        nextRfOverrides[row.detail_line_key] = {
+                            value: normalizeDispatchRfValue(row.value),
                             source: row.source || 'manual',
                             updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
                             updatedAt: row.updated_at || row.created_at || '',
@@ -1872,14 +1945,16 @@ function AsanDispatchContent() {
                 setDetailBkgOverrides(nextOverrides);
                 setDetailStartOverrides(nextStartOverrides);
                 setDetailPortOverrides(nextPortOverrides);
-                setDetailDgRfOverrides(nextDgRfOverrides);
+                setDetailDgOverrides(nextDgOverrides);
+                setDetailRfOverrides(nextRfOverrides);
             } catch (error) {
                 if (!cancelled) {
                     setDetailConfirmation(null);
                     setDetailBkgOverrides({});
                     setDetailStartOverrides({});
                     setDetailPortOverrides({});
-                    setDetailDgRfOverrides({});
+                    setDetailDgOverrides({});
+                    setDetailRfOverrides({});
                     setDetailChangeEvents([]);
                     setSyncStatus({ message: error.message || '상세배차 상태 조회 실패', isError: true });
                 }
@@ -2004,6 +2079,7 @@ function AsanDispatchContent() {
                         sheetName: GLAPS_UPLOAD_SHEET_NAME,
                         headers: GLAPS_UPLOAD_HEADERS,
                         rows: glapsUploadRows,
+                        textHeaders: ['배차요청시간'],
                     }],
                 });
                 return;
@@ -2144,18 +2220,29 @@ function AsanDispatchContent() {
     const glapsRouteMap = useMemo(() => {
         const map = new Map();
         (glapsDetailLookup.routes || []).forEach((route) => {
-            const key = buildGlapsRouteFingerprint({
-                shipperCode: getGlapsRouteShipperCode(route),
-                startLocationName: route.start_location_name,
-                waypointElsName: route.waypoint_els_name || route.waypoint_name,
-                destinationName: route.destination_name,
+            const waypointCandidates = [...new Set([route.waypoint_els_name, route.waypoint_name].filter(Boolean))];
+            const startCandidates = getGlapsRouteLocationCodeCandidates(route.start_location_name);
+            const destinationCandidates = getGlapsRouteLocationCodeCandidates(route.destination_name);
+            startCandidates.forEach((startLocationName) => {
+                waypointCandidates.forEach((waypointElsName) => {
+                    destinationCandidates.forEach((destinationName) => {
+                        const key = buildGlapsRouteFingerprint({
+                            shipperCode: getGlapsRouteShipperCode(route),
+                            startLocationName,
+                            waypointElsName,
+                            destinationName,
+                        });
+                        if (key && !map.has(key)) map.set(key, route);
+                    });
+                });
             });
-            if (key && !map.has(key)) map.set(key, route);
         });
         return map;
     }, [glapsDetailLookup.routes]);
 
     const glapsAliasMaps = useMemo(() => ({
+        routeLocation: buildGlapsAliasCodeMapForTypes(glapsDetailLookup.aliases || [], ['start', 'destination', 'port']),
+        waypoint: buildGlapsAliasCodeMapForTypes(glapsDetailLookup.aliases || [], ['waypoint']),
         port: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'port'),
         portOptions: buildGlapsAliasCodeOptionsMap(glapsDetailLookup.aliases || [], 'port'),
         line: buildGlapsAliasCodeMap(glapsDetailLookup.aliases || [], 'line'),
@@ -2180,7 +2267,8 @@ function AsanDispatchContent() {
         const startOverride = options.startOverride || null;
         const bkgOverride = options.bkgOverride || null;
         const portOverride = options.portOverride || null;
-        const dgRfOverride = options.dgRfOverride || null;
+        const dgOverride = options.dgOverride || null;
+        const rfOverride = options.rfOverride || null;
         const snapshotValues = Array.isArray(options.snapshotValues) ? options.snapshotValues : [];
         const snapshotConfirmedBkg = getDetailRowValue(snapshotValues, 'BKG확정');
         const snapshotBkgSource = snapshotConfirmedBkg ? inferBkgSourceFromDetailValues(snapshotValues) : '';
@@ -2198,11 +2286,13 @@ function AsanDispatchContent() {
             shipperName: line.shipper,
         });
         const lineShipperCode = specialShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
-        const routeKeys = buildGlapsDispatchRouteFingerprints({
+        const routeKeys = buildGlapsDispatchRouteFingerprintsWithAliasMaps({
             shipperCode: lineShipperCode,
             startLocationName: startLocation,
             waypointElsName: line.workplace,
             destinationName: line.destination,
+            routeLocationAliasMap: glapsAliasMaps.routeLocation,
+            waypointAliasMap: glapsAliasMaps.waypoint,
         });
         const glapsRoute = routeKeys.map(key => glapsRouteMap.get(key)).find(Boolean) || null;
         const portCodeOverride = String(options.portCodeOverride || portOverride?.value || line.glapsPortCodeOverride || '').trim();
@@ -2212,9 +2302,12 @@ function AsanDispatchContent() {
         const glapsLineCode = getGlapsAliasCode(glapsAliasMaps.line, line.line);
         const glapsTypeCode = getGlapsAliasCode(glapsAliasMaps.containerType, line.containerType)
             || getGlapsAliasCode(glapsAliasMaps.containerIso, line.containerType);
-        const dgRfFlag = dgRfOverride
-            ? normalizeDispatchDgRfValue(dgRfOverride.value, line.containerType)
-            : normalizeDispatchDgRfValue(line.dgRfFlag, line.containerType);
+        const dgFlag = dgOverride
+            ? normalizeDispatchDgValue(dgOverride.value)
+            : normalizeDispatchDgValue(line.dgFlag);
+        const rfFlag = rfOverride
+            ? normalizeDispatchRfValue(rfOverride.value, line.containerType)
+            : normalizeDispatchRfValue(line.rfFlag ?? line.dgRfFlag, line.containerType);
         const glapsOrderTypeCode = getGlapsAliasCode(glapsAliasMaps.orderType, line.direction);
         const glapsTransportServiceCode = inferGlapsTransportServiceCode(glapsAliasMaps.transportService, line.direction);
         const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
@@ -2231,12 +2324,14 @@ function AsanDispatchContent() {
         const confirmedBkg = bkgOverride ? bkgOverride.value : snapshotConfirmedBkg || line.confirmedBkg || line.bkg1 || '';
         const startUpdatedAt = startOverride?.updatedAt || '';
         const portUpdatedAt = portOverride?.updatedAt || '';
-        const dgRfUpdatedAt = dgRfOverride?.updatedAt || '';
+        const dgUpdatedAt = dgOverride?.updatedAt || '';
+        const rfUpdatedAt = rfOverride?.updatedAt || '';
         const bkgUpdatedAt = bkgOverride?.updatedAt || '';
         const confirmedAt = options.confirmedAt || '';
         const shouldMarkStartUpdated = Boolean(startUpdatedAt && confirmedAt && isTimestampAfter(startUpdatedAt, confirmedAt));
         const shouldMarkPortUpdated = Boolean(portUpdatedAt && confirmedAt && isTimestampAfter(portUpdatedAt, confirmedAt));
-        const shouldMarkDgRfUpdated = Boolean(dgRfUpdatedAt && confirmedAt && isTimestampAfter(dgRfUpdatedAt, confirmedAt));
+        const shouldMarkDgUpdated = Boolean(dgUpdatedAt && confirmedAt && isTimestampAfter(dgUpdatedAt, confirmedAt));
+        const shouldMarkRfUpdated = Boolean(rfUpdatedAt && confirmedAt && isTimestampAfter(rfUpdatedAt, confirmedAt));
         const shouldMarkBkgUpdated = Boolean(bkgUpdatedAt && (!confirmedAt || isTimestampAfter(bkgUpdatedAt, confirmedAt)));
         return {
             ...line,
@@ -2259,9 +2354,12 @@ function AsanDispatchContent() {
             glapsPortCodeOptions,
             glapsLineCode,
             glapsTypeCode,
-            dgRfFlag,
-            dgRfUpdatedAt: shouldMarkDgRfUpdated ? dgRfUpdatedAt : '',
-            dgRfUpdatedBy: shouldMarkDgRfUpdated ? dgRfOverride?.updatedBy || '' : '',
+            dgFlag,
+            dgUpdatedAt: shouldMarkDgUpdated ? dgUpdatedAt : '',
+            dgUpdatedBy: shouldMarkDgUpdated ? dgOverride?.updatedBy || '' : '',
+            rfFlag,
+            rfUpdatedAt: shouldMarkRfUpdated ? rfUpdatedAt : '',
+            rfUpdatedBy: shouldMarkRfUpdated ? rfOverride?.updatedBy || '' : '',
             glapsOrderTypeCode,
             glapsShipperCode,
             glapsStartLocationCode,
@@ -2297,13 +2395,15 @@ function AsanDispatchContent() {
         const startOverride = detailStartOverrides[lineKey] || null;
         const bkgOverride = detailBkgOverrides[lineKey] || null;
         const portOverride = detailPortOverrides[lineKey] || null;
-        const dgRfOverride = detailDgRfOverrides[lineKey] || null;
+        const dgOverride = detailDgOverrides[lineKey] || null;
+        const rfOverride = detailRfOverrides[lineKey] || null;
         const snapshotValues = getConfirmationSnapshotValues(detailConfirmationSnapshotByLineKey.get(lineKey));
         const enriched = enrichDetailLine(line, {
             startOverride,
             bkgOverride,
             portOverride,
-            dgRfOverride,
+            dgOverride,
+            rfOverride,
             confirmedAt: detailConfirmation?.confirmed_at || '',
             snapshotValues,
         });
@@ -2315,7 +2415,7 @@ function AsanDispatchContent() {
             memoDiffHeaders,
             bkgConfirmStale: isDetailBkgConfirmStale({ ...enriched, memoDiffHeaders }),
         };
-    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailConfirmationSnapshotByLineKey, detailDgRfOverrides, detailLines, detailPortOverrides, detailStartOverrides, enrichDetailLine]);
+    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailConfirmationSnapshotByLineKey, detailDgOverrides, detailLines, detailPortOverrides, detailRfOverrides, detailStartOverrides, enrichDetailLine]);
 
     const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -2792,11 +2892,13 @@ function AsanDispatchContent() {
         }
     }, [detailScope, getDetailAuthHeaders]);
 
-    const saveDetailDgRfOverride = useCallback(async (line, value) => {
+    const saveDetailFlagOverride = useCallback(async (line, fieldKey, value) => {
         if (!detailScope) return;
         const lineKey = makeDispatchDetailLineKey(line);
-        const nextValue = normalizeDispatchDgRfValue(value, line.containerType);
-        setDetailDgRfOverrides(prev => ({
+        const isRf = fieldKey === DETAIL_RF_OVERRIDE_FIELD_KEY;
+        const nextValue = isRf ? normalizeDispatchRfValue(value, line.containerType) : normalizeDispatchDgValue(value);
+        const setOverrides = isRf ? setDetailRfOverrides : setDetailDgOverrides;
+        setOverrides(prev => ({
             ...prev,
             [lineKey]: {
                 ...(prev[lineKey] || {}),
@@ -2811,17 +2913,17 @@ function AsanDispatchContent() {
                 body: JSON.stringify({
                     ...detailScope,
                     detailLineKey: lineKey,
-                    fieldKey: DETAIL_DG_RF_OVERRIDE_FIELD_KEY,
+                    fieldKey,
                     value: nextValue,
                     source: 'manual',
-                    rowContext: buildDetailLineContext({ ...line, dgRfFlag: nextValue }),
+                    rowContext: buildDetailLineContext(isRf ? { ...line, rfFlag: nextValue } : { ...line, dgFlag: nextValue }),
                 }),
             });
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(payload.error || 'DG.RF 저장 실패');
+            if (!response.ok) throw new Error(payload.error || `${isRf ? 'RF' : 'DG'} 저장 실패`);
             if (payload.setupRequired) setDetailOverrideSetupRequired(true);
             const savedAt = payload.data?.updated_at || payload.data?.created_at || new Date().toISOString();
-            setDetailDgRfOverrides(prev => ({
+            setOverrides(prev => ({
                 ...prev,
                 [lineKey]: {
                     ...(prev[lineKey] || {}),
@@ -2831,7 +2933,7 @@ function AsanDispatchContent() {
                 },
             }));
         } catch (error) {
-            setSyncStatus({ message: error.message || 'DG.RF 저장 실패', isError: true });
+            setSyncStatus({ message: error.message || `${isRf ? 'RF' : 'DG'} 저장 실패`, isError: true });
         }
     }, [detailScope, getDetailAuthHeaders]);
 
@@ -3530,21 +3632,26 @@ function AsanDispatchContent() {
                                                         const postConfirmTitle = line.startLocationUpdatedAt
                                                             ? `배차확정 후 상차지 변경\n수정일시: ${fmtShortTs(line.startLocationUpdatedAt)}${line.startLocationUpdatedBy ? `\n수정자: ${line.startLocationUpdatedBy}` : ''}`
                                                             : `${line.startRegion || ''}${line.startSuffix ? ` / ${line.startSuffix}` : ''}`;
+                                                        const editableStartLocation = canEditDetailStartLocation(line);
                                                         return (
                                                             <td key={header} className={[styles.detailStartCell, !line.startLocation ? styles.detailManualCell : '', postConfirmClass].filter(Boolean).join(' ')}>
-                                                                <input
-                                                                    className={`${styles.detailComboInput} ${styles.detailStartInput}`}
-                                                                    list={DETAIL_START_LOCATION_DATALIST_ID}
-                                                                    data-detail-row-index={detailRowIdx}
-                                                                    data-detail-col-index={colIdx}
-                                                                    value={line.startLocation || ''}
-                                                                    onChange={(event) => updateDetailStartDraft(line, event.target.value)}
-                                                                    onBlur={(event) => saveDetailStartOverride(line, event.target.value)}
-                                                                    onKeyDown={focusDetailGridInput}
-                                                                    disabled={detailOverrideSetupRequired || !detailScope}
-                                                                    placeholder="선택"
-                                                                    title={postConfirmTitle}
-                                                                />
+                                                                {editableStartLocation ? (
+                                                                    <input
+                                                                        className={`${styles.detailComboInput} ${styles.detailStartInput}`}
+                                                                        list={DETAIL_START_LOCATION_DATALIST_ID}
+                                                                        data-detail-row-index={detailRowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        value={line.startLocation || ''}
+                                                                        onChange={(event) => updateDetailStartDraft(line, event.target.value)}
+                                                                        onBlur={(event) => saveDetailStartOverride(line, event.target.value)}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        disabled={detailOverrideSetupRequired || !detailScope}
+                                                                        placeholder="선택"
+                                                                        title={postConfirmTitle}
+                                                                    />
+                                                                ) : (
+                                                                    <span title={postConfirmTitle}>{line.startLocation || ''}</span>
+                                                                )}
                                                             </td>
                                                         );
                                                     }
@@ -3629,17 +3736,20 @@ function AsanDispatchContent() {
                                                             </td>
                                                         );
                                                     }
-                                                    if (header === DISPATCH_DETAIL_DG_RF_HEADER) {
-                                                        const postConfirmClass = line.dgRfUpdatedAt ? styles.detailPostConfirmOverrideCell : '';
-                                                        const postConfirmTitle = line.dgRfUpdatedAt
-                                                            ? `배차확정 후 DG.RF 변경\n수정일시: ${fmtShortTs(line.dgRfUpdatedAt)}${line.dgRfUpdatedBy ? `\n수정자: ${line.dgRfUpdatedBy}` : ''}`
-                                                            : `${line.containerType || ''} 기준 DG.RF`;
+                                                    if (header === DISPATCH_DETAIL_DG_HEADER || header === DISPATCH_DETAIL_RF_HEADER) {
+                                                        const isRf = header === DISPATCH_DETAIL_RF_HEADER;
+                                                        const updatedAt = isRf ? line.rfUpdatedAt : line.dgUpdatedAt;
+                                                        const updatedBy = isRf ? line.rfUpdatedBy : line.dgUpdatedBy;
+                                                        const postConfirmClass = updatedAt ? styles.detailPostConfirmOverrideCell : '';
+                                                        const postConfirmTitle = updatedAt
+                                                            ? `배차확정 후 ${header} 변경\n수정일시: ${fmtShortTs(updatedAt)}${updatedBy ? `\n수정자: ${updatedBy}` : ''}`
+                                                            : isRf ? `${line.containerType || ''} 기준 RF` : '위험물 여부';
                                                         return (
                                                             <td key={header} className={[styles.detailDgRfCell, postConfirmClass].filter(Boolean).join(' ')}>
                                                                 <select
                                                                     className={styles.detailPortSelect}
-                                                                    value={normalizeDispatchDgRfValue(line.dgRfFlag, line.containerType)}
-                                                                    onChange={(event) => saveDetailDgRfOverride(line, event.target.value)}
+                                                                    value={isRf ? normalizeDispatchRfValue(line.rfFlag ?? line.dgRfFlag, line.containerType) : normalizeDispatchDgValue(line.dgFlag)}
+                                                                    onChange={(event) => saveDetailFlagOverride(line, isRf ? DETAIL_RF_OVERRIDE_FIELD_KEY : DETAIL_DG_OVERRIDE_FIELD_KEY, event.target.value)}
                                                                     onKeyDown={focusDetailGridInput}
                                                                     data-detail-row-index={detailRowIdx}
                                                                     data-detail-col-index={colIdx}
@@ -3804,20 +3914,25 @@ function AsanDispatchContent() {
                                                         const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
                                                         const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : memoCellClass;
                                                         if (isDetailValue && header === '상차지') {
+                                                            const editableStartLocation = canEditDetailStartLocation(line);
                                                             return (
                                                                 <td key={header} className={[styles.detailStartCell, !line.startLocation ? styles.detailManualCell : '', changedCellClass].filter(Boolean).join(' ')}>
-                                                                    <input
-                                                                        className={`${styles.detailComboInput} ${styles.detailStartInput}`}
-                                                                        list={DETAIL_START_LOCATION_DATALIST_ID}
-                                                                        data-detail-row-index={rowIdx}
-                                                                        data-detail-col-index={colIdx}
-                                                                        value={getDetailRowValue(rawValues, '상차지')}
-                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, '상차지', inputEvent.target.value))}
-                                                                        onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, '상차지', inputEvent.target.value))}
-                                                                        onKeyDown={focusDetailGridInput}
-                                                                        disabled={editDisabled}
-                                                                        placeholder="선택"
-                                                                    />
+                                                                    {editableStartLocation ? (
+                                                                        <input
+                                                                            className={`${styles.detailComboInput} ${styles.detailStartInput}`}
+                                                                            list={DETAIL_START_LOCATION_DATALIST_ID}
+                                                                            data-detail-row-index={rowIdx}
+                                                                            data-detail-col-index={colIdx}
+                                                                            value={getDetailRowValue(rawValues, '상차지')}
+                                                                            onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, '상차지', inputEvent.target.value))}
+                                                                            onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, '상차지', inputEvent.target.value))}
+                                                                            onKeyDown={focusDetailGridInput}
+                                                                            disabled={editDisabled}
+                                                                            placeholder="선택"
+                                                                        />
+                                                                    ) : (
+                                                                        getDetailRowValue(rawValues, '상차지')
+                                                                    )}
                                                                 </td>
                                                             );
                                                         }
@@ -3848,15 +3963,18 @@ function AsanDispatchContent() {
                                                                 </td>
                                                             );
                                                         }
-                                                        if (isDetailValue && header === DISPATCH_DETAIL_DG_RF_HEADER) {
-                                                            const selectedDgRf = normalizeDispatchDgRfValue(getDetailRowValue(rawValues, DISPATCH_DETAIL_DG_RF_HEADER) || line.dgRfFlag, getDetailRowValue(rawValues, '타입') || line.containerType);
+                                                        if (isDetailValue && (header === DISPATCH_DETAIL_DG_HEADER || header === DISPATCH_DETAIL_RF_HEADER)) {
+                                                            const isRf = header === DISPATCH_DETAIL_RF_HEADER;
+                                                            const selectedFlag = isRf
+                                                                ? normalizeDispatchRfValue(getDetailRowValue(rawValues, DISPATCH_DETAIL_RF_HEADER) || line.rfFlag || line.dgRfFlag, getDetailRowValue(rawValues, '타입') || line.containerType)
+                                                                : normalizeDispatchDgValue(getDetailRowValue(rawValues, DISPATCH_DETAIL_DG_HEADER) || line.dgFlag);
                                                             return (
                                                                 <td key={header} className={[styles.detailDgRfCell, changedCellClass].filter(Boolean).join(' ')}>
                                                                     <select
                                                                         className={styles.detailPortSelect}
-                                                                        value={selectedDgRf}
+                                                                        value={selectedFlag}
                                                                         onChange={(inputEvent) => {
-                                                                            const nextValues = setDetailRowValue(rawValues, DISPATCH_DETAIL_DG_RF_HEADER, inputEvent.target.value);
+                                                                            const nextValues = setDetailRowValue(rawValues, header, inputEvent.target.value);
                                                                             updateDetailChangeDraft(event, nextValues);
                                                                             saveDetailChangeValues(event, nextValues);
                                                                         }}
@@ -3864,7 +3982,7 @@ function AsanDispatchContent() {
                                                                         data-detail-row-index={rowIdx}
                                                                         data-detail-col-index={colIdx}
                                                                         disabled={editDisabled}
-                                                                        title={`${getDetailRowValue(rawValues, '타입') || line.containerType || ''} 기준 DG.RF`}
+                                                                        title={isRf ? `${getDetailRowValue(rawValues, '타입') || line.containerType || ''} 기준 RF` : '위험물 여부'}
                                                                     >
                                                                         <option value="N">N</option>
                                                                         <option value="Y">Y</option>
