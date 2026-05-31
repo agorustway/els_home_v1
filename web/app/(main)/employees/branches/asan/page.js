@@ -216,6 +216,20 @@ const DETAIL_ISSUE_GROUPS = Object.freeze([
     { key: 'check', label: '확인', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'check') },
     { key: 'modified', label: '수정', filters: DETAIL_ISSUE_FILTERS.filter(filter => filter.group === 'modified') },
 ]);
+const GLAPS_WORKPLACE_CODE_PAYLOAD_KEYS = Object.freeze([
+    '경유지코드',
+    '경유지 코드',
+    '작업지코드',
+    '작업지 코드',
+    '작업지(하차지)코드',
+    '작업지(하차지) 코드',
+    '하차지코드',
+    '하차지 코드',
+    'WAYPOINT CODE',
+    'WAYPOINTCODE',
+    'WORKPLACE CODE',
+    'WORKPLACECODE',
+]);
 const GLAPS_TRANSPORT_SERVICE_FALLBACKS = Object.freeze([
     { code: '311101', name: '각강_내수(반품)', aliases: ['각강_내수(반품)', '각강 내수 반품', '반품'] },
     { code: '5010002', name: '컨테이너_수출(보관)', aliases: ['컨테이너_수출(보관)', '컨테이너 수출 보관', '수출보관', '수출 보관'] },
@@ -2316,10 +2330,7 @@ function AsanDispatchContent() {
         const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
         const glapsShipperCode = routeShipperCode || lineShipperCode;
         const glapsStartLocationCode = glapsRoute?.start_location_name || '';
-        const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, ['경유지코드', '작업지(하차지)코드', '경유지(ELS)', '경유지'])
-            || glapsRoute?.waypoint_els_name
-            || glapsRoute?.waypoint_name
-            || '';
+        const glapsWorkplaceCode = getGlapsRoutePayload(glapsRoute, GLAPS_WORKPLACE_CODE_PAYLOAD_KEYS);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode(glapsSpecialConsigneeRules, {
             shipperCode: glapsShipperCode,

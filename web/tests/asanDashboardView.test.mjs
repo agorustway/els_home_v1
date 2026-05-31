@@ -800,7 +800,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /6032001/);
   assert.match(source, /buildGlapsShipperCodeMap/);
   assert.match(source, /getGlapsRoutePayload/);
-  assert.match(source, /getGlapsRoutePayload\(glapsRoute, \['경유지코드', '작업지\(하차지\)코드', '경유지\(ELS\)', '경유지'\]\)/);
+  assert.match(source, /GLAPS_WORKPLACE_CODE_PAYLOAD_KEYS/);
+  assert.doesNotMatch(source, /const glapsWorkplaceCode = getGlapsRoutePayload\(glapsRoute, \['경유지코드', '작업지\(하차지\)코드', '경유지\(ELS\)', '경유지'\]\)/);
   assert.match(source, /glapsRoute\?\.waypoint_els_name/);
   assert.match(source, /focusDetailGridInput/);
   assert.match(source, /const carrierCode = getGlapsAliasCode\(glapsAliasMaps\.carrier, 'ELS'\)/);

@@ -1,3 +1,20 @@
+## [2026-05-31] 상세배차 작업지 코드명 fallback 제거 (v5.14.295)
+### 원인
+- 상세배차 `작업지(하차지)코드` 칸이 GLAPS 원장 코드가 없을 때 `경유지(ELS)` 또는 경유지명으로 fallback되어, 코드 칸에 `글로비스KD센터2포장` 같은 이름이 표시됐습니다.
+### 조치
+- `작업지(하차지)코드`는 `경유지코드`, `작업지코드`, `작업지(하차지)코드`, `하차지코드` 등 코드 성격의 raw payload 헤더에서만 가져오게 했습니다.
+- 코드가 없으면 이름을 대체 표시하지 않고 빈칸으로 남겨 미도출 검수 대상이 되도록 했습니다.
+### 검증
+- `cd web; node --test tests/asanDashboardView.test.mjs`: 통과
+- `cd web; npx eslint "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `cd web; npm run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-30] 배차변동 변경셀 표시 축소와 확정자명 보정 (v5.14.294)
 ### 원인
 - 배차변동 추가/삭제 행까지 값이 있는 칸을 모두 노란색으로 표시해, 실제로 어떤 컬럼이 변경된 것인지 구분하기 어려웠습니다.
