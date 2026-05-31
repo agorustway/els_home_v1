@@ -961,7 +961,6 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     const [tableLoading, setTableLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [syncing, setSyncing] = useState(false);
-    const [resettingMonthly, setResettingMonthly] = useState(false);
     const [syncStatus, setSyncStatus] = useState(null);
     const [notice, setNotice] = useState('');
     const [error, setError] = useState('');
@@ -1496,37 +1495,6 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
         });
     };
 
-    const resetMonthlyData = async () => {
-        const confirmText = window.prompt('월간자료만 리셋합니다. 연간실적은 변경하지 않습니다. 계속하려면 "월간자료 리셋"을 입력하세요.');
-        if (confirmText !== '월간자료 리셋') return;
-        setResettingMonthly(true);
-        setError('');
-        setNotice('');
-        try {
-            const res = await fetch('/api/branches/asan/performance/monthly', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'reset-monthly',
-                    confirm_text: confirmText,
-                }),
-            });
-            const json = await readPerformanceJson(res, '월간실적 리셋 실패');
-            setPayload(null);
-            setRows([]);
-            setLoadedRows(0);
-            setTotalRows(0);
-            setHasMore(false);
-            setSelectedReportPeriod('');
-            setNotice(json.message || '월간실적 자료를 리셋했습니다.');
-            await fetchData({ page: 1, quiet: true });
-        } catch (err) {
-            setError(err.message || '월간실적 리셋 실패');
-        } finally {
-            setResettingMonthly(false);
-        }
-    };
-
     const regenerateSlots = () => {
         const nextSlots = buildMonthlyPerformanceFileSlots(baseYear, { extraMonths }).map(slot => normalizeSlot(slot, baseYear));
         setFileSlots(nextSlots);
@@ -1668,7 +1636,6 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                         <button className={activeTab === 'table' ? styles.segmentActive : ''} onClick={() => setActiveTab('table')}>테이블</button>
                     </div>
                     <button className={styles.ghostBtn} onClick={() => setShowSettings(true)}>설정</button>
-                    <button className={styles.dangerBtn} onClick={resetMonthlyData} disabled={syncing || resettingMonthly}>{resettingMonthly ? '리셋 중' : '월간 리셋'}</button>
                     <button className={styles.primaryBtn} onClick={() => syncNow({ force: true })} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
                 </div>
             </div>

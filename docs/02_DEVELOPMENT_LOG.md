@@ -1,3 +1,31 @@
+## [2026-05-31] 데이터 운영 관리 승격과 DB 용량 진단 화면 (v5.14.300)
+### 원인
+- 보존정책 버튼이 배차판/실적/차량관제 같은 일반 업무 화면에 보이면 사용자가 실제 작업 버튼처럼 오해할 수 있었습니다.
+- DB 용량, 최적화 상태, 백업/복원 준비 상태는 관리자만 판단해야 하는 운영 관리 항목입니다.
+### 조치
+- 보존정책 링크와 월간 리셋 버튼을 일반 사용자 화면에서 제거하고, 기존 `/employees/data-retention`은 `/admin/data-operations`로 리다이렉트하도록 변경했습니다.
+- 관리자 인트라넷 메뉴에 `데이터 운영 관리`를 추가했습니다.
+- 실제 Supabase 용량 RPC `admin_database_overview()`, `admin_database_table_sizes()`를 추가하고, 관리자 API에서 전체 DB 955MB 및 테이블별 용량/최적화 판단을 조회하도록 했습니다.
+- `/admin/data-operations` 화면에 종류별 용량, 상위 테이블, 개선 필요 항목, 백업/복원 준비 점검, 월간실적 리셋 액션을 구성했습니다.
+### 검증
+- Supabase RPC 실측: 전체 DB 약 955MB, `branch_performance_rows` 약 730MB, `document_chunks` 약 118MB 확인.
+- `npx eslint "components/Header.js" "app/api/admin/data-operations/route.js" "app/(main)/admin/data-operations/page.js" "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/vehicle-tracking/page.js" "app/(main)/employees/(intranet)/data-retention/page.js"`: 에러 없음, 기존 경고만 확인.
+- `npm run build`: 통과. `/admin/data-operations`, `/api/admin/data-operations`, `/employees/data-retention` 리다이렉트 라우트 생성 확인.
+- 로컬 `http://localhost:3021/admin/data-operations?debug=true`: HTTP 200 확인. 관리자 API는 실제 admin 세션 없이 디버그 쿠키만으로는 403을 반환해 권한 차단을 확인.
+### 변경 파일
+- `web/app/api/admin/data-operations/route.js`
+- `web/app/(main)/admin/data-operations/page.js`
+- `web/app/(main)/admin/data-operations/dataOperations.module.css`
+- `web/components/Header.js`
+- `web/app/(main)/employees/(intranet)/data-retention/page.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/supabase_sql/20260531_admin_database_operations.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DATA_RETENTION_POLICY.md`
+
+---
+
 ## [2026-05-31] 월간실적 리셋 기능과 연간 source 분리 기준 (v5.14.299)
 ### 원인
 - 월간자료는 현재 연간으로 자동 이월하지 않고, 운영 임시 원장으로 다시 모으는 방향이 맞습니다.

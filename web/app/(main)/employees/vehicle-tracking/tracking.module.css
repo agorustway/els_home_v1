@@ -44,8 +44,7 @@
 }
 
 .refreshBtn,
-.driverLinkBtn,
-.policyLinkBtn {
+.driverLinkBtn {
     height: 32px;
     padding: 0 14px;
     border-radius: 6px;
@@ -63,22 +62,9 @@
 }
 
 .refreshBtn:hover,
-.driverLinkBtn:hover,
-.policyLinkBtn:hover {
+.driverLinkBtn:hover {
     background: #f3f4f6;
     border-color: #9ca3af;
-}
-
-.policyLinkBtn {
-    border-color: #dbeafe;
-    background: #eff6ff;
-    color: #2563eb;
-    font-weight: 700;
-}
-
-.policyLinkBtn:hover {
-    border-color: #2563eb;
-    background: #dbeafe;
 }
 
 .driverLinkBtn {
@@ -491,8 +477,7 @@
     .titleBtns { gap: 5px; flex-shrink: 0; }
 
     .refreshBtn,
-    .driverLinkBtn,
-    .policyLinkBtn {
+    .driverLinkBtn {
         height: 32px;
         padding: 0 8px;
         font-size: 0.72rem;

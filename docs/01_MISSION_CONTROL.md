@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.299 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.300 / APK v5.11.29)
 
-> 최신 업데이트: 월간실적은 연간으로 자동 이월하지 않는 임시 원장으로 분리하고, 관리자용 월간 리셋 버튼/API를 추가했다.
+> 최신 업데이트: 보존정책/DB용량/백업복원 관리는 일반 사용자 화면에서 제거하고 관리자 데이터 운영 관리로 승격했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.299
+- **웹 버전**: v5.14.300
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -22,7 +22,7 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
-- 월간실적은 운영 임시 원장이다. 관리자 `월간 리셋`은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다.
+- 월간실적은 운영 임시 원장이다. 관리자 데이터 운영 관리의 `월간실적 리셋`은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 - 구간단가 조회 범위는 `전체/연도별/월별`이며 첫 진입 기본값은 `전체`다. 제목열 클릭 정렬과 컬럼 제목열 내부 다중 선택 필터를 제공한다.
 - 구간단가 표시/집계 조건은 숨김 드롭존으로 통합한다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
@@ -75,10 +75,10 @@
 - 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
 - 차량관제 `vehicle_trips/locations/logs`는 service role 전용 DB 접근으로 제한하고, 웹/앱은 Next API 경유로만 처리한다.
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
-- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 두되 월간은 필요 시 전체 리셋 후 재수집한다. 웹 생성 데이터는 NAS 압축 보관/manifest/복원 흐름으로 관리한다. 세부 기준은 `docs/09_DATA_RETENTION_POLICY.md`와 `/employees/data-retention`을 따른다.
+- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. 정책/용량/백업복원 액션은 `docs/09_DATA_RETENTION_POLICY.md`와 `/admin/data-operations`에서 관리한다.
 
 ## RECENT CHANGES
-- **v5.14.299**: 월간실적 화면에 관리자용 `월간 리셋` 버튼을 추가했다. 리셋은 monthly rows/files, 월간 구간단가 캐시, summary/monthly/route-unit dashboard snapshot만 삭제하며 annual source는 변경하지 않는다. 보존정책은 월간 자동 이월이 아니라 사람이 정리한 2026년 이후 연간 Excel source를 별도 추가하는 방향으로 갱신했다.
+- **v5.14.300**: 보존정책 버튼과 월간 리셋을 일반 사용자 화면에서 제거하고 관리자 `/admin/data-operations`로 승격했다. 실제 Supabase DB 용량 RPC, 종류별 합계, 최적화 판단, 백업/복원 준비 점검, 월간실적 리셋 액션을 관리자 화면에 추가했다.
 - **v5.14.298**: 데이터 보존정책 인트라넷 문서 페이지를 추가하고, 헤더 자료실 메뉴와 아산 배차판/실적관리/차량위치관제 화면에 보존정책 버튼을 연결했다. archive는 catalog/복원 경로로만 찾고 일반 운영 검색에는 섞지 않는 기준을 명시했다.
 - **v5.14.297**: `branch_performance_rows` compact-swap, 배차변동 히스토리 compact-swap, `document_chunks` VACUUM FULL/IVFFLAT 재생성을 완료했다. 구간단가 화면은 월간 current 금액 캐시를 사용하며 전체 DB는 약 955MB로 정리됐다.
 - **v5.14.296**: Supabase 용량 진단에서 `branch_performance_rows`, 배차변동 히스토리, `document_chunks`가 주요 원인임을 확인했다. 실적 대형 인덱스 11개를 제거했고, 자동 `refreshed/resolved` 히스토리 저장은 코드에서 차단했다.

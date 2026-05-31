@@ -2,7 +2,6 @@
 
 import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 
 // [신규] 에디터 동적 로딩 (SSR 방지)
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
@@ -1277,7 +1276,6 @@ export default function VehicleTrackingPage() {
                 <h2>차량위치관제 {activeCount > 0 && <span className={styles.activeBadge}>{activeCount}</span>}</h2>
                 <div className={styles.titleBtns}>
                     <button className={styles.refreshBtn} onClick={() => { setLoading(true); fetchLiveTrips(); if (activeTab === 'records') fetchRecords(); }}>새로고침</button>
-                    <Link className={styles.policyLinkBtn} href="/employees/data-retention#vehicle">보존정책</Link>
                     <button className={styles.filterResetBtn} style={{ height: '36px', fontSize: '0.75rem', padding: '0 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => window.open('/api/debug/view', '_blank')}>실시간 로그</button>
                 </div>
             </div>

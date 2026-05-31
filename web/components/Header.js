@@ -62,7 +62,6 @@ const navLinks = [
                 children: [
                     { href: '/employees/work-docs', label: '업무자료실', isSubItem: true },
                     { href: '/employees/form-templates', label: '서식자료실', isSubItem: true },
-                    { href: '/employees/data-retention', label: '데이터 보존정책', isSubItem: true },
                 ]
             },
             {
@@ -103,6 +102,7 @@ const navLinks = [
             { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
             { href: '/admin', label: '고객 문의 관리', isAdmin: true },
             { href: '/admin/logs', label: '활동 로그 관리', isAdmin: true },
+            { href: '/admin/data-operations', label: '데이터 운영 관리', isAdmin: true },
         ]
     },
 ];

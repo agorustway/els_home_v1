@@ -8,7 +8,7 @@
 - 보존 archive는 일반 검색 결과에 자동으로 섞지 않는다. 운영 검색은 hot DB 기준이며, archive는 별도 보존목록에서 찾고 필요 시 복원한다.
 - DB에서 대량 삭제가 필요할 때는 먼저 NAS 압축 보관본을 만들고, 행 수와 해시 검증 후 삭제한다.
 - 웹에서 생성된 데이터는 Excel 원본이 없으므로 반드시 archive 대상으로 본다. 대상은 배차확정/상세배차 수정, 배차변동, 차량 GPS, 사진·운행로그, 활동로그다.
-- 인트라넷 문서 화면은 `/employees/data-retention`에서 제공하며, 배차판/실적/차량관제 화면의 `보존정책` 버튼으로 연결한다.
+- 보존정책과 백업/복원 액션은 일반 사용자 화면에 노출하지 않고 관리자 메뉴 `/admin/data-operations`에서 관리한다.
 
 ## 2026-05-31 정리 결과
 - `branch_performance_rows`: 최신 연간 `currentSnapshotId`와 월간 `is_current` 행만 유지하도록 compact-swap 완료. 현재 약 730MB.
@@ -16,6 +16,7 @@
 - `document_chunks`: `VACUUM FULL` 후 IVFFLAT 인덱스 재생성. 현재 약 118MB.
 - `branch_performance_monthly_route_unit_amount_cache`: 구간단가 화면용 캐시 신설. 원본 JSONB 재파싱 대신 5~6MB 캐시를 조회한다.
 - 전체 DB 크기: 약 955MB.
+- 관리자 데이터 운영 화면은 `admin_database_overview()`, `admin_database_table_sizes()` RPC로 실제 DB 용량과 테이블별 최적화 상태를 조회한다.
 
 ## Hot / Warm / Cold 분리
 | 구분 | 위치 | 대상 | 원칙 |
@@ -47,7 +48,7 @@
 
 ## 실적 데이터 운영 방침
 - 월간실적은 1년 3개월 hot 보관한다. 현재 운영에서는 월간자료를 연간실적으로 자동 이월하지 않는다.
-- 월간자료는 운영 임시 원장이다. 필요하면 화면의 `월간 리셋`으로 월간 rows/files/cache/dashboard snapshot만 비우고 새 월간 엑셀을 다시 물린다.
+- 월간자료는 운영 임시 원장이다. 필요하면 관리자 `/admin/data-operations`의 `월간실적 리셋`으로 월간 rows/files/cache/dashboard snapshot만 비우고 새 월간 엑셀을 다시 물린다.
 - 월간 리셋은 연간실적 `annual` 데이터와 기존 확정 연간 source를 변경하지 않는다.
 - 연간실적은 사람이 정리한 fix 성격 Excel을 기준으로 한다. 급한 정정 외에는 수정하지 않고, 2026년 자료부터 2026~2035 같은 새 연간 source로 연도별 추적 기준을 축적한다.
 - 연간 파일 동기화는 DB 적재가 목적이므로 전체 스냅샷을 반복 누적하지 않는다. 변경·추가·삭제된 row만 반영하거나, 전체 재작성 시 이전 스냅샷을 archive 후 prune한다.
@@ -70,3 +71,8 @@
 - `data_restore_jobs`: 복원 요청 단위. 요청자, 대상 기간, 대상 테이블, 상태, 복원 만료일, 결과 메시지를 저장한다.
 - NAS archive path 권장: `/archive/db/{table_name}/yyyy/mm/{table_name}_{yyyy_mm}.jsonl.gz`.
 - 복원 절차: manifest 선택 -> checksum 검증 -> staging 적재 -> row count 검증 -> 조회/승격 -> 만료 정리.
+
+## 관리자 화면 기준
+- `/admin/data-operations`는 전체 DB 용량, 종류별 합계, 상위 테이블, 최적화 판단, 직접 액션 준비 상태를 한 화면에서 본다.
+- 즉시 실행 가능 액션은 DB 용량 새로고침, 백업/복원 준비 점검, 월간실적 리셋이다.
+- 실제 archive 삭제/복원 실행은 NAS archive worker, `data_archive_manifest`, `data_restore_jobs`, staging 복원 검증이 준비된 뒤 활성화한다.
