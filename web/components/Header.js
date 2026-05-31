@@ -62,6 +62,7 @@ const navLinks = [
                 children: [
                     { href: '/employees/work-docs', label: '업무자료실', isSubItem: true },
                     { href: '/employees/form-templates', label: '서식자료실', isSubItem: true },
+                    { href: '/employees/data-retention', label: '데이터 보존정책', isSubItem: true },
                 ]
             },
             {

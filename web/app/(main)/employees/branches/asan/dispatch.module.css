@@ -130,6 +130,9 @@
 }
 
 .headerBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 30px;
     padding: 0 11px;
     border-radius: 6px;
@@ -138,6 +141,8 @@
     color: #475569;
     font-weight: 700;
     font-size: 0.78rem;
+    font-family: inherit;
+    text-decoration: none;
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -2822,6 +2827,27 @@
     cursor: pointer;
 }
 
+.performancePolicyLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    margin-left: auto;
+    padding: 0 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 850;
+    text-decoration: none;
+}
+
+.performancePolicyLink:hover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
 .performanceTabBtnActive {
     border-color: #0f766e;
     background: #0f766e;
@@ -2860,6 +2886,14 @@
     .performanceTabBtn {
         flex: 1;
         min-width: 90px;
+        padding: 0 8px;
+        font-size: 0.76rem;
+    }
+
+    .performancePolicyLink {
+        flex: 1;
+        min-width: 90px;
+        margin-left: 0;
         padding: 0 8px;
         font-size: 0.76rem;
     }

@@ -44,7 +44,8 @@
 }
 
 .refreshBtn,
-.driverLinkBtn {
+.driverLinkBtn,
+.policyLinkBtn {
     height: 32px;
     padding: 0 14px;
     border-radius: 6px;
@@ -58,12 +59,26 @@
     align-items: center;
     gap: 5px;
     transition: all 0.15s;
+    text-decoration: none;
 }
 
 .refreshBtn:hover,
-.driverLinkBtn:hover {
+.driverLinkBtn:hover,
+.policyLinkBtn:hover {
     background: #f3f4f6;
     border-color: #9ca3af;
+}
+
+.policyLinkBtn {
+    border-color: #dbeafe;
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+.policyLinkBtn:hover {
+    border-color: #2563eb;
+    background: #dbeafe;
 }
 
 .driverLinkBtn {
@@ -476,7 +491,8 @@
     .titleBtns { gap: 5px; flex-shrink: 0; }
 
     .refreshBtn,
-    .driverLinkBtn {
+    .driverLinkBtn,
+    .policyLinkBtn {
         height: 32px;
         padding: 0 8px;
         font-size: 0.72rem;
@@ -2232,7 +2248,8 @@
         gap: 4px;
     }
 
-    .titleBtns button {
+    .titleBtns button,
+    .titleBtns a {
         height: 30px !important;
         padding: 0 8px !important;
         font-size: 0.7rem !important;

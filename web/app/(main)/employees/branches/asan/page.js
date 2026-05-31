@@ -1,5 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import styles from './dispatch.module.css';
 import AsanDashboard from './AsanDashboard';
@@ -3525,6 +3526,7 @@ function AsanDispatchContent() {
                         <div className={styles.headerButtons}>
                             <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
                             <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
+                            <Link className={styles.headerBtn} href="/employees/data-retention#dispatch">보존정책</Link>
                             <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
                                 {refreshing ? '새로고침 중' : '새로고침'}
                             </button>
@@ -4486,6 +4488,7 @@ function AsanPerformanceManagement() {
                 >
                     구간단가
                 </button>
+                <Link className={styles.performancePolicyLink} href="/employees/data-retention#performance">보존정책</Link>
             </div>
 
             <div className={styles.performanceContent}>

@@ -1,3 +1,28 @@
+## [2026-05-31] 데이터 보존정책 웹 문서화와 화면 연결 (v5.14.298)
+### 원인
+- 일일배차/상세배차, GPS, 실적처럼 웹에서 생성·누적되는 데이터는 Excel 백업만으로 복구 기준이 부족했습니다.
+- archive 데이터를 일반 검색에 섞을지, 별도 복원 절차로 다룰지 운영 기준이 필요했습니다.
+### 조치
+- `/employees/data-retention` 인트라넷 문서 페이지를 추가해 hot 검색 범위와 archive/restore 기준을 정리했습니다.
+- 일일배차/상세배차는 1년 1개월, 월간실적은 1년 3개월, 연간실적은 2026년 이후 fix 원장 기준으로 명시했습니다.
+- archive 자료는 일반 검색에 바로 도출하지 않고 보존목록 catalog 검색 후 staging 복원하는 방식으로 문서화했습니다.
+- 헤더 자료실 메뉴와 아산 배차판, 실적관리, 차량위치관제 화면에 `보존정책` 버튼을 연결했습니다.
+### 검증
+- `npx eslint "components/Header.js" "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/vehicle-tracking/page.js" "app/(main)/employees/(intranet)/data-retention/page.js"`: 에러 없음, 기존 경고만 확인.
+- `npm run build`: 통과. `/employees/data-retention` 라우트 생성 확인.
+- 로컬 개발 서버 `http://localhost:3021/employees/data-retention?debug=true`: HTTP 200 및 핵심 문구 렌더 확인.
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/data-retention/page.js`
+- `web/app/(main)/employees/(intranet)/data-retention/dataRetention.module.css`
+- `web/components/Header.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/vehicle-tracking/page.js`
+- `web/app/(main)/employees/vehicle-tracking/tracking.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DATA_RETENTION_POLICY.md`
+
+---
+
 ## [2026-05-31] Supabase compact-swap 완료와 구간단가 캐시화 (v5.14.297)
 ### 원인
 - 실적 원장, 배차변동 히스토리, `document_chunks`가 운영 DB 용량의 대부분을 차지했고, 구간단가 화면은 월간 current JSONB 행을 매 조회마다 다시 파싱했습니다.
