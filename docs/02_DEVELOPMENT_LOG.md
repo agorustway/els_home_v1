@@ -1,3 +1,44 @@
+## [2026-05-31] 안전운임 변경 추적 위키 추가 (v5.14.306)
+### 원인
+- 2026-04-01 추가 운영지침은 단순 요약만으로는 `150%/200%`, 인천·평택 기점 할증, 제22호 3개 제한 같은 문맥 오해가 생길 수 있어 원문 페이지와 변경 해석을 함께 추적할 별도 화면이 필요했습니다.
+### 조치
+- `/employees/safe-freight/wiki` 변경 추적 위키 페이지를 추가하고, 검색 가능한 트리 구조로 `기준/기존 → 변경/해석 → 실무 적용 → 주의`를 정리했습니다.
+- 원문 주석 데이터 `safe-freight-wiki.js`를 추가해 고시 본문/운영지침의 페이지·조문·핵심 요약을 `C-22`, `G-22` 같은 주석번호로 관리합니다.
+- 압축 안내 모달과 모바일 안내 페이지에 주석 칩을 붙여 각 요약에서 바로 위키의 원문 근거로 이동할 수 있게 했습니다.
+- 형이 물어본 150%/200% 항목은 제22호 예시 결과, 방사성물질 200%, 배차취소 회차 150%·200%를 분리해 오해 주의 노드로 안내합니다.
+### 검증
+- `node --test web/tests/safeFreightNoticeContent.test.mjs web/tests/safeFreightSurcharges.test.mjs web/tests/safeFreightRegion.test.mjs web/tests/safeFreightTabOrder.test.mjs`: 11개 통과.
+- `npm run lint -- 'app/(main)/employees/safe-freight/page.js' 'app/(main)/employees/safe-freight/notices/page.js' 'app/(main)/employees/safe-freight/wiki/page.js'`: 에러 없음, 기존 훅/이미지 경고 3건만 확인.
+- 헤드리스 Chrome 렌더링 점검: 위키 모바일 검색/트리/주석칩 표시, 안내 페이지 주석칩 13개 표시, 가로 넘침 0건, 카드/요약 잘림 0건, 메인 위키 버튼 노출 확인.
+### 변경 파일
+- `web/app/(main)/employees/safe-freight/safe-freight-wiki.js`
+- `web/app/(main)/employees/safe-freight/wiki/page.js`, `web/app/(main)/employees/safe-freight/wiki/wiki.module.css`
+- `web/app/(main)/employees/safe-freight/page.js`, `web/app/(main)/employees/safe-freight/safe-freight.module.css`
+- `web/app/(main)/employees/safe-freight/notices/page.js`, `web/app/(main)/employees/safe-freight/notices/notices.module.css`
+- `web/app/(main)/employees/safe-freight/safe-freight-notice.js`, `web/tests/safeFreightNoticeContent.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-31] 안전운임 안내 모달/모바일 가독성 보강 (v5.14.305)
+### 원인
+- 관련 법령·고시 안내가 모바일과 좁은 화면에서 카드 내부 문장이 잘려 보이고, 2026-04-01 추가 운영지침 설명을 업무자가 즉시 확인하기에는 요약 정보가 부족했습니다.
+### 조치
+- 모달 오버레이와 본문 스크롤 구조를 정리해 고정 `75vh` 높이와 터치 차단으로 인한 잘림 가능성을 제거했습니다.
+- 모바일 전용 안내 페이지에 산정 전 확인 박스와 장별 핵심 포인트 목록을 추가하고, 긴 문장 줄바꿈/카드 overflow를 보정했습니다.
+- 각 장의 `points` 안내에 위탁/안전 운임 의미, 인천·평택 기점 할증의 3개 제한 포함, 거리별 원운임 재산정, 공휴일·심야 부분 적용, X-ray/공컨 예외 등을 보강했습니다.
+### 검증
+- `node --test web/tests/safeFreightNoticeContent.test.mjs web/tests/safeFreightSurcharges.test.mjs web/tests/safeFreightRegion.test.mjs web/tests/safeFreightTabOrder.test.mjs`: 10개 통과.
+- `npm run lint -- 'app/(main)/employees/safe-freight/page.js' 'app/(main)/employees/safe-freight/notices/page.js'`: 에러 없음, 기존 훅/이미지 경고 3건만 확인.
+- 헤드리스 Chrome 렌더링 점검: 데스크톱 모달과 390px 모바일 안내 페이지에서 요약/포인트 잘림 0건, 모바일 가로 넘침 0건 확인.
+### 변경 파일
+- `web/app/(main)/employees/safe-freight/page.js`, `web/app/(main)/employees/safe-freight/safe-freight.module.css`
+- `web/app/(main)/employees/safe-freight/notices/page.js`, `web/app/(main)/employees/safe-freight/notices/notices.module.css`
+- `web/app/(main)/employees/safe-freight/safe-freight-notice.js`, `web/tests/safeFreightNoticeContent.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] 실적관리 RAG 운송사별 순위 도출 보강 (v5.14.301)
 ### 원인
 - 실적관리 화면 summary에는 운송사/청구처/작업지 등 breakdown이 이미 있었지만, AI RAG용 dashboard view가 해당 도출항목을 제외해 `5월 업체(운송사) 매출순위` 질문을 답하지 못했습니다.

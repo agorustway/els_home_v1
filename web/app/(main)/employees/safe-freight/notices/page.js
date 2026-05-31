@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { NOTICE_GUIDANCE_SOURCE, NOTICE_SECTIONS, NOTICE_SOURCE } from '../safe-freight-notice';
+import { SAFE_FREIGHT_NOTE_MAP } from '../safe-freight-wiki';
 import styles from './notices.module.css';
 
 export default function NoticesPage() {
@@ -30,6 +31,17 @@ export default function NoticesPage() {
                 <p className={styles.desc}>
                     부대조항을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문 전체를 볼 수 있습니다.
                 </p>
+                <div className={styles.quickGuide} aria-label="안전운임 산정 핵심 확인사항">
+                    <strong>산정 전 확인</strong>
+                    <ul>
+                        <li>인천·평택 기점 할증은 제22호 할증 3개 제한에 포함합니다.</li>
+                        <li>기점 할증이 이미 들어간 구간표 운임은 추가 할증 시 거리별 원운임 기준을 확인합니다.</li>
+                        <li>공휴일·심야는 전체 작업·운행 시간 중 해당 시간 비율만 적용합니다.</li>
+                    </ul>
+                    <a className={styles.wikiLink} href="/employees/safe-freight/wiki" target="_blank" rel="noreferrer">
+                        변경 추적 위키에서 주석·페이지별로 보기
+                    </a>
+                </div>
             </header>
 
             {/* 법규 목록 */}
@@ -54,6 +66,32 @@ export default function NoticesPage() {
 
                                 {/* 요약 (항상 보임) */}
                                 <div className={styles.summary}>{sec.summary}</div>
+                                {Array.isArray(sec.noteRefs) && sec.noteRefs.length > 0 && (
+                                    <div className={styles.refList} aria-label={`${sec.title} 관련 주석`}>
+                                        {sec.noteRefs.map((ref) => {
+                                            const note = SAFE_FREIGHT_NOTE_MAP[ref];
+                                            return note ? (
+                                                <a
+                                                    key={ref}
+                                                    className={styles.refChip}
+                                                    href={`/employees/safe-freight/wiki#${ref}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title={`${note.title} · ${note.source} ${note.page}`}
+                                                >
+                                                    [{note.shortLabel}] {note.page}
+                                                </a>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                )}
+                                {Array.isArray(sec.points) && sec.points.length > 0 && (
+                                    <ul className={styles.pointList}>
+                                        {sec.points.map((point, idx) => (
+                                            <li key={`${sec.id}-point-${idx}`}>{point}</li>
+                                        ))}
+                                    </ul>
+                                )}
 
                                 {/* 전문 (펼쳤을 때) */}
                                 {isOpen && (

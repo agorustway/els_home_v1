@@ -31,7 +31,7 @@
 .title {
     font-size: 1.15rem;
     font-weight: 900;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     margin: 0;
     padding-left: 12px;
     border-left: 3px solid #2563eb;
@@ -69,7 +69,55 @@
     font-size: 0.82rem;
     color: #334155;
     margin: 0 0 0 12px;
-    line-height: 1.4;
+    line-height: 1.5;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.quickGuide {
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.quickGuide strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.86rem;
+}
+
+.quickGuide ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.quickGuide li + li {
+    margin-top: 4px;
+}
+
+.wikiLink {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.wikiLink:hover {
+    background: #1e40af;
 }
 
 /* ========== 메인 콘텐츠 ========== */
@@ -94,7 +142,7 @@
     background: #fff;
     border-radius: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
+    overflow: visible;
     transition: box-shadow 0.2s;
 }
 
@@ -157,8 +205,53 @@
     padding: 0 18px 14px;
     font-size: 0.85rem;
     color: #64748b;
-    line-height: 1.55;
-    border-bottom: 1px solid #f1f5f9;
+    line-height: 1.65;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.refList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 18px 12px;
+}
+
+.refChip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.refChip:hover {
+    border-color: #60a5fa;
+    background: #dbeafe;
+}
+
+.pointList {
+    margin: 0 18px 16px;
+    padding: 12px 14px 12px 30px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.pointList li + li {
+    margin-top: 5px;
 }
 
 /* 전문 (펼쳤을 때) */
@@ -166,6 +259,7 @@
     padding: 16px 18px 20px;
     background: #f8fafc;
     border-top: 1px solid #e2e8f0;
+    border-radius: 0 0 14px 14px;
     animation: slideDown 0.25s ease-out;
 }
 
@@ -228,7 +322,7 @@
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 .backBtn:hover {
@@ -256,6 +350,11 @@
         font-size: 1.4rem;
     }
 
+    .quickGuide {
+        font-size: 0.9rem;
+        padding: 14px 16px;
+    }
+
     .footer {
         max-width: 720px;
         margin: 0 auto;
@@ -270,8 +369,83 @@
         font-size: 0.9rem;
     }
 
+    .pointList {
+        font-size: 0.88rem;
+    }
+
     .clause,
     .paragraph {
         font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 14px 16px;
+    }
+
+    .headerInner {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .title {
+        font-size: 1.05rem;
+        line-height: 1.35;
+    }
+
+    .quickGuide {
+        padding: 10px 12px;
+        font-size: 0.78rem;
+        line-height: 1.55;
+    }
+
+    .wikiLink {
+        font-size: 0.76rem;
+        padding: 7px 9px;
+    }
+
+    .main {
+        padding: 12px;
+    }
+
+    .itemHead {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .itemTitle {
+        line-height: 1.35;
+    }
+
+    .itemToggle {
+        max-width: 96px;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.35;
+    }
+
+    .summary {
+        padding: 0 14px 12px;
+        font-size: 0.8rem;
+        line-height: 1.65;
+    }
+
+    .refList {
+        margin: 0 14px 12px;
+        gap: 5px;
+    }
+
+    .refChip {
+        min-height: 22px;
+        padding: 3px 7px;
+        font-size: 0.7rem;
+    }
+
+    .pointList {
+        margin: 0 14px 14px;
+        padding: 10px 12px 10px 26px;
+        font-size: 0.78rem;
+        line-height: 1.55;
     }
 }

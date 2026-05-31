@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import styles from './safe-freight.module.css';
 import { NOTICE_GUIDANCE_SOURCE, NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
+import { SAFE_FREIGHT_NOTE_MAP } from './safe-freight-wiki';
 import RouteSearchView from './route-search/RouteSearchView';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
 import { resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
@@ -823,6 +824,17 @@ export default function SafeFreightPage() {
           <span className={styles.noticeTabLabel}>관련 법령·고시 안내</span>
         </button>
 
+        <button
+          type="button"
+          className={styles.tab}
+          onClick={() => window.open('/employees/safe-freight/wiki', '_blank')}
+          aria-label="안전운임 변경 추적 위키 열기"
+          title="안전운임 변경 추적 위키"
+        >
+          <span className={styles.tabLabel}>변경 추적 위키</span>
+          <span className={styles.tabDesc}>주석 기반 변경/해석 검색</span>
+        </button>
+
         {/* 법규 전문 PDF (고시 원본) */}
         <button
           type="button"
@@ -850,7 +862,6 @@ export default function SafeFreightPage() {
         <div
           className={styles.noticeModalOverlay}
           onClick={() => setNoticeModalOpen(false)}
-          onTouchMove={(e) => e.preventDefault()} /* 🎯 오버레이 터치 시 배경 스크롤 방지 */
           role="dialog"
           aria-modal="true"
           aria-labelledby="notice-modal-title"
@@ -870,6 +881,17 @@ export default function SafeFreightPage() {
             <p className={styles.noticeSectionDesc}>
               {NOTICE_SOURCE} 및 {NOTICE_GUIDANCE_SOURCE}을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문과 운영지침을 볼 수 있습니다.
             </p>
+            <div className={styles.noticeQuickGuide} aria-label="안전운임 산정 핵심 확인사항">
+              <strong>산정 전 확인</strong>
+              <ul>
+                <li>인천·평택 기점 할증은 다른 할증과 함께 높은 순 3개 제한에 포함합니다.</li>
+                <li>구간표 금액에 기점 할증이 이미 들어간 경우, 추가 할증 산정 시 거리별 원운임 기준을 확인합니다.</li>
+                <li>공휴일·심야는 전체 작업·운행 시간 중 해당 시간 비율만큼 적용합니다.</li>
+              </ul>
+              <a className={styles.noticeWikiLink} href="/employees/safe-freight/wiki" target="_blank" rel="noreferrer">
+                변경 추적 위키에서 주석·페이지별로 보기
+              </a>
+            </div>
             <ul
               className={styles.noticeList}
               onTouchMove={(e) => e.stopPropagation()} /* 🎯 리스트 내부 터치는 스크롤 허용 */
@@ -888,6 +910,32 @@ export default function SafeFreightPage() {
                     </span>
                   </button>
                   <p className={styles.noticeSummary}>{sec.summary}</p>
+                  {Array.isArray(sec.noteRefs) && sec.noteRefs.length > 0 && (
+                    <div className={styles.noticeRefList} aria-label={`${sec.title} 관련 주석`}>
+                      {sec.noteRefs.map((ref) => {
+                        const note = SAFE_FREIGHT_NOTE_MAP[ref];
+                        return note ? (
+                          <a
+                            key={ref}
+                            className={styles.noticeRefChip}
+                            href={`/employees/safe-freight/wiki#${ref}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`${note.title} · ${note.source} ${note.page}`}
+                          >
+                            [{note.shortLabel}] {note.page}
+                          </a>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                  {Array.isArray(sec.points) && sec.points.length > 0 && (
+                    <ul className={styles.noticePointList}>
+                      {sec.points.map((point, idx) => (
+                        <li key={`${sec.id}-point-${idx}`}>{point}</li>
+                      ))}
+                    </ul>
+                  )}
                   {expandedNoticeId === sec.id && (
                     <div className={styles.noticeFullText} role="region" aria-label={`${sec.title} 전문`}>
                       {sec.fullText}
