@@ -1,3 +1,24 @@
+## [2026-05-31] 안전운임 고시해석 위키트리 문서형 재구성 (v5.14.308)
+### 원인
+- 기존 화면은 제목과 데이터는 위키트리였지만, 형이 요청한 “페이지 옆 트리 구조를 누르면 문서가 바뀌는 진짜 위키트리” 형태가 아니었습니다.
+### 조치
+- `/employees/safe-freight/wiki`를 좌측 트리/우측 문서형 레이아웃으로 바꿨습니다.
+- 좌측 트리는 `1차 고시 -> 제1장~제7장`, `1차 운영지침`, `1차-1차 운영지침 변경건`, `2차 고시(아직 안나옴)` 순서로 구성했습니다.
+- `1차 고시`를 누르면 기존 관련 법령·고시 안내의 제1~7장 내용을 더 상세하게 오른쪽 문서 영역에 표시하고, 각 장 하위 노드를 누르면 해당 장만 집중해서 볼 수 있게 했습니다.
+- `1차 운영지침`은 2026-04-01 추가 지침의 성격, 제22호·인천/평택 계산, 시간·공컨·X-ray 예외, 거리·유가 보완을 별도 가지로 설명합니다.
+- `1차-1차 운영지침 변경건`은 할증 합산/기점할증, 시간·공컨·X-ray 예외, 150%·200% 숫자 문맥을 비교 항목으로 분리했습니다.
+### 검증
+- `node --test web/tests/safeFreightNoticeContent.test.mjs web/tests/safeFreightSurcharges.test.mjs web/tests/safeFreightRegion.test.mjs web/tests/safeFreightTabOrder.test.mjs`: 11개 통과.
+- `npm run lint -- 'app/(main)/employees/safe-freight/page.js' 'app/(main)/employees/safe-freight/notices/page.js' 'app/(main)/employees/safe-freight/wiki/page.js'`: 에러 없음, 기존 훅/이미지 경고 3건만 확인.
+- Chrome 헤드리스 렌더링 점검: 모바일 390px/데스크톱에서 좌측 트리, 우측 `1차 고시` 문서, 제1~7장 하위 노드, 1차 운영지침/변경건 가지를 확인했습니다. 모바일 `scrollWidth=390/innerWidth=390`, 데스크톱 `scrollWidth=1425/innerWidth=1440`으로 가로 넘침 없음.
+### 변경 파일
+- `web/app/(main)/employees/safe-freight/safe-freight-wiki.js`
+- `web/app/(main)/employees/safe-freight/wiki/page.js`, `web/app/(main)/employees/safe-freight/wiki/wiki.module.css`
+- `web/tests/safeFreightNoticeContent.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] 안전운임 고시해석 위키트리 재구성 (v5.14.307)
 ### 원인
 - 기존 위키 화면이 “변경 포인트” 중심이라, 1차 고시 원문·1차 추가 운영지침·두 문서의 해석 차이를 위키처럼 추적하려는 목적과 구조가 맞지 않았습니다.
