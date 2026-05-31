@@ -295,6 +295,10 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
 }
 
 async function insertHistory(adminSupabase, event, confirmation, action, actor, now, oldPayload = null, newPayload = null) {
+    if (action === 'refreshed' || action === 'resolved') {
+        return;
+    }
+
     const { error } = await adminSupabase
         .from('branch_dispatch_detail_change_history')
         .insert({

@@ -1,3 +1,23 @@
+## [2026-05-31] Supabase DB 용량 진단과 1차 인덱스 감량 (v5.14.296)
+### 원인
+- `branch_performance_rows`가 159만 행/3.7GB까지 커졌고, 연간 실적 최신 스냅샷 외의 과거 partial/current 행이 함께 남아 있었습니다.
+- `branch_dispatch_detail_change_history`는 자동 `refreshed/resolved` 이력이 34만 건 이상 쌓이며 1GB 이상을 차지했습니다.
+- `document_chunks`는 라이브 데이터는 약 54MB지만 TOAST/IVFFLAT 인덱스 bloat까지 포함해 약 1GB를 점유했습니다.
+### 조치
+- 운영 DB에서 실적 테이블의 과대/미사용 인덱스 11개를 우선 제거해 `branch_performance_rows`를 약 3.7GB에서 2.8GB 수준으로 낮췄습니다.
+- 배차변동 히스토리 API는 앞으로 자동 `refreshed/resolved` 이력을 저장하지 않게 해 로그 폭증 재발을 차단했습니다.
+- 최신 연간 스냅샷과 월간 current 행만 남기는 compact-swap SQL, 배차변동 의미 이력만 보존하는 SQL을 준비했습니다. 운영 테이블 재작성/영구 삭제는 명시 승인 대기입니다.
+### 검증
+- Supabase 크기 진단: `branch_performance_rows` 2769MB, `branch_dispatch_detail_change_history` 1074MB, `document_chunks` 991MB 확인.
+- `ANALYZE`로 주요 테이블 통계 갱신 완료.
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/supabase_sql/20260531_database_pre_compaction_drop_indexes.sql`
+- `web/supabase_sql/20260531_database_retention_compaction.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] 상세배차 작업지 코드명 fallback 제거 (v5.14.295)
 ### 원인
 - 상세배차 `작업지(하차지)코드` 칸이 GLAPS 원장 코드가 없을 때 `경유지(ELS)` 또는 경유지명으로 fallback되어, 코드 칸에 `글로비스KD센터2포장` 같은 이름이 표시됐습니다.
