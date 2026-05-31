@@ -16,15 +16,16 @@ async function parseAllPdfs() {
   const dirs = fs.readdirSync(WORK_DOCS_DIR);
   
   for (const dir of dirs) {
-    if (dir.startsWith('안전운임_')) {
-      const fullDirPath = path.join(WORK_DOCS_DIR, dir);
-      const stat = fs.statSync(fullDirPath);
-      
-      if (stat.isDirectory()) {
-        const files = fs.readdirSync(fullDirPath);
-        
-        for (const file of files) {
-          if (file.endsWith('.pdf') && file.includes('고시')) {
+    const fullDirPath = path.join(WORK_DOCS_DIR, dir);
+    const stat = fs.statSync(fullDirPath);
+
+    if (stat.isDirectory()) {
+      const files = fs.readdirSync(fullDirPath);
+
+      for (const file of files) {
+        const isSafeFreightNotice = dir.startsWith('안전운임_') && file.endsWith('.pdf') && file.includes('고시');
+        const isSafeFreightGuidance = file.endsWith('.pdf') && file.includes('안전운임 운영지침');
+        if (isSafeFreightNotice || isSafeFreightGuidance) {
             const filePath = path.join(fullDirPath, file);
             console.log(`Parsing PDF: ${filePath}`);
             
@@ -41,7 +42,6 @@ async function parseAllPdfs() {
             } catch (err) {
               console.error(`Failed to parse ${file}:`, err);
             }
-          }
         }
       }
     }

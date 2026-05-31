@@ -1669,7 +1669,21 @@ export async function POST(req) {
                     docChunks.push('\n---\n' + fullText.slice(daegiroStart, daegiroStart + 1500));
                 }
 
-                safeFreightText = `\n\n## 안전운임 고시 전문 (원문 참고용 — ${safeDocs[0].versionDir || '최신'})\n🚨 아래는 국토교통부 공식 고시 원문입니다. 대기료·할증·적용범위 등 조항 질문 시 반드시 이 원문을 인용하고, 원문에 없는 내용은 절대 창작하지 마세요.\n${docChunks.join('\n')}`;
+                const guidanceDoc = safeDocs.find((doc) => String(doc.filename || '').includes('운영지침'));
+                if (guidanceDoc?.text) {
+                    const guidanceText = guidanceDoc.text;
+                    const guidanceIndexes = [
+                        guidanceText.indexOf('할증률가산예시'),
+                        guidanceText.indexOf('탱크컨테이너할증'),
+                        guidanceText.indexOf('공휴일'),
+                        guidanceText.indexOf('인천기점할증적용방법'),
+                        guidanceText.indexOf('위험물운송관련'),
+                    ].filter((idx) => idx >= 0);
+                    const start = guidanceIndexes.length ? Math.max(0, Math.min(...guidanceIndexes) - 300) : 0;
+                    docChunks.push(`\n---\n## 추가 운영지침 원문 (${guidanceDoc.filename})\n${guidanceText.slice(start, start + 6500)}`);
+                }
+
+                safeFreightText = `\n\n## 안전운임 고시·운영지침 전문 (원문 참고용 — ${safeDocs[0].versionDir || '최신'})\n🚨 아래는 국토교통부 공식 고시와 추가 운영지침 원문입니다. 대기료·할증·적용범위 등 조항 질문 시 반드시 이 원문을 인용하고, 원문에 없는 내용은 절대 창작하지 마세요.\n${docChunks.join('\n')}`;
             }
         } catch (e) { console.error('Docs RAG 에러:', e); }
     }

@@ -8,6 +8,11 @@ import LocationBlock, { TERMINAL_LIST, TERMINAL_COORDS } from './LocationBlock';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
 import { resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
 import { findSafeFreightSectionOrigin } from '@/utils/safeFreightRouteMatch.mjs';
+import {
+    applySafeFreightSurchargesToFare,
+    calculateSafeFreightSurchargeInfo,
+    makeRegionalBaseSurchargeItem,
+} from '@/utils/safeFreightSurcharges.mjs';
 import SurchargePanel from './SurchargePanel';
 
 /* ═══════════════════════════════════════════════════
@@ -220,7 +225,7 @@ export default function RouteSearchView({ options, period, onBack }) {
     const [mapReady, setMapReady] = useState(false);
     const [mapError, setMapError] = useState(false);
     
-    // ── 지역별 기점 할증률 (고시 제23조 카, 타목) ────
+    // ── 지역별 기점 할증률 (고시 제23조 카, 타목 / 2026-04-01 운영지침) ────
     const regionalBaseSurcharge = useMemo(() => getRegionalBaseSurcharge({
         origin: origin.text,
         destination: destination.text,
@@ -1050,74 +1055,37 @@ export default function RouteSearchView({ options, period, onBack }) {
         // 편도 모드일 때 50% 적용 (거리제/이외구간 전용)
         const baseMult = (tripMode === 'oneWay' && !isSection) ? 0.5 : 1.0;
 
-        let f40위탁 = (row.f40위탁 || 0) * baseMult;
-        let f40운수자 = (row.f40운수자 || 0) * baseMult;
-        let f40안전 = (row.f40안전 || 0) * baseMult;
-        let f20위탁 = (row.f20위탁 || 0) * baseMult;
-        let f20운수자 = (row.f20운수자 || 0) * baseMult;
-        let f20안전 = (row.f20안전 || 0) * baseMult;
-
-        // 지역별 기점 할증 적용 (인천 20%, 평택 18%) - 거리제 전용
         const regionalPct = regionalOverride?.pct ?? regionalBaseSurchargePct;
-        if (!isSection && regionalPct > 0) {
-            const regMult = 1 + regionalPct / 100;
-            f40위탁 *= regMult;
-            f40운수자 *= regMult;
-            f40안전 *= regMult;
-            f20위탁 *= regMult;
-            f20운수자 *= regMult;
-            f20안전 *= regMult;
-        }
-
-        // 할증/부대비용 적용 (SurchargePanel에서 전달)
-        // 요약 배율(totalPctMult)만 믿지 않고 실제 적용 목록으로 재계산해 체크 상태와 금액 불일치를 방지한다.
-        const pctApplied = Array.isArray(surchargeInfo?.pctApplied) ? surchargeInfo.pctApplied : [];
-        const totalPct = pctApplied.reduce((sum, item) => {
-            const pct = Number(item?.pct) || 0;
-            const effective = Number(item?.effective ?? 100);
-            return sum + (pct * effective) / 100;
-        }, 0);
-        const pctMult = totalPct > 0 ? 1 + totalPct / 100 : Number(surchargeInfo?.totalPctMult || 1);
-
-        f40위탁 *= pctMult;
-        f40운수자 *= pctMult;
-        f40안전 *= pctMult;
-        f20위탁 *= pctMult;
-        f20운수자 *= pctMult;
-        f20안전 *= pctMult;
-
-        const round10 = (val) => Math.round(val / 10) * 10;
-
-        let r40위탁 = round10(f40위탁);
-        let r40운수자 = round10(f40운수자);
-        let r40안전 = round10(f40안전);
-        let r20위탁 = round10(f20위탁);
-        let r20운수자 = round10(f20운수자);
-        let r20안전 = round10(f20안전);
-
-        // 고정 금액(실비: X-RAY, 공컨 반납비 등) 추가
+        const selectedPctItems = Array.isArray(surchargeInfo?.pctItems) ? surchargeInfo.pctItems : [];
         const fixedApplied = Array.isArray(surchargeInfo?.fixedApplied) ? surchargeInfo.fixedApplied : [];
-        const fixedAddFromItems = fixedApplied.reduce((sum, item) => sum + (Number(item?.fixed) || 0), 0);
-        const fixedAdd = fixedApplied.length > 0 ? fixedAddFromItems : Number(surchargeInfo?.fixedAdd || 0);
-        if (fixedAdd) {
-            r40위탁 += fixedAdd;
-            r40운수자 += fixedAdd;
-            r40안전 += fixedAdd;
-            r20위탁 += fixedAdd;
-            r20운수자 += fixedAdd;
-            r20안전 += fixedAdd;
-        }
+        const shouldIncludeRegionalBase = regionalPct > 0 && (!isSection || (selectedPctItems.length > 0 && row.regionalBaseRow));
+        const regionalItem = shouldIncludeRegionalBase ? makeRegionalBaseSurchargeItem({
+            ...(regionalOverride || regionalBaseSurcharge),
+            pct: regionalPct,
+        }) : null;
+        const combinedSurchargeInfo = calculateSafeFreightSurchargeInfo({
+            items: [...selectedPctItems, regionalItem].filter(Boolean),
+            fixedItems: fixedApplied,
+            regulation: surchargeInfo?.regulation || { maxPctCount: 3, firstFull: true, restHalf: true },
+        });
+        const useDistanceBaseRow = isSection && shouldIncludeRegionalBase && row.regionalBaseRow;
+        const applied = applySafeFreightSurchargesToFare(row, {
+            baseRow: useDistanceBaseRow ? row.regionalBaseRow : row,
+            baseMult,
+            surchargeInfo: combinedSurchargeInfo,
+        });
+        const regionalApplied = combinedSurchargeInfo.pctApplied.find((item) => item.regionalBase);
 
         return {
-            ...row,
-            f40위탁: r40위탁, f40운수자: r40운수자, f40안전: r40안전,
-            f20위탁: r20위탁, f20운수자: r20운수자, f20안전: r20안전,
-            appliedRegionalPct: regionalPct,
+            ...applied,
+            appliedRegionalPct: regionalItem ? regionalApplied?.pct || 0 : regionalPct,
+            appliedRegionalEffectivePct: regionalApplied ? (regionalApplied.pct * regionalApplied.effective) / 100 : 0,
             appliedRegionalLabel: regionalOverride?.label ?? regionalBaseSurcharge.label,
-            appliedSurcharges: surchargeInfo?.appliedLabels || [],
-            excludedSurcharges: surchargeInfo?.pctExcluded || [],
+            appliedSurcharges: combinedSurchargeInfo.appliedLabels || [],
+            excludedSurcharges: combinedSurchargeInfo.pctExcluded || [],
+            usedRegionalDistanceBase: Boolean(useDistanceBaseRow),
         };
-    }, [tripMode, regionalBaseSurchargePct, regionalBaseSurcharge.label, surchargeInfo]);
+    }, [tripMode, regionalBaseSurcharge, regionalBaseSurchargePct, surchargeInfo]);
 
     // ── 할증 동적 적용 (원본 데이터가 바뀌거나 할증 정보가 바뀔 때 실행) ──
     useEffect(() => {
@@ -1138,6 +1106,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20안전: row.f20안전 || 0,
                 appliedRegionalPct: row.appliedRegionalPct || 0,
                 appliedRegionalLabel: row.appliedRegionalLabel || '',
+                appliedRegionalEffectivePct: row.appliedRegionalEffectivePct || 0,
+                usedRegionalDistanceBase: row.usedRegionalDistanceBase || false,
                 appliedSurcharges: row.appliedSurcharges || [],
                 excludedSurcharges: row.excludedSurcharges || [],
             });
@@ -1146,7 +1116,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
     useEffect(() => {
         const next = rawSectionRows.map(raw => {
-            const row = applySurchargesToRow(raw.row, true);
+            const row = applySurchargesToRow(raw.row, true, raw.regionalOverride);
             return {
                 origin: raw.origin,
                 destination: raw.destination,
@@ -1158,8 +1128,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20위탁: row.f20위탁 || 0,
                 f20운수자: row.f20운수자 || 0,
                 f20안전: row.f20안전 || 0,
+                appliedRegionalPct: row.appliedRegionalPct || 0,
+                appliedRegionalLabel: row.appliedRegionalLabel || '',
+                appliedRegionalEffectivePct: row.appliedRegionalEffectivePct || 0,
                 appliedSurcharges: row.appliedSurcharges || [],
                 excludedSurcharges: row.excludedSurcharges || [],
+                usedRegionalDistanceBase: row.usedRegionalDistanceBase || false,
             };
         });
         setSectionFareResults(next);
@@ -1167,7 +1141,7 @@ export default function RouteSearchView({ options, period, onBack }) {
 
     useEffect(() => {
         const next = rawOneWayRows.map(raw => {
-            const row = applySurchargesToRow(raw.row, true);
+            const row = applySurchargesToRow(raw.row, true, raw.regionalOverride);
             return {
                 origin: raw.origin,
                 destination: raw.destination,
@@ -1179,8 +1153,12 @@ export default function RouteSearchView({ options, period, onBack }) {
                 f20위탁: row.f20위탁 || 0,
                 f20운수자: row.f20운수자 || 0,
                 f20안전: row.f20안전 || 0,
+                appliedRegionalPct: row.appliedRegionalPct || 0,
+                appliedRegionalLabel: row.appliedRegionalLabel || '',
+                appliedRegionalEffectivePct: row.appliedRegionalEffectivePct || 0,
                 appliedSurcharges: row.appliedSurcharges || [],
                 excludedSurcharges: row.excludedSurcharges || [],
+                usedRegionalDistanceBase: row.usedRegionalDistanceBase || false,
             };
         });
         setSectionFareOneWayResults(next);
@@ -1278,10 +1256,17 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     if (sRes.ok) {
                                         const sData = await sRes.json();
                                         if (sData.rows?.length > 0) {
+                                            const sectionRegionalBaseSurcharge = getRegionalBaseSurcharge({
+                                                origin: matchedOrigin.id,
+                                                destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                tripMode,
+                                                queryType: 'distance',
+                                            });
                                             tempSections.push({
                                                 origin: matchedOrigin.id,
                                                 destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                                row: sData.rows[0]
+                                                row: sData.rows[0],
+                                                regionalOverride: sectionRegionalBaseSurcharge,
                                             });
                                         }
                                     }
@@ -1331,10 +1316,17 @@ export default function RouteSearchView({ options, period, onBack }) {
                                     if (owRes.ok) {
                                         const owData = await owRes.json();
                                         if (owData.rows?.length > 0) {
+                                            const oneWayRegionalBaseSurcharge = getRegionalBaseSurcharge({
+                                                origin: oneWayOrigin.id,
+                                                destination: `${reqR1} ${reqR2} ${reqR3}`,
+                                                tripMode,
+                                                queryType: 'distance',
+                                            });
                                             tempOneWays.push({
                                                 origin: oneWayOrigin.id,
                                                 destination: `${reqR1} ${reqR2} ${reqR3}`,
-                                                row: owData.rows[0]
+                                                row: owData.rows[0],
+                                                regionalOverride: oneWayRegionalBaseSurcharge,
                                             });
                                         }
                                     }
@@ -1687,6 +1679,24 @@ export default function RouteSearchView({ options, period, onBack }) {
         // 법규 적용: 가장 짧은 구간이 기준 → 거리순 정렬 반영
         return result.sort((a, b) => a.distKm - b.distKm);
     }, [routeResult, currentFuelPrice, currentMileage, tripMult]);
+
+    const resultSurchargeSummary = useMemo(() => {
+        const fares = [
+            ...sectionFareResults,
+            ...sectionFareOneWayResults,
+            ...(distFareResult ? [distFareResult] : []),
+        ];
+        const appliedLabels = Array.from(new Set(fares.flatMap((fare) => fare.appliedSurcharges || [])));
+        const excludedMap = new Map();
+        fares.flatMap((fare) => fare.excludedSurcharges || []).forEach((item) => {
+            if (item?.label) excludedMap.set(item.label, item);
+        });
+        return {
+            appliedLabels,
+            excluded: Array.from(excludedMap.values()),
+            usedRegionalDistanceBase: fares.some((fare) => fare.usedRegionalDistanceBase),
+        };
+    }, [sectionFareResults, sectionFareOneWayResults, distFareResult]);
 
     /* ═══════════════════════════════════════════════
        렌더링
@@ -2095,6 +2105,11 @@ export default function RouteSearchView({ options, period, onBack }) {
                                         </tr>
                                     </tbody>
                                 </table>
+                                {fare.usedRegionalDistanceBase && (
+                                    <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
+                                        <strong>지역별 기점 할증 재산정:</strong> {fare.appliedRegionalLabel} 기점 할증은 추가 운영지침에 따라 제22조 할증 3개 제한에 포함했고, 구간표 금액 대신 거리별 원운임 기준으로 산정했습니다.
+                                    </div>
+                                )}
                             </div>
                         ))}
 
@@ -2168,7 +2183,8 @@ export default function RouteSearchView({ options, period, onBack }) {
                                 </div>
                                 {distFareResult.appliedRegionalPct > 0 && (
                                     <div className={styles.regionalNote} style={{ marginTop: '8px', padding: '10px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '6px', fontSize: '13px', color: '#991b1b' }}>
-                                        <strong>지역별 기점 할증 적용:</strong> {distFareResult.appliedRegionalLabel} 기점 {distFareResult.appliedRegionalPct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                                        <strong>지역별 기점 할증:</strong> {distFareResult.appliedRegionalLabel} 기점 {distFareResult.appliedRegionalPct}%는 2026-04-01 추가 운영지침에 따라 제22조 할증 3개 제한에 포함해 산정됩니다.
+                                        {distFareResult.usedRegionalDistanceBase && ' 구간표에 이미 포함된 기점 할증은 거리별 원운임 기준으로 재산정했습니다.'}
                                     </div>
                                 )}
                                 <table className={styles.fareTable}>
@@ -2194,12 +2210,17 @@ export default function RouteSearchView({ options, period, onBack }) {
                         )}
 
                         {/* 할증 적용 안내 */}
-                        {surchargeInfo && surchargeInfo.appliedLabels?.length > 0 && (
+                        {resultSurchargeSummary.appliedLabels.length > 0 && (
                             <div style={{ padding: '8px 10px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.75rem', color: '#1e40af' }}>
-                                <strong>할증 적용:</strong> {surchargeInfo.appliedLabels.join(', ')} — 위 운임에 반영됨
-                                {surchargeInfo.pctExcluded?.length > 0 && (
+                                <strong>할증 적용:</strong> {resultSurchargeSummary.appliedLabels.join(', ')} — 위 운임에 반영됨
+                                {resultSurchargeSummary.usedRegionalDistanceBase && (
+                                    <div style={{ marginTop: '4px', color: '#991b1b' }}>
+                                        인천/평택 기점 할증은 2026-04-01 추가 운영지침 기준으로 다른 할증과 함께 높은 순 3개 제한에 포함했습니다.
+                                    </div>
+                                )}
+                                {resultSurchargeSummary.excluded.length > 0 && (
                                     <div style={{ marginTop: '4px', color: '#b45309' }}>
-                                        적용 제외: {surchargeInfo.pctExcluded.map(s => s.label).join(', ')} (고시 제22조)
+                                        적용 제외: {resultSurchargeSummary.excluded.map(s => s.label).join(', ')} (고시 제22조)
                                     </div>
                                 )}
                             </div>

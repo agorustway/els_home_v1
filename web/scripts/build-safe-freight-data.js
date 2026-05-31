@@ -204,12 +204,12 @@ const origins2026OrLater = origins.filter((o) => originsIn2026.has(o.id));
 const surcharges = [
   { id: 'flexibag_liquid', label: '플렉시백 컨테이너 (액체 20%)', pct: 20, group: 'flexibag' },
   { id: 'flexibag_powder', label: '플렉시백 컨테이너 (분말 10%)', pct: 10, group: 'flexibag' },
-  { id: 'tank', label: 'TANK 컨테이너(비위험물) 30%', pct: 30 },
-  { id: 'reefer', label: '냉동냉장 컨테이너 30% (편도미적용)', pct: 30 },
+  { id: 'tank', label: 'TANK 컨테이너(비위험물) 30%', pct: 30, note: '상·하행 모두 공컨테이너 운송이면 미적용. 위험물과 중복 가능하되 제22호에 따라 한 항목은 50% 적용될 수 있음.' },
+  { id: 'reefer', label: '냉동냉장 컨테이너 30% (편도미적용)', pct: 30, note: '발전기 부착 샤시는 가동 여부와 무관하게 적용. 발전기 미부착·장치 미가동 또는 상·하행 모두 공컨 운송이면 미적용.' },
   { id: 'rough', label: '험로 및 오지', pct: 20, note: '*진행시 확인서 증빙이 필요합니다.' },
   { id: 'dump', label: '덤프 컨테이너 25%', pct: 25 },
-  { id: 'holiday', label: '일요일 및 공휴일 20%', pct: 20 },
-  { id: 'night', label: '심야(22:00-06:00) 20%', pct: 20 },
+  { id: 'holiday', label: '일요일 및 공휴일 20%', pct: 20, variablePct: true, note: '전체 작업·운행시간 중 공휴일에 해당하는 비율만큼 적용.' },
+  { id: 'night', label: '심야(22:00-06:00) 20%', pct: 20, variablePct: true, note: '전체 작업·운행시간 중 심야(22:00-06:00)에 해당하는 비율만큼 적용.' },
   { id: 'hazard_30', label: '위험물, 유독물, 유해화학물질 30%', pct: 30, group: 'hazard' },
   { id: 'hazard_100', label: '화약류 100%', pct: 100, group: 'hazard' },
   { id: 'hazard_200', label: '방사성물질 200%', pct: 200, group: 'hazard' },
@@ -237,8 +237,10 @@ const surchargeRegulation = {
   firstFull: true,
   restHalf: true,
   legalRef: '2026년 적용 화물자동차 안전운임 고시 [별표1] 제22조',
-  notice: '다수의 할증이 적용될 경우 가장 높은 할증률 1개는 전액, 나머지는 50%씩 적용하며, 할증 항목은 3개까지만 합산합니다.',
+  guidanceRef: '2026년도 적용 화물자동차 안전운임 운영지침(2026.4.1 수정)',
+  notice: '다수의 할증이 적용될 경우 가장 높은 할증률 1개는 전액, 나머지는 50%씩 적용하며, 할증 항목은 3개까지만 합산합니다. 인천·평택 기점 할증도 이 3개 제한에 포함합니다.',
   excludedReason: '할증 항목이 3개를 초과하여 본 운송에는 적용되지 않습니다(고시 제22조 나목).',
+  rounding: '할증료는 백원미만 사사오입 후 기본 운임에 합산합니다.',
 };
 
 const output = {

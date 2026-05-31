@@ -1,11 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import styles from './safe-freight.module.css';
-import { NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
+import { NOTICE_GUIDANCE_SOURCE, NOTICE_SECTIONS, NOTICE_SOURCE } from './safe-freight-notice';
 import RouteSearchView from './route-search/RouteSearchView';
 import { formatSafeFreightKm, getRegionalBaseSurcharge } from '@/utils/safeFreightRules.mjs';
 import { resolveSafeFreightRegion } from '@/utils/safeFreightRegion.mjs';
+import {
+  applySafeFreightSurchargesToFare,
+  calculateSafeFreightSurchargeInfo,
+  makeRegionalBaseSurchargeItem,
+} from '@/utils/safeFreightSurcharges.mjs';
 
 const QUERY_TYPES = [
   { id: 'section', label: '구간별운임', desc: '기점·행선지별 고시 운임' },
@@ -15,6 +20,8 @@ const QUERY_TYPES = [
 
 const TEMP_RESULTS_KEY = 'safeFreightTempResults';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:2929';
+const VARIABLE_PCT_SURCHARGE_IDS = new Set(['rough', 'holiday', 'night']);
+const isVariablePctSurcharge = (s) => VARIABLE_PCT_SURCHARGE_IDS.has(s.id) || s.variablePct;
 
 export default function SafeFreightPage() {
   const [options, setOptions] = useState(null);
@@ -32,6 +39,7 @@ export default function SafeFreightPage() {
   const [tripMode, setTripMode] = useState('round'); // 'round' | 'oneWay'
   const [surchargeIds, setSurchargeIds] = useState(new Set());
   const [roughPct, setRoughPct] = useState(20);
+  const [customPctById, setCustomPctById] = useState({ holiday: 20, night: 20 });
   const [displayMode, setDisplayMode] = useState('all');
   const [groupApply, setGroupApply] = useState({ flexibag: false, hazard: false, oversize: false, heavy: false });
 
@@ -371,48 +379,43 @@ export default function SafeFreightPage() {
     const opts = surchargesList.filter((s) => s.group === group);
     return opts.find((s) => surchargeIds.has(s.id))?.id ?? '';
   };
+  const getSurchargePct = useCallback((s) => {
+    if (s.id === 'rough') return roughPct;
+    if (isVariablePctSurcharge(s)) return Number(customPctById[s.id] ?? s.pct ?? 0) || 0;
+    return Number(s.pct) || 0;
+  }, [roughPct, customPctById]);
+  const getSurchargeLabel = useCallback((s) => {
+    const pct = getSurchargePct(s);
+    const baseLabel = String(s.label || '')
+      .replace(/\s*\(?\d+(?:\.\d+)?%\)?/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return isVariablePctSurcharge(s) ? `${baseLabel} ${pct}%` : s.label;
+  }, [getSurchargePct]);
 
   /** 고시 제22조: 선택된 할증 중 적용·미적용 구분 (할증률 최대 3개, 1개 전액·나머지 50%) */
   const appliedSurchargeInfo = useMemo(() => {
     const list = options?.surcharges || [];
     const reg = options?.surchargeRegulation || { maxPctCount: 3, firstFull: true, restHalf: true, excludedReason: '' };
-    const maxPct = reg.maxPctCount ?? 3;
     const pctItems = list
       .filter((s) => !s.otherCost && !s.fixed && surchargeIds.has(s.id))
       .map((s) => ({
         id: s.id,
-        label: s.id === 'rough' ? `${s.label} ${roughPct}%` : s.label,
-        pct: s.id === 'rough' ? roughPct : (s.pct || 0),
-      }))
-      .sort((a, b) => b.pct - a.pct);
+        label: getSurchargeLabel(s),
+        pct: getSurchargePct(s),
+      }));
     const fixedItems = list.filter((s) => (s.fixed || s.otherCost) && surchargeIds.has(s.id));
-    const pctApplied = pctItems.slice(0, maxPct).map((item, i) => ({
-      ...item,
-      effective: i === 0 && reg.firstFull ? 100 : reg.restHalf ? 50 : 100,
-    }));
-    const pctExcluded = pctItems.slice(maxPct).map((item) => ({
-      ...item,
-      reason: reg.excludedReason || '할증 항목이 3개를 초과하여 본 운송에는 적용되지 않습니다(고시 제22조 나목).',
-    }));
-    return {
-      pctApplied,
-      pctExcluded,
-      fixedApplied: fixedItems,
-      regulation: reg,
-    };
-  }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, roughPct, queryType, tripMode]);
+    return calculateSafeFreightSurchargeInfo({ items: pctItems, fixedItems, regulation: reg });
+  }, [options?.surcharges, options?.surchargeRegulation, surchargeIds, getSurchargeLabel, getSurchargePct]);
 
-  /** 지역별 기점 할증률 (고시 제23조 카, 타목): 거리제/이외구간 왕복 운송에만 적용 */
+  /** 지역별 기점 할증률 (고시 제23조 카, 타목): 추가 운영지침에 따라 제22조 할증 3개 제한에 포함 */
   const regionalBaseSurcharge = useMemo(() => getRegionalBaseSurcharge({
     origin,
     destination: [region1, region2, region3].join(' '),
     tripMode,
-    queryType,
+    queryType: queryType === 'section' ? 'distance' : queryType,
   }), [origin, region1, region2, region3, tripMode, queryType]);
   const regionalBaseSurchargePct = regionalBaseSurcharge.pct;
-
-  /** 십원 단위 반올림 (고시 제7조) */
-  const round10 = (val) => Math.round(val / 10) * 10;
 
   /** 할증 적용한 금액 객체 반환 (고시 제22조: 할증률 최대 3개, 1개 전액·나머지 50%) */
   const applySurchargesToRow = useMemo(() => {
@@ -421,62 +424,36 @@ export default function SafeFreightPage() {
       const isDistanceBased = queryType === 'distance' || queryType === 'other';
       const baseMult = (isDistanceBased && tripMode === 'oneWay') ? 0.5 : 1.0;
 
-      // 1. 기본 운임 (편도/왕복 반영)
-      let f40위탁 = (row.f40위탁 || 0) * baseMult;
-      let f40운수자 = (row.f40운수자 || 0) * baseMult;
-      let f40안전 = (row.f40안전 || 0) * baseMult;
-      let f20위탁 = (row.f20위탁 || 0) * baseMult;
-      let f20운수자 = (row.f20운수자 || 0) * baseMult;
-      let f20안전 = (row.f20안전 || 0) * baseMult;
-
-      // 2. 지역별 기점 할증 적용 (인천 20%, 평택 18%) - 거리제/이외구간 전용
-      if (regionalBaseSurchargePct > 0) {
-        const regMult = 1 + regionalBaseSurchargePct / 100;
-        f40위탁 *= regMult;
-        f40운수자 *= regMult;
-        f40안전 *= regMult;
-        f20위탁 *= regMult;
-        f20운수자 *= regMult;
-        f20안전 *= regMult;
-      }
-
-      // 3. 일반 할증률 합산 (최고 할증률 100%, 나머지 50% - 최대 3개)
-      const { pctApplied, fixedApplied } = appliedSurchargeInfo;
-      const totalPct = pctApplied.reduce((sum, item) => sum + (item.pct * item.effective) / 100, 0);
-      const mult = 1 + totalPct / 100;
-
-      // 4. 할증률 적용 및 10원 단위 반올림
-      f40위탁 = round10(f40위탁 * mult);
-      f40운수자 = round10(f40운수자 * mult);
-      f40안전 = round10(f40안전 * mult);
-      f20위탁 = round10(f20위탁 * mult);
-      f20운수자 = round10(f20운수자 * mult);
-      f20안전 = round10(f20안전 * mult);
-
-      // 5. 고정 금액(실비 등) 추가
-      fixedApplied.forEach((s) => {
-        const add = s.fixed || 0;
-        f40위탁 += add;
-        f40운수자 += add;
-        f40안전 += add;
-        f20위탁 += add;
-        f20운수자 += add;
-        f20안전 += add;
+      const selectedPctItems = appliedSurchargeInfo.pctItems || [];
+      const shouldIncludeRegionalBase = regionalBaseSurchargePct > 0 && (isDistanceBased || (selectedPctItems.length > 0 && row.regionalBaseRow));
+      const regionalItem = shouldIncludeRegionalBase ? makeRegionalBaseSurchargeItem(regionalBaseSurcharge) : null;
+      const combinedSurchargeInfo = calculateSafeFreightSurchargeInfo({
+        items: [...selectedPctItems, regionalItem].filter(Boolean),
+        fixedItems: appliedSurchargeInfo.fixedApplied,
+        regulation: appliedSurchargeInfo.regulation,
+      });
+      const useDistanceBaseRow = queryType === 'section' && shouldIncludeRegionalBase && row.regionalBaseRow;
+      const applied = applySafeFreightSurchargesToFare(row, {
+        baseRow: useDistanceBaseRow ? row.regionalBaseRow : row,
+        baseMult,
+        surchargeInfo: combinedSurchargeInfo,
       });
 
       return {
-        ...row,
-        f40위탁,
-        f40운수자,
-        f40안전,
-        f20위탁,
-        f20운수자,
-        f20안전,
+        ...applied,
         tripMode,
-        appliedRegionalPct: regionalBaseSurchargePct,
+        appliedRegionalPct: regionalItem
+          ? combinedSurchargeInfo.pctApplied.find((item) => item.regionalBase)?.pct || 0
+          : regionalBaseSurchargePct,
+        appliedRegionalEffectivePct: combinedSurchargeInfo.pctApplied.find((item) => item.regionalBase)
+          ? (combinedSurchargeInfo.pctApplied.find((item) => item.regionalBase).pct * combinedSurchargeInfo.pctApplied.find((item) => item.regionalBase).effective) / 100
+          : 0,
+        appliedSurcharges: combinedSurchargeInfo.appliedLabels,
+        excludedSurcharges: combinedSurchargeInfo.pctExcluded,
+        usedRegionalDistanceBase: Boolean(useDistanceBaseRow),
       };
     };
-  }, [appliedSurchargeInfo, queryType, tripMode, regionalBaseSurchargePct]);
+  }, [appliedSurchargeInfo, queryType, tripMode, regionalBaseSurcharge, regionalBaseSurchargePct]);
 
   const runLookup = async () => {
     setLookupError(null);
@@ -559,15 +536,8 @@ export default function SafeFreightPage() {
 
       if (saveToTemp) {
         // [중복 방지] 같은 조건(기점, 행선지, 타입, 할증)의 최신 이력이 이미 있으면 추가하지 않음
-        const appliedLabels = [
-          ...(appliedRow.appliedRegionalPct > 0
-            ? [`기점할증(${regionalBaseSurcharge.label} ${appliedRow.appliedRegionalPct}%)`]
-            : []),
-          ...appliedSurchargeInfo.pctApplied.map((s) =>
-            s.effective === 100 ? s.label : `${s.label} (50% 적용)`
-          ),
-          ...appliedSurchargeInfo.fixedApplied.map((s) => s.label),
-        ];
+        const appliedLabels = appliedRow.appliedSurcharges || [];
+        const excludedLabels = (appliedRow.excludedSurcharges || []).map((s) => ({ label: s.label, reason: s.reason }));
 
         const isDuplicate = savedResults.length > 0 &&
           savedResults[0].origin === (data.origin || origin) &&
@@ -596,7 +566,7 @@ export default function SafeFreightPage() {
             f20운수자: appliedRow.f20운수자,
             f20안전: appliedRow.f20안전,
             appliedSurcharges: appliedLabels,
-            excludedSurcharges: appliedSurchargeInfo.pctExcluded.map((s) => ({ label: s.label, reason: s.reason })),
+            excludedSurcharges: excludedLabels,
           };
           setSavedResults((prev) => {
             const next = [entry, ...prev];
@@ -767,6 +737,7 @@ export default function SafeFreightPage() {
     ordered.push(...rest);
     return ordered;
   }, [resultAll?.rows, queryType, displayMode, period]);
+  const currentAppliedSample = resultAll && displayRows.length ? applySurchargesToRow(displayRows[0]) : null;
 
   const canSubmit =
     queryType === 'distance'
@@ -897,7 +868,7 @@ export default function SafeFreightPage() {
               </button>
             </div>
             <p className={styles.noticeSectionDesc}>
-              {NOTICE_SOURCE} 부대조항을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문 전체를 볼 수 있습니다.
+              {NOTICE_SOURCE} 및 {NOTICE_GUIDANCE_SOURCE}을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문과 운영지침을 볼 수 있습니다.
             </p>
             <ul
               className={styles.noticeList}
@@ -1238,6 +1209,22 @@ export default function SafeFreightPage() {
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               험로 <input type="number" className={styles.inputPct} value={roughPct} onChange={(e) => setRoughPct(parseInt(e.target.value, 10) || 0)} />%
                             </span>
+                          ) : isVariablePctSurcharge(s) ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {s.label.replace(/\s*\(?\d+(?:\.\d+)?%\)?/g, '').trim()}
+                              <input
+                                type="number"
+                                min="0"
+                                max={s.pct || 20}
+                                step="0.1"
+                                className={styles.inputPct}
+                                value={customPctById[s.id] ?? s.pct ?? 0}
+                                onChange={(e) => setCustomPctById((prev) => ({
+                                  ...prev,
+                                  [s.id]: parseFloat(e.target.value) || 0,
+                                }))}
+                              />%
+                            </span>
                           ) : s.label.split('(')[0]}
                         </label>
                       ))}
@@ -1460,22 +1447,23 @@ export default function SafeFreightPage() {
               </div>
               {regionalBaseSurchargePct > 0 && (
                 <div className={styles.regionalNote} style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#fff8e1', borderRadius: '8px', borderLeft: '4px solid #ffc107', fontSize: '0.9rem', color: '#856404' }}>
-                  <strong>지역별 기점 할증 적용:</strong> {regionalBaseSurcharge.label} 기점 {regionalBaseSurchargePct}% 할증이 안전위탁운임에 별도 합산되었습니다 (고시 제23조 카, 타목).
+                  <strong>지역별 기점 할증:</strong> {regionalBaseSurcharge.label} 기점 {regionalBaseSurchargePct}%는 2026-04-01 추가 운영지침에 따라 제22조 할증 3개 제한에 포함해 산정됩니다.
+                  {currentAppliedSample?.usedRegionalDistanceBase && ' 구간표 금액에 이미 포함된 기점 할증은 거리별 원운임 기준으로 재산정했습니다.'}
                 </div>
               )}
               {surchargeIds.size > 0 && (
                 <>
                   <p className={styles.fareNote}>
                     위 금액에 선택한 할증비용이 반영되어 표시됩니다.
-                    {appliedSurchargeInfo.pctApplied.length > 0 && (
+                    {(currentAppliedSample?.appliedSurcharges || appliedSurchargeInfo.pctApplied).length > 0 && (
                       <> (할증률: 1번째 전액, 2·3번째 50% 적용)</>
                     )}
                   </p>
-                  {appliedSurchargeInfo.pctExcluded.length > 0 && (
+                  {(currentAppliedSample?.excludedSurcharges || appliedSurchargeInfo.pctExcluded).length > 0 && (
                     <div className={styles.excludedSurcharges}>
                       <span className={styles.excludedHead}>적용 제외 (고시 제22조 나목):</span>
                       <ul className={styles.excludedList}>
-                        {appliedSurchargeInfo.pctExcluded.map((s, i) => (
+                        {(currentAppliedSample?.excludedSurcharges || appliedSurchargeInfo.pctExcluded).map((s, i) => (
                           <li key={i}>
                             <strong>{s.label}</strong> — {s.reason}
                           </li>
@@ -1489,7 +1477,7 @@ export default function SafeFreightPage() {
                 할증금액은 할증료만 백원미만 사사오입 적용 후 합산, 거리(km)는 소수점 첫째자리 사사오입 적용됩니다.
                 본 서비스는 화물자동차 안전운임에 근거한 운임으로 참고용 자료로만 사용되어야 하며, 실제 운송 시 차이가 발생할 수 있습니다.
               </p>
-              <p className={styles.source}>출처: 2026년 적용 화물자동차 안전운임 고시(국토교통부고시 제2026-000호, 2026.2.1. 시행)</p>
+              <p className={styles.source}>출처: 2026년 적용 화물자동차 안전운임 고시(2026.2.1 시행), 2026년도 적용 화물자동차 안전운임 운영지침(2026.4.1 수정)</p>
             </section>
           )}
 

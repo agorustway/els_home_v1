@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { NOTICE_SECTIONS, NOTICE_SOURCE } from '../safe-freight-notice';
+import { NOTICE_GUIDANCE_SOURCE, NOTICE_SECTIONS, NOTICE_SOURCE } from '../safe-freight-notice';
 import styles from './notices.module.css';
 
 export default function NoticesPage() {
@@ -24,6 +24,8 @@ export default function NoticesPage() {
                 </div>
                 <p className={styles.source}>
                     {NOTICE_SOURCE}
+                    <br />
+                    {NOTICE_GUIDANCE_SOURCE}
                 </p>
                 <p className={styles.desc}>
                     부대조항을 압축 정리했습니다. 각 항목을 클릭하면 해당 조문 전체를 볼 수 있습니다.

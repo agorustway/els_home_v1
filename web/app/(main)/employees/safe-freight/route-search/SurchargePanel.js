@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import styles from './surcharge-panel.module.css';
+import { calculateSafeFreightSurchargeInfo } from '@/utils/safeFreightSurcharges.mjs';
+
+const VARIABLE_PCT_SURCHARGE_IDS = new Set(['rough', 'holiday', 'night']);
+const isVariablePctSurcharge = (s) => VARIABLE_PCT_SURCHARGE_IDS.has(s.id) || s.variablePct;
 
 /**
  * SurchargePanel — 할증/부대비용 선택 패널 (구간조회 전용, 간소화 B안)
@@ -18,10 +22,14 @@ export default function SurchargePanel({ options, onChange }) {
     const [surchargeIds, setSurchargeIds] = useState(new Set());
     const [groupApply, setGroupApply] = useState({});
     const [roughPct, setRoughPct] = useState(20);
+    const [customPctById, setCustomPctById] = useState({ holiday: 20, night: 20 });
     const [collapsed, setCollapsed] = useState(true);
 
-    const surchargesList = options?.surcharges || [];
-    const regulation = options?.surchargeRegulation || { maxPctCount: 3, firstFull: true, restHalf: true };
+    const surchargesList = useMemo(() => options?.surcharges || [], [options?.surcharges]);
+    const regulation = useMemo(
+        () => options?.surchargeRegulation || { maxPctCount: 3, firstFull: true, restHalf: true },
+        [options?.surchargeRegulation],
+    );
 
     // 그룹별 분류 (고시 변경 시 자동 반영)
     const { checkboxItems, groupedItems, otherCostItems } = useMemo(() => {
@@ -84,46 +92,41 @@ export default function SurchargePanel({ options, onChange }) {
         const opts = surchargesList.filter(s => s.group === group);
         return opts.find(s => surchargeIds.has(s.id))?.id ?? '';
     };
+    const getSurchargePct = useCallback((s) => {
+        if (s.id === 'rough') return roughPct;
+        if (isVariablePctSurcharge(s)) return Number(customPctById[s.id] ?? s.pct ?? 0) || 0;
+        return Number(s.pct) || 0;
+    }, [roughPct, customPctById]);
+    const getSurchargeLabel = useCallback((s) => {
+        const pct = getSurchargePct(s);
+        const baseLabel = String(s.label || '')
+            .replace(/\s*\(?\d+(?:\.\d+)?%\)?/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return isVariablePctSurcharge(s) ? `${baseLabel} ${pct}%` : s.label;
+    }, [getSurchargePct]);
 
     // ── 할증 계산 (고시 제22조) ──
     const surchargeInfo = useMemo(() => {
-        const maxPct = regulation.maxPctCount ?? 3;
         const pctItems = surchargesList
             .filter(s => !s.otherCost && !s.fixed && surchargeIds.has(s.id))
             .map(s => ({
                 id: s.id,
-                label: s.id === 'rough' ? `${s.label} ${roughPct}%` : s.label,
-                pct: s.id === 'rough' ? roughPct : (s.pct || 0),
-            }))
-            .sort((a, b) => b.pct - a.pct);
+                label: getSurchargeLabel(s),
+                pct: getSurchargePct(s),
+            }));
 
         const fixedItems = surchargesList.filter(s => (s.fixed || s.otherCost) && surchargeIds.has(s.id));
-
-        const pctApplied = pctItems.slice(0, maxPct).map((item, i) => ({
-            ...item,
-            effective: i === 0 && regulation.firstFull ? 100 : regulation.restHalf ? 50 : 100,
-        }));
-        const pctExcluded = pctItems.slice(maxPct).map(item => ({
-            ...item,
-            reason: regulation.excludedReason || '할증 항목이 3개를 초과하여 본 운송에는 적용되지 않습니다(고시 제22조 나목).',
-        }));
-
-        const totalPct = pctApplied.reduce((sum, item) => sum + (item.pct * item.effective) / 100, 0);
-        const totalPctMult = 1 + totalPct / 100;
+        const info = calculateSafeFreightSurchargeInfo({ items: pctItems, fixedItems, regulation });
+        const totalPct = info.regularEffectivePct + info.regionalEffectivePct;
         const fixedAdd = fixedItems.reduce((sum, s) => sum + (s.fixed || 0), 0);
-
-        const appliedLabels = [
-            ...pctApplied.map(s => s.effective === 100 ? s.label : `${s.label} (50%적용)`),
-            ...fixedItems.map(s => s.label),
-        ];
-
-        return { totalPctMult, fixedAdd, pctApplied, pctExcluded, fixedApplied: fixedItems, appliedLabels, surchargeIds };
-    }, [surchargesList, surchargeIds, roughPct, regulation]);
+        return { ...info, totalPctMult: 1 + totalPct / 100, fixedAdd, surchargeIds };
+    }, [surchargesList, surchargeIds, getSurchargeLabel, getSurchargePct, regulation]);
 
     // 변경 시 부모에게 통지
     useEffect(() => {
         onChange?.(surchargeInfo);
-    }, [surchargeInfo]);
+    }, [onChange, surchargeInfo]);
 
     const activeCount = surchargeIds.size;
 
@@ -165,6 +168,22 @@ export default function SurchargePanel({ options, onChange }) {
                                                     className={styles.pctInput}
                                                     value={roughPct}
                                                     onChange={e => setRoughPct(parseInt(e.target.value, 10) || 0)}
+                                                />%
+                                            </span>
+                                        ) : isVariablePctSurcharge(s) ? (
+                                            <span className={styles.roughRow}>
+                                                {s.label.replace(/\s*\(?\d+(?:\.\d+)?%\)?/g, '').trim()}
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={s.pct || 20}
+                                                    step="0.1"
+                                                    className={styles.pctInput}
+                                                    value={customPctById[s.id] ?? s.pct ?? 0}
+                                                    onChange={e => setCustomPctById(prev => ({
+                                                        ...prev,
+                                                        [s.id]: parseFloat(e.target.value) || 0,
+                                                    }))}
                                                 />%
                                             </span>
                                         ) : s.label.split('(')[0]}

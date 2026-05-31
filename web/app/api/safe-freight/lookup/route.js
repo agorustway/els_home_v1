@@ -28,6 +28,30 @@ function getData() {
   return data;
 }
 
+function findDistanceFareRow(data, { period, distType, km }) {
+  const useDistType = distType || (data.distanceTypes?.[0]) || '가. 거리(km)별 운임(왕복)';
+  const distKey = `${period}|${useDistType}`.trim();
+  const dRows = data.distanceByPeriod?.[distKey];
+  if (!dRows || !dRows.length || Number.isNaN(Number(km))) return null;
+
+  const kmInt = Math.round(Number(km));
+  const exact = dRows.find((r) => r.km === kmInt);
+  const row = exact || dRows.filter((r) => r.km <= kmInt).at(-1) || dRows[0];
+  if (!row) return null;
+
+  return {
+    period,
+    km: row.km,
+    f40위탁: row.f40위탁,
+    f40운수자: row.f40운수자,
+    f40안전: row.f40안전,
+    f20위탁: row.f20위탁,
+    f20운수자: row.f20운수자,
+    f20안전: row.f20안전,
+    distType: useDistType,
+  };
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'section'; // 'section' | 'distance' | 'other'
@@ -157,16 +181,22 @@ export async function GET(request) {
     return NextResponse.json({ error: '해당 구간 운임을 찾을 수 없습니다.', key }, { status: 404 });
   }
 
-  const toRow = (r) => ({
-    period: r.period,
-    km: r.km,
-    f40위탁: r.f40위탁,
-    f40운수자: r.f40운수자,
-    f40안전: r.f40안전,
-    f20위탁: r.f20위탁,
-    f20운수자: r.f20운수자,
-    f20안전: r.f20안전,
-  });
+  const toRow = (r) => {
+    const row = {
+      period: r.period,
+      km: r.km,
+      f40위탁: r.f40위탁,
+      f40운수자: r.f40운수자,
+      f40안전: r.f40안전,
+      f20위탁: r.f20위탁,
+      f20운수자: r.f20운수자,
+      f20안전: r.f20안전,
+    };
+
+    const regionalBaseRow = findDistanceFareRow(data, { period: r.period, distType, km: r.km });
+    if (regionalBaseRow) row.regionalBaseRow = regionalBaseRow;
+    return row;
+  };
 
   if (mode === 'all') {
     return NextResponse.json({
