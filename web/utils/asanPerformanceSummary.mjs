@@ -676,6 +676,13 @@ function compactSegmentForDashboard(item = {}) {
   };
 }
 
+function compactBreakdownForDashboard(section = {}) {
+  return {
+    column: section.column || section.label || '',
+    items: compactMetricListForDashboard(section.items, 40),
+  };
+}
+
 function compactExecutiveSignals(signals = []) {
   return safeList(signals).map(signal => ({
     title: signal.title || '',
@@ -713,6 +720,7 @@ export function buildAsanPerformanceDashboardView(summary = null, scope = {}) {
     trendUnit: scoped.trendUnit || '월',
     strategicSegments: safeList(scoped.strategicSegments).slice(0, 8).map(compactSegmentForDashboard),
     vehiclePerformance: compactMetricListForDashboard(scoped.vehiclePerformance, 30),
+    breakdowns: safeList(scoped.breakdowns).slice(0, 12).map(compactBreakdownForDashboard).filter(section => section.items.length),
     sourceMix: {
       annual: compactSourceForDashboard(scoped.sourceMix?.annual),
       monthly: compactSourceForDashboard(scoped.sourceMix?.monthly),

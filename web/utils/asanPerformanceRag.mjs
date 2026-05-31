@@ -11,6 +11,14 @@ const PERFORMANCE_TRIGGER_WORDS = [
   '매출', '매입', '청구', '하불', '이익률', '순매출', '순매입',
 ];
 
+const BREAKDOWN_AXIS_ALIASES = {
+  carrier: ['운송사', '운송사명의', '업체', '지급처', '하불처', '하불거래처', '매입처', '외주처'],
+  billTo: ['청구처', '거래처', '화주', '고객사', '매출처'],
+  workSite: ['작업지', '상차지', '현장'],
+  route: ['노선', '구간', '선적', '픽업'],
+  vehicle: ['차량', '차번', '영업넘버'],
+};
+
 function normalizeCompact(value) {
   return String(value || '')
     .normalize('NFKC')
@@ -104,6 +112,21 @@ function parsePerformanceScope(text, now) {
   return { mode: 'all' };
 }
 
+function detectBreakdownAxes(compact = '') {
+  const axes = [];
+  for (const [axis, aliases] of Object.entries(BREAKDOWN_AXIS_ALIASES)) {
+    if (aliases.some((alias) => compact.includes(normalizeCompact(alias)))) axes.push(axis);
+  }
+  return axes;
+}
+
+function detectRankMetric(compact = '') {
+  if (compact.includes('매입순위') || compact.includes('매입금순위') || compact.includes('하불순위')) return 'purchase';
+  if (compact.includes('이익순위') || compact.includes('손익순위') || compact.includes('이익률순위') || compact.includes('손익률순위')) return 'profit';
+  if (compact.includes('건수순위') || compact.includes('건수별')) return 'rowCount';
+  return 'revenue';
+}
+
 export function parseAsanPerformanceIntent(userText = '', options = {}) {
   const text = String(userText || '');
   const compact = normalizeCompact(text);
@@ -118,6 +141,8 @@ export function parseAsanPerformanceIntent(userText = '', options = {}) {
     shouldQuery: hasTrigger,
     menu,
     scope,
+    breakdownAxes: detectBreakdownAxes(compact),
+    rankMetric: detectRankMetric(compact),
   };
 }
 
@@ -171,6 +196,11 @@ function metricText(item = {}) {
   return `${label}: 매출 ${formatMoney(item.revenue)} / 매입 ${formatMoney(item.purchase)} / 이익 ${formatMoney(item.profit)} / 이익률 ${formatRate(item.profitRate)}`;
 }
 
+function rankingText(item = {}, rank = 0) {
+  const label = item.label || item.name || item.vehicleNo || item.key || '-';
+  return `${rank}. ${label}: 매출 ${formatMoney(item.revenue)} / 건수 ${Number(item.rowCount || 0).toLocaleString('ko-KR')}건 / 매입금 ${formatMoney(item.purchase)} / 이익 ${formatMoney(item.profit)} / 이익률 ${formatRate(item.profitRate)}`;
+}
+
 function sourceLine(source = {}, label = '') {
   return `${label}: 매출 ${formatMoney(source.revenue)} / 매입 ${formatMoney(source.purchase)} / 이익 ${formatMoney(source.profit)} / 행 ${Number(source.rowCount || 0).toLocaleString('ko-KR')}건`;
 }
@@ -179,6 +209,33 @@ function targetMenuLabel(menu) {
   if (menu === 'annual') return '연간실적';
   if (menu === 'monthly') return '월간실적';
   return '종합실적';
+}
+
+function axisMatchesSection(column = '', axes = []) {
+  if (!axes?.length) return true;
+  const compactColumn = normalizeCompact(column);
+  return axes.some((axis) => (
+    (BREAKDOWN_AXIS_ALIASES[axis] || []).some((alias) => {
+      const compactAlias = normalizeCompact(alias);
+      return compactColumn.includes(compactAlias) || compactAlias.includes(compactColumn);
+    })
+  ));
+}
+
+function sortBreakdownItems(items = [], metric = 'revenue') {
+  const metricKey = ['purchase', 'profit', 'rowCount'].includes(metric) ? metric : 'revenue';
+  return [...items].sort((a, b) => {
+    const diff = Math.abs(Number(b?.[metricKey] || 0)) - Math.abs(Number(a?.[metricKey] || 0));
+    if (diff) return diff;
+    return String(a?.label || a?.name || '').localeCompare(String(b?.label || b?.name || ''), 'ko-KR');
+  });
+}
+
+function selectedBreakdowns(summary = {}, intent = {}) {
+  const sections = Array.isArray(summary.breakdowns) ? summary.breakdowns : [];
+  const axes = intent.breakdownAxes || [];
+  const matched = sections.filter((section) => axisMatchesSection(section.column || section.label || '', axes));
+  return axes.length ? matched : sections.slice(0, 4);
 }
 
 export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}) {
@@ -192,6 +249,7 @@ export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}
   const executiveSignals = Array.isArray(summary.executiveSignals) ? summary.executiveSignals : [];
   const strategicSegments = Array.isArray(summary.strategicSegments) ? summary.strategicSegments : [];
   const vehiclePerformance = Array.isArray(summary.vehiclePerformance) ? summary.vehiclePerformance : [];
+  const breakdownSections = selectedBreakdowns(summary, intent);
   const trendItems = Array.isArray(summary.trendItems) ? summary.trendItems : Array.isArray(summary.monthly) ? summary.monthly : [];
 
   let text = `\n\n## 아산지점 실적관리\n`;
@@ -229,6 +287,16 @@ export function buildAsanPerformanceRagText(data = {}, intent = {}, options = {}
     text += `### 차량/계약 상위\n`;
     vehiclePerformance.slice(0, maxItems).forEach((item) => {
       text += `- ${metricText(item)}\n`;
+    });
+  }
+  if (breakdownSections.length) {
+    text += `### 업체/거래처별 도출항목\n`;
+    breakdownSections.slice(0, 6).forEach((section) => {
+      const column = section.column || section.label || '구분';
+      text += `- ${column} 기준\n`;
+      sortBreakdownItems(section.items || [], intent.rankMetric).slice(0, maxItems).forEach((item, idx) => {
+        text += `  ${rankingText(item, idx + 1)}\n`;
+      });
     });
   }
   if (trendItems.length) {

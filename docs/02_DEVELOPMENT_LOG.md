@@ -1,3 +1,21 @@
+## [2026-05-31] 실적관리 RAG 운송사별 순위 도출 보강 (v5.14.301)
+### 원인
+- 실적관리 화면 summary에는 운송사/청구처/작업지 등 breakdown이 이미 있었지만, AI RAG용 dashboard view가 해당 도출항목을 제외해 `5월 업체(운송사) 매출순위` 질문을 답하지 못했습니다.
+### 조치
+- `buildAsanPerformanceDashboardView()`에 compact breakdowns를 포함하고, dashboard snapshot version을 4로 올려 기존 캐시를 재계산하게 했습니다.
+- 실적관리 RAG가 `업체/운송사/매출순위/건수/매입금` 표현을 carrier breakdown 축으로 인식하고, 매출순 정렬 결과에 건수·매입금·이익·이익률을 함께 주입합니다.
+- AI 가이드 예시에 `5월 업체(운송사) 매출순위와 건수, 매입금 알려줘`를 추가했습니다.
+### 검증
+- `node --test web/tests/asanPerformanceRag.test.mjs web/tests/asanSummaryPerformance.test.mjs web/tests/aiAssistantMeta.test.mjs`: 12개 통과
+- Supabase 읽기 전용 검증: 2026-05 월간 실적 summary에서 `운송사(명의)` breakdown 10개를 읽고 `ELS솔루션`, `대신물류` 등 매출/건수/매입금 RAG 주입 확인
+### 변경 파일
+- `web/utils/asanPerformanceSummary.mjs`, `web/utils/asanPerformanceRag.mjs`, `web/utils/aiAssistantMeta.mjs`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanPerformanceRag.test.mjs`, `web/tests/asanSummaryPerformance.test.mjs`, `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] 데이터 운영 관리 승격과 DB 용량 진단 화면 (v5.14.300)
 ### 원인
 - 보존정책 버튼이 배차판/실적/차량관제 같은 일반 업무 화면에 보이면 사용자가 실제 작업 버튼처럼 오해할 수 있었습니다.

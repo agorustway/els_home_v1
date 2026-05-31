@@ -15,7 +15,7 @@ const ANNUAL_AGGREGATE_SHEET = '연간실적 통합';
 const ANNUAL_SOURCE_FILE_HEADER = '원본파일';
 const MONTHLY_META_SELECT = 'file_path,sheet_name,header_row,headers,row_count,current_row_count,summary,file_modified_at,synced_at';
 const SUPABASE_RANGE_CHUNK_SIZE = 1000;
-const DASHBOARD_SNAPSHOT_VERSION = 3;
+const DASHBOARD_SNAPSHOT_VERSION = 4;
 const DASHBOARD_SNAPSHOT_TABLE = 'branch_performance_dashboard_snapshots';
 
 let adminClient;

@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.300 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.301 / APK v5.11.29)
 
-> 최신 업데이트: 보존정책/DB용량/백업복원 관리는 일반 사용자 화면에서 제거하고 관리자 데이터 운영 관리로 승격했다.
+> 최신 업데이트: AI 실적관리 RAG가 월간 업체/운송사 breakdown을 읽어 매출순위·건수·매입금을 답하도록 보강했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.300
+- **웹 버전**: v5.14.301
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -78,7 +78,7 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. 정책/용량/백업복원 액션은 `docs/09_DATA_RETENTION_POLICY.md`와 `/admin/data-operations`에서 관리한다.
 
 ## RECENT CHANGES
-- **v5.14.300**: 보존정책 버튼과 월간 리셋을 일반 사용자 화면에서 제거하고 관리자 `/admin/data-operations`로 승격했다. 실제 Supabase DB 용량 RPC, 종류별 합계, 최적화 판단, 백업/복원 준비 점검, 월간실적 리셋 액션을 관리자 화면에 추가했다.
+- **v5.14.301**: AI 실적관리 RAG가 종합실적 dashboard breakdown을 포함하고, `5월 업체(운송사) 매출순위` 질문에 운송사별 매출·건수·매입금을 도출한다. dashboard snapshot version을 4로 올려 기존 캐시를 재계산한다.
 - **v5.14.298**: 데이터 보존정책 인트라넷 문서 페이지를 추가하고, 헤더 자료실 메뉴와 아산 배차판/실적관리/차량위치관제 화면에 보존정책 버튼을 연결했다. archive는 catalog/복원 경로로만 찾고 일반 운영 검색에는 섞지 않는 기준을 명시했다.
 - **v5.14.297**: `branch_performance_rows` compact-swap, 배차변동 히스토리 compact-swap, `document_chunks` VACUUM FULL/IVFFLAT 재생성을 완료했다. 구간단가 화면은 월간 current 금액 캐시를 사용하며 전체 DB는 약 955MB로 정리됐다.
 - **v5.14.296**: Supabase 용량 진단에서 `branch_performance_rows`, 배차변동 히스토리, `document_chunks`가 주요 원인임을 확인했다. 실적 대형 인덱스 11개를 제거했고, 자동 `refreshed/resolved` 히스토리 저장은 코드에서 차단했다.
