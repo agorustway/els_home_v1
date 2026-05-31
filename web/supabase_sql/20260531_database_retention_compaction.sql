@@ -83,6 +83,14 @@ CREATE INDEX idx_branch_performance_rows_monthly_search
     ON public.branch_performance_rows USING gin (to_tsvector('simple', search_text))
     WHERE dataset_type = 'monthly' AND is_current IS TRUE;
 
+CREATE INDEX idx_branch_performance_rows_annual_search
+    ON public.branch_performance_rows USING gin (to_tsvector('simple', search_text))
+    WHERE branch_id = 'asan' AND dataset_type = 'annual';
+
+CREATE UNIQUE INDEX idx_branch_performance_rows_one_current_per_row
+    ON public.branch_performance_rows (branch_id, dataset_type, file_path, sheet_name, row_index)
+    WHERE is_current IS TRUE;
+
 CREATE INDEX idx_branch_performance_rows_annual_ctn
     ON public.branch_performance_rows ((row_data->>'C/Tn'))
     WHERE branch_id = 'asan' AND dataset_type = 'annual';
@@ -166,6 +174,35 @@ FOR ALL
 TO service_role
 USING (true)
 WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION public.skip_branch_dispatch_auto_history_noise()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NEW.action IN ('refreshed', 'resolved')
+       OR right(NEW.action, 10) = '_refreshed'
+       OR right(NEW.action, 9) = '_resolved' THEN
+        RETURN NULL;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_skip_branch_dispatch_auto_history_noise
+ON public.branch_dispatch_detail_change_history;
+
+CREATE TRIGGER trg_skip_branch_dispatch_auto_history_noise
+BEFORE INSERT ON public.branch_dispatch_detail_change_history
+FOR EACH ROW
+EXECUTE FUNCTION public.skip_branch_dispatch_auto_history_noise();
+
+REVOKE ALL ON FUNCTION public.skip_branch_dispatch_auto_history_noise() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.skip_branch_dispatch_auto_history_noise() FROM anon;
+REVOKE ALL ON FUNCTION public.skip_branch_dispatch_auto_history_noise() FROM authenticated;
 
 REVOKE ALL ON TABLE public.branch_dispatch_detail_change_history FROM anon, authenticated;
 GRANT SELECT, INSERT ON TABLE public.branch_dispatch_detail_change_history TO service_role;

@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.296 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.297 / APK v5.11.29)
 
-> 최신 업데이트: Supabase DB 용량 원인을 진단하고 실적 대형 인덱스를 1차 감량했다. 운영 데이터 compact-swap은 명시 승인 대기다.
+> 최신 업데이트: Supabase 실적/문서/배차변동 대형 테이블 compact-swap과 `document_chunks` VACUUM FULL을 완료하고, 구간단가 화면용 캐시를 추가했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.296
+- **웹 버전**: v5.14.297
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 운영 조회는 최신 연간 `currentSnapshotId`와 월간 `is_current` 기준으로 제한한다.
@@ -22,7 +22,7 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
-- `구간단가`는 월간 마감자료 current 원장만 사용한다. 연간 원장 36만 행은 DB 부하와 컬럼 신뢰도 문제로 합산하지 않는다.
+- `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 - 구간단가 조회 범위는 `전체/연도별/월별`이며 첫 진입 기본값은 `전체`다. 제목열 클릭 정렬과 컬럼 제목열 내부 다중 선택 필터를 제공한다.
 - 구간단가 표시/집계 조건은 숨김 드롭존으로 통합한다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
 
@@ -74,9 +74,10 @@
 - 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
 - 차량관제 `vehicle_trips/locations/logs`는 service role 전용 DB 접근으로 제한하고, 웹/앱은 Next API 경유로만 처리한다.
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
-- DB 보관정책 초안: 실적은 최신 연간 `currentSnapshotId`와 월간 `is_current`만 운영 테이블에 유지하고, 배차변동 히스토리는 자동 `refreshed/resolved` 로그를 저장하지 않는다.
+- DB 보관정책: 실적은 최신 연간 `currentSnapshotId`와 월간 `is_current`만 운영 테이블에 유지한다. 일일 raw 데이터는 NAS 압축 보관/manifest 검증 후 삭제하는 방향이며 세부 기준은 `docs/09_DATA_RETENTION_POLICY.md`를 따른다.
 
 ## RECENT CHANGES
+- **v5.14.297**: `branch_performance_rows` compact-swap, 배차변동 히스토리 compact-swap, `document_chunks` VACUUM FULL/IVFFLAT 재생성을 완료했다. 구간단가 화면은 월간 current 금액 캐시를 사용하며 전체 DB는 약 955MB로 정리됐다.
 - **v5.14.296**: Supabase 용량 진단에서 `branch_performance_rows`, 배차변동 히스토리, `document_chunks`가 주요 원인임을 확인했다. 실적 대형 인덱스 11개를 제거했고, 자동 `refreshed/resolved` 히스토리 저장은 코드에서 차단했다.
 - **v5.14.295**: 상세배차 `작업지(하차지)코드`가 `경유지(ELS)`/경유지명으로 fallback되던 문제를 제거하고, GLAPS 원장 작업지 코드 후보만 표시하도록 보정했다.
 - **v5.14.294**: 배차변동 추가/삭제 행의 무분별한 노란 셀 표시를 제거하고 변경 이벤트의 실제 변경 컬럼만 표시한다. 상세배차 검수 설명 문구를 없애고 중간 해상도 요약/상태 영역 줄바꿈과 확정자명 DB 우선순위를 보정했다.
@@ -91,7 +92,7 @@
 - GLAPS 다음 단계: 실제 GLAPS 업로드 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
 - 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
-- Supabase DB compact-swap 승인 대기: `web/supabase_sql/20260531_database_retention_compaction.sql`은 운영 테이블을 재작성하고 과거 중복행을 삭제하므로 명시 승인 후 적용한다.
+- DB 다음 단계: `docs/09_DATA_RETENTION_POLICY.md` 기준으로 일일 배차 raw 180일 초과분의 NAS 압축 보관/manifest/샘플 복원 절차를 먼저 설계한다.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

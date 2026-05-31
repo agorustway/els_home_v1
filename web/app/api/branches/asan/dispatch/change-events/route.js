@@ -295,7 +295,7 @@ function eventToDbPayload(event, confirmation, actor, now, existing = null) {
 }
 
 async function insertHistory(adminSupabase, event, confirmation, action, actor, now, oldPayload = null, newPayload = null) {
-    if (action === 'refreshed' || action === 'resolved') {
+    if (action === 'refreshed' || action === 'resolved' || action.endsWith('_refreshed') || action.endsWith('_resolved')) {
         return;
     }
 

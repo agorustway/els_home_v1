@@ -44,7 +44,7 @@ function parseArgs(argv) {
     const token = argv[idx];
     if (!token.startsWith('--')) continue;
     const key = token.slice(2);
-    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current' || key === 'retire-previous-current' || key === 'summary-only') {
+    if (key === 'dry-run' || key === 'help' || key === 'confirm-large-import' || key === 'force' || key === 'diff-current' || key === 'retire-previous-current' || key === 'summary-only' || key === 'skip-route-unit-refresh') {
       args[key] = true;
       continue;
     }
@@ -77,6 +77,7 @@ function usage() {
   '  --retire-previous-current  After publishing the new snapshot, best-effort retire previous current rows. Optional.',
   '  --summary-only      Recalculate Excel summary and update branch_performance_files only. No row insert/update.',
   '  --snapshot-id <id>  Snapshot id to keep as currentSnapshotId during --summary-only.',
+  '  --skip-route-unit-refresh  Skip route unit aggregate cache refresh after DB update.',
   ].join('\n');
 }
 
@@ -1180,6 +1181,21 @@ function createSupabaseClient() {
   });
 }
 
+async function refreshRouteUnitCache(supabase) {
+  const { data, error } = await supabase.rpc('refresh_asan_monthly_route_unit_amount_cache');
+  if (error) {
+    return {
+      status: 'failed',
+      error: error.message,
+    };
+  }
+
+  return {
+    status: 'refreshed',
+    monthlyAmountRows: data ?? 0,
+  };
+}
+
 function timestampsClose(leftValue, rightValue) {
   const left = new Date(leftValue).getTime();
   const right = new Date(rightValue).getTime();
@@ -1859,6 +1875,10 @@ async function run() {
     });
     if (summaryError) throw new Error(summaryError.message);
 
+    const routeUnitRefresh = args['skip-route-unit-refresh']
+      ? { status: 'skipped' }
+      : await refreshRouteUnitCache(supabase);
+
     console.log(JSON.stringify({
       ok: true,
       mode: 'summary-only',
@@ -1871,6 +1891,7 @@ async function run() {
       yearly: refreshed.summary.yearly?.length || 0,
       monthly: refreshed.summary.monthly?.length || 0,
       breakdowns: refreshed.summary.breakdowns?.length || 0,
+      routeUnitRefresh,
     }, null, 2));
     return;
   }
@@ -1929,6 +1950,10 @@ async function run() {
     });
   }
 
+  const routeUnitRefresh = args['skip-route-unit-refresh']
+    ? { status: 'skipped' }
+    : await refreshRouteUnitCache(supabase);
+
   console.log(JSON.stringify({
     ok: true,
     mode: result.mode,
@@ -1941,6 +1966,7 @@ async function run() {
     duplicateCount: result.duplicateCount,
     totalRows: result.rowCount,
     snapshotId: result.snapshotId,
+    routeUnitRefresh,
   }, null, 2));
 }
 

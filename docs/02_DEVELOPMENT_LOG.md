@@ -1,3 +1,28 @@
+## [2026-05-31] Supabase compact-swap 완료와 구간단가 캐시화 (v5.14.297)
+### 원인
+- 실적 원장, 배차변동 히스토리, `document_chunks`가 운영 DB 용량의 대부분을 차지했고, 구간단가 화면은 월간 current JSONB 행을 매 조회마다 다시 파싱했습니다.
+### 조치
+- `branch_performance_rows`는 최신 연간 `currentSnapshotId`와 월간 `is_current` 행만 남기도록 compact-swap을 완료했습니다.
+- `branch_dispatch_detail_change_history`는 의미 있는 이력만 남기고 자동 `refreshed/resolved` 및 suffix 계열 로그를 DB 트리거/API 양쪽에서 차단했습니다.
+- `document_chunks`는 IVFFLAT 인덱스를 제거한 뒤 `VACUUM FULL`을 수행하고 `lists=32`로 재생성했습니다.
+- 구간단가 화면용 `branch_performance_monthly_route_unit_amount_cache`를 추가하고 `asan_monthly_route_unit_amount_rows`가 캐시를 읽도록 변경했습니다. 실적 import 후 캐시를 자동 갱신합니다.
+- 시험 중 만든 넓은 범용 구간단가 캐시는 실제 웹 경로가 아니어서 제거했습니다.
+- Hot/Warm/Cold 분리와 일일 raw 데이터 압축 보관/삭제 판단 기준을 `docs/09_DATA_RETENTION_POLICY.md`에 기록했습니다.
+### 검증
+- Supabase DB 전체 크기: 약 955MB.
+- 주요 테이블: `branch_performance_rows` 약 730MB, `document_chunks` 약 118MB, 배차변동 히스토리 약 8MB, 구간단가 캐시 약 5.6MB.
+- `asan_monthly_route_unit_amount_payload('all', null, null, 5000)` 실행 계획 기준 약 0.15~0.33초.
+- Supabase Security Advisor에서 신규 `skip_branch_dispatch_auto_history_noise()` SECURITY DEFINER 공개 실행 경고를 제거했습니다.
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/supabase_sql/20260531_database_retention_compaction.sql`
+- `web/supabase_sql/20260531_asan_monthly_route_unit_amount_cache.sql`
+- `web/supabase_sql/20260531_drop_unused_route_unit_broad_cache.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DATA_RETENTION_POLICY.md`
+
+---
+
 ## [2026-05-31] Supabase DB 용량 진단과 1차 인덱스 감량 (v5.14.296)
 ### 원인
 - `branch_performance_rows`가 159만 행/3.7GB까지 커졌고, 연간 실적 최신 스냅샷 외의 과거 partial/current 행이 함께 남아 있었습니다.
