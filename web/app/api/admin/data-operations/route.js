@@ -25,6 +25,13 @@ const STATUS_ORDER = {
     ok: 2,
 };
 
+const ARCHIVE_SCHEMA_TABLES = [
+    'data_archive_manifest',
+    'data_restore_jobs',
+    'data_restore_staging_rows',
+    'data_operation_events',
+];
+
 async function requireAdmin() {
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -168,8 +175,10 @@ function buildFindings(rows, overview) {
     return findings.sort((a, b) => (STATUS_ORDER[a.level] ?? 9) - (STATUS_ORDER[b.level] ?? 9));
 }
 
-function buildActionSettings() {
-    const hasBackend = Boolean(process.env.ELS_BACKEND_URL);
+function buildActionSettings(readiness) {
+    const schemaReady = Boolean(readiness?.schema_ready);
+    const hasBackend = Boolean(readiness?.has_backend);
+    const executionStatus = schemaReady ? 'configured' : 'setup_required';
 
     return [
         {
@@ -189,30 +198,36 @@ function buildActionSettings() {
         {
             id: 'backup-readiness',
             label: '백업 준비 점검',
-            status: hasBackend ? 'ready' : 'setup_required',
+            status: schemaReady ? 'ready' : 'setup_required',
             danger: false,
-            description: 'NAS 백엔드, archive manifest, service role 준비 상태를 확인합니다.',
+            description: hasBackend
+                ? 'NAS 백엔드, archive manifest, service role 준비 상태를 확인합니다.'
+                : 'archive manifest와 staging 구조는 확인하고, NAS 실행 연결은 별도 점검합니다.',
         },
         {
             id: 'restore-readiness',
             label: '복원 준비 점검',
-            status: hasBackend ? 'ready' : 'setup_required',
+            status: schemaReady ? 'ready' : 'setup_required',
             danger: false,
-            description: '복원 job 테이블과 staging 운영 기준을 확인합니다.',
+            description: '복원 job, staging row, checksum 검증 기준을 확인합니다.',
         },
         {
             id: 'archive-old-dispatch',
             label: '1년 1개월 초과 배차 Archive',
-            status: 'setup_required',
+            status: executionStatus,
             danger: true,
-            description: 'NAS archive worker와 manifest 검증이 연결되면 활성화합니다.',
+            description: schemaReady
+                ? 'manifest와 staging 구조는 준비됐습니다. 실제 NAS 파일 생성 worker 연결 후 실행합니다.'
+                : 'manifest와 staging 스키마가 준비되면 실행 전 단계로 올라갑니다.',
         },
         {
             id: 'restore-archive',
             label: 'Archive 복원',
-            status: 'setup_required',
+            status: executionStatus,
             danger: false,
-            description: 'manifest 선택, checksum 검증, staging 적재가 준비되면 활성화합니다.',
+            description: schemaReady
+                ? '복원 요청과 staging 구조는 준비됐습니다. 실제 archive 파일 읽기 worker 연결 후 실행합니다.'
+                : 'restore job과 staging 스키마가 준비되면 실행 전 단계로 올라갑니다.',
         },
     ];
 }
@@ -235,9 +250,11 @@ async function probeTable(adminSupabase, tableName) {
     };
 }
 
-function buildReadinessResult(action, probes) {
+function buildArchiveReadiness(probes) {
     const manifest = probes.find((probe) => probe.table === 'data_archive_manifest');
     const restoreJobs = probes.find((probe) => probe.table === 'data_restore_jobs');
+    const stagingRows = probes.find((probe) => probe.table === 'data_restore_staging_rows');
+    const events = probes.find((probe) => probe.table === 'data_operation_events');
     const hasBackend = Boolean(process.env.ELS_BACKEND_URL);
 
     const checks = [
@@ -257,24 +274,48 @@ function buildReadinessResult(action, probes) {
             detail: restoreJobs?.exists ? 'data_restore_jobs 확인됨' : '생성 필요',
         },
         {
+            label: 'Restore staging 테이블',
+            ok: Boolean(stagingRows?.exists),
+            detail: stagingRows?.exists ? 'data_restore_staging_rows 확인됨' : '생성 필요',
+        },
+        {
+            label: '운영 이벤트 로그',
+            ok: Boolean(events?.exists),
+            detail: events?.exists ? 'data_operation_events 확인됨' : '생성 필요',
+        },
+        {
             label: 'Service role API',
             ok: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
             detail: process.env.SUPABASE_SERVICE_ROLE_KEY ? '서버 환경변수 확인됨' : 'SUPABASE_SERVICE_ROLE_KEY 미설정',
         },
     ];
 
-    const ready = checks.every((check) => check.ok);
+    const schemaReady = Boolean(manifest?.exists && restoreJobs?.exists && stagingRows?.exists && events?.exists);
+    const serviceReady = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const ready = schemaReady && serviceReady;
+
+    return {
+        schema_ready: schemaReady,
+        has_backend: hasBackend,
+        service_ready: serviceReady,
+        ready,
+        checks,
+    };
+}
+
+function buildReadinessResult(action, probes) {
+    const readiness = buildArchiveReadiness(probes);
 
     return {
         action,
-        ready,
-        message: ready
-            ? '백업/복원 직접 실행 전제조건이 준비됐습니다.'
+        ready: readiness.ready,
+        message: readiness.ready
+            ? 'manifest, restore job, staging, service role 구조가 준비됐습니다. 실제 파일 생성/읽기 worker 연결 전까지는 삭제성 실행을 잠급니다.'
             : '아직 직접 실행 전제조건이 부족합니다. 부족한 항목을 먼저 준비해야 합니다.',
-        checks,
-        next_steps: ready
-            ? ['NAS archive worker 연결', '샘플 기간 백업', 'staging 복원 검증']
-            : ['data_archive_manifest/data_restore_jobs 스키마 적용', 'NAS archive worker 구현', '샘플 복원 검증 후 삭제 액션 활성화'],
+        checks: readiness.checks,
+        next_steps: readiness.ready
+            ? ['NAS archive worker 엔드포인트 연결', '샘플 기간 archive 파일 생성', 'checksum 검증 후 staging 복원 테스트', '검증 후 hot DB 삭제 액션 활성화']
+            : ['누락 스키마 적용', 'service role 환경변수 확인', '샘플 복원 검증 후 삭제 액션 활성화'],
     };
 }
 
@@ -300,6 +341,8 @@ export async function GET() {
             .slice()
             .sort((a, b) => b.total_bytes - a.total_bytes)
             .slice(0, 30);
+        const archiveProbes = await Promise.all(ARCHIVE_SCHEMA_TABLES.map((tableName) => probeTable(adminSupabase, tableName)));
+        const archiveReadiness = buildArchiveReadiness(archiveProbes);
 
         return NextResponse.json({
             overview: {
@@ -317,7 +360,8 @@ export async function GET() {
             top_tables: topTables,
             tracked_tables: trackedRows,
             findings: buildFindings(rows, overview),
-            action_settings: buildActionSettings(),
+            archive_readiness: archiveReadiness,
+            action_settings: buildActionSettings(archiveReadiness),
             retention_policy: {
                 dispatch_hot: '1년 1개월',
                 monthly_performance_hot: '1년 3개월',
@@ -349,13 +393,21 @@ export async function POST(req) {
 
     try {
         const adminSupabase = await createAdminClient();
-        const probes = await Promise.all([
-            probeTable(adminSupabase, 'data_archive_manifest'),
-            probeTable(adminSupabase, 'data_restore_jobs'),
-        ]);
+        const probes = await Promise.all(ARCHIVE_SCHEMA_TABLES.map((tableName) => probeTable(adminSupabase, tableName)));
+        const result = buildReadinessResult(action, probes);
+
+        await adminSupabase
+            .from('data_operation_events')
+            .insert({
+                event_type: action,
+                target_table: 'data_archive_manifest',
+                actor_email: auth.user?.email || null,
+                status: result.ready ? 'ready' : 'blocked',
+                payload: result,
+            });
 
         return NextResponse.json({
-            data: buildReadinessResult(action, probes),
+            data: result,
         });
     } catch (error) {
         return NextResponse.json({ error: error.message || '작업 준비 상태 점검 실패' }, { status: 500 });

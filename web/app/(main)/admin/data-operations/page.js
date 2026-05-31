@@ -12,6 +12,7 @@ const STATUS_LABELS = {
 
 const ACTION_LABELS = {
     ready: '실행 가능',
+    configured: '구조 준비',
     setup_required: '준비 필요',
 };
 
@@ -36,6 +37,12 @@ function statusClass(status) {
     if (status === 'critical') return styles.statusCritical;
     if (status === 'watch') return styles.statusWatch;
     return styles.statusOk;
+}
+
+function actionBadgeClass(status) {
+    if (status === 'ready') return styles.readyBadge;
+    if (status === 'configured') return styles.configuredBadge;
+    return styles.setupBadge;
 }
 
 export default function AdminDataOperationsPage() {
@@ -163,11 +170,16 @@ export default function AdminDataOperationsPage() {
         }
         setActionResult({
             action: action.id,
-            ready: false,
-            message: '직접 실행 전 NAS archive worker, manifest, staging 복원 검증이 먼저 필요합니다.',
-            checks: [
+            ready: Boolean(data?.archive_readiness?.ready),
+            message: data?.archive_readiness?.schema_ready
+                ? 'manifest, restore job, staging 구조는 준비됐습니다. 실제 NAS 파일 생성/읽기 worker 연결 전까지 삭제성 실행은 잠급니다.'
+                : '직접 실행 전 manifest, restore job, staging 복원 검증이 먼저 필요합니다.',
+            checks: data?.archive_readiness?.checks || [
                 { label: '현재 상태', ok: false, detail: '준비 필요' },
             ],
+            next_steps: data?.archive_readiness?.schema_ready
+                ? ['NAS archive worker 연결', '샘플 기간 archive', 'checksum 검증', 'staging 복원 테스트']
+                : ['archive/restore 스키마 적용', 'service role 권한 확인'],
         });
     }
 
@@ -242,7 +254,7 @@ export default function AdminDataOperationsPage() {
                             <div className={styles.actionGrid}>
                                 {data.action_settings?.map((action) => {
                                     const isBusy = actionBusy === action.id || (action.id === 'refresh-database-health' && loading);
-                                    const directDisabled = ['archive-old-dispatch', 'restore-archive'].includes(action.id);
+                                    const isExecutionLocked = ['archive-old-dispatch', 'restore-archive'].includes(action.id);
                                     return (
                                         <button
                                             key={action.id}
@@ -253,12 +265,12 @@ export default function AdminDataOperationsPage() {
                                         >
                                             <span className={styles.actionTop}>
                                                 <strong>{action.label}</strong>
-                                                <em className={action.status === 'ready' ? styles.readyBadge : styles.setupBadge}>
+                                                <em className={actionBadgeClass(action.status)}>
                                                     {ACTION_LABELS[action.status] || action.status}
                                                 </em>
                                             </span>
-                                            <small>{directDisabled ? `${action.description} 현재는 준비 점검만 가능합니다.` : action.description}</small>
-                                            <span className={styles.actionRun}>{isBusy ? '처리 중' : directDisabled ? '준비 항목 보기' : '실행'}</span>
+                                            <small>{isExecutionLocked ? `${action.description} 현재는 실행 잠금 상태입니다.` : action.description}</small>
+                                            <span className={styles.actionRun}>{isBusy ? '처리 중' : isExecutionLocked ? '준비 상태 보기' : '실행'}</span>
                                         </button>
                                     );
                                 })}
@@ -289,6 +301,15 @@ export default function AdminDataOperationsPage() {
                                 <h2>최적화 판단</h2>
                                 <span>실제 용량 기준</span>
                             </div>
+                            {data.archive_readiness && (
+                                <div className={data.archive_readiness.ready ? styles.readinessOk : styles.readinessWarn}>
+                                    <strong>{data.archive_readiness.ready ? 'Archive/복원 구조 준비됨' : 'Archive/복원 구조 점검 필요'}</strong>
+                                    <span>
+                                        manifest, restore job, staging, event log {data.archive_readiness.schema_ready ? '확인됨' : '미완료'}
+                                        {data.archive_readiness.has_backend ? ' / NAS 연결 설정 확인됨' : ' / NAS 실행 연결 별도 확인'}
+                                    </span>
+                                </div>
+                            )}
                             <div className={styles.findingList}>
                                 {data.findings?.map((finding) => (
                                     <article key={`${finding.target}-${finding.title}`} className={styles.findingCard}>

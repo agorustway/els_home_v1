@@ -17,6 +17,7 @@
 - `branch_performance_monthly_route_unit_amount_cache`: 구간단가 화면용 캐시 신설. 원본 JSONB 재파싱 대신 5~6MB 캐시를 조회한다.
 - 전체 DB 크기: 약 955MB.
 - 관리자 데이터 운영 화면은 `admin_database_overview()`, `admin_database_table_sizes()` RPC로 실제 DB 용량과 테이블별 최적화 상태를 조회한다.
+- archive/restore 준비 스키마는 운영 DB에 적용돼 있다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`를 기준으로 백업 파일, 복원 요청, staging row, 감사 이벤트를 분리한다.
 
 ## Hot / Warm / Cold 분리
 | 구분 | 위치 | 대상 | 원칙 |
@@ -75,4 +76,5 @@
 ## 관리자 화면 기준
 - `/admin/data-operations`는 전체 DB 용량, 종류별 합계, 상위 테이블, 최적화 판단, 직접 액션 준비 상태를 한 화면에서 본다.
 - 즉시 실행 가능 액션은 DB 용량 새로고침, 백업/복원 준비 점검, 월간실적 리셋이다.
-- 실제 archive 삭제/복원 실행은 NAS archive worker, `data_archive_manifest`, `data_restore_jobs`, staging 복원 검증이 준비된 뒤 활성화한다.
+- `1년 1개월 초과 배차 Archive`, `Archive 복원`은 구조 준비 상태를 보여주되, 실제 NAS 파일 생성/읽기 worker와 샘플 복원 검증이 끝날 때까지 삭제성 실행은 잠근다.
+- `branch_performance_rows`의 빨간 `개선 필요` 표시는 장애가 아니라 현재 합의한 보존정책 기준에서 계속 관리해야 하는 대형 원장이라는 보고 상태다.

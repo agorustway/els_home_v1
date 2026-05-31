@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.301 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.302 / APK v5.11.29)
 
-> 최신 업데이트: AI 실적관리 RAG가 월간 업체/운송사 breakdown을 읽어 매출순위·건수·매입금을 답하도록 보강했다.
+> 최신 업데이트: archive/restore manifest, 복원 job, staging, 운영 이벤트 스키마를 운영 DB에 준비했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.301
+- **웹 버전**: v5.14.302
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -75,9 +75,10 @@
 - 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
 - 차량관제 `vehicle_trips/locations/logs`는 service role 전용 DB 접근으로 제한하고, 웹/앱은 Next API 경유로만 처리한다.
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
-- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. 정책/용량/백업복원 액션은 `docs/09_DATA_RETENTION_POLICY.md`와 `/admin/data-operations`에서 관리한다.
+- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.302**: archive/restore 준비 스키마를 운영 DB에 적용했다. 관리자 데이터 운영 화면은 구조 준비/실행 잠금 상태를 구분하고, `branch_performance_rows` 빨간 표시는 장애가 아닌 대형 원장 관리 대상 보고로 문서화했다.
 - **v5.14.301**: AI 실적관리 RAG가 종합실적 dashboard breakdown을 포함하고, `5월 업체(운송사) 매출순위` 질문에 운송사별 매출·건수·매입금을 도출한다. dashboard snapshot version을 4로 올려 기존 캐시를 재계산한다.
 - **v5.14.298**: 데이터 보존정책 인트라넷 문서 페이지를 추가하고, 헤더 자료실 메뉴와 아산 배차판/실적관리/차량위치관제 화면에 보존정책 버튼을 연결했다. archive는 catalog/복원 경로로만 찾고 일반 운영 검색에는 섞지 않는 기준을 명시했다.
 - **v5.14.297**: `branch_performance_rows` compact-swap, 배차변동 히스토리 compact-swap, `document_chunks` VACUUM FULL/IVFFLAT 재생성을 완료했다. 구간단가 화면은 월간 current 금액 캐시를 사용하며 전체 DB는 약 955MB로 정리됐다.
@@ -89,7 +90,7 @@
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
-- DB 다음 단계: `docs/09_DATA_RETENTION_POLICY.md` 기준으로 일일 배차/상세배차 1년 1개월 초과분의 NAS 압축 보관/manifest/샘플 복원 절차를 먼저 구현한다.
+- DB 다음 단계: 일일 배차/상세배차 1년 1개월 초과분을 NAS archive worker로 압축 저장하고 checksum 검증 후 staging 복원 샘플을 통과시킨다.
 
 ## FIXED RULES
 - `GEMINI.md`, `.cursorrules` 수정 금지.

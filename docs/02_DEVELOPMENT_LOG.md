@@ -16,6 +16,29 @@
 
 ---
 
+## [2026-05-31] Archive/복원 준비 스키마와 실행 잠금 상태 분리 (v5.14.302)
+### 원인
+- 관리자 화면의 `준비 필요`가 무엇을 뜻하는지 불명확했습니다.
+- 실제 삭제성 archive 실행 전에는 보존 파일 manifest, 복원 job, staging row, 감사 이벤트 테이블이 먼저 있어야 합니다.
+### 조치
+- 운영 Supabase DB에 `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events` 스키마를 적용했습니다.
+- 네 테이블은 RLS를 켜고 anon/authenticated 직접 권한을 제거했으며, service role 경유 관리자 API에서만 쓰도록 했습니다.
+- 관리자 데이터 운영 API가 archive/restore 스키마 준비 상태를 점검하고, 화면은 `구조 준비`와 `실행 잠금`을 구분해 표시합니다.
+- `branch_performance_rows` 빨간 표시는 장애가 아니라 현재 합의한 보존정책상 계속 관리해야 하는 대형 원장 보고 상태로 문서화했습니다.
+### 검증
+- Supabase 마이그레이션 `data_archive_restore_schema_20260531`: 성공.
+- 운영 DB에서 네 테이블 생성 및 RLS 활성화 확인.
+- `npx eslint "app/api/admin/data-operations/route.js" "app/(main)/admin/data-operations/page.js"`: 통과.
+- `npm run build`: 통과. `/admin/data-operations`와 `/api/admin/data-operations` 라우트 생성 확인.
+### 변경 파일
+- `web/supabase_sql/20260531_data_archive_restore_schema.sql`
+- `web/app/api/admin/data-operations/route.js`
+- `web/app/(main)/admin/data-operations/page.js`
+- `web/app/(main)/admin/data-operations/dataOperations.module.css`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DATA_RETENTION_POLICY.md`
+
+---
+
 ## [2026-05-31] 데이터 운영 관리 승격과 DB 용량 진단 화면 (v5.14.300)
 ### 원인
 - 보존정책 버튼이 배차판/실적/차량관제 같은 일반 업무 화면에 보이면 사용자가 실제 작업 버튼처럼 오해할 수 있었습니다.

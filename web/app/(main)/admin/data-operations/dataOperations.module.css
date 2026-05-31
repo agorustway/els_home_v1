@@ -273,6 +273,12 @@
     color: #15803d;
 }
 
+.configuredBadge {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
 .setupBadge,
 .statusWatch {
     border: 1px solid #fde68a;
@@ -375,6 +381,36 @@
     margin: 8px 0 0;
     color: #475569;
     font-weight: 800;
+}
+
+.readinessOk,
+.readinessWarn {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.readinessOk {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.readinessWarn {
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.readinessOk span,
+.readinessWarn span {
+    color: #475569;
+    text-align: right;
 }
 
 .findingList {
