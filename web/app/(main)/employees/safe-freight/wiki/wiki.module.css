@@ -237,6 +237,18 @@
   font-weight: 800;
 }
 
+.sourceBadge {
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #1e40af;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .noteChips {
   display: flex;
   flex-wrap: wrap;

@@ -828,11 +828,11 @@ export default function SafeFreightPage() {
           type="button"
           className={styles.tab}
           onClick={() => window.open('/employees/safe-freight/wiki', '_blank')}
-          aria-label="안전운임 변경 추적 위키 열기"
-          title="안전운임 변경 추적 위키"
+          aria-label="안전운임 고시해석 위키트리 열기"
+          title="안전운임 고시해석(위키트리)"
         >
-          <span className={styles.tabLabel}>변경 추적 위키</span>
-          <span className={styles.tabDesc}>주석 기반 변경/해석 검색</span>
+          <span className={styles.tabLabel}>고시해석(위키트리)</span>
+          <span className={styles.tabDesc}>주석 기반 고시/지침 검색</span>
         </button>
 
         {/* 법규 전문 PDF (고시 원본) */}
@@ -889,7 +889,7 @@ export default function SafeFreightPage() {
                 <li>공휴일·심야는 전체 작업·운행 시간 중 해당 시간 비율만큼 적용합니다.</li>
               </ul>
               <a className={styles.noticeWikiLink} href="/employees/safe-freight/wiki" target="_blank" rel="noreferrer">
-                변경 추적 위키에서 주석·페이지별로 보기
+                고시해석(위키트리)에서 주석·페이지별로 보기
               </a>
             </div>
             <ul

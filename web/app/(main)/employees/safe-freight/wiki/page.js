@@ -26,6 +26,7 @@ const nodeText = (node) => {
     node.title,
     node.status,
     node.category,
+    node.sourceLabel,
     node.summary,
     node.before,
     node.after,
@@ -119,6 +120,7 @@ export default function SafeFreightWikiPage() {
         <div className={styles.nodeBody}>
           <div className={styles.nodeMeta}>
             <span>{node.category}</span>
+            {node.sourceLabel && <span className={styles.sourceBadge}>{node.sourceLabel}</span>}
             {renderNoteChips(node.noteRefs)}
           </div>
           <p className={styles.nodeSummary}>{node.summary}</p>
@@ -154,10 +156,10 @@ export default function SafeFreightWikiPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <p className={styles.kicker}>컨테이너 안전운임 변경 추적</p>
-          <h1 className={styles.title}>안전운임 주석 위키</h1>
+          <p className={styles.kicker}>컨테이너 안전운임 고시해석</p>
+          <h1 className={styles.title}>고시해석(위키트리)</h1>
           <p className={styles.desc}>
-            압축 안내문에서 놓치기 쉬운 변경·해석 포인트를 원문 페이지와 조문 번호로 추적합니다.
+            1차 고시, 1차 추가 운영지침, 1차-운영지침 해석을 리스트 3개·상세 7개 구조로 나누고 원문 페이지와 주석번호를 함께 추적합니다.
           </p>
         </div>
         <a className={styles.backLink} href="/employees/safe-freight">
@@ -166,19 +168,19 @@ export default function SafeFreightWikiPage() {
       </header>
 
       <section className={styles.answerBox} aria-label="이번 운영지침 핵심 답변">
-        <strong>이번 방침 핵심</strong>
+        <strong>고시해석 핵심</strong>
         <p>
-          컨테이너 제22호의 “높은 순 3개, 최고 1개 전액·나머지 50%” 규칙은 유지됩니다.
-          2026-04-01 운영지침은 인천·평택 기점 할증도 이 규칙에 포함하고, 구간표에 이미
-          기점 할증이 들어간 경우 거리별 원운임 기준으로 재산정하라고 보강한 것입니다.
+          이번 트리는 1차 고시 원문을 기준점으로 두고, 2026-04-01 추가 운영지침이 보강한 계산 예시와
+          실무 예외를 별도 가지로 분리합니다. 제22호의 “높은 순 3개, 최고 1개 전액·나머지 50%” 규칙은
+          유지되며, 운영지침은 인천·평택 기점 할증도 이 규칙 안에서 보라고 명확히 한 것입니다.
         </p>
         <p>
-          문서 안의 150%·200%는 문맥을 나눠 봐야 합니다. 제22호의 150%는 예시 계산 결과이고,
-          배차취소 회차 150%·200% 또는 방사성물질 200%는 별도 조항입니다.
+          150%는 새 상한이 아니라 예시 계산 결과입니다. 200%도 방사성물질 할증, 밥테일 운임 적용,
+          배차취소 회차 기준처럼 문맥이 다르므로 상세 노드에서 페이지·구간별로 분리해 확인합니다.
         </p>
       </section>
 
-      <section className={styles.searchPanel} aria-label="주석 검색">
+      <section className={styles.searchPanel} aria-label="고시해석 검색">
         <label className={styles.searchLabel} htmlFor="safe-freight-wiki-search">
           검색
         </label>
@@ -188,7 +190,7 @@ export default function SafeFreightWikiPage() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="예: 인천, 150%, 제22호, 공휴일, X-ray"
+          placeholder="예: 1차, 추가 운영지침, 인천, 150%, 제22호, 2차"
         />
         <div className={styles.searchMeta}>
           <span>버전 {SAFE_FREIGHT_WIKI_VERSION}</span>
@@ -197,7 +199,7 @@ export default function SafeFreightWikiPage() {
       </section>
 
       <main className={styles.content}>
-        <section className={styles.treePanel} aria-label="변경 추적 트리">
+        <section className={styles.treePanel} aria-label="고시해석 위키트리">
           {filteredTree.length > 0 ? (
             <ul className={styles.treeList}>{filteredTree.map((node) => renderNode(node))}</ul>
           ) : (

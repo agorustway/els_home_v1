@@ -39,7 +39,7 @@ export default function NoticesPage() {
                         <li>공휴일·심야는 전체 작업·운행 시간 중 해당 시간 비율만 적용합니다.</li>
                     </ul>
                     <a className={styles.wikiLink} href="/employees/safe-freight/wiki" target="_blank" rel="noreferrer">
-                        변경 추적 위키에서 주석·페이지별로 보기
+                        고시해석(위키트리)에서 주석·페이지별로 보기
                     </a>
                 </div>
             </header>

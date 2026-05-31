@@ -1,8 +1,29 @@
-## [2026-05-31] 안전운임 변경 추적 위키 추가 (v5.14.306)
+## [2026-05-31] 안전운임 고시해석 위키트리 재구성 (v5.14.307)
+### 원인
+- 기존 위키 화면이 “변경 포인트” 중심이라, 1차 고시 원문·1차 추가 운영지침·두 문서의 해석 차이를 위키처럼 추적하려는 목적과 구조가 맞지 않았습니다.
+### 조치
+- 화면 명칭을 `고시해석(위키트리)`로 바꾸고, 최상위 리스트 3개(`1차 고시`, `1차 추가 운영지침`, `1차-운영지침 해석`)와 상세 7개 구조로 재구성했습니다.
+- 1차 고시 상세에는 정의/운임원칙/거리기준, 운송·규격형태, 할증·부대비용·업무범위를 원문 페이지와 제1~7장 구간으로 표시했습니다.
+- 추가 운영지침 상세에는 제22호 예시, 인천·평택 원운임 재산정, 공휴일·심야 비례 적용, X-ray·공컨 예외를 운영지침 페이지 기준으로 연결했습니다.
+- 해석 상세에는 `150%는 상한이 아니라 예시 결과`, `높은 순 3개 중 최고 1개 전액·나머지 50%`, `2차 고시 대비 확장 가지`를 명시했습니다.
+### 검증
+- `node --test web/tests/safeFreightNoticeContent.test.mjs web/tests/safeFreightSurcharges.test.mjs web/tests/safeFreightRegion.test.mjs web/tests/safeFreightTabOrder.test.mjs`: 11개 통과.
+- `npm run lint -- 'app/(main)/employees/safe-freight/page.js' 'app/(main)/employees/safe-freight/notices/page.js' 'app/(main)/employees/safe-freight/wiki/page.js'`: 에러 없음, 기존 훅/이미지 경고 3건만 확인.
+- Chrome 헤드리스 렌더링 점검: 모바일 390px과 데스크톱에서 `고시해석(위키트리)` 제목, 리스트 3개, 상세 원문 위치 배지 10개, 주석 칩 표시를 확인했고 모바일 `scrollWidth=390/innerWidth=390`으로 가로 넘침 없음.
+### 변경 파일
+- `web/app/(main)/employees/safe-freight/safe-freight-wiki.js`
+- `web/app/(main)/employees/safe-freight/wiki/page.js`, `web/app/(main)/employees/safe-freight/wiki/wiki.module.css`
+- `web/app/(main)/employees/safe-freight/page.js`, `web/app/(main)/employees/safe-freight/notices/page.js`
+- `web/tests/safeFreightNoticeContent.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-05-31] 안전운임 주석 기반 위키 추가 (v5.14.306)
 ### 원인
 - 2026-04-01 추가 운영지침은 단순 요약만으로는 `150%/200%`, 인천·평택 기점 할증, 제22호 3개 제한 같은 문맥 오해가 생길 수 있어 원문 페이지와 변경 해석을 함께 추적할 별도 화면이 필요했습니다.
 ### 조치
-- `/employees/safe-freight/wiki` 변경 추적 위키 페이지를 추가하고, 검색 가능한 트리 구조로 `기준/기존 → 변경/해석 → 실무 적용 → 주의`를 정리했습니다.
+- `/employees/safe-freight/wiki` 주석 기반 위키 페이지를 추가하고, 검색 가능한 트리 구조로 `기준/기존 → 변경/해석 → 실무 적용 → 주의`를 정리했습니다.
 - 원문 주석 데이터 `safe-freight-wiki.js`를 추가해 고시 본문/운영지침의 페이지·조문·핵심 요약을 `C-22`, `G-22` 같은 주석번호로 관리합니다.
 - 압축 안내 모달과 모바일 안내 페이지에 주석 칩을 붙여 각 요약에서 바로 위키의 원문 근거로 이동할 수 있게 했습니다.
 - 형이 물어본 150%/200% 항목은 제22호 예시 결과, 방사성물질 200%, 배차취소 회차 150%·200%를 분리해 오해 주의 노드로 안내합니다.
