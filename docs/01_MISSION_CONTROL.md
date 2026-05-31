@@ -1,12 +1,12 @@
-# ELS MISSION CONTROL (v5.14.298 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.299 / APK v5.11.29)
 
-> 최신 업데이트: 데이터 보존정책을 1년 1개월 배차상세, 1년 3개월 월간실적, 2026년 이후 연간 fix 기준으로 문서화하고 인트라넷 화면에 연결했다.
+> 최신 업데이트: 월간실적은 연간으로 자동 이월하지 않는 임시 원장으로 분리하고, 관리자용 월간 리셋 버튼/API를 추가했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.298
+- **웹 버전**: v5.14.299
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
-- **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 운영 조회는 최신 연간 `currentSnapshotId`와 월간 `is_current` 기준으로 제한한다.
+- **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
 - **GLAPS 활성 원장**: `6724943a-5c6c-416e-bab0-bbac487b8c4c` / 8개 시트 / 운송경로 541건 / 항목매핑 2,249건 / 원본행 1,177건 / 특이적용건 5건.
 - **GLAPS NAS 백업**: `/아산지점/A_운송실무/GLAPS_마스터코드_backup_20260523_190603.xlsx`
 
@@ -21,7 +21,8 @@
 
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
-- 연간실적은 2015~2025 원장, 월간실적은 월별 마감자료 확장 원장이다. 2026년 이후 파일을 별도로 추가해도 기존 연간 데이터는 DB에 누적 보존한다.
+- 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
+- 월간실적은 운영 임시 원장이다. 관리자 `월간 리셋`은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 - 구간단가 조회 범위는 `전체/연도별/월별`이며 첫 진입 기본값은 `전체`다. 제목열 클릭 정렬과 컬럼 제목열 내부 다중 선택 필터를 제공한다.
 - 구간단가 표시/집계 조건은 숨김 드롭존으로 통합한다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
@@ -74,25 +75,20 @@
 - 내부 연락처/자료/작업지/협력사/운전원 API는 사용자 확인 후 service role로 DB를 처리한다. anon은 내부 연락처·자료·작업지 SELECT 권한이 없다.
 - 차량관제 `vehicle_trips/locations/logs`는 service role 전용 DB 접근으로 제한하고, 웹/앱은 Next API 경유로만 처리한다.
 - 디버그 모드는 유지한다. `?debug=true`로 심은 `__debug_mode` 쿠키도 서버 API auth mock에서 인정한다.
-- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 두고, 웹 생성 데이터는 NAS 압축 보관/manifest/복원 흐름으로 관리한다. 세부 기준은 `docs/09_DATA_RETENTION_POLICY.md`와 `/employees/data-retention`을 따른다.
+- DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 두되 월간은 필요 시 전체 리셋 후 재수집한다. 웹 생성 데이터는 NAS 압축 보관/manifest/복원 흐름으로 관리한다. 세부 기준은 `docs/09_DATA_RETENTION_POLICY.md`와 `/employees/data-retention`을 따른다.
 
 ## RECENT CHANGES
+- **v5.14.299**: 월간실적 화면에 관리자용 `월간 리셋` 버튼을 추가했다. 리셋은 monthly rows/files, 월간 구간단가 캐시, summary/monthly/route-unit dashboard snapshot만 삭제하며 annual source는 변경하지 않는다. 보존정책은 월간 자동 이월이 아니라 사람이 정리한 2026년 이후 연간 Excel source를 별도 추가하는 방향으로 갱신했다.
 - **v5.14.298**: 데이터 보존정책 인트라넷 문서 페이지를 추가하고, 헤더 자료실 메뉴와 아산 배차판/실적관리/차량위치관제 화면에 보존정책 버튼을 연결했다. archive는 catalog/복원 경로로만 찾고 일반 운영 검색에는 섞지 않는 기준을 명시했다.
 - **v5.14.297**: `branch_performance_rows` compact-swap, 배차변동 히스토리 compact-swap, `document_chunks` VACUUM FULL/IVFFLAT 재생성을 완료했다. 구간단가 화면은 월간 current 금액 캐시를 사용하며 전체 DB는 약 955MB로 정리됐다.
 - **v5.14.296**: Supabase 용량 진단에서 `branch_performance_rows`, 배차변동 히스토리, `document_chunks`가 주요 원인임을 확인했다. 실적 대형 인덱스 11개를 제거했고, 자동 `refreshed/resolved` 히스토리 저장은 코드에서 차단했다.
-- **v5.14.295**: 상세배차 `작업지(하차지)코드`가 `경유지(ELS)`/경유지명으로 fallback되던 문제를 제거하고, GLAPS 원장 작업지 코드 후보만 표시하도록 보정했다.
-- **v5.14.294**: 배차변동 추가/삭제 행의 무분별한 노란 셀 표시를 제거하고 변경 이벤트의 실제 변경 컬럼만 표시한다. 상세배차 검수 설명 문구를 없애고 중간 해상도 요약/상태 영역 줄바꿈과 확정자명 DB 우선순위를 보정했다.
-- **v5.14.293**: 상세배차 검수 배지를 짧은 코드명으로 압축하고, 배차변동 확인완료 행도 수정 가능하게 풀었다. 작업지(하차지)코드는 route 경유지 fallback으로 보강했다.
-- **v5.14.292**: GLAPS 항목매핑 `기타` 행을 검수메모 기준으로 `수출입코드/선사/실출하지코드/포트/컨테이너규격/운송사/컨샤이니`에 승격하고, `선사코드, 실출하지코드` 오분류 행은 삭제 대상 처리했다. 중복검출/병합은 `매핑항목+최종코드(BP)` 기준으로 변경했다.
 ## VERIFICATION
-- 글로비스 원본 `.xlsm`/Supabase 검증: `5.29` 시트와 `branch_dispatch` 2026-05-29 글로비스 `PLMAA/인천` 1행이 `성도(TCR)/CG`로 일치하고 잔여 `TCR` 0건.
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 - 최근 코드 변경 검증 내역은 `docs/02_DEVELOPMENT_LOG.md` 각 항목 참조.
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
-- 행사일정 DB 적용 대기: `web/supabase_sql/20260520_intranet_event_calendar.sql`을 Supabase SQL Editor에 적용.
 - DB 다음 단계: `docs/09_DATA_RETENTION_POLICY.md` 기준으로 일일 배차/상세배차 1년 1개월 초과분의 NAS 압축 보관/manifest/샘플 복원 절차를 먼저 구현한다.
 
 ## FIXED RULES

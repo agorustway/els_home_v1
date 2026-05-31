@@ -73,6 +73,7 @@
 
 .segmented button,
 .ghostBtn,
+.dangerBtn,
 .smallActiveBtn,
 .primaryBtn,
 .smallBtn,
@@ -109,6 +110,17 @@
     color: #0f766e;
 }
 
+.dangerBtn {
+    border-color: #fecaca;
+    background: #fff1f2;
+    color: #dc2626;
+}
+
+.dangerBtn:hover {
+    border-color: #f87171;
+    background: #fee2e2;
+}
+
 .smallActiveBtn {
     border-color: #0f766e;
     background: #0f766e;
@@ -116,6 +128,7 @@
 }
 
 .primaryBtn:disabled,
+.dangerBtn:disabled,
 .loadMoreBtn:disabled {
     cursor: default;
     opacity: 0.6;
@@ -5471,6 +5484,7 @@
 
     .segmented,
     .ghostBtn,
+    .dangerBtn,
     .primaryBtn {
         flex: 1;
     }

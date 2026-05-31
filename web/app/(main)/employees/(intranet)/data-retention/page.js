@@ -16,7 +16,7 @@ const retentionRows = [
         name: '월간실적',
         hot: '1년 3개월',
         archive: '원본 Excel + 월별 적재 이력',
-        note: '1년치가 정리되면 연간실적으로 올리고, 오래된 월간 raw는 검증 후 정리합니다.',
+        note: '운영 임시 원장입니다. 필요 시 월간 리셋 후 새 월간 엑셀을 다시 모읍니다.',
     },
     {
         name: '연간실적',
@@ -132,15 +132,17 @@ export default function DataRetentionPage() {
                     <article className={styles.panel}>
                         <h3>월간실적</h3>
                         <p>
-                            월간실적은 1년 3개월까지 hot DB에 둡니다. 1년치 마감이 정리되면 연간실적으로 올리고,
-                            오래된 월간 raw는 archive 검증 뒤 정리합니다.
+                            월간실적은 1년 3개월까지 hot DB에 둡니다. 현재 운영에서는 월간자료를 연간실적으로 자동
+                            이월하지 않습니다. 필요하면 월간 리셋으로 월간 rows/files/cache만 비우고 새 월간 엑셀을
+                            다시 수집합니다.
                         </p>
                     </article>
                     <article className={styles.panel}>
                         <h3>연간실적</h3>
                         <p>
-                            연간실적은 fix 데이터로 보고 2026년 자료부터 연도별로 추적합니다. 파일 동기화는 DB 적재가
-                            목적이므로 변경된 행만 upsert하고, 이전 스냅샷 찌꺼기는 archive 후 prune합니다.
+                            연간실적은 사람이 정리한 fix Excel을 기준으로 보고 2026년 자료부터 연도별로 추적합니다.
+                            2026~2035 같은 새 연간 source를 추가해도 기존 확정 연간 source와 합산 조회합니다.
+                            파일 동기화는 변경된 행만 upsert하고, 이전 스냅샷 찌꺼기는 archive 후 prune합니다.
                         </p>
                     </article>
                 </div>

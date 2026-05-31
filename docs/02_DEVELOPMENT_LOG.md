@@ -1,3 +1,24 @@
+## [2026-05-31] 월간실적 리셋 기능과 연간 source 분리 기준 (v5.14.299)
+### 원인
+- 월간자료는 현재 연간으로 자동 이월하지 않고, 운영 임시 원장으로 다시 모으는 방향이 맞습니다.
+- 2026년 이후 연간자료는 사람이 정리한 새 Excel source를 물려 확정 원장으로 운영해야 하므로 월간 reset과 annual source가 분리돼야 합니다.
+### 조치
+- 월간실적 화면에 관리자용 `월간 리셋` 버튼을 추가했습니다.
+- 리셋 API는 확인 문구 `월간자료 리셋`을 요구하고, monthly rows/files, 월간 구간단가 캐시, monthly/summary/summary-view/route-unit dashboard snapshot만 삭제합니다.
+- 연간실적 `annual` rows/files/source는 리셋 대상에서 제외했습니다.
+- `docs/09_DATA_RETENTION_POLICY.md`와 `/employees/data-retention` 문서에 월간 자동 이월 금지, 사람이 정리한 2026년 이후 연간 Excel source 추가 기준을 반영했습니다.
+### 검증
+- `npx eslint "app/api/branches/asan/performance/monthly/route.js" "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "app/(main)/employees/(intranet)/data-retention/page.js"`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/app/api/branches/asan/performance/monthly/route.js`
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/app/(main)/employees/branches/asan/annualPerformance.module.css`
+- `web/app/(main)/employees/(intranet)/data-retention/page.js`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`, `docs/09_DATA_RETENTION_POLICY.md`
+
+---
+
 ## [2026-05-31] 데이터 보존정책 웹 문서화와 화면 연결 (v5.14.298)
 ### 원인
 - 일일배차/상세배차, GPS, 실적처럼 웹에서 생성·누적되는 데이터는 Excel 백업만으로 복구 기준이 부족했습니다.
