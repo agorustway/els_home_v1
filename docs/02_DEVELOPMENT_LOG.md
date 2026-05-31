@@ -16,6 +16,45 @@
 
 ---
 
+## [2026-05-31] 안전운임 2026-04-01 추가 운영지침 반영 (v5.14.304)
+### 원인
+- 2026년 2차 고시 전 1차 고시에 대한 추가 운영지침이 발표되어, 인천·평택 기점 할증과 공휴일·심야 부분 적용 해석을 화면 산식에 반영해야 했습니다.
+### 조치
+- 인천·평택 기점 할증을 별도 전액 가산하지 않고 제22호의 `높은 순 3개, 최고 1개 전액·나머지 50%` 제한에 포함했습니다.
+- 구간표에 이미 인천·평택 할증이 들어간 운임도 추가 퍼센트 할증이 있으면 거리별 원운임 기준으로 재산정하도록 조회 API가 거리 기준 행을 함께 내려줍니다.
+- 안전위탁운임 기준 기점 할증액을 운수사업자간/안전운송운임에도 동일 가산하고, 할증료는 백원미만 사사오입 후 합산하는 공통 유틸을 추가했습니다.
+- 공휴일·심야 할증은 전체 작업·운행 시간 중 해당 시간 비율에 맞춰 0~20% 직접 입력이 가능하도록 메인/구간조회 패널을 보강했습니다.
+- 관련 법령·고시 안내, AI 안전운임 RAG PDF 전문 데이터, PDF 파서에 `2026년 안전운임 운영지침_수정_20260401.pdf`를 포함했습니다.
+### 검증
+- `node --test web/tests/safeFreightSurcharges.test.mjs web/tests/safeFreightRegion.test.mjs web/tests/safeFreightTabOrder.test.mjs`: 8개 통과.
+- `node --check` 대상: `safe-freight/page.js`, `RouteSearchView.js`, `chat/route.js`, `parse-pdf.js` 통과.
+- `npm.cmd run lint -- "app/(main)/employees/safe-freight/page.js" "app/(main)/employees/safe-freight/route-search/RouteSearchView.js" "app/(main)/employees/safe-freight/route-search/SurchargePanel.js" "app/api/safe-freight/lookup/route.js"`: 에러 없음, 기존 훅/이미지 경고만 확인.
+### 변경 파일
+- `web/utils/safeFreightSurcharges.mjs`, `web/tests/safeFreightSurcharges.test.mjs`
+- `web/app/(main)/employees/safe-freight/**`, `web/app/api/safe-freight/lookup/route.js`, `web/app/api/chat/route.js`
+- `web/public/data/safe-freight.json`, `web/public/data/safe-freight-docs.json`, `web/scripts/build-safe-freight-data.js`, `web/scripts/parse-pdf.js`
+
+---
+
+## [2026-05-31] 인트라넷 헤더/사이드바 메뉴 동기화 (v5.14.303)
+### 원인
+- 헤더 인트라넷 드롭다운은 `Header.js`에 하드코딩돼 있고, 사이드바/검색 메뉴는 `constants/intranetMenu.js`를 사용해 새 관리자 메뉴가 한쪽에만 반영되는 문제가 반복됐습니다.
+### 조치
+- `SIDEBAR_ITEMS.admin`에 `데이터 운영 관리`를 추가했습니다.
+- Header의 인트라넷 메뉴를 `buildHeaderEmployeeMenuChildren()`로 생성하게 바꿔 사이드바/검색 메뉴 상수와 같은 원본을 쓰도록 했습니다.
+- 메뉴 동기화 회귀 테스트 `tests/intranetMenuSync.test.mjs`를 추가했습니다.
+### 검증
+- `node --test tests/intranetMenuSync.test.mjs`: 2개 테스트 통과.
+- `npx eslint "components/Header.js" "constants/intranetMenu.js"`: 에러 없음, 기존 `<img>` 경고만 확인.
+- `npm run build`: 통과. `/admin/data-operations` 라우트 유지 확인.
+### 변경 파일
+- `web/constants/intranetMenu.js`
+- `web/components/Header.js`
+- `web/tests/intranetMenuSync.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] Archive/복원 준비 스키마와 실행 잠금 상태 분리 (v5.14.302)
 ### 원인
 - 관리자 화면의 `준비 필요`가 무엇을 뜻하는지 불명확했습니다.

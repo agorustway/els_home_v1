@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { getRoleLabel } from '@/utils/roles';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { buildHeaderEmployeeMenuChildren } from '@/constants/intranetMenu';
 
 // Centralized navigation structure
 const navLinks = [
@@ -39,71 +40,7 @@ const navLinks = [
         label: '인트라넷',
         href: '/employees/ask',
         isEmployee: true,
-        children: [
-            { href: '/employees/ask', label: '인트라넷 홈' },
-            { type: 'divider' },
-            { label: '자동화시스템', type: 'label' },
-            { href: '/employees/safe-freight', label: '안전운임 조회' },
-            { href: '/employees/container-history', label: '컨테이너 이력조회' },
-            { href: '/employees/vehicle-tracking', label: '차량위치관제' },
-            { href: '/employees/archive', label: '자료실 (NAS)' },
-            { type: 'divider' },
-            {
-                label: '업무보고',
-                children: [
-                    { href: '/employees/reports/daily', label: '일일 업무일지', isSubItem: true },
-                    { href: '/employees/reports/monthly', label: '월간 실적보고', isSubItem: true },
-                    { href: '/employees/reports/my', label: '내 업무보고', isSubItem: true },
-                ]
-            },
-            { type: 'divider' },
-            {
-                label: '자료실',
-                children: [
-                    { href: '/employees/work-docs', label: '업무자료실', isSubItem: true },
-                    { href: '/employees/form-templates', label: '서식자료실', isSubItem: true },
-                ]
-            },
-            {
-                label: '연락처',
-                children: [
-                    { href: '/employees/work-sites', label: '작업지안내', isSubItem: true },
-                    { href: '/employees/internal-contacts', label: '사내연락망', isSubItem: true },
-                    { href: '/employees/external-contacts', label: '외부연락처', isSubItem: true },
-                    { href: '/employees/partner-contacts', label: '협력사정보', isSubItem: true },
-                    { href: '/employees/driver-contacts', label: '운전원정보', isSubItem: true },
-                ]
-            },
-            { type: 'divider' },
-            {
-                label: '직원 서비스',
-                children: [
-                    { href: '/employees/ask', label: 'AI 어시스턴트' },
-                    { href: '/employees/events', label: '행사일정' },
-                    { href: '/employees/weather', label: '날씨' },
-                    { href: '/employees/news', label: '뉴스' },
-                    { href: '/employees/board/free', label: '자유게시판' },
-                ]
-            },
-            {
-                label: '지점별 서비스',
-                children: [
-                    { label: '수도권/본사', type: 'label' },
-                    { href: '/employees/branches/headquarters', label: '서울본사', isSubItem: true },
-                    { type: 'divider' },
-                    { label: '충청권 지점', type: 'label' },
-                    { href: '/employees/branches/asan', label: '아산지점', isSubItem: true },
-                    { href: '/employees/branches/jungbu', label: '중부지점', isSubItem: true },
-                    { href: '/employees/branches/yesan', label: '예산지점', isSubItem: true },
-                    { href: '/employees/branches/dangjin', label: '당진지점', isSubItem: true },
-                ]
-            },
-            { type: 'divider', isAdmin: true },
-            { href: '/admin/users', label: '회원 권한 관리', isAdmin: true },
-            { href: '/admin', label: '고객 문의 관리', isAdmin: true },
-            { href: '/admin/logs', label: '활동 로그 관리', isAdmin: true },
-            { href: '/admin/data-operations', label: '데이터 운영 관리', isAdmin: true },
-        ]
+        children: buildHeaderEmployeeMenuChildren()
     },
 ];
 

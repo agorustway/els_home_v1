@@ -94,11 +94,69 @@ export const SIDEBAR_ITEMS = {
         { label: '당진지점', path: '/employees/branches/dangjin' },
     ],
     admin: [
-        { label: '권한관리', path: '/admin/users' },
+        { label: '회원 권한 관리', path: '/admin/users' },
         { label: '고객 문의 관리', path: '/admin', exact: true },
         { label: '활동 로그 관리', path: '/admin/logs' },
+        { label: '데이터 운영 관리', path: '/admin/data-operations' },
     ],
 };
+
+const HEADER_SECTION_ORDER = ['automation', 'reports', 'docs', 'contacts', 'home', 'branches'];
+const HEADER_SECTION_LABELS = {
+    home: '직원 서비스',
+    branches: '지점별 서비스',
+};
+
+function toHeaderLink(item, extra = {}) {
+    return {
+        href: item.path,
+        label: item.label,
+        ...(item.exact ? { exact: true } : {}),
+        ...extra,
+    };
+}
+
+function buildHeaderSection(tabId) {
+    const tab = MAIN_TABS.find((entry) => entry.id === tabId);
+    const items = SIDEBAR_ITEMS[tabId] || [];
+    if (!tab || items.length === 0) return null;
+
+    if (tabId === 'automation') {
+        return [
+            { label: tab.label, type: 'label' },
+            ...items.map((item) => toHeaderLink(item)),
+        ];
+    }
+
+    return {
+        label: HEADER_SECTION_LABELS[tabId] || tab.label,
+        children: items.map((item) => toHeaderLink(item, { isSubItem: true })),
+    };
+}
+
+export function buildHeaderEmployeeMenuChildren() {
+    const homeTab = MAIN_TABS.find((entry) => entry.id === 'home');
+    const children = [
+        { href: homeTab?.defaultPath || '/employees/ask', label: '인트라넷 홈' },
+        { type: 'divider' },
+    ];
+
+    const sections = HEADER_SECTION_ORDER
+        .map((tabId) => buildHeaderSection(tabId))
+        .filter(Boolean);
+
+    sections.forEach((section, index) => {
+        if (Array.isArray(section)) children.push(...section);
+        else children.push(section);
+        if (index < sections.length - 1) children.push({ type: 'divider' });
+    });
+
+    const adminItems = SIDEBAR_ITEMS.admin || [];
+    children.push({ type: 'divider', isAdmin: true });
+    children.push(...adminItems.map((item) => toHeaderLink(item, { isAdmin: true })));
+
+    return children;
+}
 
 export function getActiveMainTab(pathname, isAdmin) {
     const p = pathname || '';
