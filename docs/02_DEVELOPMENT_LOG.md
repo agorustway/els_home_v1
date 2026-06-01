@@ -1,3 +1,21 @@
+## [2026-06-01] GLAPS 급행 운송경로코드 AAAAAAAAA 중복 예외 (v5.14.317)
+### 원인
+- 급히 임시 운송경로를 추가해야 하는 `AAAAAAAAA` 코드는 같은 운송경로코드가 이미 있어도 다른 연결경로를 추가해야 하는 운영 예외입니다.
+- 기존 운송경로 중복검출/직접수정 차단은 운송경로코드 반복을 모두 중복으로 보아 `AAAAAAAAA` 추가 입력도 막았습니다.
+### 조치
+- `AAAAAAAAA`를 운송경로 중복키 생성 예외로 분리했습니다.
+- 직접추가/수정의 운송경로 중복 검사와 화면 중복검출 모두 이 코드는 중복 그룹을 만들지 않습니다.
+### 검증
+- `node --test web/tests/glapsDuplicateGroups.test.mjs`: 통과
+- `cd web; npx eslint "utils/glapsDuplicateGroups.mjs" "tests/glapsDuplicateGroups.test.mjs"`: 통과
+- 참고: `web/tests/asanDashboardView.test.mjs`는 기존 작업트리의 상세배차 문구 변경으로 GLAPS와 무관한 정적 기대값 1건이 실패했습니다.
+### 변경 파일
+- `web/utils/glapsDuplicateGroups.mjs`
+- `web/tests/glapsDuplicateGroups.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 배차변동 저장시점 스냅샷 기준 보강 (v5.14.316)
 ### 원인
 - 변동 비교 기준이 확인완료 시점에만 갱신되면, 엑셀을 2차 저장했을 때 1차 저장분이 아닌 최초 확정분과 다시 비교될 수 있었습니다.

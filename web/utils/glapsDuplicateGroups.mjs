@@ -10,8 +10,16 @@ function rowText(row = {}, snakeKey, camelKey = snakeKey) {
   return row[snakeKey] ?? row[camelKey];
 }
 
+const GLAPS_ROUTE_DUPLICATE_BYPASS_CODES = new Set(['AAAAAAAAA']);
+
+export function isGlapsRouteDuplicateBypassCode(value) {
+  return GLAPS_ROUTE_DUPLICATE_BYPASS_CODES.has(duplicateKeyPart(value));
+}
+
 export function buildGlapsRouteDuplicateGroupKey(row = {}) {
-  return duplicateKeyPart(rowText(row, 'route_code', 'routeCode'));
+  const routeCode = duplicateKeyPart(rowText(row, 'route_code', 'routeCode'));
+  if (isGlapsRouteDuplicateBypassCode(routeCode)) return '';
+  return routeCode;
 }
 
 export function buildGlapsAliasDuplicateGroupKey(row = {}) {

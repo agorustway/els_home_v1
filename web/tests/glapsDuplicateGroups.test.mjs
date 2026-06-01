@@ -4,6 +4,7 @@ import {
   buildGlapsAliasDuplicateGroupKey,
   buildGlapsDuplicateInfo,
   buildGlapsRouteDuplicateGroupKey,
+  isGlapsRouteDuplicateBypassCode,
 } from '../utils/glapsDuplicateGroups.mjs';
 
 test('GLAPS 운송경로 중복은 운송경로코드가 반복될 때만 잡는다', () => {
@@ -12,11 +13,15 @@ test('GLAPS 운송경로 중복은 운송경로코드가 반복될 때만 잡는
     start_location_name: '부산신항',
     destination_name: '부산신항',
   }), 'GLC00005');
+  assert.equal(isGlapsRouteDuplicateBypassCode('AAAAAAAAA'), true);
+  assert.equal(buildGlapsRouteDuplicateGroupKey({ route_code: 'AAAAAAAAA' }), '');
 
   const info = buildGlapsDuplicateInfo('routes', [
     { id: 'a', route_code: 'GLC00005', start_location_name: 'KRUWN', waypoint_els_name: '1포장장', destination_name: 'KRBNX' },
     { id: 'b', route_code: 'GLC00005', start_location_name: 'KRBNP', waypoint_els_name: '2포장장', destination_name: 'KRBNP' },
     { id: 'c', route_code: 'GLC00006', start_location_name: 'KRUWN', waypoint_els_name: '1포장장', destination_name: 'KRBNX' },
+    { id: 'd', route_code: 'AAAAAAAAA', start_location_name: 'AAA', waypoint_els_name: 'AAA', destination_name: 'AAA' },
+    { id: 'e', route_code: 'AAAAAAAAA', start_location_name: 'KR10', waypoint_els_name: 'PLMAA', destination_name: 'PLMAA' },
   ]);
 
   assert.equal(info.rowCount, 2);
