@@ -280,6 +280,10 @@ test('아산 NAS 파일 동기화 스케줄러는 기본 주기와 로그를 저
     assert.match(source, /ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int\("ASAN_DISPATCH_SYNC_POLL_SECONDS", 60, 15\)/);
     assert.match(source, /ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int\("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30\)/);
     assert.match(source, /ASAN_DISPATCH_SETTINGS_CACHE_SECONDS = _env_int\("ASAN_DISPATCH_SETTINGS_CACHE_SECONDS", 300, 30\)/);
+    assert.match(source, /ASAN_DISPATCH_DASHBOARD_CACHE_URL/);
+    assert.match(source, /def _refresh_asan_dispatch_dashboard_cache_async/);
+    assert.match(source, /\/api\/branches\/asan\/dispatch\/dashboard/);
+    assert.match(source, /"Authorization": f"Bearer \{SUPABASE_KEY\}"/);
     assert.match(source, /def get_asan_dispatch_settings\(force=False\):/);
     assert.match(source, /dispatch_settings_cache\["loaded_at"\] = now_ts/);
     assert.match(schedulerSource, /asan_(?:sync|dispatch_sync)_scheduler/);

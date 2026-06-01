@@ -1,3 +1,29 @@
+## [2026-06-02] 아산 배차 현황판 집계 캐시화 (v5.14.325)
+### 원인
+- 현황판 정확도를 위해 full 원장을 보강 조회하면 첫 화면 로딩이 다시 길어지고, Vercel 함수와 Supabase 원장 JSONB 조회 부담이 커졌습니다.
+### 조치
+- `branch_dispatch_dashboard_cache` 테이블을 추가해 현황판용 일/주/月/전체/추세/요일/기준차이 집계를 작은 JSON payload로 저장합니다.
+- 현황판은 캐시 1건을 우선 읽고, 캐시가 없을 때만 기존 full 원장 보강으로 fallback합니다.
+- 캐시 갱신 API는 service role Bearer 권한으로만 허용하고, NAS Core 배차 동기화가 끝나면 비동기로 `type=all` 프리워밍합니다.
+- 운영 Supabase에 `asan_dispatch_dashboard_cache_20260602` migration을 적용했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanDashboard.js" "app/api/branches/asan/dispatch/dashboard/route.js" "tests/asanDashboardView.test.mjs" "tests/asanShippingFlow.test.mjs"`: 통과, 기존 hook warning 1건 유지
+- 번들 Python `py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/supabase_sql/20260602_asan_dispatch_dashboard_cache.sql`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 아산 배차 현황판 meta-only 집계 보강 (v5.14.324)
 ### 원인
 - 전날 적용한 배차판 경량 로딩이 첫 진입 데이터를 `mode=meta + 선택일 mode=date`로 제한하면서, 기본 첫 화면인 `현황판`의 주간/월간/요일별 집계가 상세 rows 없이 0처럼 보일 수 있었습니다.

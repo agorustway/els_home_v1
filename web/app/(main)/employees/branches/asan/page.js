@@ -1390,6 +1390,12 @@ function AsanDispatchContent() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [dispatchFullDataLoading, setDispatchFullDataLoading] = useState(false);
+    const [dashboardCacheState, setDashboardCacheState] = useState({
+        viewType: '',
+        payload: null,
+        checked: false,
+        loading: false,
+    });
     const [syncing, setSyncing] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState(-1);
@@ -1458,6 +1464,7 @@ function AsanDispatchContent() {
     const dispatchFullLoadedRef = useRef(false);
     const dispatchFullLoadingRef = useRef(false);
     const settingsLoadedRef = useRef(false);
+    const dashboardCacheLoadSeqRef = useRef(0);
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
     const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
@@ -1537,6 +1544,26 @@ function AsanDispatchContent() {
         const j = await r.json();
         if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
         return j.data || [];
+    }, []);
+    const fetchDashboardCache = useCallback(async (type) => {
+        const loadSeq = dashboardCacheLoadSeqRef.current + 1;
+        dashboardCacheLoadSeqRef.current = loadSeq;
+        setDashboardCacheState({ viewType: type, payload: null, checked: false, loading: true });
+        try {
+            const r = await fetch(`/api/branches/asan/dispatch/dashboard?type=${encodeURIComponent(type)}&t=${Date.now()}`, { cache: 'no-store' });
+            const j = await r.json().catch(() => ({}));
+            if (dashboardCacheLoadSeqRef.current !== loadSeq) return;
+            setDashboardCacheState({
+                viewType: type,
+                payload: r.ok && j.ok ? j.cache?.payload || null : null,
+                checked: true,
+                loading: false,
+            });
+        } catch {
+            if (dashboardCacheLoadSeqRef.current === loadSeq) {
+                setDashboardCacheState({ viewType: type, payload: null, checked: true, loading: false });
+            }
+        }
     }, []);
     const ensureDispatchDateLoaded = useCallback(async (dateStr) => {
         const key = `${viewType}:${dateStr || ''}`;
@@ -1764,6 +1791,10 @@ function AsanDispatchContent() {
     // ===== Effects =====
     useEffect(() => scheduleIdlePrefetch(() => fetchSettings(), 3200), [fetchSettings]);
     useEffect(() => {
+        if (mainView !== 'dashboard') return undefined;
+        return scheduleIdlePrefetch(() => fetchDashboardCache(viewType), 150, { force: true });
+    }, [fetchDashboardCache, mainView, viewType]);
+    useEffect(() => {
         let cancelled = false;
         let timer = null;
         const pollSyncGate = async () => {
@@ -1960,10 +1991,14 @@ function AsanDispatchContent() {
         if (isAllTab) return mergedView;
         return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
+    const dashboardCachePayload = dashboardCacheState.viewType === viewType ? dashboardCacheState.payload : null;
+    const dashboardCacheChecked = dashboardCacheState.viewType === viewType && dashboardCacheState.checked;
     const dashboardNeedsFullData = useMemo(() => (
         mainView === 'dashboard'
+        && dashboardCacheChecked
+        && !dashboardCachePayload
         && (data || []).some(item => item?.meta_only && hasValidOrderRows(item, viewType))
-    ), [data, mainView, viewType]);
+    ), [dashboardCacheChecked, dashboardCachePayload, data, mainView, viewType]);
     useEffect(() => {
         if (dashboardNeedsFullData) {
             ensureDispatchFullLoaded();
@@ -3793,6 +3828,7 @@ function AsanDispatchContent() {
                     sourceItems={data}
                     activeDate={isAllTab ? '' : activeItem?.target_date || ''}
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
+                    dashboardCache={dashboardCachePayload}
                     dateControlsSlot={dateControls}
                     onOpenDailyGrid={handleOpenDailyGrid}
                     onViewTypeChange={setViewType}

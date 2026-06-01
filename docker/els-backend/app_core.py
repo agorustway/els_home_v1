@@ -119,6 +119,11 @@ ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 60
 ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
 ASAN_DISPATCH_SYNC_REQUEST_COOLDOWN_SECONDS = _env_int("ASAN_DISPATCH_SYNC_REQUEST_COOLDOWN_SECONDS", 60, 0)
+ASAN_DISPATCH_DASHBOARD_CACHE_URL = os.environ.get(
+    "ASAN_DISPATCH_DASHBOARD_CACHE_URL",
+    "https://elssolution.com/api/branches/asan/dispatch/dashboard",
+)
+ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS = _env_int("ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS", 180, 30)
 ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
@@ -192,6 +197,28 @@ def _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
     except Exception as exc:
         app.logger.warning(f"[자동동기화] {dtype} DB 파일수정일 확인 실패: {exc}")
     return False
+
+
+def _refresh_asan_dispatch_dashboard_cache_async(reason="dispatch-sync"):
+    if not ASAN_DISPATCH_DASHBOARD_CACHE_URL or not SUPABASE_KEY:
+        return
+
+    def runner():
+        try:
+            response = requests.post(
+                ASAN_DISPATCH_DASHBOARD_CACHE_URL,
+                json={"type": "all", "reason": reason},
+                headers={"Authorization": f"Bearer {SUPABASE_KEY}"},
+                timeout=ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS,
+            )
+            if response.status_code >= 400:
+                app.logger.warning(
+                    f"[배차현황캐시] 프리워밍 실패 status={response.status_code} reason={reason}"
+                )
+        except Exception as exc:
+            app.logger.warning(f"[배차현황캐시] 프리워밍 오류 reason={reason}: {exc}")
+
+    threading.Thread(target=runner, daemon=True).start()
 
 
 def _set_asan_sync_status(**updates):
@@ -389,6 +416,7 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
     sync_results = []
     sync_error = None
     sync_cancelled = False
+    dashboard_cache_refresh_needed = False
     sync_started_at = datetime.now(KST)
     quick_updates = {} if preserve_quick else {
         "quick_done": False,
@@ -690,6 +718,8 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
                     )
 
                 app.logger.info(f"[자동동기화] {dtype} 동기화 완료 ({sync_count} 시트)")
+                if sync_count > 0:
+                    dashboard_cache_refresh_needed = True
                 if phase != "quick":
                     last_mtime_cache[dtype] = mtime
                     last_file_signature_cache[dtype] = file_signature
@@ -772,6 +802,8 @@ def sync_asan_dispatch_python(force=False, phase="all", preserve_quick=False):
             results=sync_results,
             cancel_requested=False,
         )
+        if ok and not sync_cancelled and dashboard_cache_refresh_needed and phase in ("quick", "rest", "all"):
+            _refresh_asan_dispatch_dashboard_cache_async(f"dispatch-{phase}")
         asan_sync_lock.release()
     return {"ok": ok, "cancelled": sync_cancelled, "message": message, "results": sync_results}
 

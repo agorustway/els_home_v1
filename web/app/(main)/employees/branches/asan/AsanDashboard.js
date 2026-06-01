@@ -4,6 +4,7 @@ import styles from './dashboard.module.css';
 import {
     ASAN_DASHBOARD_CHART_MODES,
     buildAsanDashboardBasisDiffSummary,
+    buildAsanDashboardDataFromCache,
     buildAsanDashboardTimeline,
     buildAsanDashboardScope,
     buildAsanDashboardWeekdayComparison,
@@ -56,6 +57,7 @@ export default function AsanDashboard({
     sourceItems = [],
     activeDate = '',
     selectedMonth = '',
+    dashboardCache = null,
     dateControlsSlot = null,
     onOpenDailyGrid = null,
     onViewTypeChange = null,
@@ -84,6 +86,19 @@ export default function AsanDashboard({
     }, [selectedMonth]);
 
     const dashboardData = useMemo(() => {
+        const cached = buildAsanDashboardDataFromCache({
+            cachePayload: dashboardCache,
+            fallbackRows: data,
+            fallbackHeaders: headers,
+            viewType,
+            viewMode,
+            activeDate,
+            selectedDay: periodSelection.day || activeDate,
+            selectedWeek: periodSelection.week,
+            selectedMonth: periodSelection.month || selectedMonth,
+        });
+        if (cached) return cached;
+
         const activeScope = buildAsanDashboardScope({
             rows: data,
             headers,
@@ -126,7 +141,7 @@ export default function AsanDashboard({
             weekdayComparison,
             basisDiff,
         };
-    }, [data, headers, viewType, viewMode, sourceItems, activeDate, selectedMonth, periodSelection]);
+    }, [dashboardCache, data, headers, viewType, viewMode, sourceItems, activeDate, selectedMonth, periodSelection]);
 
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);

@@ -853,6 +853,229 @@ export function buildAsanDashboardWeekdayComparison({
   };
 }
 
+function getScopeMapForOptions(items = [], options = [], viewType = 'integrated', viewMode = 'customer', filterItems) {
+  const map = {};
+  options.forEach((option) => {
+    map[option.key] = buildScopeFromItems(filterItems(option), viewType, viewMode);
+  });
+  return map;
+}
+
+function getCachedPreviousScope(scopeMap = {}, options = [], key = '') {
+  const index = options.findIndex((option) => option.key === key);
+  if (index <= 0) return null;
+  return scopeMap[options[index - 1].key] || null;
+}
+
+function getEmptyWeekdayComparison(weekKey = '', monthKey = '') {
+  return {
+    week: { key: weekKey, label: '선택 주', weekLabel: '', fullLabel: '선택 주', buckets: createWeekdayBuckets() },
+    month: { key: monthKey, label: formatMonthLabel(monthKey), buckets: createWeekdayBuckets() },
+  };
+}
+
+function buildModeDashboardCache(items = [], options = {}, viewType = 'integrated', viewMode = 'customer') {
+  const daily = getScopeMapForOptions(items, options.dates || [], viewType, viewMode, (option) => (
+    items.filter((item) => item.target_date === option.key)
+  ));
+  const weekly = getScopeMapForOptions(items, options.weeks || [], viewType, viewMode, (option) => (
+    items.filter((item) => item.target_date >= option.start && item.target_date <= option.end)
+  ));
+  const monthly = getScopeMapForOptions(items, options.months || [], viewType, viewMode, (option) => (
+    items.filter((item) => item.target_date.startsWith(option.key))
+  ));
+  const weekdayWeeks = {};
+  const weekdayMonths = {};
+
+  (options.weeks || []).forEach((option) => {
+    const weekItems = items.filter((item) => item.target_date >= option.start && item.target_date <= option.end);
+    weekdayWeeks[option.key] = {
+      key: option.key,
+      label: `${formatDateLabel(option.start)}~${formatDateLabel(option.end)}`,
+      weekLabel: getWeekOfMonthLabel(option.end),
+      fullLabel: option.label,
+      buckets: summarizeWeekdayItems(weekItems, viewType),
+    };
+  });
+
+  (options.months || []).forEach((option) => {
+    const monthItems = items.filter((item) => item.target_date.startsWith(option.key));
+    weekdayMonths[option.key] = {
+      key: option.key,
+      label: option.label,
+      buckets: summarizeWeekdayItems(monthItems, viewType),
+    };
+  });
+
+  return {
+    daily,
+    weekly,
+    monthly,
+    total: buildScopeFromItems(items, viewType, viewMode),
+    timeline: buildAsanDashboardTimeline({ sourceItems: items, viewType, viewMode }),
+    weekday: {
+      weeks: weekdayWeeks,
+      months: weekdayMonths,
+    },
+  };
+}
+
+function buildBasisDiffCache(items = [], options = {}, viewType = 'integrated', modes = {}) {
+  const makeEntry = (kind, option, sourceItems) => {
+    const customerTotal = modes.customer?.[kind]?.[option.key]?.total || 0;
+    const dispatcherTotal = modes.dispatcher?.[kind]?.[option.key]?.total || 0;
+    return {
+      key: kind,
+      label: kind === 'daily' ? '일별' : (kind === 'weekly' ? '주별' : '월별'),
+      title: option.label || option.fullLabel || '',
+      selectedKey: option.key,
+      customerTotal,
+      dispatcherTotal,
+      diff: dispatcherTotal - customerTotal,
+      issues: buildBasisDiffIssues(sourceItems, viewType, 4),
+    };
+  };
+
+  const daily = {};
+  const weekly = {};
+  const monthly = {};
+  (options.dates || []).forEach((option) => {
+    daily[option.key] = makeEntry('daily', option, items.filter((item) => item.target_date === option.key));
+  });
+  (options.weeks || []).forEach((option) => {
+    weekly[option.key] = makeEntry('weekly', option, items.filter((item) => item.target_date >= option.start && item.target_date <= option.end));
+  });
+  (options.months || []).forEach((option) => {
+    monthly[option.key] = makeEntry('monthly', option, items.filter((item) => item.target_date.startsWith(option.key)));
+  });
+  return { daily, weekly, monthly };
+}
+
+export function buildAsanDashboardCachePayload({
+  sourceItems = [],
+  viewType = 'integrated',
+} = {}) {
+  const items = normalizeSourceItems(sourceItems);
+  const options = buildAsanDashboardPeriodOptions(items);
+  const modes = {
+    customer: buildModeDashboardCache(items, options, viewType, 'customer'),
+    dispatcher: buildModeDashboardCache(items, options, viewType, 'dispatcher'),
+  };
+
+  return {
+    version: 1,
+    viewType,
+    generatedAt: new Date().toISOString(),
+    options,
+    modes,
+    basisDiff: buildBasisDiffCache(items, options, viewType, modes),
+  };
+}
+
+export function buildAsanDashboardDataFromCache({
+  cachePayload = null,
+  fallbackRows = [],
+  fallbackHeaders = [],
+  viewType = 'integrated',
+  viewMode = 'customer',
+  activeDate = '',
+  selectedDay = '',
+  selectedWeek = '',
+  selectedMonth = '',
+} = {}) {
+  if (!cachePayload || cachePayload.version !== 1) return null;
+  const options = cachePayload.options || {};
+  const modeCache = cachePayload.modes?.[viewMode];
+  if (!modeCache) return null;
+
+  const latestDate = options.dates?.[options.dates.length - 1]?.key || '';
+  const dayKey = resolveOptionKey(options.dates || [], selectedDay || activeDate, activeDate || latestDate);
+  const currentWeekKey = findWeekOptionForDate(options.weeks || [], dayKey)?.key || options.weeks?.[options.weeks.length - 1]?.key || '';
+  const defaultWeekKey = pickPreviousOptionKey(options.weeks || [], currentWeekKey);
+  const weekKey = resolveOptionKey(options.weeks || [], selectedWeek, defaultWeekKey);
+  const currentMonthKey = dayKey ? dayKey.slice(0, 7) : options.months?.[options.months.length - 1]?.key || '';
+  const currentMonthOptionKey = resolveOptionKey(options.months || [], currentMonthKey, options.months?.[options.months.length - 1]?.key || '');
+  const defaultMonthKey = pickPreviousOptionKey(options.months || [], currentMonthOptionKey);
+  const monthKey = resolveOptionKey(options.months || [], selectedMonth, defaultMonthKey);
+  const fallbackScope = buildAsanDashboardScope({
+    rows: fallbackRows,
+    headers: fallbackHeaders,
+    viewType,
+    viewMode,
+  });
+  const dailyScope = modeCache.daily?.[dayKey] || fallbackScope;
+  const weekScope = modeCache.weekly?.[weekKey] || createScope();
+  const monthScope = modeCache.monthly?.[monthKey] || createScope();
+  const totalScope = modeCache.total || createScope();
+  const dayOption = (options.dates || []).find((option) => option.key === dayKey);
+  const weekOption = (options.weeks || []).find((option) => option.key === weekKey);
+  const monthOption = (options.months || []).find((option) => option.key === monthKey);
+  const basisDaily = cachePayload.basisDiff?.daily?.[dayKey] || null;
+  const basisWeekly = cachePayload.basisDiff?.weekly?.[weekKey] || null;
+  const basisMonthly = cachePayload.basisDiff?.monthly?.[monthKey] || null;
+
+  return {
+    activeScope: dailyScope,
+    periods: [
+      {
+        key: 'daily',
+        label: '일별',
+        title: dayOption?.label || '선택일',
+        selectedKey: dayKey,
+        options: options.dates || [],
+        scope: dailyScope,
+        previousScope: getCachedPreviousScope(modeCache.daily, options.dates || [], dayKey),
+      },
+      {
+        key: 'weekly',
+        label: '주별',
+        title: weekOption?.label || '해당주',
+        selectedKey: weekKey,
+        options: options.weeks || [],
+        scope: weekScope,
+        previousScope: getCachedPreviousScope(modeCache.weekly, options.weeks || [], weekKey),
+      },
+      {
+        key: 'monthly',
+        label: '월별',
+        title: monthOption?.label || '해당월',
+        selectedKey: monthKey,
+        options: options.months || [],
+        scope: monthScope,
+        previousScope: getCachedPreviousScope(modeCache.monthly, options.months || [], monthKey),
+      },
+      {
+        key: 'total',
+        label: '전체',
+        title: `${options.dates?.length || 0}일`,
+        selectedKey: 'all',
+        options: [],
+        scope: totalScope,
+        previousScope: null,
+      },
+    ],
+    periodOptions: options,
+    timeline: modeCache.timeline || [],
+    weekdayComparison: {
+      week: modeCache.weekday?.weeks?.[weekKey] || getEmptyWeekdayComparison(weekKey, monthKey).week,
+      month: modeCache.weekday?.months?.[monthKey] || getEmptyWeekdayComparison(weekKey, monthKey).month,
+    },
+    basisDiff: {
+      periods: [
+        basisDaily || { key: 'daily', label: '일별', title: dayOption?.label || '', selectedKey: dayKey, customerTotal: 0, dispatcherTotal: 0, diff: 0 },
+        basisWeekly || { key: 'weekly', label: '주별', title: weekOption?.label || '', selectedKey: weekKey, customerTotal: 0, dispatcherTotal: 0, diff: 0 },
+        basisMonthly || { key: 'monthly', label: '월별', title: monthOption?.label || '', selectedKey: monthKey, customerTotal: 0, dispatcherTotal: 0, diff: 0 },
+      ],
+      issueGroups: {
+        daily: basisDaily?.issues || [],
+        weekly: basisWeekly?.issues || [],
+        monthly: basisMonthly?.issues || [],
+      },
+      issues: basisDaily?.issues || [],
+    },
+  };
+}
+
 export function toSortedChartEntries(chartAgg = {}, limit = 0) {
   const entries = Object.entries(chartAgg || {})
     .map(([name, item]) => ({

@@ -97,6 +97,11 @@ def _env_int(name, default, minimum=0):
 ASAN_DISPATCH_SYNC_POLL_SECONDS = _env_int("ASAN_DISPATCH_SYNC_POLL_SECONDS", 60, 15)
 ASAN_DISPATCH_SYNC_QUIET_SECONDS = _env_int("ASAN_DISPATCH_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_DISPATCH_SYNC_RETRY_SECONDS = _env_int("ASAN_DISPATCH_SYNC_RETRY_SECONDS", 60, 10)
+ASAN_DISPATCH_DASHBOARD_CACHE_URL = os.environ.get(
+    "ASAN_DISPATCH_DASHBOARD_CACHE_URL",
+    "https://elssolution.com/api/branches/asan/dispatch/dashboard",
+)
+ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS = _env_int("ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS", 180, 30)
 ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
@@ -120,6 +125,27 @@ shipping_sync_gate = StableFileSyncGate(
 )
 
 register_asan_performance_routes(app, supabase, KST)
+
+def _refresh_asan_dispatch_dashboard_cache_async(reason="dispatch-sync"):
+    if not ASAN_DISPATCH_DASHBOARD_CACHE_URL or not SUPABASE_KEY:
+        return
+
+    def runner():
+        try:
+            response = requests.post(
+                ASAN_DISPATCH_DASHBOARD_CACHE_URL,
+                json={"type": "all", "reason": reason},
+                headers={"Authorization": f"Bearer {SUPABASE_KEY}"},
+                timeout=ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS,
+            )
+            if response.status_code >= 400:
+                app.logger.warning(
+                    f"[배차현황캐시] 프리워밍 실패 status={response.status_code} reason={reason}"
+                )
+        except Exception as exc:
+            app.logger.warning(f"[배차현황캐시] 프리워밍 오류 reason={reason}: {exc}")
+
+    threading.Thread(target=runner, daemon=True).start()
 
 # --- 전역 에러 핸들러 ---
 @app.errorhandler(Exception)
@@ -247,6 +273,7 @@ def sync_asan_dispatch_python(force=False):
     """나스 엑셀 파일을 읽어 Supabase를 업데이트하는 Python 버전 로직"""
     global last_mtime_cache, last_file_signature_cache
     if not supabase: return
+    dashboard_cache_refresh_needed = False
     try:
         if force:
             app.logger.info("[자동동기화] 아산 배차판 수동 동기화 시작...")
@@ -472,6 +499,7 @@ def sync_asan_dispatch_python(force=False):
                             "updated_at": now.isoformat()
                         })
                         sync_count += 1
+                        dashboard_cache_refresh_needed = True
                         app.logger.info(f"[자동동기화] {dtype} - {target_date} 완료 ({len(rows)}건)")
                     
                     # 매 시트 처리 후 메모리 강제 해제
@@ -519,6 +547,9 @@ def sync_asan_dispatch_python(force=False):
                 
     except Exception as e:
         app.logger.error(f"[자동동기화] 치명적 오류: {e}")
+    finally:
+        if dashboard_cache_refresh_needed:
+            _refresh_asan_dispatch_dashboard_cache_async("dispatch-legacy-sync")
 
 def asan_sync_scheduler():
     """배경에서 시간을 체크하여 동기화를 수행하는 스레드"""
