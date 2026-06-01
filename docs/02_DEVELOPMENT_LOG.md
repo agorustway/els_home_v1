@@ -1,3 +1,21 @@
+## [2026-06-01] 상세/변동 엑셀 시간 HHMM 출력 (v5.14.320)
+### 원인
+- GLAPS 업로드 검수 시 `시간`/`배차요청시간`이 `08:00` 같은 시간 서식으로 보이면 업로드 처리에서 기대값과 달라질 수 있었습니다.
+- 상세배차내역과 배차변동내역은 화면에서는 `08:00`으로 보되, 엑셀 다운로드에서는 GLAPS 입력용 `0800` 텍스트가 필요했습니다.
+### 조치
+- 인트라넷 엑셀 공통 유틸에 `timeFormat: 'compact'` 옵션을 추가했습니다.
+- 상세배차/배차변동 현재화면 다운로드와 추가 `GLAPS_업로드` 시트에만 compact 시간 형식을 적용했습니다.
+- `배차요청일자`는 텍스트로 유지하고, `배차요청시간`은 시간 변환 대상에 포함해 `0800/1300`으로 출력합니다.
+### 검증
+- `node --test tests/intranetExcelExport.test.mjs tests/asanDashboardView.test.mjs`: 43개 통과.
+### 변경 파일
+- `web/utils/intranetExcelExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/intranetExcelExport.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] GLAPS 운송경로 코드 역매핑/쉼표 후보 보강 (v5.14.319)
 ### 원인
 - `KRINF`처럼 GLAPS 위치코드를 직접 입력해도 화면 편집 로직이 코드에서 표준 장소명을 역변환하지 않아 운송경로명이 자동으로 채워지지 않았습니다.

@@ -84,6 +84,10 @@ export function isIntranetTimeHeader(header) {
   return DEFAULT_TIME_HEADERS.has(normalizeExcelHeader(header));
 }
 
+function normalizeIntranetTimeFormat(value) {
+  return cleanExcelText(value).toLowerCase() === 'compact' ? 'compact' : 'colon';
+}
+
 function parseIntranetExcelTimeParts(value) {
   const text = cleanExcelText(value).replace(/\s+/g, '');
   const match = text.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
@@ -94,10 +98,12 @@ function parseIntranetExcelTimeParts(value) {
   return { hour, minute };
 }
 
-export function toIntranetExcelTimeText(value) {
+export function toIntranetExcelTimeText(value, options = {}) {
   const parts = parseIntranetExcelTimeParts(value);
   if (!parts) return cleanExcelText(value);
-  return `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
+  const hour = String(parts.hour).padStart(2, '0');
+  const minute = String(parts.minute).padStart(2, '0');
+  return normalizeIntranetTimeFormat(options.timeFormat) === 'compact' ? `${hour}${minute}` : `${hour}:${minute}`;
 }
 
 export function toIntranetExcelTimeValue(value) {
@@ -107,11 +113,11 @@ export function toIntranetExcelTimeValue(value) {
   return (hour * 60 + minute) / 1440;
 }
 
-export function toIntranetExcelValue(header, value, numericHeaders = [], textHeaders = []) {
+export function toIntranetExcelValue(header, value, numericHeaders = [], textHeaders = [], options = {}) {
   if (typeof value === 'number' && !Number.isFinite(value)) return '';
   const text = cleanExcelText(value);
   if (isIntranetTextHeader(header, textHeaders)) return text;
-  if (isIntranetTimeHeader(header)) return toIntranetExcelTimeText(text);
+  if (isIntranetTimeHeader(header)) return toIntranetExcelTimeText(text, { timeFormat: options.timeFormat });
   if (typeof value === 'number') return value;
   if (!isIntranetNumericHeader(header, numericHeaders)) return text;
   const normalized = text.replace(/,/g, '');
@@ -128,9 +134,10 @@ export function normalizeIntranetExcelRows(headers = [], rows = [], options = {}
   const textHeaders = options.textHeaders instanceof Set
     ? options.textHeaders
     : createTextHeaderSet(options.textHeaders || []);
+  const timeFormat = normalizeIntranetTimeFormat(options.timeFormat);
   return (Array.isArray(rows) ? rows : []).slice(0, maxRows).map(row => {
     const values = Array.isArray(row) ? row : [];
-    return headers.map((header, idx) => toIntranetExcelValue(header, values[idx], numericHeaders, textHeaders));
+    return headers.map((header, idx) => toIntranetExcelValue(header, values[idx], numericHeaders, textHeaders, { timeFormat }));
   });
 }
 
@@ -142,6 +149,7 @@ export function normalizeIntranetExportSheet(input = {}, options = {}) {
   const textHeaders = options.textHeaders instanceof Set
     ? options.textHeaders
     : createTextHeaderSet([...(options.textHeaders || []), ...(input.textHeaders || [])]);
+  const timeFormat = normalizeIntranetTimeFormat(input.timeFormat || options.timeFormat);
   return {
     title: cleanExcelText(input.title),
     generatedAt: cleanExcelText(input.generatedAt),
@@ -151,9 +159,11 @@ export function normalizeIntranetExportSheet(input = {}, options = {}) {
       maxRows: options.maxRows,
       numericHeaders,
       textHeaders,
+      timeFormat,
     }),
     numericHeaders,
     textHeaders,
+    timeFormat,
   };
 }
 

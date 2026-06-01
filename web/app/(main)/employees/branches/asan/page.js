@@ -2142,7 +2142,7 @@ function AsanDispatchContent() {
         return () => clearInterval(iv);
     }, [activeItem?.file_modified_at, isAllTab, data]);
 
-    const downloadCurrentScreenWorkbook = async ({ title, sheetName, fileName, headers: exportHeaders, rows, extraSheets = [] }) => {
+    const downloadCurrentScreenWorkbook = async ({ title, sheetName, fileName, headers: exportHeaders, rows, extraSheets = [], timeFormat }) => {
         if (!exportHeaders?.length) return;
         const response = await fetch('/api/branches/asan/export/view', {
             method: 'POST',
@@ -2154,6 +2154,7 @@ function AsanDispatchContent() {
                 headers: exportHeaders,
                 rows,
                 extraSheets,
+                timeFormat,
                 generatedAt: `다운로드 ${fmtShortTs(new Date().toISOString())} / ${rows.length.toLocaleString()}건`,
             }),
         });
@@ -2196,11 +2197,13 @@ function AsanDispatchContent() {
                     fileName: `아산_${baseName}_${detailModeName}_${datePart}.xlsx`,
                     headers: exportHeaders,
                     rows: exportRows,
+                    timeFormat: 'compact',
                     extraSheets: [{
                         sheetName: GLAPS_UPLOAD_SHEET_NAME,
                         headers: GLAPS_UPLOAD_HEADERS,
                         rows: glapsUploadRows,
-                        textHeaders: ['배차요청일자', '배차요청시간'],
+                        textHeaders: ['배차요청일자'],
+                        timeFormat: 'compact',
                     }],
                 });
                 return;

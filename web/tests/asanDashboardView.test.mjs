@@ -866,7 +866,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /GLAPS_UPLOAD_HEADERS/);
   assert.match(source, /GLAPS_UPLOAD_SHEET_NAME/);
   assert.match(source, /extraSheets: \[\{/);
-  assert.match(source, /textHeaders: \['배차요청일자', '배차요청시간'\]/);
+  assert.match(source, /timeFormat: 'compact'/);
+  assert.match(source, /textHeaders: \['배차요청일자'\]/);
   assert.match(source, /mainView === 'detail' \? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS/);
   assert.match(source, /detailRowsForDisplay\.map\(detailDisplayRowToExportRow\)/);
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
