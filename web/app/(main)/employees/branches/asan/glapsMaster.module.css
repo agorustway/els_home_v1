@@ -533,6 +533,42 @@
     white-space: nowrap;
 }
 
+.table th.routeCodeCell,
+.table td.routeCodeCell {
+    width: 86px;
+    min-width: 78px;
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table th.routeTextCell,
+.table td.routeTextCell {
+    width: 170px;
+    min-width: 130px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table th.routeKeyCell,
+.table td.routeKeyCell {
+    width: 260px;
+    min-width: 210px;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table th.routeNameCell,
+.table td.routeNameCell {
+    width: 260px;
+    min-width: 210px;
+    max-width: 360px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .filterRow th {
     top: 26px;
     z-index: 2;

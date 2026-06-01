@@ -28,6 +28,14 @@ const ALIAS_TYPE_OPTIONS = [
     ['generic', '기타'],
 ];
 
+const SPECIAL_RULE_TYPE_OPTIONS = [
+    ['consignee', '컨샤이니'],
+    ['shipper_code', '화주사코드'],
+    ['start_location', '상차지'],
+];
+
+const SPECIAL_RULE_TYPE_LABELS = Object.fromEntries(SPECIAL_RULE_TYPE_OPTIONS);
+
 const ROUTE_BULK_FIELD_OPTIONS = [
     { field: 'reviewStatus', label: '상태', type: 'reviewStatus' },
     { field: 'shipperCode', label: '화주사코드', type: 'text' },
@@ -82,10 +90,12 @@ const EMPTY_ALIAS_EDITOR = {
 };
 
 const EMPTY_SPECIAL_RULE_EDITOR = {
+    ruleType: 'consignee',
     shipperCode: '',
     waypointName: '',
     waypointElsName: '',
     consigneeCode: '',
+    startLocationName: '',
     priority: '100',
     reviewNote: '',
 };
@@ -122,13 +132,14 @@ function routeValue(row = {}, snakeKey, camelKey = snakeKey) {
 }
 
 function routeMatchKey(row) {
+    const waypointCode = getGlapsRouteWaypointCode(row);
     return [
         getGlapsRouteShipperCode(row),
         routeValue(row, 'start_location_name', 'startLocationName'),
-        routeValue(row, 'waypoint_els_name', 'waypointElsName') || routeValue(row, 'waypoint_name', 'waypointName'),
+        waypointCode,
         routeValue(row, 'destination_name', 'destinationName'),
     ]
-        .filter(Boolean)
+        .map(value => tableText(value).trim() || '-')
         .join(' → ');
 }
 
@@ -158,6 +169,25 @@ function compareTableValues(a, b) {
 
 function buildDuplicateInfo(activeTable, rows = []) {
     return buildGlapsDuplicateInfo(activeTable, rows);
+}
+
+function specialRuleType(row = {}) {
+    const explicit = String(row.rule_type || row.ruleType || '').trim();
+    if (SPECIAL_RULE_TYPE_LABELS[explicit]) return explicit;
+    if (String(row.start_location_name || row.startLocationName || '').trim()) return 'start_location';
+    if (String(row.consignee_code || row.consigneeCode || '').trim()) return 'consignee';
+    return 'shipper_code';
+}
+
+function specialRuleTypeLabel(row = {}) {
+    return SPECIAL_RULE_TYPE_LABELS[specialRuleType(row)] || specialRuleType(row);
+}
+
+function specialRuleValue(row = {}) {
+    const type = specialRuleType(row);
+    if (type === 'start_location') return row.start_location_name || row.startLocationName || '';
+    if (type === 'consignee') return row.consignee_code || row.consigneeCode || '';
+    return row.shipper_code || row.shipperCode || '';
 }
 
 function routeToEditorValues(row = {}) {
@@ -190,10 +220,12 @@ function aliasToEditorValues(row = {}) {
 
 function specialRuleToEditorValues(row = {}) {
     return {
+        ruleType: specialRuleType(row),
         shipperCode: row.shipper_code || '',
         waypointName: row.waypoint_name || '',
         waypointElsName: row.waypoint_els_name || '',
         consigneeCode: row.consignee_code || '',
+        startLocationName: row.start_location_name || '',
         priority: String(row.priority || 100),
         reviewNote: row.review_note || '',
     };
@@ -578,14 +610,14 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     ),
                 },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
-                { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: styles.keyCell },
-                { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
-                { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
-                { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: styles.keyCell },
-                { key: 'destination_name', label: '하차지', value: row => row.destination_name },
-                { key: 'route_key', label: '연결키', value: routeMatchKey },
-                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
-                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.keyCell },
+                { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'start_location_name', label: '상차지', value: row => row.start_location_name, className: styles.routeCodeCell },
+                { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name, className: styles.routeTextCell },
+                { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'destination_name', label: '하차지', value: row => row.destination_name, className: styles.routeCodeCell },
+                { key: 'route_key', label: '연결키', value: routeMatchKey, className: styles.routeKeyCell },
+                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: `${styles.protectedCell} ${styles.routeNameCell}` },
+                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: `${styles.keyCell} ${styles.routeCodeCell}` },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
@@ -646,11 +678,11 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (activeTable === 'specialRules') {
             return [
-                { key: 'rule_type', label: '적용항목', value: row => (row.consignee_code ? '컨샤이니' : '화주사코드') },
+                { key: 'rule_type', label: '적용항목', value: specialRuleTypeLabel },
                 { key: 'shipper_code', label: '화주사코드', value: row => row.shipper_code, className: styles.keyCell },
                 { key: 'waypoint_name', label: '경유지(GLAPS)', value: row => row.waypoint_name || '(해당 화주사 기본)' },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || '' },
-                { key: 'consignee_code', label: '컨샤이니 우선코드', value: row => row.consignee_code, className: styles.keyCell },
+                { key: 'special_value', label: '적용값', value: specialRuleValue, className: styles.keyCell },
                 { key: 'priority', label: '우선순위', value: row => row.priority ?? 100 },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
@@ -835,10 +867,12 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (editor?.mode === 'specialRules') {
             return ({
+                rule_type: 'ruleType',
                 shipper_code: 'shipperCode',
                 waypoint_name: 'waypointName',
                 waypoint_els_name: 'waypointElsName',
                 consignee_code: 'consigneeCode',
+                start_location_name: 'startLocationName',
                 priority: 'priority',
                 review_note: 'reviewNote',
             })[columnKey] || '';
@@ -869,6 +903,21 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 destination_name: editor.values.destinationName,
             });
         }
+        if (column.key === 'special_value' && editor?.mode === 'specialRules') {
+            const type = editor.values.ruleType;
+            const field = type === 'start_location' ? 'startLocationName' : (type === 'consignee' ? 'consigneeCode' : 'shipperCode');
+            return (
+                <input
+                    className={styles.inlineEditInput}
+                    value={editor.values[field] || ''}
+                    onChange={(event) => updateEditorValue(field, event.target.value)}
+                    onKeyDown={handleInlineEditorKeyDown}
+                    autoFocus={autoFocus}
+                    disabled={saving}
+                    aria-label={column.label}
+                />
+            );
+        }
         const field = inlineEditorFieldForColumn(column.key);
         if (!field) return '';
         if (field === 'reviewStatus') {
@@ -898,6 +947,21 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     aria-label="매핑항목"
                 >
                     {ALIAS_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+            );
+        }
+        if (field === 'ruleType') {
+            return (
+                <select
+                    className={styles.inlineEditInput}
+                    value={editor.values.ruleType}
+                    onChange={(event) => updateEditorValue('ruleType', event.target.value)}
+                    onKeyDown={handleInlineEditorKeyDown}
+                    autoFocus={autoFocus}
+                    disabled={saving}
+                    aria-label="특이적용 항목"
+                >
+                    {SPECIAL_RULE_TYPE_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
             );
         }
@@ -1029,7 +1093,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.fieldGuide}>
                 <span><b>매핑항목</b> 수출입코드·포트·선사·실출하지코드·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
                 <span><b>검수메모</b> 출처·참고용 메모입니다. 기존 기타 행은 검수메모가 항목을 말하면 매핑항목으로 승격됩니다.</span>
-                <span><b>특이적용건</b> 컨샤이니 우선코드가 있으면 컨샤이니를 먼저 적용하고, 비어 있으면 경유지(GLAPS/ELS) 기준으로 화주사코드를 보정합니다.</span>
+                <span><b>특이적용건</b> 컨샤이니·화주사코드·상차지 예외를 경유지(GLAPS/ELS) 기준으로 우선 적용합니다.</span>
             </div>
 
             <div className={styles.toolbar}>
@@ -1172,7 +1236,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                                     const sorted = activeSort.key === column.key;
                                     const sortLabel = sorted ? (activeSort.direction === 'desc' ? '↓' : '↑') : '↕';
                                     return (
-                                        <th key={column.key}>
+                                        <th key={column.key} className={column.className || ''}>
                                             {column.sortable === false ? (
                                                 <span>{column.label}</span>
                                             ) : (

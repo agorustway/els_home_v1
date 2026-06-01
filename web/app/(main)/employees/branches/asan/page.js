@@ -179,6 +179,11 @@ const DETAIL_LEGACY_DG_RF_OVERRIDE_FIELD_KEY = 'dg_rf';
 const DETAIL_MANUAL_START_REGIONS = new Set(['기타/철송', '기타', '아산', '중부']);
 const BKG_CONFIRM_SOURCE_OPTIONS = Object.freeze(['BKG1', 'BKG2', 'BKG3']);
 const DETAIL_SOURCE_MEMO_HEADERS = Object.freeze(['BKG1', 'BKG2', 'BKG3', 'TARGET VESSEL', '비고']);
+const GLAPS_SPECIAL_RULE_TYPES = Object.freeze({
+    CONSIGNEE: 'consignee',
+    SHIPPER_CODE: 'shipper_code',
+    START_LOCATION: 'start_location',
+});
 const BKG_WEB_CELL_LOCK_FIELDS = new Set([
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG2,
@@ -651,6 +656,12 @@ function isDetailMemoHeaderHighlighted(line = {}, header = '') {
     }
     return true;
 }
+function getDetailMemoCellClass(line = {}, header = '') {
+    if (!isDetailMemoHeaderHighlighted(line, header)) return '';
+    return BKG_CONFIRM_SOURCE_OPTIONS.includes(header)
+        ? styles.detailBkgMemoDiffCell
+        : styles.detailMemoDiffCell;
+}
 function isDetailBkgConfirmStale(line = {}) {
     const source = line.confirmedBkgSource || '';
     if (!BKG_CONFIRM_SOURCE_OPTIONS.includes(source)) return false;
@@ -889,7 +900,7 @@ function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypoi
     if (!normalizedShipper) return '';
     const requestedWaypointKeys = new Set([waypointName, waypointElsName].map(normalizeGlapsKey).filter(Boolean));
     const candidates = (rules || [])
-        .filter(rule => rule?.active !== false && rule?.consignee_code)
+        .filter(rule => rule?.active !== false && getGlapsSpecialRuleType(rule) === GLAPS_SPECIAL_RULE_TYPES.CONSIGNEE && rule?.consignee_code)
         .map(rule => ({
             rule,
             shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
@@ -908,11 +919,18 @@ function resolveGlapsSpecialConsigneeCode(rules = [], { shipperCode = '', waypoi
         ));
     return String(candidates[0]?.rule?.consignee_code || '').trim();
 }
+function getGlapsSpecialRuleType(rule = {}) {
+    const explicit = String(rule.rule_type || rule.ruleType || '').trim();
+    if (Object.values(GLAPS_SPECIAL_RULE_TYPES).includes(explicit)) return explicit;
+    if (String(rule.start_location_name || rule.startLocationName || '').trim()) return GLAPS_SPECIAL_RULE_TYPES.START_LOCATION;
+    if (String(rule.consignee_code || rule.consigneeCode || '').trim()) return GLAPS_SPECIAL_RULE_TYPES.CONSIGNEE;
+    return GLAPS_SPECIAL_RULE_TYPES.SHIPPER_CODE;
+}
 function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypointElsName = '', shipperName = '' } = {}) {
     const requestedMatchKeys = new Set([waypointName, waypointElsName, shipperName].map(normalizeGlapsKey).filter(Boolean));
     if (requestedMatchKeys.size === 0) return '';
     const candidates = (rules || [])
-        .filter(rule => rule?.active !== false && !String(rule?.consignee_code || rule?.consigneeCode || '').trim())
+        .filter(rule => rule?.active !== false && getGlapsSpecialRuleType(rule) === GLAPS_SPECIAL_RULE_TYPES.SHIPPER_CODE)
         .map(rule => ({
             rule,
             shipperCode: String(rule.shipper_code || rule.shipperCode || '').trim(),
@@ -929,6 +947,36 @@ function resolveGlapsSpecialShipperCode(rules = [], { waypointName = '', waypoin
             || String(a.shipperCode).localeCompare(String(b.shipperCode))
         ));
     return candidates[0]?.shipperCode || '';
+}
+function resolveGlapsSpecialStartLocation(rules = [], {
+    shipperCode = '',
+    waypointName = '',
+    waypointElsName = '',
+    shipperName = '',
+} = {}) {
+    const normalizedShipper = normalizeGlapsKey(shipperCode);
+    const requestedMatchKeys = new Set([waypointName, waypointElsName, shipperName].map(normalizeGlapsKey).filter(Boolean));
+    if (!normalizedShipper) return '';
+    const candidates = (rules || [])
+        .filter(rule => rule?.active !== false && getGlapsSpecialRuleType(rule) === GLAPS_SPECIAL_RULE_TYPES.START_LOCATION)
+        .map(rule => ({
+            rule,
+            shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
+            startLocationName: String(rule.start_location_name || rule.startLocationName || '').trim(),
+            waypointKeys: [
+                rule.waypoint_name || rule.waypointName,
+                rule.waypoint_els_name || rule.waypointElsName,
+            ].map(normalizeGlapsKey).filter(Boolean),
+            priority: Number(rule.priority ?? 100) || 100,
+        }))
+        .filter(item => item.shipperKey === normalizedShipper && item.startLocationName)
+        .filter(item => item.waypointKeys.length === 0 || item.waypointKeys.some(key => requestedMatchKeys.has(key)))
+        .sort((a, b) => (
+            Number(b.waypointKeys.length > 0) - Number(a.waypointKeys.length > 0)
+            || a.priority - b.priority
+            || String(a.startLocationName).localeCompare(String(b.startLocationName))
+        ));
+    return candidates[0]?.startLocationName || '';
 }
 function setGlapsCodeMapValue(map, source, code) {
     const key = normalizeGlapsKey(source);
@@ -2276,7 +2324,7 @@ function AsanDispatchContent() {
         const snapshotValues = Array.isArray(options.snapshotValues) ? options.snapshotValues : [];
         const snapshotConfirmedBkg = getDetailRowValue(snapshotValues, 'BKG확정');
         const snapshotBkgSource = snapshotConfirmedBkg ? inferBkgSourceFromDetailValues(snapshotValues) : '';
-        const startLocation = startOverride
+        const sourceStartLocation = startOverride
             ? startOverride.value || ''
             : (
                 Object.prototype.hasOwnProperty.call(options, 'startLocation')
@@ -2290,6 +2338,13 @@ function AsanDispatchContent() {
             shipperName: line.shipper,
         });
         const lineShipperCode = specialShipperCode || getGlapsAliasCode(glapsShipperCodeMap, line.shipper);
+        const specialStartLocation = startOverride ? '' : resolveGlapsSpecialStartLocation(glapsSpecialConsigneeRules, {
+            shipperCode: lineShipperCode,
+            waypointName: line.workplace,
+            waypointElsName: line.workplace,
+            shipperName: line.shipper,
+        });
+        const startLocation = specialStartLocation || sourceStartLocation;
         const routeKeys = buildGlapsDispatchRouteFingerprintsWithAliasMaps({
             shipperCode: lineShipperCode,
             startLocationName: startLocation,
@@ -3649,7 +3704,7 @@ function AsanDispatchContent() {
                                         return (
                                             <tr key={lineKey} className={`${line.lineNo % 2 === 0 ? styles.evenRow : styles.oddRow} ${!line.startLocation ? styles.detailManualRow : ''} ${detailConfirmationLocked ? styles.detailLockedRow : ''} ${changeEvent ? styles.detailChangedRow : ''}`}>
                                                 {DISPATCH_DETAIL_HEADERS.map((header, colIdx) => {
-                                                    const memoCellClass = isDetailMemoHeaderHighlighted(line, header) ? styles.detailMemoDiffCell : '';
+                                                    const memoCellClass = getDetailMemoCellClass(line, header);
                                                     const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
                                                     if (header === '상차지') {
                                                         const postConfirmClass = line.startLocationUpdatedAt ? styles.detailPostConfirmOverrideCell : '';
@@ -3934,7 +3989,7 @@ function AsanDispatchContent() {
                                                         const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
-                                                        const memoCellClass = isDetailValue && isDetailMemoHeaderHighlighted(line, header) ? styles.detailMemoDiffCell : '';
+                                                        const memoCellClass = isDetailValue ? getDetailMemoCellClass(line, header) : '';
                                                         const memoTooltip = memoCellClass ? buildDetailMemoTooltip(line, header) : '';
                                                         const changedCellClass = isDetailValue && changedHeaderSet?.has(header) ? styles.detailChangeDiffCell : memoCellClass;
                                                         if (isDetailValue && header === '상차지') {
@@ -4089,7 +4144,7 @@ function AsanDispatchContent() {
                                                                                 onClick={() => saveDetailChangeValues(event, rawValues)}
                                                                                 disabled={detailChangeSaving}
                                                                             >
-                                                                                {hasManualDraft ? '저장' : '계산값반영'}
+                                                                                {hasManualDraft ? '저장' : '현재값저장'}
                                                                             </button>
                                                                         )}
                                                                         {event.event_status !== 'confirmed' ? (

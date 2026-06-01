@@ -148,10 +148,12 @@ CREATE TABLE IF NOT EXISTS public.glaps_master_sheet_rows (
 CREATE TABLE IF NOT EXISTS public.glaps_special_consignee_rules (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     branch_id TEXT NOT NULL DEFAULT 'asan',
+    rule_type TEXT NOT NULL DEFAULT 'consignee',
     shipper_code TEXT NOT NULL DEFAULT '',
     waypoint_name TEXT NOT NULL DEFAULT '',
     waypoint_els_name TEXT NOT NULL DEFAULT '',
     consignee_code TEXT NOT NULL DEFAULT '',
+    start_location_name TEXT NOT NULL DEFAULT '',
     priority INTEGER NOT NULL DEFAULT 100,
     review_note TEXT NOT NULL DEFAULT '',
     active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -162,15 +164,27 @@ CREATE TABLE IF NOT EXISTS public.glaps_special_consignee_rules (
 );
 
 ALTER TABLE public.glaps_special_consignee_rules
-    ADD COLUMN IF NOT EXISTS waypoint_els_name TEXT NOT NULL DEFAULT '';
+    ADD COLUMN IF NOT EXISTS waypoint_els_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS rule_type TEXT NOT NULL DEFAULT 'consignee',
+    ADD COLUMN IF NOT EXISTS start_location_name TEXT NOT NULL DEFAULT '';
+
+UPDATE public.glaps_special_consignee_rules
+SET rule_type = CASE
+    WHEN COALESCE(start_location_name, '') <> '' THEN 'start_location'
+    WHEN COALESCE(consignee_code, '') <> '' THEN 'consignee'
+    ELSE 'shipper_code'
+END
+WHERE COALESCE(rule_type, '') = ''
+   OR (rule_type = 'consignee' AND COALESCE(consignee_code, '') = '' AND COALESCE(start_location_name, '') = '');
 
 DROP INDEX IF EXISTS public.uniq_glaps_special_consignee_rules_active;
 CREATE UNIQUE INDEX uniq_glaps_special_consignee_rules_active
-    ON public.glaps_special_consignee_rules (branch_id, shipper_code, waypoint_name, waypoint_els_name)
+    ON public.glaps_special_consignee_rules (branch_id, rule_type, shipper_code, waypoint_name, waypoint_els_name)
     WHERE active;
 
-CREATE INDEX IF NOT EXISTS idx_glaps_special_consignee_rules_lookup
-    ON public.glaps_special_consignee_rules (branch_id, shipper_code, priority)
+DROP INDEX IF EXISTS public.idx_glaps_special_consignee_rules_lookup;
+CREATE INDEX idx_glaps_special_consignee_rules_lookup
+    ON public.glaps_special_consignee_rules (branch_id, rule_type, shipper_code, priority)
     WHERE active;
 
 ALTER TABLE public.glaps_master_versions
@@ -317,10 +331,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.glaps_special_consignee_rul
 
 INSERT INTO public.glaps_special_consignee_rules (
     branch_id,
+    rule_type,
     shipper_code,
     waypoint_name,
     waypoint_els_name,
     consignee_code,
+    start_location_name,
     priority,
     review_note,
     active,
@@ -328,14 +344,17 @@ INSERT INTO public.glaps_special_consignee_rules (
     updated_by
 )
 VALUES
-    ('asan', 'B000034432', '모비스 천안친환경물류센터', '모비스천안친환경물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '모비스 AS아산센터', '모비스아산수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '모비스 AS천안수출물류센터', '모비스천안(입장)수출물류센터', 'GA1588', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'N084', '', '현대제철', '', 10, '현대제철 경유지 화주사코드 우선적용', TRUE, 'system:seed', 'system:seed'),
-    ('asan', 'B000034432', '', '', 'MOBBEL', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
-ON CONFLICT (branch_id, shipper_code, waypoint_name, waypoint_els_name) WHERE active
+    ('asan', 'consignee', 'B000034432', '모비스 천안친환경물류센터', '모비스천안친환경물류센터', 'GA1588', '', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'consignee', 'B000034432', '모비스 AS아산센터', '모비스아산수출물류센터', 'GA1588', '', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'consignee', 'B000034432', '모비스 AS천안수출물류센터', '모비스천안(입장)수출물류센터', 'GA1588', '', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'shipper_code', 'N084', '', '현대제철', '', '', 10, '현대제철 경유지 화주사코드 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'start_location', 'N084', '', '현대제철', '', '부산신항', 10, '현대제철 컨테이너 상차지 부산신항 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'consignee', 'B000034432', '', '', 'MOBBEL', '', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
+ON CONFLICT (branch_id, rule_type, shipper_code, waypoint_name, waypoint_els_name) WHERE active
 DO UPDATE SET
+    rule_type = EXCLUDED.rule_type,
     consignee_code = EXCLUDED.consignee_code,
+    start_location_name = EXCLUDED.start_location_name,
     priority = EXCLUDED.priority,
     review_note = EXCLUDED.review_note,
     updated_by = EXCLUDED.updated_by,

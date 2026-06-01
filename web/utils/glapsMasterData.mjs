@@ -285,6 +285,13 @@ function isElsHeader(value) {
   return normalizeGlapsKey(value).includes('ELS');
 }
 
+function isRouteWaypointCodeHeader(value) {
+  const normalized = normalizeGlapsKey(value);
+  return GLAPS_ROUTE_WAYPOINT_CODE_KEYS
+    .map(normalizeGlapsKey)
+    .some(candidate => normalized === candidate || normalized.includes(candidate));
+}
+
 export function findGlapsHeaderIndex(headers = [], candidates = [], options = {}) {
   const normalizedHeaders = headers.map(normalizeGlapsKey);
   const normalizedCandidates = candidates.map(normalizeGlapsKey).filter(Boolean);
@@ -430,6 +437,7 @@ function withRouteShipperPayload(rawPayload = {}, shipperCode = '') {
 
 function withRouteWaypointCodePayload(rawPayload = {}, waypointCode = '') {
   const code = cleanGlapsText(waypointCode);
+  if (!code) return rawPayload;
   return {
     ...rawPayload,
     waypoint_code: code,
@@ -477,7 +485,7 @@ function buildRouteColumns(headers = []) {
     routeName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeName),
     startLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.startLocationName),
     waypointName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointName, {
-      predicate: (header) => !isElsHeader(header),
+      predicate: (header) => !isElsHeader(header) && !isRouteWaypointCodeHeader(header) && !normalizeGlapsKey(header).includes('주소'),
     }),
     waypointElsName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointElsName),
     waypointCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointCode),
@@ -503,9 +511,10 @@ export function parseGlapsRouteSheet(sheet = {}) {
 
     const inferred = inferGlapsRouteParts(routeName);
     const shipperCode = getRowValue(row, cols.shipperCode);
-    const waypointCode = getRowValue(row, cols.waypointCode);
+    const baseRawPayload = buildRawPayload(headers, row);
+    const waypointCode = getRowValue(row, cols.waypointCode) || getPayloadCandidateValue(baseRawPayload, GLAPS_ROUTE_WAYPOINT_CODE_KEYS);
     const rawPayload = withRouteWaypointCodePayload(
-      withRouteShipperPayload(buildRawPayload(headers, row), shipperCode),
+      withRouteShipperPayload(baseRawPayload, shipperCode),
       waypointCode,
     );
     const route = {

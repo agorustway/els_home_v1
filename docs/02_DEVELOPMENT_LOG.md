@@ -1,3 +1,65 @@
+## [2026-06-01] 배차변동 BKG 단독 변경 표시 정책 정리 (v5.14.312)
+### 원인
+- 배차확정 후 WEB에서 BKG1~3만 수정한 경우도 배차변동내역에 추가/삭제처럼 보이면 실제 수량 변동과 부킹 보정이 섞여 실무 판단이 어려웠습니다.
+- 변동내역의 `계산값반영` 버튼명은 현재 화면 계산값을 저장한다는 의미가 직관적으로 드러나지 않았습니다.
+### 조치
+- BKG확정/BKG1~3/TARGET VESSEL/비고/수정일시만 다른 add/delete 쌍은 배차변동 이벤트에서 제외하는 안전 필터를 추가했습니다.
+- BKG1~3 메모성 변경은 기존 빨간 표시와 분리해 해당 BKG 셀만 노란색으로 강조하도록 했습니다.
+- 변동내역 자동 계산 저장 버튼명을 `현재값저장`으로 바꿨습니다.
+### 검증
+- `node --test tests/asanDashboardView.test.mjs tests/glapsMasterData.test.mjs`: 52개 통과.
+- `npx eslint "utils/asanDispatchChangeEvents.mjs" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/change-events/route.js" "tests/asanDashboardView.test.mjs"`: 통과.
+- `npm run build`: 통과.
+- `git diff --check`: 통과.
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-01] GLAPS 운송경로 연결키 코드 기준 전환 (v5.14.311)
+### 원인
+- 운송경로 표의 `경유지코드`가 일부 원장 구조에서 빈값으로 덮이며, `연결키`도 경유지 설명명을 사용해 실제 GLAPS 코드 기준 검수와 어긋났습니다.
+### 조치
+- 운송경로 파서가 `경유지코드` 컬럼 인덱스를 못 잡아도 raw payload 후보에서 다시 복구하도록 했고, 빈값으로 원본 payload를 덮지 않게 했습니다.
+- `경유지` 설명 컬럼이 `경유지코드/경유지주소` 헤더를 잘못 잡지 않도록 헤더 판별을 보강했습니다.
+- GLAPS코드 운송경로 표의 `연결키`를 `화주사코드 → 상차지 → 경유지코드 → 하차지`로 바꾸고 관련 컬럼 폭을 줄였습니다.
+### 검증
+- `node --test tests/glapsMasterData.test.mjs tests/asanDashboardView.test.mjs`: 51개 통과.
+- `npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/glaps/master/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`, `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-01] GLAPS 특이적용 상차지 기본값 추가 (v5.14.310)
+### 원인
+- 현대제철 `N084`는 GLAPS 운송경로 매칭 시 원본 상차지가 의왕/인천으로 들어와도 컨테이너 작업 기준 상차지를 `부산신항`으로 기본 보정해야 합니다.
+- 향후 정책이 바뀔 수 있어 하드코딩이 아니라 GLAPS코드 화면의 `특이적용건`에서 추가/수정/삭제 가능한 구조가 필요했습니다.
+### 조치
+- 특이적용건 적용항목을 `컨샤이니`, `화주사코드`, `상차지`로 확장했습니다.
+- `N084 + 현대제철` 경유지 조건에 `상차지=부산신항` 기본 seed와 DB 마이그레이션을 추가했습니다.
+- 상세배차 GLAPS 계산은 수기 상차지 수정값이 있으면 이를 우선하고, 없을 때 특이적용 상차지를 적용하도록 했습니다.
+### 검증
+- `node --test tests/asanDashboardView.test.mjs tests/glapsMasterData.test.mjs`: 51개 통과.
+- `npx eslint "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "tests/asanDashboardView.test.mjs"`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`, `web/supabase_sql/20260601_glaps_special_start_location_rules.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] GLAPS 운송경로 경유지코드 상세배차 연결 (v5.14.309)
 ### 원인
 - GLAPS 마스터 엑셀 `운송경로` 시트에는 `경유지코드`가 있었지만, 웹은 이 값을 표면 컬럼으로 올리지 않아 상세배차 `작업지(하차지)코드`가 비어 보였습니다.

@@ -5,6 +5,7 @@ import {
     DISPATCH_CHANGE_SCHEMA_VERSION,
     diffDispatchChangeLines,
     diffDispatchMemoOnlyChanges,
+    filterMemoOnlyDispatchChangeEvents,
     filterNeutralizedDispatchChangeEvents,
     mergeDispatchMemoOnlyPayload,
     normalizeDispatchChangeLineRecord,
@@ -367,7 +368,10 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
     if (existingError) throw existingError;
 
     const existingByKey = new Map((existingRows || []).map(row => [row.event_key, row]));
-    const nextEvents = filterNeutralizedDispatchChangeEvents(rawNextEvents, {
+    const structuralEvents = filterMemoOnlyDispatchChangeEvents(rawNextEvents, {
+        isConfirmedEvent: event => existingByKey.get(event.eventKey)?.event_status === 'confirmed',
+    });
+    const nextEvents = filterNeutralizedDispatchChangeEvents(structuralEvents, {
         isConfirmedEvent: event => existingByKey.get(event.eventKey)?.event_status === 'confirmed',
     });
     const nextKeys = new Set(nextEvents.map(event => event.eventKey));

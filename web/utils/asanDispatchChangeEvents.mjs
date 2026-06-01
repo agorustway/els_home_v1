@@ -60,6 +60,10 @@ const MEMO_ONLY_HEADERS = new Set([
   '비고',
   '수정일시',
 ]);
+const NON_STRUCTURAL_CHANGE_HEADERS = new Set([
+  ...MEMO_ONLY_HEADERS,
+  'BKG확정',
+]);
 const AUTO_REFRESH_MEMO_HEADERS = Object.freeze([
   'BKG1',
   'BKG2',
@@ -235,6 +239,43 @@ export function filterNeutralizedDispatchChangeEvents(events = [], options = {})
       removeIndexes.add(freeAdds[idx].index);
       removeIndexes.add(freeDeletes[idx].index);
     }
+  });
+
+  if (removeIndexes.size === 0) return events;
+  return events.filter((_, index) => !removeIndexes.has(index));
+}
+
+function makeNonStructuralPairKey(event = {}) {
+  const headerMap = valuesByHeader(eventRowValues(event));
+  return makeKey(
+    DISPATCH_DETAIL_HEADERS
+      .filter(header => !NON_STRUCTURAL_CHANGE_HEADERS.has(header))
+      .map(header => headerMap[header] || ''),
+  );
+}
+
+export function filterMemoOnlyDispatchChangeEvents(events = [], options = {}) {
+  const isConfirmedEvent = typeof options.isConfirmedEvent === 'function'
+    ? options.isConfirmedEvent
+    : () => false;
+  const deletesByKey = new Map();
+  events.forEach((event, index) => {
+    if (event.changeType !== 'delete' || isConfirmedEvent(event)) return;
+    const key = makeNonStructuralPairKey(event);
+    if (!key) return;
+    if (!deletesByKey.has(key)) deletesByKey.set(key, []);
+    deletesByKey.get(key).push(index);
+  });
+
+  const removeIndexes = new Set();
+  events.forEach((event, index) => {
+    if (event.changeType !== 'add' || isConfirmedEvent(event)) return;
+    const key = makeNonStructuralPairKey(event);
+    const candidates = deletesByKey.get(key) || [];
+    const deleteIndex = candidates.find(candidateIndex => !removeIndexes.has(candidateIndex));
+    if (deleteIndex === undefined) return;
+    removeIndexes.add(index);
+    removeIndexes.add(deleteIndex);
   });
 
   if (removeIndexes.size === 0) return events;
