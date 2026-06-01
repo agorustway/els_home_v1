@@ -49,6 +49,27 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB
 
+def _is_missing_dispatch_count_column(error):
+    message = str(error).lower()
+    return "row_count" in message or "valid_row_count" in message
+
+def _upsert_branch_dispatch(payload):
+    try:
+        return supabase.from_("branch_dispatch").upsert(
+            payload,
+            on_conflict="branch_id,type,target_date",
+        ).execute()
+    except Exception as exc:
+        if not _is_missing_dispatch_count_column(exc):
+            raise
+        fallback = dict(payload)
+        fallback.pop("row_count", None)
+        fallback.pop("valid_row_count", None)
+        return supabase.from_("branch_dispatch").upsert(
+            fallback,
+            on_conflict="branch_id,type,target_date",
+        ).execute()
+
 ELSBOT_DIR = Path("/app/elsbot")
 # Local fallback if /app/elsbot doesn't exist (running on host)
 if not ELSBOT_DIR.exists():
@@ -438,16 +459,18 @@ def sync_asan_dispatch_python(force=False):
                     
                     if rows: 
                         # upsert로 변경하여 중복 데이터 방지
-                        supabase.from_("branch_dispatch").upsert({
+                        _upsert_branch_dispatch({
                             "branch_id": "asan",
                             "type": dtype,
                             "target_date": target_date,
                             "headers": headers,
                             "data": rows,
                             "comments": comments_dict,
+                            "row_count": len(rows),
+                            "valid_row_count": len(rows),
                             "file_modified_at": mtime,
                             "updated_at": now.isoformat()
-                        }, on_conflict="branch_id,type,target_date").execute()
+                        })
                         sync_count += 1
                         app.logger.info(f"[자동동기화] {dtype} - {target_date} 완료 ({len(rows)}건)")
                     

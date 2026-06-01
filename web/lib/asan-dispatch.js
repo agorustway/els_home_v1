@@ -130,6 +130,22 @@ function parseSheet(sheet, type) {
     return { headers, rows, comments };
 }
 
+function isMissingDispatchCountColumn(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('row_count') || message.includes('valid_row_count');
+}
+
+async function upsertDispatchSheet(supabase, payload) {
+    const upsertOptions = { onConflict: 'branch_id,type,target_date' };
+    const { error } = await supabase.from('branch_dispatch').upsert(payload, upsertOptions);
+    if (!error) return { error: null };
+    if (!isMissingDispatchCountColumn(error)) return { error };
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.row_count;
+    delete fallbackPayload.valid_row_count;
+    return supabase.from('branch_dispatch').upsert(fallbackPayload, upsertOptions);
+}
+
 /**
  * 메인 동기화 함수
  * NAS에서 엑셀 파일을 읽어서 Supabase에 저장
@@ -176,17 +192,17 @@ async function syncAsanDispatch() {
                 if (!parsed || parsed.rows.length === 0) continue;
 
                 // 파일에서 사라진 과거 시트는 마감 스냅샷으로 보존하고, 현재 파일 날짜만 갱신한다.
-                const { error: insErr } = await supabase.from('branch_dispatch').upsert({
+                const { error: insErr } = await upsertDispatchSheet(supabase, {
                     branch_id: 'asan',
                     type,
                     target_date: targetDate,
                     headers: parsed.headers,
                     data: parsed.rows,
                     comments: parsed.comments || {},
+                    row_count: parsed.rows.length,
+                    valid_row_count: parsed.rows.length,
                     file_modified_at: fileModifiedAt,
                     updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'branch_id,type,target_date'
                 });
 
                 if (insErr) console.error(`Upsert error (${sheet.name}):`, insErr.message);

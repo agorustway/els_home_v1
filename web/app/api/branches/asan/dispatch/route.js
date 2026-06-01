@@ -14,6 +14,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0; // [v5.10.22] 데이터 부정합 문제로 캐시 완전 비활성화 (정확성 우선)
 
 const DISPATCH_QUERY_MODES = new Set(['full', 'meta', 'date']);
+const DISPATCH_META_SELECT = 'id,branch_id,type,target_date,headers,file_modified_at,updated_at,row_count,valid_row_count';
+const DISPATCH_META_FALLBACK_SELECT = 'id,branch_id,type,target_date,headers,data,file_modified_at,updated_at';
 
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,7 +33,14 @@ function getDispatchQueryMode(value) {
     return DISPATCH_QUERY_MODES.has(mode) ? mode : 'full';
 }
 
+function dispatchCountColumnMissing(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return Boolean(error) && (message.includes('row_count') || message.includes('valid_row_count'));
+}
+
 function countValidDispatchRows(item = {}) {
+    const explicitCount = Number(item.valid_row_count ?? item.validRowCount ?? item.row_count);
+    if (Number.isFinite(explicitCount) && explicitCount >= 0) return explicitCount;
     return (item.data || []).filter(row => shouldIncludeDispatchRow(item.headers || [], row, item.type)).length;
 }
 
@@ -68,20 +77,26 @@ export async function GET(request) {
         return NextResponse.json({ error: 'date required' }, { status: 400 });
     }
 
-    let query = supabase
-        .from('branch_dispatch')
-        .select('*')
-        .eq('branch_id', 'asan')
-        .order('target_date', { ascending: true });
+    const buildQuery = (selectColumns) => {
+        let query = supabase
+            .from('branch_dispatch')
+            .select(selectColumns)
+            .eq('branch_id', 'asan')
+            .order('target_date', { ascending: true });
 
-    if (type !== 'integrated') {
-        query = query.eq('type', type);
-    }
-    if (mode === 'date') {
-        query = query.eq('target_date', targetDate);
-    }
+        if (type !== 'integrated') {
+            query = query.eq('type', type);
+        }
+        if (mode === 'date') {
+            query = query.eq('target_date', targetDate);
+        }
+        return query;
+    };
 
-    const { data, error } = await query;
+    let { data, error } = await buildQuery(mode === 'meta' ? DISPATCH_META_SELECT : '*');
+    if (mode === 'meta' && dispatchCountColumnMissing(error)) {
+        ({ data, error } = await buildQuery(DISPATCH_META_FALLBACK_SELECT));
+    }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const records = (data || []).map(normalizeDispatchRecordHeaders);

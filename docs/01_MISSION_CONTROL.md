@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.322 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.323 / APK v5.11.29)
 
-> 최신 업데이트: Vercel 사용량 증가 방지를 위해 middleware API 범위와 공개 페이지 auth 조회, 아산 주요 화면 백그라운드 폴링을 축소했다.
+> 최신 업데이트: 아산 배차판 첫 화면은 날짜 메타+선택일만 읽고, 전체 원장은 필요 시점에만 지연 조회하도록 줄였다. 운영 Supabase 행수 컬럼 migration 적용 완료.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.322
+- **웹 버전**: v5.14.323
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -12,8 +12,8 @@
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | API 대부분은 middleware 제외, 공개 페이지는 auth 조회 생략, 백그라운드 탭 자동 폴링 방지 |
-| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 내부 데이터 API는 인증 확인 후 service role 경유 |
+| Next.js 웹 | 정상 | 아산 배차판 첫 화면은 경량 meta/date 조회, 전체 원장은 선택 시 지연 조회 |
+| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차판 row_count meta 조회 migration 적용 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, 선적 컨테이너 백그라운드 job 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
@@ -58,7 +58,7 @@
 - 상세배차/배차변동 다운로드는 기존 우리 기준 시트와 별도로 `GLAPS_업로드` 시트를 추가한다. GLAPS 시트는 상세 1행=1대 기준이며 같은 부킹도 묶지 않고 `컨테이너 수량=1`로 내보낸다. 우리 기준 `시간`과 GLAPS `배차요청시간`은 `0800/1300` 형태의 `HHMM` 텍스트로 출력하고, `배차요청일자`는 텍스트 날짜, `POD`는 공란, `선적지`는 우리쪽 업체명으로 출력한다.
 - 상세배차 상차지/포트코드 선택값은 `branch_dispatch_detail_overrides`에 저장한다. 배차확정 후에도 두 항목은 수정 가능하며, 확정 이후 바뀐 셀은 붉은 배경으로 표시한다.
 - 상세배차/배차변동은 `업체명` 다음에 `시간` 컬럼을 표시한다. 지역 배차칸 메모가 `13 14 15`면 단일 업체 수량에 순서 배정하고, 화면에서는 `08/13` 같은 정시값을 `08:00/13:00`으로 표시하되 엑셀 다운로드는 `0800/1300`으로 출력한다.
-- 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고 전체 원장은 백그라운드에서 채운다.
+- 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고, 전체 원장은 전체/주간/월간 선택 시 지연 조회한다. `mode=meta`는 `row_count/valid_row_count`가 있으면 data JSON 없이 행수만 읽는다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
 - 통합현황에서 통합확정이 없더라도 glovis/mobis 중 확정된 원본 구분이 있으면 해당 구분만 분리해 변동내역을 동기화하고 통합 변동탭에 노출한다.
@@ -80,15 +80,14 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.323**: 아산 배차판 초기 로딩에서 50ms 후 전체 원장을 자동 조회하던 흐름을 제거하고, 선택일 상세만 우선 표시한다. 전체/주간/월간 선택 때만 full 원장을 읽으며, 모바일 자동 청크 프리패치와 설정/동기화 상태 조회도 초기 렌더 이후로 늦췄다. 운영 Supabase `branch_dispatch` 행수 컬럼 migration과 fallback 조회를 적용했다.
 - **v5.14.322**: Vercel usage 경고 후보인 전역 middleware를 페이지 접근 제어 중심으로 줄이고, `/api/vehicle-tracking` CORS만 예외 매칭한다. 아산 종합/배차판 자동 상태 조회는 백그라운드 탭에서 API를 호출하지 않는다.
 - **v5.14.321**: 월간실적 테이블 조회의 `is_current` 조건을 `IS TRUE`로 맞추고 기본 페이징 정렬을 기존 current 인덱스 순서로 변경해 Supabase statement timeout을 해소했다.
-- **v5.14.319**: GLAPS 운송경로 수정 화면에서 경유지코드를 입력하면 기존 운송경로 원장의 경유지(ELS)를 자동 보강하고, 위치코드 기반 운송경로명을 자동 생성한다. `KRBNP,KRUWN`처럼 쉼표로 묶은 상하차지는 상세배차 매칭 후보를 각각 만들어 같은 경유지코드 운송경로에 물릴 수 있게 했다.
 ## VERIFICATION
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
-- 배차판 다음 최적화 후보: DB에 날짜별 유효행 요약을 저장해 `mode=meta` 서버 내부 원장 스캔까지 축소.
 - DB 다음 단계: 일일 배차/상세배차 1년 1개월 초과분을 NAS archive worker로 압축 저장하고 checksum 검증 후 staging 복원 샘플을 통과시킨다.
 
 ## FIXED RULES

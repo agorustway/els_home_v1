@@ -1,3 +1,29 @@
+## [2026-06-01] 아산 배차판 초기 로딩 경량화 (v5.14.323)
+### 원인
+- 배차판 첫 화면은 `mode=meta`와 선택일 `mode=date`로 충분한데, 초기 표시 직후 50ms 만에 `mode=full` 전체 원장을 다시 읽어 DB와 브라우저에 부담을 주고 있었습니다.
+- `mode=meta`도 행수 계산을 위해 `data` JSONB를 읽어야 해서 날짜 탭만 만드는 요청치고 payload가 컸습니다.
+### 조치
+- 초기 로딩은 날짜 메타와 선택일 상세만 불러오고, 전체/주간/월간 탭을 선택할 때만 full 원장을 지연 조회하게 변경했습니다.
+- 다른 날짜 탭을 눌렀을 때는 해당 날짜만 `mode=date`로 보강합니다.
+- 모바일/저속망에서는 idle 자동 청크 프리패치를 생략하고, 설정 조회와 sync gate 상태 조회도 초기 렌더 뒤로 늦췄습니다.
+- `branch_dispatch.row_count/valid_row_count` 컬럼 migration과 동기화 저장값을 추가했습니다. 운영 Supabase에는 `asan_dispatch_row_counts_20260601` migration을 적용했고, 컬럼이 없는 다른 환경에서는 API가 기존 data 기반 meta 조회로 fallback합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "app/api/branches/asan/dispatch/route.js" "lib/asan-dispatch.js" "tests/asanDashboardView.test.mjs" "tests/asanShippingFlow.test.mjs"`: 통과, 기존 hook warning 1건 유지
+- `npm.cmd run build`: 통과
+- 번들 Python `py_compile docker/els-backend/app.py docker/els-backend/app_core.py`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/lib/asan-dispatch.js`
+- `docker/els-backend/app.py`, `docker/els-backend/app_core.py`
+- `web/supabase_sql/20260601_asan_dispatch_row_counts.sql`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] Vercel 사용량 방어용 middleware/폴링 축소 (v5.14.322)
 ### 원인
 - Vercel MCP 연결 계정에서는 프로젝트 목록이 비어 있어 대시보드 Usage 항목을 직접 조회하지 못했습니다.

@@ -96,8 +96,17 @@ function prefetchAsanLoaders(loaders = []) {
     });
 }
 
-function scheduleIdlePrefetch(callback, timeout = 1800) {
+function shouldAutoPrefetchAsanModules() {
+    if (typeof window === 'undefined') return false;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.saveData) return false;
+    if (connection?.effectiveType && /(^|-)2g$/i.test(connection.effectiveType)) return false;
+    return window.innerWidth >= 768;
+}
+
+function scheduleIdlePrefetch(callback, timeout = 1800, { force = false } = {}) {
     if (typeof window === 'undefined') return () => { };
+    if (!force && !shouldAutoPrefetchAsanModules()) return () => { };
     if ('requestIdleCallback' in window) {
         const id = window.requestIdleCallback(callback, { timeout });
         return () => window.cancelIdleCallback?.(id);
@@ -527,6 +536,14 @@ function mergeDispatchDateItems(baseItems = [], loadedItems = []) {
         if (!merged.some(existing => existing.target_date === item.target_date)) merged.push(item);
     });
     return merged.sort((a, b) => String(a.target_date || '').localeCompare(String(b.target_date || '')));
+}
+function pickDispatchActiveIndex(items = [], viewType, preferredTargetDate = '', today = getTodayKey()) {
+    if (preferredTargetDate === '__all__') return items.length;
+    if (preferredTargetDate) {
+        const nextIndex = items.findIndex(item => item.target_date === preferredTargetDate);
+        if (nextIndex >= 0) return nextIndex;
+    }
+    return findDefaultValidTabIndex(items, viewType, today);
 }
 function makeDispatchDataUrl(type, params = {}) {
     const searchParams = new URLSearchParams({
@@ -1372,6 +1389,7 @@ function AsanDispatchContent() {
     ));
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [dispatchFullDataLoading, setDispatchFullDataLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState(-1);
@@ -1435,6 +1453,11 @@ function AsanDispatchContent() {
     const detailChangeSyncRef = useRef('');
     const glapsLookupLoadedTokenRef = useRef(null);
     const dispatchLoadSeqRef = useRef(0);
+    const dispatchDateLoadedKeysRef = useRef(new Set());
+    const dispatchDateLoadingKeysRef = useRef(new Set());
+    const dispatchFullLoadedRef = useRef(false);
+    const dispatchFullLoadingRef = useRef(false);
+    const settingsLoadedRef = useRef(false);
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
     const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
@@ -1494,13 +1517,69 @@ function AsanDispatchContent() {
     }, [glapsMasterRefreshToken, mainView]);
 
     // ===== 데이터 fetch =====
-    const fetchSettings = useCallback(async () => {
+    const fetchSettings = useCallback(async ({ force = false } = {}) => {
+        if (settingsLoadedRef.current && !force) return;
         try {
             const r = await fetch('/api/branches/asan/settings');
             const j = await r.json();
-            if (j.data) setSettings(j.data);
+            if (j.data) {
+                setSettings(j.data);
+                settingsLoadedRef.current = true;
+            }
         } catch { /* ignore */ }
     }, []);
+    const openSettings = useCallback(() => {
+        setShowSettings(true);
+        fetchSettings({ force: true });
+    }, [fetchSettings]);
+    const requestDispatchItems = useCallback(async (type, params = {}) => {
+        const r = await fetch(makeDispatchDataUrl(type, params), { cache: 'no-store' });
+        const j = await r.json();
+        if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
+        return j.data || [];
+    }, []);
+    const ensureDispatchDateLoaded = useCallback(async (dateStr) => {
+        const key = `${viewType}:${dateStr || ''}`;
+        if (!dateStr || dispatchDateLoadedKeysRef.current.has(key) || dispatchDateLoadingKeysRef.current.has(key)) return;
+        const loadSeq = dispatchLoadSeqRef.current;
+        dispatchDateLoadingKeysRef.current.add(key);
+        try {
+            const dateItems = await requestDispatchItems(viewType, { mode: 'date', date: dateStr });
+            if (dispatchLoadSeqRef.current !== loadSeq) return;
+            dispatchDateLoadedKeysRef.current.add(key);
+            setData(prev => mergeDispatchDateItems(prev, dateItems));
+        } catch {
+            // 선택일 보강 실패는 수동 새로고침이나 다음 자동 갱신에서 복구한다.
+        } finally {
+            dispatchDateLoadingKeysRef.current.delete(key);
+        }
+    }, [requestDispatchItems, viewType]);
+    const ensureDispatchFullLoaded = useCallback(async () => {
+        if (dispatchFullLoadedRef.current || dispatchFullLoadingRef.current) return;
+        const loadSeq = dispatchLoadSeqRef.current;
+        dispatchFullLoadingRef.current = true;
+        setDispatchFullDataLoading(true);
+        try {
+            const fullItems = await requestDispatchItems(viewType, { mode: 'full' });
+            if (dispatchLoadSeqRef.current !== loadSeq) return;
+            const currentItems = dataRef.current || [];
+            const currentIndex = activeTabRef.current;
+            const currentTargetDate = currentIndex === currentItems.length
+                ? '__all__'
+                : currentItems[currentIndex]?.target_date || '';
+            dispatchFullLoadedRef.current = true;
+            dispatchDateLoadedKeysRef.current = new Set(
+                (fullItems || []).filter(item => item?.target_date).map(item => `${viewType}:${item.target_date}`)
+            );
+            setData(fullItems);
+            setActiveTab(pickDispatchActiveIndex(fullItems, viewType, currentTargetDate));
+        } catch {
+            // 전체 원장 보강은 필요 시 다시 시도한다.
+        } finally {
+            dispatchFullLoadingRef.current = false;
+            setDispatchFullDataLoading(false);
+        }
+    }, [requestDispatchItems, viewType]);
     const fetchData = useCallback(async (type, options = {}) => {
         const { silent = false, preserveActiveDate = false } = options;
         const previousItems = dataRef.current || [];
@@ -1511,34 +1590,29 @@ function AsanDispatchContent() {
         const loadSeq = dispatchLoadSeqRef.current + 1;
         dispatchLoadSeqRef.current = loadSeq;
         const isCurrentLoad = () => dispatchLoadSeqRef.current === loadSeq;
-        const requestDispatchItems = async (params = {}) => {
-            const r = await fetch(makeDispatchDataUrl(type, params), { cache: 'no-store' });
-            const j = await r.json();
-            if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
-            return j.data || [];
-        };
-        const pickActiveIndex = (items = [], preferredTargetDate = '') => {
-            const d = new Date();
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            if (preserveActiveDate && preferredTargetDate === '__all__') return items.length;
-            if (preserveActiveDate && preferredTargetDate) {
-                const nextIndex = items.findIndex(item => item.target_date === preferredTargetDate);
-                if (nextIndex >= 0) return nextIndex;
-            }
-            return findDefaultValidTabIndex(items, type, today);
-        };
+        dispatchDateLoadedKeysRef.current = new Set();
+        dispatchDateLoadingKeysRef.current = new Set();
+        dispatchFullLoadedRef.current = false;
+        dispatchFullLoadingRef.current = false;
+        setDispatchFullDataLoading(false);
+        const pickActiveIndex = (items = [], preferredTargetDate = '') => (
+            preserveActiveDate
+                ? pickDispatchActiveIndex(items, type, preferredTargetDate)
+                : findDefaultValidTabIndex(items, type, getTodayKey())
+        );
 
         if (!silent) setLoading(true);
         let initialLoaded = false;
         try {
-            const metaItems = await requestDispatchItems({ mode: 'meta' });
+            const metaItems = await requestDispatchItems(type, { mode: 'meta' });
             let nextItems = metaItems;
             let nextActiveIndex = pickActiveIndex(nextItems, previousTargetDate);
             if (nextActiveIndex >= 0 && nextActiveIndex < nextItems.length) {
                 const activeDate = nextItems[nextActiveIndex]?.target_date;
                 if (activeDate) {
-                    const dateItems = await requestDispatchItems({ mode: 'date', date: activeDate });
+                    const dateItems = await requestDispatchItems(type, { mode: 'date', date: activeDate });
                     nextItems = mergeDispatchDateItems(nextItems, dateItems);
+                    dispatchDateLoadedKeysRef.current.add(`${type}:${activeDate}`);
                     nextActiveIndex = pickActiveIndex(nextItems, activeDate);
                 }
             }
@@ -1547,22 +1621,6 @@ function AsanDispatchContent() {
             setActiveTab(nextActiveIndex);
             initialLoaded = true;
             if (!silent) setLoading(false);
-
-            setTimeout(async () => {
-                try {
-                    const fullItems = await requestDispatchItems({ mode: 'full' });
-                    if (!isCurrentLoad()) return;
-                    const currentItems = dataRef.current || [];
-                    const currentIndex = activeTabRef.current;
-                    const currentTargetDate = currentIndex === currentItems.length
-                        ? '__all__'
-                        : currentItems[currentIndex]?.target_date || previousTargetDate;
-                    setData(fullItems);
-                    setActiveTab(pickActiveIndex(fullItems, currentTargetDate));
-                } catch {
-                    // 첫 화면 표시 이후 전체 데이터 보강 실패는 다음 새로고침/자동갱신에서 복구한다.
-                }
-            }, 50);
             return true;
         } catch {
             if (!silent) setData([]);
@@ -1570,7 +1628,7 @@ function AsanDispatchContent() {
         } finally {
             if (!silent && !initialLoaded) setLoading(false);
         }
-    }, []);
+    }, [requestDispatchItems]);
     const updateSyncGateFromStatus = useCallback((status = {}) => {
         const nextGate = {
             running: Boolean(status.running),
@@ -1704,9 +1762,10 @@ function AsanDispatchContent() {
     };
 
     // ===== Effects =====
-    useEffect(() => { fetchSettings(); }, [fetchSettings]);
+    useEffect(() => scheduleIdlePrefetch(() => fetchSettings(), 3200), [fetchSettings]);
     useEffect(() => {
         let cancelled = false;
+        let timer = null;
         const pollSyncGate = async () => {
             if (typeof document !== 'undefined' && document.hidden) return;
             try {
@@ -1719,11 +1778,14 @@ function AsanDispatchContent() {
                 // 상태 확인 실패는 화면 사용을 막지 않는다.
             }
         };
-        pollSyncGate();
-        const timer = setInterval(pollSyncGate, 10000);
+        const cancelIdle = scheduleIdlePrefetch(() => {
+            pollSyncGate();
+            timer = setInterval(pollSyncGate, 15000);
+        }, 2600, { force: true });
         return () => {
             cancelled = true;
-            clearInterval(timer);
+            cancelIdle();
+            if (timer) clearInterval(timer);
         };
     }, [refreshSyncGateStatus]);
     useEffect(() => {
@@ -1898,6 +1960,15 @@ function AsanDispatchContent() {
         if (isAllTab) return mergedView;
         return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
+    useEffect(() => {
+        if (isAllTab) {
+            ensureDispatchFullLoaded();
+            return;
+        }
+        if (activeItem?.meta_only && activeItem?.target_date) {
+            ensureDispatchDateLoaded(activeItem.target_date);
+        }
+    }, [activeItem?.meta_only, activeItem?.target_date, ensureDispatchDateLoaded, ensureDispatchFullLoaded, isAllTab]);
     const headers = useMemo(() => currentView?.headers || [], [currentView]);
     const allData = useMemo(() => currentView?.data || [], [currentView]);
     const comments = useMemo(() => currentView?.comments || {}, [currentView]);
@@ -1925,7 +1996,7 @@ function AsanDispatchContent() {
             fileModStr: fmtTs(activeItem.file_modified_at)
         };
     }, [activeItem, isAllTab, data]);
-    const hasHeaderStatus = Boolean(dateInfo?.fileModStr || elapsed || syncStatus);
+    const hasHeaderStatus = Boolean(dateInfo?.fileModStr || elapsed || syncStatus || dispatchFullDataLoading);
     const detailScope = useMemo(() => {
         if (isAllTab || !activeItem?.target_date) return null;
         return {
@@ -3670,11 +3741,16 @@ function AsanDispatchContent() {
                                         {syncStatusPrefix(syncStatus)} · {syncStatus.message}
                                     </div>
                                 )}
+                                {dispatchFullDataLoading && (
+                                    <div className={styles.syncMsg}>
+                                        전체 기간 자료를 불러오는 중입니다.
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div className={styles.headerButtons}>
                             <button className={styles.headerBtn} onClick={handleDownload}>엑셀</button>
-                            <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
+                            <button className={styles.headerBtn} onClick={openSettings}>설정</button>
                             <button className={styles.headerBtn} onClick={handleRefreshData} disabled={refreshing} title="현재 보기와 날짜를 저장하고 페이지를 다시 불러옵니다">
                                 {refreshing ? '새로고침 중' : '새로고침'}
                             </button>
