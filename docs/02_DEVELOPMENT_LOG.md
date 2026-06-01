@@ -1,3 +1,26 @@
+## [2026-06-01] 월간실적 Supabase 조회 timeout 보정 (v5.14.321)
+### 원인
+- 월간실적 current 원장 인덱스는 `is_current IS TRUE` partial predicate로 만들어져 있었지만, 화면 조회 코드는 Supabase REST에 `.eq('is_current', true)`를 보내고 있었습니다.
+- Postgres 실행계획 확인 결과 `is_current = true` 조건은 해당 partial index를 타지 못해 `branch_performance_rows`를 순차 스캔했고, 최근 Supabase I/O 경고 상태에서는 8초대 statement timeout으로 끊겼습니다.
+- 월간 테이블 기본 정렬도 `year_value/month_value/row_index`라 기존 current lookup 인덱스 순서와 맞지 않았습니다.
+### 조치
+- 실적 원장 current 조회와 importer current 조회를 `.is('is_current', true)`로 변경해 `IS TRUE` 조건을 명시했습니다.
+- 월간실적 테이블 기본 페이징 정렬을 `file_path -> sheet_name -> row_index`로 바꿔 `idx_branch_performance_rows_one_current_per_row`/monthly current lookup 계열 인덱스와 맞췄습니다.
+- 테스트 기대값에 `IS TRUE` 조건과 파일 순서 페이징 규칙을 추가했습니다.
+### 검증
+- Supabase REST 실측: 기존 `eq.true + year/month 정렬`은 `canceling statement due to statement timeout`, 수정 조건 `is.true + file/sheet/row_index 정렬`은 501행 288ms 반환.
+- Supabase PostgreSQL 로그에서 statement timeout 발생을 확인했고, SQL 실행계획에서 기존 조건이 sequential scan으로 12.8초 소요되는 것을 확인했습니다.
+- `node --test tests/asanMonthlyPerformance.test.mjs tests/asanAnnualPerformance.test.mjs`: 21개 통과.
+- `npm run lint -- "lib/asan-branch-db.js" "scripts/import-asan-annual-performance.mjs" "tests/asanMonthlyPerformance.test.mjs" "tests/asanAnnualPerformance.test.mjs"`: 통과.
+### 변경 파일
+- `web/lib/asan-branch-db.js`
+- `web/scripts/import-asan-annual-performance.mjs`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 상세/변동 엑셀 시간 HHMM 출력 (v5.14.320)
 ### 원인
 - GLAPS 업로드 검수 시 `시간`/`배차요청시간`이 `08:00` 같은 시간 서식으로 보이면 업로드 처리에서 기대값과 달라질 수 있었습니다.

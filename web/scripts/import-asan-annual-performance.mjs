@@ -1229,7 +1229,7 @@ async function readCurrentRows(supabase, key) {
       .eq('dataset_type', key.datasetType)
       .eq('file_path', key.filePath)
       .eq('sheet_name', key.sheetName)
-      .eq('is_current', true)
+      .is('is_current', true)
       .order('row_index', { ascending: true })
       .range(start, start + pageSize - 1);
 
@@ -1259,7 +1259,7 @@ function keyFilter(query, key) {
 
 function rowIndexFilter(query, key) {
   return keyFilter(query, key)
-    .eq('is_current', true);
+    .is('is_current', true);
 }
 
 async function updateRowsWithRetry({ supabase, table, patch, filter, values, column, chunkSize, minChunkSize = 20 }) {
@@ -1383,7 +1383,7 @@ async function retirePreviousCurrentSnapshot({
     },
     filter: query => keyFilter(query, key)
       .eq('snapshot_id', previousSnapshotId)
-      .eq('is_current', true),
+      .is('is_current', true),
     rowCount: previousCurrentCount,
     chunkSize,
   });
@@ -1613,7 +1613,7 @@ async function importExcelStreaming({
           replaced_at: nowIso,
           last_seen_at: nowIso,
         },
-        filter: query => query.eq('is_current', true),
+        filter: query => query.is('is_current', true),
         values: duplicateBatch,
         column: 'id',
         chunkSize,

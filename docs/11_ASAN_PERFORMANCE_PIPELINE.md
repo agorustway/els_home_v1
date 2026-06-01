@@ -88,6 +88,8 @@
   - 테이블 탭: 검색, 정렬, 컬럼 숨김, 페이지 단위 더보기
   - 테이블 표시는 importer와 같은 날짜/금액 정규화 유틸을 사용한다.
   - 기본 조회는 Supabase exact count를 쓰지 않고 파일 메타 `current_row_count`를 전체 건수로 사용해 대용량 current 원장 count/sort timeout을 피한다.
+  - 월간 current 행 조회는 Supabase REST에서 `.is('is_current', true)`를 사용한다. 운영 인덱스가 `is_current IS TRUE` partial predicate라 `.eq('is_current', true)`는 seq scan과 statement timeout을 만들 수 있다.
+  - 월간 테이블 기본 페이징은 `file_path -> sheet_name -> row_index` 순서로 조회한다. `year_value/month_value` 전역 정렬은 current lookup 인덱스와 맞지 않아 사용자가 명시 정렬할 때만 JS 정렬 범위 안에서 처리한다.
 
 ## 3. 데이터 처리 원칙
 - 엑셀에서 행이 수정되면 기존 행은 `superseded_by_excel`로 종료하고 새 행을 추가한다.

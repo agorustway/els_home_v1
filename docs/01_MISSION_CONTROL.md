@@ -1,14 +1,13 @@
-# ELS MISSION CONTROL (v5.14.320 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.321 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/배차변동 엑셀 다운로드의 `시간`/`배차요청시간`을 GLAPS 입력용 `HHMM` 텍스트로 출력한다.
+> 최신 업데이트: 아산 월간실적 테이블 조회가 Supabase partial index를 타도록 `is_current IS TRUE`와 파일 순서 페이징으로 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.320
+- **웹 버전**: v5.14.321
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
 - **GLAPS 활성 원장**: `6724943a-5c6c-416e-bab0-bbac487b8c4c` / 8개 시트 / 운송경로 541건 / 항목매핑 2,249건 / 원본행 1,177건 / 특이적용건 6건.
-- **GLAPS NAS 백업**: `/아산지점/A_운송실무/GLAPS_마스터코드_backup_20260523_190603.xlsx`
 
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
@@ -23,6 +22,7 @@
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
 - 월간실적은 운영 임시 원장이다. 관리자 데이터 운영 관리의 `월간실적 리셋`은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다.
+- 월간실적 current 조회는 Supabase `.is('is_current', true)`와 `file_path/sheet_name/row_index` 정렬을 사용한다. `.eq('is_current', true)` 또는 year/month 전역 정렬은 partial index를 놓쳐 statement timeout을 만들 수 있다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 - 구간단가 조회 범위는 `전체/연도별/월별`이며 첫 진입 기본값은 `전체`다. 제목열 클릭 정렬과 컬럼 제목열 내부 다중 선택 필터를 제공한다.
 - 구간단가 표시/집계 조건은 숨김 드롭존으로 통합한다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
@@ -80,11 +80,9 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.321**: 월간실적 테이블 조회의 `is_current` 조건을 `IS TRUE`로 맞추고 기본 페이징 정렬을 기존 current 인덱스 순서로 변경해 Supabase statement timeout을 해소했다.
 - **v5.14.319**: GLAPS 운송경로 수정 화면에서 경유지코드를 입력하면 기존 운송경로 원장의 경유지(ELS)를 자동 보강하고, 위치코드 기반 운송경로명을 자동 생성한다. `KRBNP,KRUWN`처럼 쉼표로 묶은 상하차지는 상세배차 매칭 후보를 각각 만들어 같은 경유지코드 운송경로에 물릴 수 있게 했다.
 - **v5.14.318**: 배차변동내역 화면/다운로드 row의 `수정일시`를 이벤트 발생/수정시각으로 채운다. 변동내역 기본 정렬을 최신순으로 바꾸고 컬럼 헤더 드롭다운에 오름/내림차순 정렬을 추가했다.
-- **v5.14.317**: GLAPS 운송경로 직접추가에서 급행 등록용 `AAAAAAAAA` 운송경로코드는 중복검출/직접수정 중복 차단 키에서 제외해 같은 코드로 다른 경로를 추가할 수 있게 했다.
-- **v5.14.316**: 배차변동 스냅샷을 확인완료가 아니라 엑셀 저장 sync 종료 시 현재 상세라인으로 갱신한다. 이벤트 키에 저장시각을 포함해 같은 변경이 나중에 다시 발생해도 별도 이벤트로 남기며, 확인완료는 이미 더 최신 스냅샷이 있으면 기준값을 되돌리지 않는다.
-- **v5.14.315**: 배차변동 행 매칭을 업체/시간과 분리한 원천 오더 묶음 기준으로 바꿨다. 업체/시간/포트/타입 등은 변경 이벤트와 노란 셀 diff로 표시하고, 선사 라인 변경은 추가/삭제로 처리한다. 변동 확인완료 시 스냅샷 기준값을 갱신하며, 통합 확정 상태는 글로비스/모비스 상세 화면 잠금에도 반영한다.
 ## VERIFICATION
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 

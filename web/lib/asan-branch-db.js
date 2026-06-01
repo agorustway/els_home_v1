@@ -1770,7 +1770,7 @@ async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSigna
             .eq('branch_id', 'asan')
             .eq('dataset_type', 'monthly');
         if (usesDiffCurrent || !snapshotIds.length) {
-            query = query.eq('is_current', true);
+            query = query.is('is_current', true);
             if (filePaths.length) query = query.in('file_path', filePaths);
         } else {
             query = query.in('snapshot_id', snapshotIds);
@@ -2267,7 +2267,7 @@ async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {
             .eq('branch_id', 'asan')
             .eq('dataset_type', 'annual');
         if (!options.skipScope && (options.currentOnly || !allMetasHaveSnapshot)) {
-            rowsQuery = rowsQuery.eq('is_current', true);
+            rowsQuery = rowsQuery.is('is_current', true);
         }
         if (!options.skipScope) {
             if (allMetasHaveSnapshot) {
@@ -2366,7 +2366,7 @@ async function queryAsanAnnualPerformanceFileFromSupabase(searchParams) {
         if (currentSnapshotId) {
             query = query.eq('snapshot_id', currentSnapshotId);
         } else {
-            query = query.eq('is_current', true);
+            query = query.is('is_current', true);
         }
         return { query };
     };
@@ -2666,8 +2666,8 @@ async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize,
     const sortIdx = headers.indexOf(sortKey);
     const sortDesc = String(sortDir || 'asc').toLowerCase() === 'desc';
     const orderQuery = rowsQuery => rowsQuery
-        .order('year_value', { ascending: true })
-        .order('month_value', { ascending: true })
+        .order('file_path', { ascending: true })
+        .order('sheet_name', { ascending: true })
         .order('row_index', { ascending: true });
     const baseOrdered = orderQuery(query);
     const buildBaseOrdered = buildQuery ? () => orderQuery(buildQuery()) : null;
@@ -2971,11 +2971,11 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
             .eq('branch_id', 'asan')
             .eq('dataset_type', 'monthly');
         if (usesDiffCurrent) {
-            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+            rowsQuery = rowsQuery.is('is_current', true).in('file_path', metas.map(meta => meta.file_path));
         } else if (snapshotIds.length) {
             rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
         } else {
-            rowsQuery = rowsQuery.eq('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+            rowsQuery = rowsQuery.is('is_current', true).in('file_path', metas.map(meta => meta.file_path));
         }
         return rowsQuery;
     };
