@@ -1,3 +1,27 @@
+## [2026-06-01] Vercel 사용량 방어용 middleware/폴링 축소 (v5.14.322)
+### 원인
+- Vercel MCP 연결 계정에서는 프로젝트 목록이 비어 있어 대시보드 Usage 항목을 직접 조회하지 못했습니다.
+- 코드 점검 결과 `web/middleware.js` matcher가 거의 모든 요청을 잡아 `/api/*` route handler 요청에도 middleware가 실행되고, Supabase session/role 조회가 뒤따를 수 있는 구조였습니다.
+- 아산 종합상황판/배차판은 업무상 자동 갱신이 필요하지만, 브라우저 백그라운드 탭에서도 주기 상태 조회가 남아 Function Invocation을 늘릴 수 있었습니다.
+### 조치
+- middleware matcher에서 일반 `/api/*`를 제외하고, 모바일 앱 CORS가 필요한 `/api/vehicle-tracking/:path*`만 별도 예외로 남겼습니다.
+- API 인증 책임은 각 route handler로 분리하고, middleware는 페이지 접근 제어 중심으로 축소했습니다.
+- 공개 페이지는 `/`, `/login`, 보호 경로, `?debug` 조작이 아니면 Supabase auth client 생성 전 즉시 통과하도록 했습니다.
+- 아산 종합실적 sync 상태 확인과 배차판 sync gate/60초 silent refresh는 `document.hidden` 상태에서 API를 호출하지 않도록 막았습니다.
+### 검증
+- `node --test tests/vercelUsageGuard.test.mjs`: 3개 통과.
+- `npm run lint -- middleware.js "app/(main)/employees/branches/asan/AsanSummaryPerformance.js" "app/(main)/employees/branches/asan/page.js" tests/vercelUsageGuard.test.mjs`: 통과, 기존 `detailConfirmationActionScope` hook warning 1건 유지.
+- `npm run build`: 통과. Next.js 14.2.35 기준 131개 정적 페이지 생성 및 middleware 빌드 성공.
+- `git diff --check`: 통과.
+### 변경 파일
+- `web/middleware.js`
+- `web/app/(main)/employees/branches/asan/AsanSummaryPerformance.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/vercelUsageGuard.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 월간실적 Supabase 조회 timeout 보정 (v5.14.321)
 ### 원인
 - 월간실적 current 원장 인덱스는 `is_current IS TRUE` partial predicate로 만들어져 있었지만, 화면 조회 코드는 Supabase REST에 `.eq('is_current', true)`를 보내고 있었습니다.

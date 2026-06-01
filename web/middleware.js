@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
     const path = request.nextUrl.pathname;
+    let supabaseResponse = NextResponse.next({
+        request,
+    })
 
     // ─── API CORS 핸들링 (모바일 앱 대응) ───
     if (path.startsWith('/api/vehicle-tracking')) {
@@ -18,17 +21,25 @@ export async function middleware(request) {
                 },
             });
         }
-    }
-
-    let supabaseResponse = NextResponse.next({
-        request,
-    })
-
-    // API 응답에 CORS 헤더 추가 (일반 요청)
-    if (path.startsWith('/api/vehicle-tracking')) {
+        // API 응답에 CORS 헤더 추가 (일반 요청)
         supabaseResponse.headers.set('Access-Control-Allow-Origin', '*');
         supabaseResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         supabaseResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+
+    // Vercel 사용량 보호: API 인증은 각 route handler에서 처리하고, middleware는 페이지 접근 제어만 맡는다.
+    if (path === '/api' || path.startsWith('/api/')) {
+        return supabaseResponse;
+    }
+
+    const debugParam = request.nextUrl.searchParams.get('debug');
+    const debugCookieEnabled = request.cookies.get('__debug_mode')?.value === 'true';
+    const debugEnvEnabled = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.DEBUG_MODE === 'true';
+    const isProtectedPath = path.startsWith('/admin') || path.startsWith('/employees') || path.startsWith('/driver-app');
+    const needsAuthContext = isProtectedPath || path === '/' || path === '/login' || debugParam === 'true' || debugParam === 'false';
+
+    if (!needsAuthContext) {
+        return supabaseResponse;
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,13 +79,13 @@ export async function middleware(request) {
     let user = session?.user;
 
     // URL 쿼리에 ?debug=true 가 있으면 쿠키에 심음
-    let isDebugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || process.env.DEBUG_MODE === 'true';
-    if (request.nextUrl.searchParams.get('debug') === 'true' || request.cookies.get('__debug_mode')?.value === 'true') {
+    let isDebugMode = debugEnvEnabled;
+    if (debugParam === 'true' || debugCookieEnabled) {
         isDebugMode = true;
         // API 응답 객체에 쿠키를 심어줌 (브라우저에서 계속 유지되도록)
         supabaseResponse.cookies.set('__debug_mode', 'true', { path: '/', maxAge: 60 * 60 * 24 * 7 }); // 7일 유지
     }
-    if (request.nextUrl.searchParams.get('debug') === 'false') {
+    if (debugParam === 'false') {
         isDebugMode = false;
         supabaseResponse.cookies.delete('__debug_mode');
     }
@@ -145,13 +156,15 @@ export async function middleware(request) {
 
 export const config = {
     matcher: [
+        '/api/vehicle-tracking/:path*',
         /*
          * Match all request paths except for the ones starting with:
+         * - api (route handlers handle their own auth; vehicle-tracking is matched above for CORS)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - public/images (if any)
          */
-        '/((?!_next/static|_next/image|favicon.ico|data/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|ico)$).*)',
+        '/((?!api/|_next/static|_next/image|favicon.ico|data/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|ico)$).*)',
     ],
 }

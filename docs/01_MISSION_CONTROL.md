@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.321 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.322 / APK v5.11.29)
 
-> 최신 업데이트: 아산 월간실적 테이블 조회가 Supabase partial index를 타도록 `is_current IS TRUE`와 파일 순서 페이징으로 보정했다.
+> 최신 업데이트: Vercel 사용량 증가 방지를 위해 middleware API 범위와 공개 페이지 auth 조회, 아산 주요 화면 백그라운드 폴링을 축소했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.321
+- **웹 버전**: v5.14.322
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -12,7 +12,7 @@
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 아산 배차/선적/실적관리 화면 운영 |
+| Next.js 웹 | 정상 | API 대부분은 middleware 제외, 공개 페이지는 auth 조회 생략, 백그라운드 탭 자동 폴링 방지 |
 | Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 내부 데이터 API는 인증 확인 후 service role 경유 |
 | NAS 백엔드 | 정상 | Core는 대용량 원장 캐시 금지, 선적 컨테이너 백그라운드 job 운영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
@@ -80,9 +80,9 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.322**: Vercel usage 경고 후보인 전역 middleware를 페이지 접근 제어 중심으로 줄이고, `/api/vehicle-tracking` CORS만 예외 매칭한다. 아산 종합/배차판 자동 상태 조회는 백그라운드 탭에서 API를 호출하지 않는다.
 - **v5.14.321**: 월간실적 테이블 조회의 `is_current` 조건을 `IS TRUE`로 맞추고 기본 페이징 정렬을 기존 current 인덱스 순서로 변경해 Supabase statement timeout을 해소했다.
 - **v5.14.319**: GLAPS 운송경로 수정 화면에서 경유지코드를 입력하면 기존 운송경로 원장의 경유지(ELS)를 자동 보강하고, 위치코드 기반 운송경로명을 자동 생성한다. `KRBNP,KRUWN`처럼 쉼표로 묶은 상하차지는 상세배차 매칭 후보를 각각 만들어 같은 경유지코드 운송경로에 물릴 수 있게 했다.
-- **v5.14.318**: 배차변동내역 화면/다운로드 row의 `수정일시`를 이벤트 발생/수정시각으로 채운다. 변동내역 기본 정렬을 최신순으로 바꾸고 컬럼 헤더 드롭다운에 오름/내림차순 정렬을 추가했다.
 ## VERIFICATION
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 

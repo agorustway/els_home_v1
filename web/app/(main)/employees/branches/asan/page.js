@@ -1708,6 +1708,7 @@ function AsanDispatchContent() {
     useEffect(() => {
         let cancelled = false;
         const pollSyncGate = async () => {
+            if (typeof document !== 'undefined' && document.hidden) return;
             try {
                 const status = await refreshSyncGateStatus();
                 if (cancelled) return;
@@ -1746,6 +1747,7 @@ function AsanDispatchContent() {
     useEffect(() => {
         if (syncing || showSettings || showBrowser) return undefined;
         const timer = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
             fetchData(viewType, { silent: true, preserveActiveDate: true });
         }, 60000);
         return () => clearInterval(timer);

@@ -621,6 +621,7 @@ export default function AsanSummaryPerformance() {
     }, [loadSummary]);
 
     const checkSyncAndReload = useCallback(async () => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         try {
             const [annualResult, monthlyResult] = await Promise.allSettled([
                 fetch('/api/branches/asan/performance/annual?source=status&page_size=1', { cache: 'no-store' }),
