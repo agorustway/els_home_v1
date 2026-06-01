@@ -1,3 +1,21 @@
+## [2026-06-01] 배차변동 저장시점 스냅샷 기준 보강 (v5.14.316)
+### 원인
+- 변동 비교 기준이 확인완료 시점에만 갱신되면, 엑셀을 2차 저장했을 때 1차 저장분이 아닌 최초 확정분과 다시 비교될 수 있었습니다.
+- 같은 변화가 나중에 다시 발생해도 이벤트 키가 같으면 과거 확인상태와 섞일 수 있었습니다.
+### 조치
+- 배차변동 sync 종료 시 현재 상세라인을 `branch_dispatch_detail_snapshots` 기준으로 갱신하도록 했습니다.
+- 이벤트 키에 발생/저장 시각을 포함해 같은 변경이 다른 저장시점에 다시 발생하면 별도 이벤트로 남기도록 했습니다.
+- 확인완료 처리 중 이미 더 최신 스냅샷이 존재하면 과거 이벤트 값으로 스냅샷을 되돌리지 않도록 보호했습니다.
+### 검증
+- `node --test tests/asanDispatchDetailLines.test.mjs tests/asanDashboardView.test.mjs`: 65개 통과.
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 배차변동 순변동 매칭 기준 정리 (v5.14.315)
 ### 원인
 - 배차확정 이후 저장 시점마다 변동 이벤트가 1줄씩 추가되지만, 업체/시간이 조정된 건도 추가/삭제처럼 보이면 실제 수량 변동인지 단순 변경인지 구분하기 어려웠습니다.

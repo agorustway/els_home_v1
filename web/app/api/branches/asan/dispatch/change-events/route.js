@@ -243,6 +243,32 @@ function snapshotDbRowFromLine(line, confirmation, actor, now) {
     };
 }
 
+async function refreshSnapshotsFromCurrent(adminSupabase, confirmation, currentLines, previousSnapshots = [], actor, now) {
+    if (!confirmation?.id) return;
+    const rows = (currentLines || [])
+        .map(line => snapshotDbRowFromLine(line, confirmation, actor, now))
+        .filter(row => row.detail_line_key);
+    const activeKeys = new Set(rows.map(row => row.detail_line_key));
+
+    if (rows.length > 0) {
+        const { error } = await adminSupabase
+            .from('branch_dispatch_detail_snapshots')
+            .upsert(rows, { onConflict: 'confirmation_id,detail_line_key' });
+        if (error) throw error;
+    }
+
+    const staleIds = (previousSnapshots || [])
+        .filter(row => row?.id && row.active !== false && !activeKeys.has(row.detail_line_key))
+        .map(row => row.id);
+    if (staleIds.length > 0) {
+        const { error } = await adminSupabase
+            .from('branch_dispatch_detail_snapshots')
+            .update({ active: false })
+            .in('id', staleIds);
+        if (error) throw error;
+    }
+}
+
 async function seedSnapshots(adminSupabase, confirmation, currentLines, actor, now) {
     if (!confirmation?.id || !currentLines?.length) return;
     const rows = currentLines
@@ -288,19 +314,48 @@ async function upsertSnapshotLine(adminSupabase, eventRow, line, actor, now) {
     if (error) throw error;
 }
 
+async function fetchActiveSnapshotLine(adminSupabase, confirmationId, detailLineKey) {
+    if (!confirmationId || !detailLineKey) return null;
+    const { data, error } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .select('*')
+        .eq('confirmation_id', confirmationId)
+        .eq('detail_line_key', detailLineKey)
+        .eq('active', true)
+        .maybeSingle();
+    if (error) throw error;
+    return data ? snapshotRecordToLine(data) : null;
+}
+
 async function applyConfirmedEventsToSnapshots(adminSupabase, eventRows = [], actor, now) {
     for (const row of eventRows || []) {
         const beforeLine = eventSnapshotLine(row.before_snapshot);
         const afterLine = eventSnapshotLine(row.editable_payload || row.after_snapshot);
 
         if (row.change_type === 'delete') {
+            const currentBefore = await fetchActiveSnapshotLine(adminSupabase, row.confirmation_id, beforeLine?.detailLineKey || row.detail_line_key);
+            if (!currentBefore || (beforeLine && currentBefore.rowFingerprint !== beforeLine.rowFingerprint)) continue;
             await deactivateSnapshotLine(adminSupabase, row.confirmation_id, beforeLine?.detailLineKey || row.detail_line_key);
+            continue;
+        }
+
+        if (row.change_type === 'add') {
+            if (!afterLine) continue;
+            const currentAfter = await fetchActiveSnapshotLine(adminSupabase, row.confirmation_id, afterLine.detailLineKey);
+            if (currentAfter && currentAfter.rowFingerprint !== afterLine.rowFingerprint) continue;
+            await upsertSnapshotLine(adminSupabase, row, afterLine, actor, now);
             continue;
         }
 
         if (row.change_type === 'change') {
             const beforeKey = beforeLine?.detailLineKey || '';
             const afterKey = afterLine?.detailLineKey || '';
+            const currentBefore = beforeKey ? await fetchActiveSnapshotLine(adminSupabase, row.confirmation_id, beforeKey) : null;
+            const currentAfter = afterKey ? await fetchActiveSnapshotLine(adminSupabase, row.confirmation_id, afterKey) : null;
+            const alreadyApplied = currentAfter && afterLine && currentAfter.rowFingerprint === afterLine.rowFingerprint;
+            const beforeStillCurrent = currentBefore && beforeLine && currentBefore.rowFingerprint === beforeLine.rowFingerprint;
+            if (!beforeStillCurrent && alreadyApplied) continue;
+            if (!beforeStillCurrent && (currentBefore || currentAfter)) continue;
             if (beforeKey && afterKey && beforeKey !== afterKey) {
                 await deactivateSnapshotLine(adminSupabase, row.confirmation_id, beforeKey);
             }
@@ -431,7 +486,6 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
     const nextEvents = filterNeutralizedDispatchChangeEvents(structuralEvents, {
         isConfirmedEvent: event => existingByKey.get(event.eventKey)?.event_status === 'confirmed',
     });
-    const nextKeys = new Set(nextEvents.map(event => event.eventKey));
 
     for (const event of nextEvents) {
         const existing = existingByKey.get(event.eventKey) || null;
@@ -467,24 +521,8 @@ async function syncChangeEvents(adminSupabase, confirmation, currentLines, actor
         }
     }
 
-    for (const existing of existingRows || []) {
-        if (!existing.active || nextKeys.has(existing.event_key)) continue;
-        if (existing.event_status === 'confirmed') continue;
-        const { data, error } = await adminSupabase
-            .from('branch_dispatch_detail_change_events')
-            .update({
-                active: false,
-                updated_by: actor,
-                updated_at: now,
-            })
-            .eq('id', existing.id)
-            .select()
-            .single();
-        if (error) throw error;
-        await insertHistory(adminSupabase, data, confirmation, 'resolved', actor, now, existing, data);
-    }
-
     await insertMemoOnlyHistory(adminSupabase, confirmation, memoChanges, actor, now);
+    await refreshSnapshotsFromCurrent(adminSupabase, confirmation, normalizedCurrent, snapshots, actor, now);
 }
 
 async function syncChangeEventsForPayload(adminSupabase, payload, actor, now) {

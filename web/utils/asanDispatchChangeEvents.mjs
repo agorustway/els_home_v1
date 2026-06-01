@@ -462,8 +462,9 @@ function buildEvent(type, beforeRecord, afterRecord, slot, occurredAt) {
   const afterPayload = afterRecord ? makeRowPayload(afterRecord) : null;
   const editablePayload = makeRowPayload(afterRecord || beforeRecord || {});
   const keyBase = getEventKeyBase(type, beforeRecord, afterRecord);
+  const timedKeyBase = makeKey([keyBase, occurredAt]);
   return {
-    eventKey: `${type}:${hashDispatchChangeText(keyBase)}:${slot}`,
+    eventKey: `${type}:${hashDispatchChangeText(timedKeyBase)}:${slot}`,
     changeType: type,
     detailLineKey: anchor.detailLineKey || '',
     groupKey: anchor.groupKey || anchor.rowFingerprint || '',
