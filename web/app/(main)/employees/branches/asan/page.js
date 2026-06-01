@@ -1886,7 +1886,17 @@ function AsanDispatchContent() {
             .map((confirmation) => confirmation.id)
             .join('|');
     }, [detailScope, dispatchConfirmationMap]);
-    const detailConfirmationLocked = Boolean(detailConfirmation?.active);
+    const integratedDetailConfirmation = detailScope
+        ? dispatchConfirmationMap[dispatchConfirmationMapKey(detailScope.targetDate, 'integrated')]
+        : null;
+    const effectiveDetailConfirmation = detailConfirmation?.active
+        ? detailConfirmation
+        : (integratedDetailConfirmation?.active ? integratedDetailConfirmation : detailConfirmation);
+    const detailStatusConfirmation = effectiveDetailConfirmation || detailConfirmation;
+    const detailConfirmationLocked = Boolean(effectiveDetailConfirmation?.active);
+    const detailConfirmationActionScope = detailScope && effectiveDetailConfirmation?.active && effectiveDetailConfirmation.dispatch_type === 'integrated'
+        ? { dispatchType: 'integrated', targetDate: detailScope.targetDate }
+        : detailScope;
     const detailChangeSyncConfirmationToken = detailConfirmation?.active
         ? detailConfirmation.id
         : detailSourceConfirmationToken;
@@ -3003,7 +3013,7 @@ function AsanDispatchContent() {
     }, [detailScope, getDetailAuthHeaders]);
 
     const changeDetailConfirmation = useCallback(async (action) => {
-        if (!detailScope || detailConfirmationSaving) return;
+        if (!detailConfirmationActionScope || detailConfirmationSaving) return;
         if (action === 'cancel' && !window.confirm('배차확정을 취소할까요? 해당일자 상세배차 수정 잠금이 해제됩니다.')) return;
         if (action === 'confirm' && !window.confirm('해당일자 상세배차를 배차확정 처리할까요? 확정 후 기본 상세배차는 수정 잠금됩니다.')) return;
 
@@ -3013,7 +3023,7 @@ function AsanDispatchContent() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
                 body: JSON.stringify({
-                    ...detailScope,
+                    ...detailConfirmationActionScope,
                     action,
                     snapshotLines: action === 'confirm' ? detailSnapshotLines : [],
                 }),
@@ -3039,7 +3049,7 @@ function AsanDispatchContent() {
         } finally {
             setDetailConfirmationSaving(false);
         }
-    }, [detailConfirmationSaving, detailScope, detailSnapshotLines, getDetailAuthHeaders]);
+    }, [detailConfirmationActionScope, detailConfirmationSaving, detailSnapshotLines, getDetailAuthHeaders]);
 
     const updateDetailChangeDraft = useCallback((event, updater) => {
         if (!event?.id) return;
@@ -3638,8 +3648,8 @@ function AsanDispatchContent() {
                             <div className={styles.detailConfirmPanel}>
                                 {detailConfirmationLocked ? (
                                     <span className={styles.detailConfirmBadge}>
-                                        배차확정 {fmtShortTs(detailConfirmation.confirmed_at)}
-                                        {confirmationActorName(detailConfirmation) ? ` · ${confirmationActorName(detailConfirmation)}` : ''}
+                                        배차확정 {fmtShortTs(detailStatusConfirmation?.confirmed_at)}
+                                        {confirmationActorName(detailStatusConfirmation) ? ` · ${confirmationActorName(detailStatusConfirmation)}` : ''}
                                     </span>
                                 ) : (
                                     <span className={styles.detailConfirmReady}>
@@ -3910,10 +3920,10 @@ function AsanDispatchContent() {
                     <div className={styles.summaryBar}>
                         <div className={styles.summaryLeft}>
                             <span className={styles.summaryItem}><b>배차변동내역</b> {detailScope?.targetDate || '일별 선택 필요'}</span>
-                            {detailConfirmation?.id ? (
+                            {detailStatusConfirmation?.id ? (
                                 <span className={styles.summaryItem}>
-                                    <b>{detailConfirmationLocked ? '확정기준' : '확정취소됨'}</b> {fmtShortTs(detailConfirmation.confirmed_at)}
-                                    {confirmationActorName(detailConfirmation) ? ` · ${confirmationActorName(detailConfirmation)}` : ''}
+                                    <b>{detailConfirmationLocked ? '확정기준' : '확정취소됨'}</b> {fmtShortTs(detailStatusConfirmation?.confirmed_at)}
+                                    {confirmationActorName(detailStatusConfirmation) ? ` · ${confirmationActorName(detailStatusConfirmation)}` : ''}
                                 </span>
                             ) : (
                                 <span className={`${styles.summaryItem} ${styles.summaryWarn}`}><b>대기</b> 배차확정 후 변동 입력</span>
@@ -4205,9 +4215,9 @@ function AsanDispatchContent() {
                         </div>
                     ) : (
                         <div className={styles.detailChangePanel}>
-                            <strong>{detailConfirmation?.id ? '변동 없음' : '변동 입력 대기'}</strong>
+                            <strong>{detailStatusConfirmation?.id ? '변동 없음' : '변동 입력 대기'}</strong>
                             <span>
-                                {detailConfirmation?.id
+                                {detailStatusConfirmation?.id
                                     ? '확정 이후 추가/삭제/변경 이벤트가 감지되면 발생 순서대로 표시합니다.'
                                     : '배차확정 후 추가/삭제/변경 이벤트를 기록합니다.'}
                             </span>

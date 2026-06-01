@@ -1,5 +1,7 @@
 import {
+  DISPATCH_DETAIL_DG_HEADER,
   DISPATCH_DETAIL_HEADERS,
+  DISPATCH_DETAIL_RF_HEADER,
   DISPATCH_DETAIL_TIME_HEADER,
   detailLineToRow,
   normalizeDispatchDetailRowValues,
@@ -45,10 +47,13 @@ const DERIVED_GLAPS_HEADERS = new Set([
 const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '고객사',
   '상차지',
+  '작업지',
   '하차지(선적)',
   '포트(DIST)',
-  '라인',
   '타입',
+  DISPATCH_DETAIL_DG_HEADER,
+  DISPATCH_DETAIL_RF_HEADER,
+  '업체명',
   DISPATCH_DETAIL_TIME_HEADER,
 ]);
 const TRANSPORT_CHANGE_CONTEXT_KEYS = Object.freeze([]);
@@ -107,6 +112,12 @@ const IDENTITY_FALLBACK_HEADERS = Object.freeze([
   '하차지(선적)',
   '업체명',
 ]);
+const TRANSPORT_MATCH_FALLBACK_HEADERS = Object.freeze([
+  '작업일자',
+  '구분',
+  '화주',
+  '라인',
+]);
 
 function cleanText(value = '') {
   return String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -153,6 +164,23 @@ function makeRowFingerprint(headerMap = {}, rowContext = {}) {
   ]);
 }
 
+function makeTransportMatchKey(headerMap = {}, rowContext = {}) {
+  const sourceRowIndex = rowContext.sourceRowIndex ?? '';
+  const sourceType = rowContext.sourceType || '';
+  const hasSourceAnchor = cleanText(sourceRowIndex) || cleanText(sourceType);
+  if (hasSourceAnchor) {
+    return makeKey([
+      rowContext.workDate || headerMap['작업일자'] || '',
+      rowContext.direction || headerMap['구분'] || '',
+      rowContext.shipper || headerMap['화주'] || '',
+      sourceType,
+      sourceRowIndex,
+      headerMap['라인'] || rowContext.line || '',
+    ]);
+  }
+  return makeKey(TRANSPORT_MATCH_FALLBACK_HEADERS.map(header => headerMap[header] || ''));
+}
+
 function makeStableDispatchContentKey(record = {}) {
   const headerMap = record.rowByHeader || valuesByHeader(record.rowValues || []);
   return makeKey(NEUTRAL_ADD_DELETE_HEADERS.map(header => headerMap[header] || ''));
@@ -194,6 +222,7 @@ function makeRowPayload(record = {}) {
     detailLineKey: record.detailLineKey || '',
     identityKey: record.identityKey || '',
     groupKey: record.groupKey || record.rowFingerprint || '',
+    transportMatchKey: record.transportMatchKey || '',
     rowFingerprint: record.rowFingerprint || '',
     rowValues: normalizeValues(record.rowValues || []),
     rowContext: record.rowContext || {},
@@ -351,11 +380,13 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     startSuffix: line.startSuffix || '',
   };
   const rowFingerprint = makeRowFingerprint(headerMap, rowContext);
+  const transportMatchKey = makeTransportMatchKey(headerMap, rowContext);
   const identityKey = makeIdentityKey(line, headerMap);
   return {
     detailLineKey,
     identityKey,
-    groupKey: rowFingerprint,
+    groupKey: transportMatchKey,
+    transportMatchKey,
     rowFingerprint,
     rowValues,
     rowByHeader: headerMap,
@@ -375,11 +406,14 @@ export function normalizeDispatchChangeLineRecord(input = {}) {
   const rowContext = input.rowContext || input.row_context || {};
   const rowFingerprint = makeRowFingerprint(headerMap, rowContext) || cleanText(input.rowFingerprint || input.row_fingerprint);
   const identityKey = cleanText(input.identityKey || input.identity_key) || makeIdentityKey({ ...rowContext, detailLineKey }, headerMap);
-  const groupKey = cleanText(input.groupKey || input.group_key) || rowFingerprint;
+  const transportMatchKey = cleanText(input.transportMatchKey || input.transport_match_key)
+    || makeTransportMatchKey(headerMap, rowContext);
+  const groupKey = cleanText(input.groupKey || input.group_key) || transportMatchKey || rowFingerprint;
   return {
     detailLineKey,
     identityKey,
     groupKey,
+    transportMatchKey,
     rowFingerprint,
     rowValues,
     rowByHeader: headerMap,
@@ -410,9 +444,16 @@ function compareLineOrder(a = {}, b = {}) {
 
 function getEventKeyBase(type, beforeRecord, afterRecord) {
   const anchor = afterRecord || beforeRecord || {};
-  return type === 'change'
-    ? anchor.identityKey || anchor.groupKey || anchor.detailLineKey
-    : makeStableDispatchContentKey(anchor) || anchor.groupKey || anchor.identityKey || anchor.detailLineKey;
+  if (type === 'change') {
+    const beforeFingerprint = beforeRecord?.rowFingerprint || '';
+    const afterFingerprint = afterRecord?.rowFingerprint || '';
+    return makeKey([
+      anchor.transportMatchKey || anchor.groupKey || anchor.identityKey || anchor.detailLineKey,
+      beforeFingerprint,
+      afterFingerprint,
+    ]);
+  }
+  return makeStableDispatchContentKey(anchor) || anchor.groupKey || anchor.identityKey || anchor.detailLineKey;
 }
 
 function buildEvent(type, beforeRecord, afterRecord, slot, occurredAt) {
@@ -482,13 +523,13 @@ export function diffDispatchChangeLines(snapshotLines = [], currentLines = [], o
 
   const beforeByIdentity = new Map();
   beforeRemaining.forEach((item) => {
-    const key = item.record.identityKey || item.record.groupKey || item.record.detailLineKey || '';
+    const key = item.record.transportMatchKey || item.record.groupKey || item.record.identityKey || item.record.detailLineKey || '';
     if (!beforeByIdentity.has(key)) beforeByIdentity.set(key, []);
     beforeByIdentity.get(key).push(item);
   });
   const afterByIdentity = new Map();
   afterRemaining.forEach((item) => {
-    const key = item.record.identityKey || item.record.groupKey || item.record.detailLineKey || '';
+    const key = item.record.transportMatchKey || item.record.groupKey || item.record.identityKey || item.record.detailLineKey || '';
     if (!afterByIdentity.has(key)) afterByIdentity.set(key, []);
     afterByIdentity.get(key).push(item);
   });

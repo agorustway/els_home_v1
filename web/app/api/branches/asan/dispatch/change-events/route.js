@@ -255,6 +255,63 @@ async function seedSnapshots(adminSupabase, confirmation, currentLines, actor, n
     if (error) throw error;
 }
 
+function confirmationFromEventRow(row = {}) {
+    return {
+        id: row.confirmation_id,
+        dispatch_type: row.dispatch_type,
+        target_date: row.target_date,
+    };
+}
+
+function eventSnapshotLine(payload = null) {
+    if (!payload || typeof payload !== 'object') return null;
+    const normalized = normalizeDispatchChangeLineRecord(payload);
+    return normalized.detailLineKey ? normalized : null;
+}
+
+async function deactivateSnapshotLine(adminSupabase, confirmationId, detailLineKey) {
+    if (!confirmationId || !detailLineKey) return;
+    const { error } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .update({ active: false })
+        .eq('confirmation_id', confirmationId)
+        .eq('detail_line_key', detailLineKey);
+    if (error) throw error;
+}
+
+async function upsertSnapshotLine(adminSupabase, eventRow, line, actor, now) {
+    if (!eventRow?.confirmation_id || !line?.detailLineKey) return;
+    const row = snapshotDbRowFromLine(line, confirmationFromEventRow(eventRow), actor, now);
+    const { error } = await adminSupabase
+        .from('branch_dispatch_detail_snapshots')
+        .upsert(row, { onConflict: 'confirmation_id,detail_line_key' });
+    if (error) throw error;
+}
+
+async function applyConfirmedEventsToSnapshots(adminSupabase, eventRows = [], actor, now) {
+    for (const row of eventRows || []) {
+        const beforeLine = eventSnapshotLine(row.before_snapshot);
+        const afterLine = eventSnapshotLine(row.editable_payload || row.after_snapshot);
+
+        if (row.change_type === 'delete') {
+            await deactivateSnapshotLine(adminSupabase, row.confirmation_id, beforeLine?.detailLineKey || row.detail_line_key);
+            continue;
+        }
+
+        if (row.change_type === 'change') {
+            const beforeKey = beforeLine?.detailLineKey || '';
+            const afterKey = afterLine?.detailLineKey || '';
+            if (beforeKey && afterKey && beforeKey !== afterKey) {
+                await deactivateSnapshotLine(adminSupabase, row.confirmation_id, beforeKey);
+            }
+        }
+
+        if (afterLine) {
+            await upsertSnapshotLine(adminSupabase, row, afterLine, actor, now);
+        }
+    }
+}
+
 function eventToDbPayload(event, confirmation, actor, now, existing = null) {
     const keepEditablePayload = existing?.editable_payload && Object.keys(existing.editable_payload || {}).length > 0
         ? mergeDispatchMemoOnlyPayload(existing.editable_payload, event.editablePayload)
@@ -488,6 +545,7 @@ async function confirmEvents(adminSupabase, payload, actor, now, { bulk = false 
         const newRow = updatedById.get(oldRow.id);
         await insertHistory(adminSupabase, newRow, null, bulk ? 'bulk_confirmed' : 'confirmed', actor, now, oldRow, newRow);
     }
+    await applyConfirmedEventsToSnapshots(adminSupabase, updatedRows || [], actor, now);
     return targetIds.length;
 }
 

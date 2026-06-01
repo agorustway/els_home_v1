@@ -1,3 +1,26 @@
+## [2026-06-01] 배차변동 순변동 매칭 기준 정리 (v5.14.315)
+### 원인
+- 배차확정 이후 저장 시점마다 변동 이벤트가 1줄씩 추가되지만, 업체/시간이 조정된 건도 추가/삭제처럼 보이면 실제 수량 변동인지 단순 변경인지 구분하기 어려웠습니다.
+- 변동 확인완료 후 다음 저장분도 최초 확정 스냅샷과 비교해 같은 이벤트를 다시 열 수 있어, “1차 수정분 확인 후 2차 저장은 1차 수정분을 기준으로 본다”는 운영 흐름과 맞지 않았습니다.
+- 통합 상세배차 확정 상태가 글로비스/모비스 상세 화면의 잠금 표시에는 반영되지 않았습니다.
+### 조치
+- 배차변동 비교에서 행 정체성(`transportMatchKey`)과 변경 셀 fingerprint를 분리했습니다.
+- 같은 원천 오더 묶음에서 업체명/시간/고객사/상차지/작업지/하차지/포트/타입/DG/RF가 바뀌면 `변경` 이벤트로 만들고, `라인`(선사)이 바뀌면 삭제+추가로 처리하도록 조정했습니다.
+- 변동 확인완료 시 해당 이벤트의 최종 editable payload를 확정 스냅샷에 반영해 다음 동기화가 직전 확인완료 상태를 기준으로 비교하도록 했습니다.
+- 통합 확정이 활성화된 날짜는 글로비스/모비스 상세 화면에서도 잠금 상태와 확정자/확정시각을 표시하도록 했습니다.
+### 검증
+- `node --test tests/asanDispatchDetailLines.test.mjs tests/asanDashboardView.test.mjs`: 64개 통과.
+- `npm run lint`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/api/branches/asan/dispatch/change-events/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 상세배차 변경건 다운로드 수정일시 보강 (v5.14.314)
 ### 원인
 - 상세배차 화면은 확정 후 변동이 있는 행을 `변경건`으로 표시하지만, 엑셀 다운로드는 표시 행의 `line` 값만 변환해 변동 이벤트의 발생 시각을 `수정일시` 열에 넣지 못했습니다.
