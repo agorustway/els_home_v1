@@ -1,3 +1,22 @@
+## [2026-06-01] GLAPS 운송경로 코드 역매핑/쉼표 후보 보강 (v5.14.319)
+### 원인
+- `KRINF`처럼 GLAPS 위치코드를 직접 입력해도 화면 편집 로직이 코드에서 표준 장소명을 역변환하지 않아 운송경로명이 자동으로 채워지지 않았습니다.
+- `KRBNP,KRUWN`처럼 한 운송경로에 여러 상차지 코드를 쉼표로 묶은 값은 매칭 후보에서 한 덩어리 문자열로 취급돼, 실제 상세배차 상차지 코드가 `KRBNP` 또는 `KRUWN`일 때 같은 경유지코드 운송경로에 물리기 어려웠습니다.
+### 조치
+- 운송경로 위치코드 후보 생성에서 쉼표/세미콜론/줄바꿈 값을 개별 코드 후보로 분해하도록 했습니다.
+- `KRINF` 등 위치코드를 표준 장소명으로 표시하는 역매핑과 운송경로명 자동 생성 헬퍼를 추가했습니다.
+- GLAPS 운송경로 수정 화면에서 경유지코드를 입력하면 기존 원장에 있는 같은 경유지코드의 `경유지(ELS)`를 자동 보강하고, 운송경로명이 비어 있거나 자동 생성 상태일 때 새 코드 기준으로 다시 채우도록 했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs`: 통과
+- `cd web; npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/glapsMasterData.test.mjs"`: 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/tests/glapsMasterData.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] GLAPS 급행 운송경로코드 AAAAAAAAA 중복 예외 (v5.14.317)
 ### 원인
 - 급히 임시 운송경로를 추가해야 하는 `AAAAAAAAA` 코드는 같은 운송경로코드가 이미 있어도 다른 연결경로를 추가해야 하는 운영 예외입니다.

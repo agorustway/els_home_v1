@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './glapsMaster.module.css';
 import { buildGlapsDuplicateInfo } from '@/utils/glapsDuplicateGroups.mjs';
-import { formatGlapsAliasType, getGlapsRouteShipperCode, getGlapsRouteWaypointCode } from '@/utils/glapsMasterData.mjs';
+import {
+    buildGlapsRouteDisplayName,
+    formatGlapsAliasType,
+    getGlapsRouteShipperCode,
+    getGlapsRouteWaypointCode,
+    normalizeGlapsKey,
+} from '@/utils/glapsMasterData.mjs';
 
 const STATUS_LABELS = {
     ready: '확정',
@@ -99,6 +105,14 @@ const EMPTY_SPECIAL_RULE_EDITOR = {
     priority: '100',
     reviewNote: '',
 };
+
+const ROUTE_AUTO_NAME_FIELDS = new Set([
+    'startLocationName',
+    'waypointName',
+    'waypointElsName',
+    'waypointCode',
+    'destinationName',
+]);
 
 function formatDateTime(value) {
     if (!value) return '-';
@@ -203,6 +217,10 @@ function routeToEditorValues(row = {}) {
         reviewStatus: row.review_status || 'needs_mapping',
         reviewNote: row.review_note || '',
     };
+}
+
+function waypointLabelByCode(waypointCodeLabelMap, code) {
+    return waypointCodeLabelMap.get(normalizeGlapsKey(code)) || '';
 }
 
 function aliasToEditorValues(row = {}) {
@@ -331,6 +349,16 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const selectedRowIdSet = useMemo(() => new Set(selectedRowIds), [selectedRowIds]);
     const selectedRowCount = selectedRowIds.filter(id => tableRows.some(row => row.id === id)).length;
     const selectedDuplicateCount = selectedRowIds.filter(id => duplicateInfo.byId.has(id)).length;
+    const routeWaypointCodeLabelMap = useMemo(() => {
+        const map = new Map();
+        (data?.routes || []).forEach((row) => {
+            const code = getGlapsRouteWaypointCode(row);
+            const label = tableText(row.waypoint_els_name || row.waypoint_name).trim();
+            const key = normalizeGlapsKey(code);
+            if (key && label && !map.has(key)) map.set(key, label);
+        });
+        return map;
+    }, [data?.routes]);
 
     useEffect(() => {
         if (activeTable !== 'routes' && activeTable !== 'aliases') return;
@@ -425,7 +453,27 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     }, [activeTable]);
 
     const updateEditorValue = (field, value) => {
-        setEditor(prev => (prev ? { ...prev, values: { ...prev.values, [field]: value } } : prev));
+        setEditor((prev) => {
+            if (!prev) return prev;
+            const nextValues = { ...prev.values, [field]: value };
+            if (prev.mode === 'routes') {
+                const previousAutoName = buildGlapsRouteDisplayName(prev.values, routeWaypointCodeLabelMap);
+                const currentRouteName = tableText(prev.values.routeName).trim();
+                if (field === 'waypointCode') {
+                    const nextWaypointLabel = waypointLabelByCode(routeWaypointCodeLabelMap, value);
+                    const previousWaypointLabel = waypointLabelByCode(routeWaypointCodeLabelMap, prev.values.waypointCode);
+                    const currentWaypointElsName = tableText(prev.values.waypointElsName).trim();
+                    if (nextWaypointLabel && (!currentWaypointElsName || currentWaypointElsName === previousWaypointLabel || currentWaypointElsName === tableText(prev.values.waypointCode).trim())) {
+                        nextValues.waypointElsName = nextWaypointLabel;
+                    }
+                }
+                if (ROUTE_AUTO_NAME_FIELDS.has(field) && (!currentRouteName || currentRouteName === previousAutoName)) {
+                    const nextAutoName = buildGlapsRouteDisplayName(nextValues, routeWaypointCodeLabelMap);
+                    if (nextAutoName) nextValues.routeName = nextAutoName;
+                }
+            }
+            return { ...prev, values: nextValues };
+        });
     };
 
     const submitEditor = async (event) => {

@@ -8,9 +8,12 @@ import {
   GLAPS_REVIEW_STATUS_LABELS,
   GLAPS_ROUTE_TEMPLATE_HEADERS,
   buildGlapsDispatchRouteFingerprints,
+  buildGlapsRouteDisplayName,
   buildGlapsRouteFingerprint,
   cleanGlapsText,
   formatGlapsAliasType,
+  getGlapsRouteLocationCodeCandidates,
+  getGlapsRouteLocationDisplayName,
   getGlapsRouteShipperCode,
   getGlapsRouteWaypointCode,
   getGlapsRouteMatchQuery,
@@ -243,6 +246,19 @@ test('GLAPS 상세배차 매칭 키는 화주사코드, 상차지, 경유지(ELS
     waypointElsName: '글로비스KD센터2포장장',
     destinationName: '부산신항',
   }).includes('B000034432|KRBNP|글로비스KD센터2포장장|KRBNP'));
+  assert.ok(getGlapsRouteLocationCodeCandidates('KRBNP,KRUWN').includes('KRUWN'));
+  assert.ok(buildGlapsDispatchRouteFingerprints({
+    shipperCode: 'N084',
+    startLocationName: 'KRBNP,KRUWN',
+    waypointElsName: 'KCP_아산',
+    destinationName: 'KRBNP',
+  }).includes('N084|KRUWN|KCP_아산|KRBNP'));
+  assert.equal(getGlapsRouteLocationDisplayName('KRINF'), '인천항국제여객터미널');
+  assert.equal(buildGlapsRouteDisplayName({
+    startLocationName: 'KRINC',
+    waypointCode: 'H000_GA',
+    destinationName: 'KRINF',
+  }, new Map([['H000GA', '글로비스KD센터1포장장']])), '인천항 글로비스KD센터1포장장 인천항국제여객터미널');
   assert.deepEqual(getGlapsRouteMatchQuery().slice(2), [
     '상세배차.화주사코드 = route.화주사코드',
     '상세배차.상차지 = route.start_location_name',

@@ -210,6 +210,12 @@ const GLAPS_ROUTE_LOCATION_CODE_ALIASES = Object.freeze([
   ['온산항', ['KRONS']],
 ]);
 
+const GLAPS_ROUTE_LOCATION_CODE_NAME_MAP = new Map(
+  GLAPS_ROUTE_LOCATION_CODE_ALIASES.flatMap(([name, codes]) => (
+    codes.map(code => [normalizeGlapsKey(code), name])
+  )),
+);
+
 const UUID_TEXT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function cleanGlapsText(value) {
@@ -252,14 +258,41 @@ function routePartKey(value) {
   return cleanGlapsText(value).replace(/\s+/g, '').toUpperCase();
 }
 
+function splitRouteLocationValues(value = '') {
+  const parts = splitGlapsAliasValues(value);
+  const cleaned = cleanGlapsText(value);
+  if (parts.length > 0) return parts;
+  return cleaned ? [cleaned] : [];
+}
+
+export function getGlapsRouteLocationDisplayName(value = '') {
+  return splitRouteLocationValues(value)
+    .map((part) => GLAPS_ROUTE_LOCATION_CODE_NAME_MAP.get(normalizeGlapsKey(part)) || cleanGlapsText(part))
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function getGlapsRouteLocationCodeCandidates(value = '') {
   const cleaned = cleanGlapsText(value);
-  const normalized = normalizeGlapsKey(cleaned);
-  const candidates = [cleaned];
-  GLAPS_ROUTE_LOCATION_CODE_ALIASES.forEach(([name, codes]) => {
-    if (normalizeGlapsKey(name) === normalized) candidates.push(...codes);
+  const candidates = cleaned ? [cleaned] : [];
+  splitRouteLocationValues(cleaned).forEach((part) => {
+    const normalized = normalizeGlapsKey(part);
+    candidates.push(part);
+    GLAPS_ROUTE_LOCATION_CODE_ALIASES.forEach(([name, codes]) => {
+      if (normalizeGlapsKey(name) === normalized) candidates.push(...codes);
+    });
   });
-  return [...new Set(candidates.filter(Boolean))];
+  return [...new Set(candidates.map(cleanGlapsText).filter(Boolean))];
+}
+
+export function buildGlapsRouteDisplayName(route = {}, waypointCodeLabelMap = new Map()) {
+  const waypointCode = getGlapsRouteWaypointCode(route) || route.waypointCode || '';
+  const waypointFromCode = waypointCodeLabelMap.get?.(normalizeGlapsKey(waypointCode)) || '';
+  return [
+    getGlapsRouteLocationDisplayName(route.startLocationName ?? route.start_location_name),
+    cleanGlapsText(route.waypointElsName ?? route.waypoint_els_name) || waypointFromCode || cleanGlapsText(route.waypointName ?? route.waypoint_name) || cleanGlapsText(waypointCode),
+    getGlapsRouteLocationDisplayName(route.destinationName ?? route.destination_name),
+  ].filter(Boolean).join(' ');
 }
 
 export function buildGlapsDispatchRouteFingerprints({
