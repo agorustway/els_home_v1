@@ -967,10 +967,13 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /detailHeaderFilters/);
   assert.match(source, /detailHeaderSorts/);
   assert.match(source, /DEFAULT_DETAIL_HEADER_SORTS/);
+  assert.match(source, /compareDispatchDetailRowsBySort/);
   assert.match(source, /compareDispatchChangeRowsBySort/);
   assert.match(source, /toggleDetailHeaderFilterValue/);
   assert.match(source, /toggleDetailHeaderFilterAll/);
   assert.match(source, /applyDetailHeaderSort/);
+  assert.match(source, /clearDetailHeaderSort/);
+  assert.match(source, /정렬초기화/);
   assert.match(source, /내림차순/);
   assert.match(source, /오름차순/);
   assert.match(source, /전체취소/);
@@ -978,6 +981,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /data-detail-header-filter-root="true"/);
   assert.match(source, /detailRowMatchesHeaderFilters\(detailLineToRow\(line\), DISPATCH_DETAIL_HEADERS, activeFilters\)/);
   assert.match(source, /detailRowMatchesHeaderFilters\(values, DISPATCH_CHANGE_HEADERS, activeFilters\)/);
+  assert.match(source, /compareDispatchDetailRowsBySort\(a, b, DISPATCH_DETAIL_HEADERS, activeSort\)/);
   assert.match(source, /setDetailRowValue\(editableValues, '수정일시', eventChangedAt\)/);
   assert.match(source, /detailChangeRowsBase\.length > 0/);
   assert.match(source, /변경건/);
@@ -1055,8 +1059,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailComboInput\s*{[\s\S]*border: 1px solid transparent;/);
   assert.match(css, /\.detailTable thead th\s*{[\s\S]*position: sticky;[\s\S]*top: 0;/);
   assert.match(css, /\.detailFilterDropdown\s*{[\s\S]*max-height: 300px;/);
-  assert.match(css, /\.detailSortActions/);
-  assert.match(css, /\.detailSortActionActive/);
+  assert.match(css, /\.detailHeaderSortControls/);
+  assert.match(css, /\.detailSortControlActive/);
+  assert.doesNotMatch(css, /\.detailSortActions/);
   assert.match(css, /\.detailFilterOption\s*{[\s\S]*grid-template-columns: 16px minmax\(92px, 1fr\) auto;/);
   assert.match(css, /\.detailStartColumn,\s*\n\.detailStartCell\s*{[\s\S]*width: 92px;[\s\S]*max-width: 92px;/);
   assert.match(css, /\.detailStartInput\s*{[\s\S]*text-overflow: ellipsis;/);

@@ -1315,6 +1315,63 @@ function compareDetailSortText(a = '', b = '') {
     if (aNumber !== null && bNumber !== null && aNumber !== bNumber) return aNumber - bNumber;
     return normalizeDetailFilterValue(a).localeCompare(normalizeDetailFilterValue(b), 'ko', { numeric: true });
 }
+function parseDetailSortTimeMinutes(value = '') {
+    const text = normalizeDetailFilterValue(value).replace(/\s+/g, '');
+    if (!text) return null;
+    const colonMatch = text.match(/^(\d{1,2}):(\d{1,2})$/);
+    const compactMatch = !colonMatch && text.match(/^(\d{3,4})$/);
+    const hourOnlyMatch = !colonMatch && !compactMatch && text.match(/^(\d{1,2})$/);
+    const hour = colonMatch
+        ? Number(colonMatch[1])
+        : compactMatch
+            ? Number(compactMatch[1].slice(0, -2))
+            : hourOnlyMatch
+                ? Number(hourOnlyMatch[1])
+                : NaN;
+    const minute = colonMatch
+        ? Number(colonMatch[2])
+        : compactMatch
+            ? Number(compactMatch[1].slice(-2))
+            : hourOnlyMatch
+                ? 0
+                : NaN;
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return hour * 60 + minute;
+}
+function compareDetailSortValues(header = '', aValue = '', bValue = '', direction = 'asc') {
+    const dateHeaders = new Set(['발생일시', '수정일시', '확인일시']);
+    const timeHeaders = new Set(['시간', '배차요청시간']);
+    let base = 0;
+    if (dateHeaders.has(header)) {
+        const aTime = new Date(aValue || 0).getTime() || 0;
+        const bTime = new Date(bValue || 0).getTime() || 0;
+        base = aTime - bTime;
+    } else if (timeHeaders.has(header)) {
+        const aMinutes = parseDetailSortTimeMinutes(aValue);
+        const bMinutes = parseDetailSortTimeMinutes(bValue);
+        if (aMinutes !== null && bMinutes !== null) base = aMinutes - bMinutes;
+        else base = compareDetailSortText(aValue, bValue);
+    } else {
+        base = compareDetailSortText(aValue, bValue);
+    }
+    if (base === 0) return 0;
+    return direction === 'desc' ? -base : base;
+}
+function getDispatchDetailSortValue(row = {}, headers = [], header = '') {
+    const idx = headers.indexOf(header);
+    return idx >= 0 ? row.values?.[idx] : '';
+}
+function compareDispatchDetailRowsBySort(a = {}, b = {}, headers = [], sort = null) {
+    if (!sort?.header || !sort?.direction) return 0;
+    const base = compareDetailSortValues(
+        sort.header,
+        getDispatchDetailSortValue(a, headers, sort.header),
+        getDispatchDetailSortValue(b, headers, sort.header),
+        sort.direction,
+    );
+    if (base !== 0) return base;
+    return Number(a.index || 0) - Number(b.index || 0);
+}
 function getDispatchChangeSortValue(row = {}, headers = [], header = '') {
     if (header === '발생일시' || header === '수정일시') {
         return row.event?.occurred_at || row.event?.updated_at || row.event?.created_at || '';
@@ -1327,12 +1384,8 @@ function compareDispatchChangeRowsBySort(a = {}, b = {}, headers = [], sort = nu
     if (!sort?.header || !sort?.direction) return 0;
     const aValue = getDispatchChangeSortValue(a, headers, sort.header);
     const bValue = getDispatchChangeSortValue(b, headers, sort.header);
-    const aTime = ['발생일시', '수정일시', '확인일시'].includes(sort.header) ? new Date(aValue || 0).getTime() || 0 : null;
-    const bTime = ['발생일시', '수정일시', '확인일시'].includes(sort.header) ? new Date(bValue || 0).getTime() || 0 : null;
-    const base = aTime !== null && bTime !== null && aTime !== bTime
-        ? aTime - bTime
-        : compareDetailSortText(aValue, bValue);
-    if (base !== 0) return sort.direction === 'desc' ? -base : base;
+    const base = compareDetailSortValues(sort.header, aValue, bValue, sort.direction);
+    if (base !== 0) return base;
     const aOrder = Number(a.event?.event_order || 0);
     const bOrder = Number(b.event?.event_order || 0);
     if (aOrder !== bOrder) return sort.direction === 'desc' ? bOrder - aOrder : aOrder - bOrder;
@@ -2725,15 +2778,18 @@ function AsanDispatchContent() {
             .map((line, index) => ({
                 line,
                 index,
+                values: detailLineToRow(line),
                 changeEvent: detailChangeEventByLineKey.get(makeDispatchDetailLineKey(line)) || null,
             }))
             .sort((a, b) => {
+                const activeSort = getDetailHeaderSort(detailHeaderSorts, DETAIL_HEADER_FILTER_MODES.detail);
+                if (activeSort) return compareDispatchDetailRowsBySort(a, b, DISPATCH_DETAIL_HEADERS, activeSort);
                 const aChanged = a.changeEvent ? 1 : 0;
                 const bChanged = b.changeEvent ? 1 : 0;
                 if (aChanged !== bChanged) return aChanged - bChanged;
                 return a.index - b.index;
             })
-    ), [detailChangeEventByLineKey, filteredDetailLines]);
+    ), [detailChangeEventByLineKey, detailHeaderSorts, filteredDetailLines]);
 
     const buildDetailChangeDisplayValues = useCallback((event, rawValues = [], options = {}) => {
         const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, {
@@ -3418,6 +3474,14 @@ function AsanDispatchContent() {
             [mode]: { header, direction },
         }));
     }, []);
+    const clearDetailHeaderSort = useCallback((mode) => {
+        setDetailHeaderSorts(prev => {
+            const next = sanitizeDetailHeaderSorts(prev);
+            if (mode === DETAIL_HEADER_FILTER_MODES.change) next[mode] = DEFAULT_DETAIL_HEADER_SORTS[mode];
+            else delete next[mode];
+            return next;
+        });
+    }, []);
     const hideCol = (name) => { setHiddenCols(prev => new Set([...prev, name])); setFilterDropdown(null); };
     const showCol = (name) => { setHiddenCols(prev => { const n = new Set(prev); n.delete(name); return n; }); };
     const resetPrefs = () => { setHiddenCols(new Set()); setColWidths({}); localStorage.removeItem(`${PREFS_KEY}_${viewType}`); };
@@ -3457,6 +3521,7 @@ function AsanDispatchContent() {
         setColorFilter(null);
         setFilterDropdown(null);
         setDetailHeaderFilters(sanitizeDetailHeaderFilters());
+        setDetailHeaderSorts(sanitizeDetailHeaderSorts());
         setDetailHeaderFilterDropdown(null);
         setDisplayLimit(100);
         const keyword = issue.search || issue.title || '';
@@ -3483,6 +3548,7 @@ function AsanDispatchContent() {
         setColumnFilters({});
         setFilterDropdown(null);
         setDetailHeaderFilters(sanitizeDetailHeaderFilters());
+        setDetailHeaderSorts(sanitizeDetailHeaderSorts());
         setDetailHeaderFilterDropdown(null);
         setDisplayLimit(100);
     }, []);
@@ -3549,7 +3615,6 @@ function AsanDispatchContent() {
         const isOpen = detailHeaderFilterDropdown?.mode === mode && detailHeaderFilterDropdown?.header === header;
         const activeSort = getDetailHeaderSort(detailHeaderSorts, mode);
         const isSorted = activeSort?.header === header;
-        const sortEnabled = mode === DETAIL_HEADER_FILTER_MODES.change;
         const activeValueSet = new Set(activeValues);
         const optionValues = [...new Set(options.map(option => normalizeDetailFilterValue(option.value)))];
         const allOptionsSelected = optionValues.length > 0
@@ -3573,29 +3638,47 @@ function AsanDispatchContent() {
                 title={`${header} 필터`}
             >
                 <span className={styles.thText}>
-                    {header}{activeValues.length > 0 && <span className={styles.filterIcon}>▼{activeValues.length}</span>}
-                    {isSorted && <span className={styles.detailSortIcon}>{activeSort.direction === 'desc' ? '↓' : '↑'}</span>}
+                    <span className={styles.detailHeaderLabel}>
+                        {header}{activeValues.length > 0 && <span className={styles.filterIcon}>▼{activeValues.length}</span>}
+                        {isSorted && <span className={styles.detailSortIcon}>{activeSort.direction === 'desc' ? '↓' : '↑'}</span>}
+                    </span>
+                    <span className={styles.detailHeaderSortControls} aria-label={`${header} 정렬`}>
+                        <button
+                            type="button"
+                            className={isSorted && activeSort.direction === 'asc' ? styles.detailSortControlActive : ''}
+                            title={`${header} 오름차순`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                applyDetailHeaderSort(mode, header, 'asc');
+                            }}
+                        >
+                            ↑
+                        </button>
+                        <button
+                            type="button"
+                            className={isSorted && activeSort.direction === 'desc' ? styles.detailSortControlActive : ''}
+                            title={`${header} 내림차순`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                applyDetailHeaderSort(mode, header, 'desc');
+                            }}
+                        >
+                            ↓
+                        </button>
+                        <button
+                            type="button"
+                            title={`${header} 정렬초기화`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                clearDetailHeaderSort(mode);
+                            }}
+                        >
+                            ↺
+                        </button>
+                    </span>
                 </span>
                 {isOpen && (
                     <div className={styles.detailFilterDropdown} onClick={event => event.stopPropagation()}>
-                        {sortEnabled && (
-                            <div className={styles.detailSortActions}>
-                                <button
-                                    type="button"
-                                    className={isSorted && activeSort.direction === 'desc' ? styles.detailSortActionActive : ''}
-                                    onClick={() => applyDetailHeaderSort(mode, header, 'desc')}
-                                >
-                                    내림차순
-                                </button>
-                                <button
-                                    type="button"
-                                    className={isSorted && activeSort.direction === 'asc' ? styles.detailSortActionActive : ''}
-                                    onClick={() => applyDetailHeaderSort(mode, header, 'asc')}
-                                >
-                                    오름차순
-                                </button>
-                            </div>
-                        )}
                         <div className={styles.detailFilterActions}>
                             <button type="button" onClick={() => toggleDetailHeaderFilterAll(mode, header, options)}>
                                 {allOptionsSelected ? '전체취소' : '전체선택'}

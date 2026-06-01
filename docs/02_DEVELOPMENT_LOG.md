@@ -1,3 +1,21 @@
+## [2026-06-02] 상세/변동 헤더 기호형 정렬 추가 (v5.14.327)
+### 원인
+- 상세배차/배차변동 상단 요약바가 좁은 폭에서 확정 배지와 검수 버튼 묶음의 세로 기준이 맞지 않아 깨져 보였습니다.
+- 배차변동은 정렬이 가능했지만 드롭다운 내부 글자 버튼 방식이었고, 상세배차는 필요 시 컬럼 기준으로 정렬할 수 없었습니다.
+### 조치
+- 상세배차/배차변동 테이블 헤더에 `↑/↓/↺` 기호형 정렬 컨트롤을 추가했습니다.
+- 상세배차 정렬 초기화는 원래 배차 순서로, 배차변동 정렬 초기화는 기본 `발생일시` 최신순으로 복귀합니다.
+- 상단 요약바 좌/우 묶음의 줄바꿈 기준과 정렬을 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 41개 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 아산 배차 현황판 캐시 권한 보강 (v5.14.326)
 ### 원인
 - 운영 Supabase에 캐시 테이블은 생성됐지만 REST 경유 `service_role`이 새 테이블 권한을 받지 못해 현황판 캐시 route가 `permission denied`를 반환했습니다.
