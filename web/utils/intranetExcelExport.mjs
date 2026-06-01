@@ -84,24 +84,35 @@ export function isIntranetTimeHeader(header) {
   return DEFAULT_TIME_HEADERS.has(normalizeExcelHeader(header));
 }
 
-export function toIntranetExcelTimeValue(value) {
+function parseIntranetExcelTimeParts(value) {
   const text = cleanExcelText(value).replace(/\s+/g, '');
   const match = text.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = match[2] === undefined ? 0 : Number(match[2]);
   if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
+}
+
+export function toIntranetExcelTimeText(value) {
+  const parts = parseIntranetExcelTimeParts(value);
+  if (!parts) return cleanExcelText(value);
+  return `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
+}
+
+export function toIntranetExcelTimeValue(value) {
+  const parts = parseIntranetExcelTimeParts(value);
+  if (!parts) return null;
+  const { hour, minute } = parts;
   return (hour * 60 + minute) / 1440;
 }
 
 export function toIntranetExcelValue(header, value, numericHeaders = [], textHeaders = []) {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : '';
+  if (typeof value === 'number' && !Number.isFinite(value)) return '';
   const text = cleanExcelText(value);
   if (isIntranetTextHeader(header, textHeaders)) return text;
-  if (isIntranetTimeHeader(header)) {
-    const timeValue = toIntranetExcelTimeValue(text);
-    if (timeValue !== null) return timeValue;
-  }
+  if (isIntranetTimeHeader(header)) return toIntranetExcelTimeText(text);
+  if (typeof value === 'number') return value;
   if (!isIntranetNumericHeader(header, numericHeaders)) return text;
   const normalized = text.replace(/,/g, '');
   if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return text;
@@ -241,10 +252,12 @@ export function addIntranetExportWorksheet(workbook, exportSheet = {}, options =
   rows.forEach(row => {
     const excelRow = sheet.addRow(row);
     for (let colIdx = 1; colIdx <= headers.length; colIdx += 1) {
+      const header = headers[colIdx - 1];
+      const isTimeHeader = isIntranetTimeHeader(header);
       applyIntranetExcelBodyCell(excelRow.getCell(colIdx), {
-        numeric: isIntranetNumericHeader(headers[colIdx - 1], numericHeaders),
-        time: isIntranetTimeHeader(headers[colIdx - 1]) && !isIntranetTextHeader(headers[colIdx - 1], textHeaders),
-        text: isIntranetTextHeader(headers[colIdx - 1], textHeaders),
+        numeric: !isTimeHeader && isIntranetNumericHeader(header, numericHeaders),
+        time: false,
+        text: isTimeHeader || isIntranetTextHeader(header, textHeaders),
       });
     }
   });

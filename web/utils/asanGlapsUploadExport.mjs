@@ -111,11 +111,13 @@ function detailRowToGlapsUploadRow(headerIndex, row = []) {
   setUploadValue(uploadRow, '반입지(도착)코드', getByHeader(row, headerIndex, ['반입지(도착)코드']));
   setUploadValue(uploadRow, '운송경로 코드', getByHeader(row, headerIndex, ['운송경로코드']));
   setUploadValue(uploadRow, '운송서비스 코드 ', getByHeader(row, headerIndex, ['운송서비스코드']));
+  setUploadValue(uploadRow, '배차요청일자', getByHeader(row, headerIndex, ['작업일자']));
   setUploadValue(uploadRow, '배차요청시간', getByHeader(row, headerIndex, ['시간']));
   setUploadValue(uploadRow, '운송사 코드', getByHeader(row, headerIndex, ['운송사코드']));
   setUploadValue(uploadRow, '부킹번호', bookingNumber);
-  setUploadValue(uploadRow, 'POD', portCode);
+  setUploadValue(uploadRow, 'POD', '');
   setUploadValue(uploadRow, '최종목적지', portCode);
+  setUploadValue(uploadRow, '선적지', getByHeader(row, headerIndex, ['업체명']));
   setUploadValue(uploadRow, '컨테이너 규격', getByHeader(row, headerIndex, ['타입코드']));
   setUploadValue(uploadRow, GLAPS_UPLOAD_QUANTITY_HEADER, 1);
   setUploadValue(uploadRow, '냉동 여부', getByHeader(row, headerIndex, ['RF', 'DG.RF']));

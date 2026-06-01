@@ -1,3 +1,22 @@
+## [2026-06-01] 상세배차 다운로드 시간/GLAPS 업로드 매핑 보정 (v5.14.313)
+### 원인
+- 상세배차내역 화면 다운로드의 `시간` 열이 Excel 시간값/시간 서식으로 저장되면 GLAPS 업로드 전처리에서 `13:00`이 `1:00:00 PM` 성격의 값으로 해석될 수 있었습니다.
+- `GLAPS_업로드` 시트는 작업일자와 선적지 매핑이 실무 기준과 달랐고, `POD`에는 더 이상 값을 넣지 않아야 했습니다.
+### 조치
+- 공통 인트라넷 엑셀 유틸에서 `시간/배차요청시간` 열을 `08:00`, `13:30` 형태의 텍스트 셀로 저장하도록 변경했습니다.
+- `GLAPS_업로드` 시트에 `배차요청일자=작업일자`를 텍스트로 넣고, `POD`는 공란, `선적지`는 우리쪽 `업체명`으로 출력하도록 매핑했습니다.
+### 검증
+- `node --test tests/intranetExcelExport.test.mjs tests/asanDispatchDetailLines.test.mjs tests/asanDashboardView.test.mjs`: 66개 통과.
+- `npx eslint utils/intranetExcelExport.mjs utils/asanGlapsUploadExport.mjs "app/(main)/employees/branches/asan/page.js" tests/intranetExcelExport.test.mjs tests/asanDispatchDetailLines.test.mjs tests/asanDashboardView.test.mjs`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/utils/intranetExcelExport.mjs`, `web/utils/asanGlapsUploadExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/intranetExcelExport.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 배차변동 BKG 단독 변경 표시 정책 정리 (v5.14.312)
 ### 원인
 - 배차확정 후 WEB에서 BKG1~3만 수정한 경우도 배차변동내역에 추가/삭제처럼 보이면 실제 수량 변동과 부킹 보정이 섞여 실무 판단이 어려웠습니다.

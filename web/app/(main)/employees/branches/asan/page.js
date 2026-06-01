@@ -2131,7 +2131,7 @@ function AsanDispatchContent() {
                         sheetName: GLAPS_UPLOAD_SHEET_NAME,
                         headers: GLAPS_UPLOAD_HEADERS,
                         rows: glapsUploadRows,
-                        textHeaders: ['배차요청시간'],
+                        textHeaders: ['배차요청일자', '배차요청시간'],
                     }],
                 });
                 return;
