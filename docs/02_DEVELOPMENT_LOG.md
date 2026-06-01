@@ -1,3 +1,23 @@
+## [2026-06-01] GLAPS 운송경로 경유지코드 상세배차 연결 (v5.14.309)
+### 원인
+- GLAPS 마스터 엑셀 `운송경로` 시트에는 `경유지코드`가 있었지만, 웹은 이 값을 표면 컬럼으로 올리지 않아 상세배차 `작업지(하차지)코드`가 비어 보였습니다.
+### 조치
+- `경유지코드/작업지(하차지)코드` 후보 헤더를 공통 유틸로 분리하고, 운송경로 raw payload에서 `waypoint_code`를 파생해 API lookup/GLAPS코드 표에 내려주도록 했습니다.
+- 상세배차 계산은 더 이상 경유지명/ELS명을 fallback으로 쓰지 않고 `getGlapsRouteWaypointCode()` 결과만 `작업지(하차지)코드`에 넣습니다.
+- GLAPS 운송경로 수정양식에 `경유지코드` 컬럼을 추가하고, 웹 직접수정/일괄수정/수정양식 업로드도 이 값을 보존·수정할 수 있게 했습니다.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 51개 통과.
+- `npx eslint "utils/glapsMasterData.mjs" "app/(main)/employees/branches/asan/page.js" "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "app/api/branches/asan/glaps/master/route.js" "app/api/branches/asan/glaps/master/template/route.js" "tests/glapsMasterData.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`, `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/glaps/master/route.js`, `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-05-31] 안전운임 고시해석 위키트리 문서형 재구성 (v5.14.308)
 ### 원인
 - 기존 화면은 제목과 데이터는 위키트리였지만, 형이 요청한 “페이지 옆 트리 구조를 누르면 문서가 바뀌는 진짜 위키트리” 형태가 아니었습니다.

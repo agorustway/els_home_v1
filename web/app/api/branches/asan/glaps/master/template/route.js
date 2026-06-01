@@ -8,6 +8,7 @@ import {
   GLAPS_ROUTE_TEMPLATE_HEADERS,
   formatGlapsAliasType,
   getGlapsRouteShipperCode,
+  getGlapsRouteWaypointCode,
 } from '@/utils/glapsMasterData.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,7 @@ const PAGE_SIZE = 1000;
 const TEMPLATE_HEADER_ROW_NUMBER = 3;
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const ROUTE_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', '운송경로명', '경유지', '수정출처', '수정일시']);
-const ROUTE_KEY_TEMPLATE_COLUMNS = new Set(['화주사코드', '운송경로코드']);
+const ROUTE_KEY_TEMPLATE_COLUMNS = new Set(['화주사코드', '경유지코드', '운송경로코드']);
 const ALIAS_PROTECTED_TEMPLATE_COLUMNS = new Set([
   'ID',
   'GLAPS 디스크립션(설명)',
@@ -188,7 +189,7 @@ function addGuideWorksheet(workbook) {
     ['공통', '전체', '수정일시', '참고용입니다. 수정하지 않아도 됩니다.', '업로드 반영 기준 아님'],
     ['공통', '전체', '삭제(Y)', '삭제할 행만 Y를 입력합니다. 행을 지우는 것은 삭제로 처리하지 않습니다.', 'Y 외 값은 삭제로 보지 않음'],
     ['공통', '전체', '회색 음영', '회색 칸은 GLAPS 실제 업로드/원장 기준값입니다. 일반 수정 대상이 아닙니다.', 'ELS 매치코드/ELS 디스크립션/검수메모 중심으로 보정'],
-    ['공통', '전체', '초록 키 칸', 'GLAPS에서 확인한 핵심 코드값을 입력/수정하는 칸입니다.', '화주사코드, 운송경로코드, 최종코드(BP)'],
+    ['공통', '전체', '초록 키 칸', 'GLAPS에서 확인한 핵심 코드값을 입력/수정하는 칸입니다.', '화주사코드, 경유지코드, 운송경로코드, 최종코드(BP)'],
     ['공통', '화면', '요약 카드', '운송경로/확정/조정필요/코드없음/원본시트 카드는 클릭 시 해당 목록으로 이동합니다.', '어떤 행을 봐야 하는지 찾는 필터 버튼'],
     ['마스터코드', '원본 코드시트', 'ELS코드1~N', '수기 별칭은 컬럼 위치와 무관하게 헤더명으로 읽습니다. 한 칸에 여러 값을 넣을 때는 쉼표 또는 줄바꿈으로 구분합니다.', '새 코드 시트 추가 시 파서 연결 필요'],
     ['운송경로', '운송경로_수정양식', '화주사코드', '초록 키 칸입니다. 상세배차 화주와 GLAPS 운송경로 원장을 연결할 화주사코드를 입력합니다.', '운송경로 매칭 키'],
@@ -198,6 +199,7 @@ function addGuideWorksheet(workbook) {
     ['운송경로', '운송경로_수정양식', '상차지', '배차 상세의 상차지와 매칭될 값을 입력합니다.', '예: 부산신항, 의왕ICD'],
     ['운송경로', '운송경로_수정양식', '경유지', '회색 보호칸입니다. GLAPS 원장 작업지명을 유지합니다.', '배차판 매칭은 경유지(ELS)로 보정'],
     ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
+    ['운송경로', '운송경로_수정양식', '경유지코드', '초록 키 칸입니다. 상세배차 작업지(하차지)코드에 들어갈 GLAPS 경유지코드를 입력합니다.', '예: S013_M12'],
     ['운송경로', '운송경로_수정양식', '하차지(선적)', '배차 상세의 하차지/선적과 매칭될 값을 입력합니다.', '예: 부산신항, 광양항'],
     ['항목매핑', '항목매핑_수정양식', '매핑항목', '코드가 어느 GLAPS 컬럼에 쓰이는지 정하는 종류입니다. 포트 / 선사 / 컨테이너규격 / 운송사 / 컨샤이니 / 기타 중 하나를 입력합니다.', '영문 port / line / container_type / carrier / consignee / generic도 인식'],
     ['항목매핑', '항목매핑_수정양식', 'ELS 매치코드', '배차판에서 들어오는 짧은 코드값을 입력합니다.', '예: 40HC, CMA, INKAT'],
@@ -240,6 +242,7 @@ function routeToTemplateRow(row = {}) {
     getGlapsRouteShipperCode(row),
     row.start_location_name || '',
     row.waypoint_els_name || '',
+    getGlapsRouteWaypointCode(row),
     row.destination_name || '',
     row.waypoint_name || '',
     row.route_name || '',

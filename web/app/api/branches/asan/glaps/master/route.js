@@ -11,6 +11,7 @@ import {
   DEFAULT_GLAPS_BRANCH_ID,
   buildGlapsRouteFingerprint,
   getGlapsRouteShipperCode,
+  getGlapsRouteWaypointCode,
   getGlapsRouteReviewStatus,
   getGlapsRouteMatchQuery,
   parseGlapsAliasTemplateSheets,
@@ -97,6 +98,7 @@ const ROUTE_DIRECT_BULK_FIELDS = new Set([
   'routeCode',
   'routeName',
   'startLocationName',
+  'waypointCode',
   'waypointElsName',
   'destinationName',
   'reviewStatus',
@@ -208,6 +210,11 @@ function aliasProtectionKey(row = {}) {
 
 function directRouteFromPayload(row = {}) {
   const shipperCode = cleanText(row.shipperCode ?? row.shipper_code) || getGlapsRouteShipperCode(row);
+  const hasWaypointCode = Object.prototype.hasOwnProperty.call(row, 'waypointCode')
+    || Object.prototype.hasOwnProperty.call(row, 'waypoint_code');
+  const waypointCode = hasWaypointCode
+    ? cleanText(row.waypointCode ?? row.waypoint_code)
+    : getGlapsRouteWaypointCode(row);
   const route = {
     id: cleanText(row.id),
     shipperCode,
@@ -216,6 +223,7 @@ function directRouteFromPayload(row = {}) {
     startLocationName: cleanText(row.startLocationName ?? row.start_location_name),
     waypointName: cleanText(row.waypointName ?? row.waypoint_name),
     waypointElsName: cleanText(row.waypointElsName ?? row.waypoint_els_name),
+    waypointCode,
     destinationName: cleanText(row.destinationName ?? row.destination_name),
     reviewNote: cleanText(row.reviewNote ?? row.review_note),
     sourceSheet: cleanText(row.sourceSheet ?? row.source_sheet) || 'WEB',
@@ -224,6 +232,9 @@ function directRouteFromPayload(row = {}) {
       ...(row.rawPayload || row.raw_payload || {}),
       shipper_code: shipperCode,
       '화주사코드': shipperCode,
+      waypoint_code: waypointCode,
+      '경유지코드': waypointCode,
+      '작업지(하차지)코드': waypointCode,
       edit_source: 'web',
     },
   };
@@ -358,6 +369,7 @@ async function loadPlainSheetsFromForm(formData) {
 
 function toRouteDbRow(route, { branchId, versionId, userEmail }) {
   const shipperCode = getGlapsRouteShipperCode(route);
+  const waypointCode = cleanText(route.waypointCode ?? route.waypoint_code) || getGlapsRouteWaypointCode(route);
   const routeFingerprint = buildGlapsRouteFingerprint({
     ...route,
     shipperCode,
@@ -365,6 +377,9 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
   const rawPayload = {
     ...(route.rawPayload || {}),
     ...(shipperCode ? { shipper_code: shipperCode, '화주사코드': shipperCode } : {}),
+    waypoint_code: waypointCode,
+    '경유지코드': waypointCode,
+    '작업지(하차지)코드': waypointCode,
   };
   return {
     branch_id: branchId,
@@ -383,6 +398,15 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
     raw_payload: rawPayload,
     active: true,
     updated_by: userEmail,
+  };
+}
+
+function withRouteDerivedFields(row = {}) {
+  const waypointCode = getGlapsRouteWaypointCode(row);
+  return {
+    ...row,
+    waypoint_code: waypointCode,
+    waypointCode,
   };
 }
 
@@ -1440,6 +1464,8 @@ export async function GET(request) {
         fetchSpecialConsigneeRules(access.adminSupabase, branchId),
       ]);
 
+      const lookupRoutes = (routeRows || []).map(withRouteDerivedFields);
+
       return NextResponse.json({
         setupRequired: false,
         mode,
@@ -1448,7 +1474,7 @@ export async function GET(request) {
           source_name: version.source_name,
           imported_at: version.imported_at,
         },
-        routes: routeRows || [],
+        routes: lookupRoutes,
         aliases: aliasRows || [],
         sheetRows: sheetRows || [],
         specialRules: specialRules || [],
@@ -1504,11 +1530,12 @@ export async function GET(request) {
       ].some(value => String(value || '').toLowerCase().includes(search));
     };
 
-    const routes = (routeRows || []).filter(filterRow);
+    const allRoutes = (routeRows || []).map(withRouteDerivedFields);
+    const routes = allRoutes.filter(filterRow);
     const aliases = (aliasRows || []).filter(filterRow);
     const filteredSheetRows = (sheetRows || []).filter(filterSheetRow);
     const filteredSpecialRules = (specialRules || []).filter(filterSpecialRule);
-    const activeRoutes = (routeRows || []).map(row => ({
+    const activeRoutes = allRoutes.map(row => ({
       reviewStatus: row.review_status,
       routeCode: row.route_code,
     }));

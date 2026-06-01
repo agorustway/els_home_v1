@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './glapsMaster.module.css';
 import { buildGlapsDuplicateInfo } from '@/utils/glapsDuplicateGroups.mjs';
-import { formatGlapsAliasType, getGlapsRouteShipperCode } from '@/utils/glapsMasterData.mjs';
+import { formatGlapsAliasType, getGlapsRouteShipperCode, getGlapsRouteWaypointCode } from '@/utils/glapsMasterData.mjs';
 
 const STATUS_LABELS = {
     ready: '확정',
@@ -35,6 +35,7 @@ const ROUTE_BULK_FIELD_OPTIONS = [
     { field: 'routeName', label: '운송경로명', type: 'text' },
     { field: 'startLocationName', label: '상차지', type: 'text' },
     { field: 'waypointElsName', label: '경유지(ELS)', type: 'text' },
+    { field: 'waypointCode', label: '경유지코드', type: 'text' },
     { field: 'destinationName', label: '하차지', type: 'text' },
     { field: 'reviewNote', label: '검수메모', type: 'text' },
 ];
@@ -63,6 +64,7 @@ const EMPTY_ROUTE_EDITOR = {
     startLocationName: '',
     waypointName: '',
     waypointElsName: '',
+    waypointCode: '',
     destinationName: '',
     reviewStatus: 'needs_mapping',
     reviewNote: '',
@@ -166,6 +168,7 @@ function routeToEditorValues(row = {}) {
         startLocationName: row.start_location_name || '',
         waypointName: row.waypoint_name || '',
         waypointElsName: row.waypoint_els_name || '',
+        waypointCode: getGlapsRouteWaypointCode(row),
         destinationName: row.destination_name || '',
         reviewStatus: row.review_status || 'needs_mapping',
         reviewNote: row.review_note || '',
@@ -578,6 +581,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: styles.keyCell },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name },
+                { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: styles.keyCell },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name },
                 { key: 'route_key', label: '연결키', value: routeMatchKey },
                 { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.protectedCell },
@@ -811,6 +815,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 shipper_code: 'shipperCode',
                 start_location_name: 'startLocationName',
                 waypoint_els_name: 'waypointElsName',
+                waypoint_code: 'waypointCode',
                 destination_name: 'destinationName',
                 route_name: 'routeName',
                 route_code: 'routeCode',
@@ -860,6 +865,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 start_location_name: editor.values.startLocationName,
                 waypoint_els_name: editor.values.waypointElsName,
                 waypoint_name: editor.values.waypointName,
+                waypoint_code: editor.values.waypointCode,
                 destination_name: editor.values.destinationName,
             });
         }
