@@ -1,3 +1,21 @@
+## [2026-06-02] 아산 배차 현황판 meta-only 집계 보강 (v5.14.324)
+### 원인
+- 전날 적용한 배차판 경량 로딩이 첫 진입 데이터를 `mode=meta + 선택일 mode=date`로 제한하면서, 기본 첫 화면인 `현황판`의 주간/월간/요일별 집계가 상세 rows 없이 0처럼 보일 수 있었습니다.
+### 조치
+- `mainView === 'dashboard'`이고 meta-only 날짜가 남아 있으면 `mode=full` 보강 조회를 자동 실행하게 했습니다.
+- 배차판/상세배차/배차변동 표 화면은 기존처럼 선택 날짜 중심 지연 조회를 유지해 불필요한 전체 원장 조회를 피합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 통과
+- `npm.cmd run lint -- "app/(main)/employees/branches/asan/page.js" "tests/asanDashboardView.test.mjs"`: 통과, 기존 hook warning 1건 유지
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 아산 배차판 초기 로딩 경량화 (v5.14.323)
 ### 원인
 - 배차판 첫 화면은 `mode=meta`와 선택일 `mode=date`로 충분한데, 초기 표시 직후 50ms 만에 `mode=full` 전체 원장을 다시 읽어 DB와 브라우저에 부담을 주고 있었습니다.

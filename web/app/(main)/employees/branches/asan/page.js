@@ -1960,7 +1960,15 @@ function AsanDispatchContent() {
         if (isAllTab) return mergedView;
         return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
+    const dashboardNeedsFullData = useMemo(() => (
+        mainView === 'dashboard'
+        && (data || []).some(item => item?.meta_only && hasValidOrderRows(item, viewType))
+    ), [data, mainView, viewType]);
     useEffect(() => {
+        if (dashboardNeedsFullData) {
+            ensureDispatchFullLoaded();
+            return;
+        }
         if (isAllTab) {
             ensureDispatchFullLoaded();
             return;
@@ -1968,7 +1976,7 @@ function AsanDispatchContent() {
         if (activeItem?.meta_only && activeItem?.target_date) {
             ensureDispatchDateLoaded(activeItem.target_date);
         }
-    }, [activeItem?.meta_only, activeItem?.target_date, ensureDispatchDateLoaded, ensureDispatchFullLoaded, isAllTab]);
+    }, [activeItem?.meta_only, activeItem?.target_date, dashboardNeedsFullData, ensureDispatchDateLoaded, ensureDispatchFullLoaded, isAllTab]);
     const headers = useMemo(() => currentView?.headers || [], [currentView]);
     const allData = useMemo(() => currentView?.data || [], [currentView]);
     const comments = useMemo(() => currentView?.comments || {}, [currentView]);
