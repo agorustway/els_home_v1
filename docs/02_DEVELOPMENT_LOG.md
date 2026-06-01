@@ -16,6 +16,25 @@
 
 ---
 
+## [2026-06-01] 배차변동내역 수정일시/헤더 정렬 보강 (v5.14.318)
+### 원인
+- 기존 변동 이벤트는 `발생일시`는 있었지만 상세 컬럼의 `수정일시`가 비어 보여 엑셀 저장 시점 추적이 어렵게 보였습니다.
+- 변동내역은 기본 표시가 과거순에 가까워 새로 생긴 변동을 바로 확인하기 어려웠고, 컬럼 헤더에는 필터만 있고 정렬 액션이 없었습니다.
+### 조치
+- 변동내역 표시/다운로드 row에서 `수정일시`가 비어 있으면 이벤트 발생/수정시각을 채우도록 했습니다.
+- 변동내역 기본 정렬을 `발생일시` 최신순으로 지정했습니다.
+- 변동내역 헤더 필터 드롭다운에 `내림차순/오름차순` 정렬 버튼과 정렬 방향 표시를 추가했습니다.
+### 검증
+- `node --test tests/asanDashboardView.test.mjs tests/asanDispatchDetailLines.test.mjs`: 65개 통과.
+- `npm run lint`: 통과.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 배차변동 저장시점 스냅샷 기준 보강 (v5.14.316)
 ### 원인
 - 변동 비교 기준이 확인완료 시점에만 갱신되면, 엑셀을 2차 저장했을 때 1차 저장분이 아닌 최초 확정분과 다시 비교될 수 있었습니다.

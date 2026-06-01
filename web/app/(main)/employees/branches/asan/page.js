@@ -1242,6 +1242,10 @@ const DETAIL_HEADER_FILTER_MODES = Object.freeze({
     detail: 'detail',
     change: 'detail-change',
 });
+const DETAIL_HEADER_SORT_DIRECTIONS = new Set(['asc', 'desc']);
+const DEFAULT_DETAIL_HEADER_SORTS = Object.freeze({
+    [DETAIL_HEADER_FILTER_MODES.change]: { header: '발생일시', direction: 'desc' },
+});
 function normalizeDetailFilterValue(value) {
     return String(value ?? '').trim();
 }
@@ -1269,6 +1273,53 @@ function getDetailHeaderFilterValues(filters = {}, mode, header) {
 }
 function countDetailHeaderFilterValues(modeFilters = {}) {
     return Object.values(modeFilters || {}).reduce((sum, values) => sum + (Array.isArray(values) ? values.length : 0), 0);
+}
+function sanitizeDetailHeaderSorts(sorts = {}) {
+    const next = { ...DEFAULT_DETAIL_HEADER_SORTS };
+    Object.entries(sorts || {}).forEach(([mode, sort]) => {
+        const header = normalizeDetailFilterValue(sort?.header);
+        const direction = normalizeDetailFilterValue(sort?.direction);
+        if (header && DETAIL_HEADER_SORT_DIRECTIONS.has(direction)) next[mode] = { header, direction };
+    });
+    return next;
+}
+function getDetailHeaderSort(sorts = {}, mode) {
+    return sanitizeDetailHeaderSorts(sorts)[mode] || null;
+}
+function parseDetailSortNumber(value = '') {
+    const text = normalizeDetailFilterValue(value).replace(/,/g, '');
+    if (!text || !/^-?\d+(\.\d+)?$/.test(text)) return null;
+    const number = Number(text);
+    return Number.isFinite(number) ? number : null;
+}
+function compareDetailSortText(a = '', b = '') {
+    const aNumber = parseDetailSortNumber(a);
+    const bNumber = parseDetailSortNumber(b);
+    if (aNumber !== null && bNumber !== null && aNumber !== bNumber) return aNumber - bNumber;
+    return normalizeDetailFilterValue(a).localeCompare(normalizeDetailFilterValue(b), 'ko', { numeric: true });
+}
+function getDispatchChangeSortValue(row = {}, headers = [], header = '') {
+    if (header === '발생일시' || header === '수정일시') {
+        return row.event?.occurred_at || row.event?.updated_at || row.event?.created_at || '';
+    }
+    if (header === '확인일시') return row.event?.confirmed_at || '';
+    const idx = headers.indexOf(header);
+    return idx >= 0 ? row.values?.[idx] : '';
+}
+function compareDispatchChangeRowsBySort(a = {}, b = {}, headers = [], sort = null) {
+    if (!sort?.header || !sort?.direction) return 0;
+    const aValue = getDispatchChangeSortValue(a, headers, sort.header);
+    const bValue = getDispatchChangeSortValue(b, headers, sort.header);
+    const aTime = ['발생일시', '수정일시', '확인일시'].includes(sort.header) ? new Date(aValue || 0).getTime() || 0 : null;
+    const bTime = ['발생일시', '수정일시', '확인일시'].includes(sort.header) ? new Date(bValue || 0).getTime() || 0 : null;
+    const base = aTime !== null && bTime !== null && aTime !== bTime
+        ? aTime - bTime
+        : compareDetailSortText(aValue, bValue);
+    if (base !== 0) return sort.direction === 'desc' ? -base : base;
+    const aOrder = Number(a.event?.event_order || 0);
+    const bOrder = Number(b.event?.event_order || 0);
+    if (aOrder !== bOrder) return sort.direction === 'desc' ? bOrder - aOrder : aOrder - bOrder;
+    return 0;
 }
 function detailRowMatchesHeaderFilters(rowValues = [], headers = [], modeFilters = {}) {
     return Object.entries(modeFilters || {}).every(([header, values]) => {
@@ -1363,6 +1414,7 @@ function AsanDispatchContent() {
     const [detailConfirmationSaving, setDetailConfirmationSaving] = useState(false);
     const [detailIssueFilter, setDetailIssueFilter] = useState(reloadRestoreState.detailIssueFilter || '');
     const [detailHeaderFilters, setDetailHeaderFilters] = useState(() => sanitizeDetailHeaderFilters(reloadRestoreState.detailHeaderFilters));
+    const [detailHeaderSorts, setDetailHeaderSorts] = useState(() => sanitizeDetailHeaderSorts(reloadRestoreState.detailHeaderSorts));
     const [detailHeaderFilterDropdown, setDetailHeaderFilterDropdown] = useState(null);
     const [detailChangeEvents, setDetailChangeEvents] = useState([]);
     const [detailChangeDrafts, setDetailChangeDrafts] = useState({});
@@ -1560,6 +1612,7 @@ function AsanDispatchContent() {
             colorFilter,
             detailIssueFilter,
             detailHeaderFilters,
+            detailHeaderSorts,
             detailChangeStatusFilter,
             scrollX: window.scrollX || 0,
             scrollY: window.scrollY || 0,
@@ -2580,17 +2633,21 @@ function AsanDispatchContent() {
                 const portCodeOverride = detailChangePortOverrides[event.id] || getChangeEventPayloadContext(event).glapsPortCodeOverride || '';
                 const line = enrichDetailLine(detailLineFromChangeValues(rawValues, event, { portCodeOverride }));
                 const editableValues = detailLineToRow(line);
+                const eventChangedAt = fmtShortTs(event.occurred_at || event.updated_at || event.created_at || '');
+                const displayEditableValues = eventChangedAt && !getDetailRowValue(editableValues, '수정일시')
+                    ? setDetailRowValue(editableValues, '수정일시', eventChangedAt)
+                    : editableValues;
                 const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const changedHeaderSet = getDisplayChangedHeaderSet(event);
                 const memoBaseValues = snapshotRowValues(event.before_snapshot);
                 const memoDiffHeaders = memoBaseValues.length > 0
-                    ? [...getDetailMemoDiffSet(memoBaseValues, editableValues)]
+                    ? [...getDetailMemoDiffSet(memoBaseValues, displayEditableValues)]
                     : [];
                 const values = [
-                    ...editableValues,
+                    ...displayEditableValues,
                     formatDispatchChangeType(event.change_type),
                     formatDispatchChangeStatus(event.event_status),
-                    fmtShortTs(event.occurred_at || ''),
+                    eventChangedAt,
                     fmtShortTs(event.confirmed_at || ''),
                     '',
                 ];
@@ -2613,10 +2670,11 @@ function AsanDispatchContent() {
 
     const detailChangeRows = useMemo(() => {
         const activeFilters = detailHeaderFilters[DETAIL_HEADER_FILTER_MODES.change] || {};
+        const activeSort = getDetailHeaderSort(detailHeaderSorts, DETAIL_HEADER_FILTER_MODES.change);
         return detailChangeRowsBase.filter(({ values }) => (
             detailRowMatchesHeaderFilters(values, DISPATCH_CHANGE_HEADERS, activeFilters)
-        ));
-    }, [detailChangeRowsBase, detailHeaderFilters]);
+        )).sort((a, b) => compareDispatchChangeRowsBySort(a, b, DISPATCH_CHANGE_HEADERS, activeSort));
+    }, [detailChangeRowsBase, detailHeaderFilters, detailHeaderSorts]);
 
     const detailHeaderFilterOptions = useMemo(() => ({
         [DETAIL_HEADER_FILTER_MODES.detail]: buildDetailHeaderFilterOptions(
@@ -3234,6 +3292,13 @@ function AsanDispatchContent() {
             return { ...next, [mode]: modeFilters };
         });
     }, []);
+    const applyDetailHeaderSort = useCallback((mode, header, direction) => {
+        if (!DETAIL_HEADER_SORT_DIRECTIONS.has(direction)) return;
+        setDetailHeaderSorts(prev => ({
+            ...sanitizeDetailHeaderSorts(prev),
+            [mode]: { header, direction },
+        }));
+    }, []);
     const hideCol = (name) => { setHiddenCols(prev => new Set([...prev, name])); setFilterDropdown(null); };
     const showCol = (name) => { setHiddenCols(prev => { const n = new Set(prev); n.delete(name); return n; }); };
     const resetPrefs = () => { setHiddenCols(new Set()); setColWidths({}); localStorage.removeItem(`${PREFS_KEY}_${viewType}`); };
@@ -3363,6 +3428,9 @@ function AsanDispatchContent() {
         const activeValues = getDetailHeaderFilterValues(detailHeaderFilters, mode, header);
         const options = detailHeaderFilterOptions?.[mode]?.[header] || [];
         const isOpen = detailHeaderFilterDropdown?.mode === mode && detailHeaderFilterDropdown?.header === header;
+        const activeSort = getDetailHeaderSort(detailHeaderSorts, mode);
+        const isSorted = activeSort?.header === header;
+        const sortEnabled = mode === DETAIL_HEADER_FILTER_MODES.change;
         const activeValueSet = new Set(activeValues);
         const optionValues = [...new Set(options.map(option => normalizeDetailFilterValue(option.value)))];
         const allOptionsSelected = optionValues.length > 0
@@ -3387,9 +3455,28 @@ function AsanDispatchContent() {
             >
                 <span className={styles.thText}>
                     {header}{activeValues.length > 0 && <span className={styles.filterIcon}>▼{activeValues.length}</span>}
+                    {isSorted && <span className={styles.detailSortIcon}>{activeSort.direction === 'desc' ? '↓' : '↑'}</span>}
                 </span>
                 {isOpen && (
                     <div className={styles.detailFilterDropdown} onClick={event => event.stopPropagation()}>
+                        {sortEnabled && (
+                            <div className={styles.detailSortActions}>
+                                <button
+                                    type="button"
+                                    className={isSorted && activeSort.direction === 'desc' ? styles.detailSortActionActive : ''}
+                                    onClick={() => applyDetailHeaderSort(mode, header, 'desc')}
+                                >
+                                    내림차순
+                                </button>
+                                <button
+                                    type="button"
+                                    className={isSorted && activeSort.direction === 'asc' ? styles.detailSortActionActive : ''}
+                                    onClick={() => applyDetailHeaderSort(mode, header, 'asc')}
+                                >
+                                    오름차순
+                                </button>
+                            </div>
+                        )}
                         <div className={styles.detailFilterActions}>
                             <button type="button" onClick={() => toggleDetailHeaderFilterAll(mode, header, options)}>
                                 {allOptionsSelected ? '전체취소' : '전체선택'}
@@ -4218,7 +4305,7 @@ function AsanDispatchContent() {
                             <strong>{detailStatusConfirmation?.id ? '변동 없음' : '변동 입력 대기'}</strong>
                             <span>
                                 {detailStatusConfirmation?.id
-                                    ? '확정 이후 추가/삭제/변경 이벤트가 감지되면 발생 순서대로 표시합니다.'
+                                    ? '확정 이후 추가/삭제/변경 이벤트가 감지되면 최신 변동순으로 표시합니다.'
                                     : '배차확정 후 추가/삭제/변경 이벤트를 기록합니다.'}
                             </span>
                         </div>

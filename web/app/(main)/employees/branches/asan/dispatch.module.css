@@ -1742,6 +1742,20 @@
     z-index: 40 !important;
 }
 
+.detailSortIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    margin-left: 3px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.62rem;
+    font-weight: 900;
+}
+
 .detailFilterDropdown {
     position: absolute;
     top: 100%;
@@ -1761,6 +1775,37 @@
     background: #fff;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
     color: #0f172a;
+}
+
+.detailSortActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detailSortActions button {
+    height: 24px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.68rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.detailSortActions button:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.detailSortActionActive {
+    border-color: #2563eb !important;
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
 }
 
 .detailFilterActions {
