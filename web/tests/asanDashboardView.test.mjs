@@ -860,13 +860,15 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /label: '수정'/);
   assert.match(source, /downloadCurrentScreenWorkbook/);
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
+  assert.match(source, /detailDisplayRowToExportRow/);
+  assert.match(source, /setDetailRowValue\(row, '수정일시', changeUpdatedAt\)/);
   assert.match(source, /buildGlapsUploadRowsFromDetailRows/);
   assert.match(source, /GLAPS_UPLOAD_HEADERS/);
   assert.match(source, /GLAPS_UPLOAD_SHEET_NAME/);
   assert.match(source, /extraSheets: \[\{/);
   assert.match(source, /textHeaders: \['배차요청일자', '배차요청시간'\]/);
   assert.match(source, /mainView === 'detail' \? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS/);
-  assert.match(source, /detailRowsForDisplay\.map\(\(\{ line \}\) => detailLineToRow\(line\)\)/);
+  assert.match(source, /detailRowsForDisplay\.map\(detailDisplayRowToExportRow\)/);
   assert.match(source, /detailChangeRows\.map\(\(\{ values \}\) => values\)/);
   assert.match(source, /skipDeleted: mainView === 'detail-change'/);
   assert.match(source, /detailLineFromChangeValues/);

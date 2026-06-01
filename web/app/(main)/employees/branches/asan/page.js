@@ -2102,6 +2102,12 @@ function AsanDispatchContent() {
         triggerBlobDownload(blob, getDownloadFileName(response, fileName));
     };
 
+    const detailDisplayRowToExportRow = ({ line, changeEvent }) => {
+        const row = detailLineToRow(line);
+        const changeUpdatedAt = fmtShortTs(changeEvent?.occurred_at || changeEvent?.updated_at || changeEvent?.created_at || '');
+        return changeUpdatedAt ? setDetailRowValue(row, '수정일시', changeUpdatedAt) : row;
+    };
+
     // 엑셀 다운로드
     const handleDownload = async () => {
         const dateParam = isAllTab ? 'all' : activeItem?.target_date;
@@ -2114,7 +2120,7 @@ function AsanDispatchContent() {
                 const detailModeName = mainView === 'detail' ? '상세배차내역' : '배차변동내역';
                 const exportHeaders = mainView === 'detail' ? DISPATCH_DETAIL_HEADERS : DISPATCH_CHANGE_HEADERS;
                 const exportRows = mainView === 'detail'
-                    ? detailRowsForDisplay.map(({ line }) => detailLineToRow(line))
+                    ? detailRowsForDisplay.map(detailDisplayRowToExportRow)
                     : detailChangeRows.map(({ values }) => values);
                 const glapsUploadRows = buildGlapsUploadRowsFromDetailRows({
                     headers: exportHeaders,

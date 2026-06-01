@@ -1,3 +1,19 @@
+## [2026-06-01] 상세배차 변경건 다운로드 수정일시 보강 (v5.14.314)
+### 원인
+- 상세배차 화면은 확정 후 변동이 있는 행을 `변경건`으로 표시하지만, 엑셀 다운로드는 표시 행의 `line` 값만 변환해 변동 이벤트의 발생 시각을 `수정일시` 열에 넣지 못했습니다.
+### 조치
+- 상세배차 다운로드 전용 row 생성에서 `changeEvent.occurred_at/updated_at/created_at`을 확인해 `수정일시` 열에 기입하도록 했습니다.
+### 검증
+- `node --test tests/asanDashboardView.test.mjs tests/intranetExcelExport.test.mjs tests/asanDispatchDetailLines.test.mjs`: 66개 통과.
+- `npx eslint "app/(main)/employees/branches/asan/page.js" tests/asanDashboardView.test.mjs`: 통과.
+- `npm run build`: 통과.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] 상세배차 다운로드 시간/GLAPS 업로드 매핑 보정 (v5.14.313)
 ### 원인
 - 상세배차내역 화면 다운로드의 `시간` 열이 Excel 시간값/시간 서식으로 저장되면 GLAPS 업로드 전처리에서 `13:00`이 `1:00:00 PM` 성격의 값으로 해석될 수 있었습니다.
