@@ -1,3 +1,21 @@
+## [2026-06-02] 아산 배차 현황판 캐시 권한 보강 (v5.14.326)
+### 원인
+- 운영 Supabase에 캐시 테이블은 생성됐지만 REST 경유 `service_role`이 새 테이블 권한을 받지 못해 현황판 캐시 route가 `permission denied`를 반환했습니다.
+### 조치
+- `branch_dispatch_dashboard_cache`에 `service_role` 전용 `SELECT, INSERT, UPDATE` 권한을 부여했습니다.
+- anon/authenticated 권한은 계속 차단해 브라우저가 직접 테이블을 읽지 못하고, Next.js route/service role만 캐시를 읽고 갱신하는 구조를 유지했습니다.
+- 운영 캐시를 통합/글로비스/모비스 3종으로 수동 워밍했습니다.
+### 검증
+- 운영 API GET: 권한 보강 전 500 `permission denied`, 보강 후 `needsRefresh=true` 정상 응답 확인
+- 운영 API POST 워밍: `integrated`, `glovis`, `mobis` 3종 `ok=true` 확인
+- 운영 API GET 요약: `ok=true`, `version=1`, 통합 캐시 날짜 125개/주차 23개 확인
+- Supabase table summary: `public.branch_dispatch_dashboard_cache` rows=3, RLS enabled 확인
+### 변경 파일
+- `web/supabase_sql/20260602_asan_dispatch_dashboard_cache_grants.sql`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 아산 배차 현황판 집계 캐시화 (v5.14.325)
 ### 원인
 - 현황판 정확도를 위해 full 원장을 보강 조회하면 첫 화면 로딩이 다시 길어지고, Vercel 함수와 Supabase 원장 JSONB 조회 부담이 커졌습니다.

@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.325 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.326 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차 현황판은 원장 전체 대신 `branch_dispatch_dashboard_cache` 집계 캐시를 우선 읽도록 바꿨다.
+> 최신 업데이트: 아산 배차 현황판 집계 캐시의 service_role 권한을 보강하고 통합/글로비스/모비스 캐시를 워밍했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.325
+- **웹 버전**: v5.14.326
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -13,7 +13,7 @@
 | 영역 | 상태 | 메모 |
 |---|---|---|
 | Next.js 웹 | 정상 | 배차판 표는 경량 meta/date 조회, 현황판은 집계 캐시 우선 조회 |
-| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차 row_count와 현황판 cache migration 적용 |
+| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차 row_count와 현황판 cache/service_role grant 적용 |
 | NAS 백엔드 | 정상 | Core는 동기화 후 현황판 캐시를 비동기 프리워밍 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
@@ -81,7 +81,7 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
-- **v5.14.325**: 아산 배차 현황판 전용 `branch_dispatch_dashboard_cache`를 추가했다. 화면은 Supabase 원장 JSONB 대신 집계 캐시 1건을 먼저 읽고, 캐시 갱신 POST는 service role Bearer 권한으로만 허용한다.
+- **v5.14.326**: 아산 배차 현황판 전용 `branch_dispatch_dashboard_cache`를 추가하고 service_role 권한/운영 캐시 3종 워밍을 완료했다. 화면은 Supabase 원장 JSONB 대신 집계 캐시 1건을 먼저 읽는다.
 - **v5.14.324**: 아산 배차 현황판에서 meta-only 상태로 주간/월간 카드가 0처럼 보이던 문제를 수정했다. 현황판 진입 시 집계에 필요한 전체 원장 보강 조회를 수행하고, 일반 표 화면은 기존 경량 조회를 유지한다.
 - **v5.14.323**: 아산 배차판 초기 로딩에서 50ms 후 전체 원장을 자동 조회하던 흐름을 제거하고, 선택일 상세만 우선 표시한다. 전체/주간/월간 선택 때만 full 원장을 읽으며, 모바일 자동 청크 프리패치와 설정/동기화 상태 조회도 초기 렌더 이후로 늦췄다. 운영 Supabase `branch_dispatch` 행수 컬럼 migration과 fallback 조회를 적용했다.
 ## VERIFICATION
