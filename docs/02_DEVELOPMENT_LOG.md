@@ -1,3 +1,26 @@
+## [2026-06-02] 배차변동 변경 컬럼 감지/표시 정리 (v5.14.331)
+### 원인
+- 배차변동내역에서 `라인` 변경이 예전 정책상 매칭키에 포함되어 추가/삭제로 갈라질 수 있었습니다.
+- 변동 표에 `수정일시`와 `발생일시`가 함께 보여 같은 의미처럼 보였고, 자동 계산 차이 때문에 `현재값저장` 버튼이 다시 노출되어 운영자가 저장 대상인지 헷갈릴 수 있었습니다.
+### 조치
+- `라인`을 운송조건 변경 컬럼에 포함하고 매칭키에서는 제외해 고객사/하차지/포트/라인/타입/DG/RF/업체/시간 변경을 `변경` 이벤트로 감지하게 했습니다.
+- 배차변동 표/다운로드 헤더는 상세 `수정일시`를 제외하고 `발생일시`만 표시하도록 분리했습니다.
+- `현재값저장` 버튼은 수기 draft가 있을 때만 `저장`으로 보이게 하고, 상세배차 상단은 배차수량/확정 상태와 차이 필터를 2줄 구조로 정리했습니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/asanDashboardView.test.mjs`: 69개 통과
+- `node --test web/tests/glapsMasterData.test.mjs`: 13개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/utils/asanDispatchChangeEvents.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] GLAPS 상차지(청구) 선택 범위 확대 (v5.14.330)
 ### 원인
 - 물리 `상차지`는 배차판 원천값을 우선해 선택필요 행 외에는 잠겨 있어야 하지만, `상차지(청구)`는 GLAPS 청구 픽업 코드 보정용이라 운영자가 더 넓은 후보에서 덮어쓸 수 있어야 했습니다.

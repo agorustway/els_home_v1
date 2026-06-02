@@ -635,6 +635,38 @@
     row-gap: 5px;
 }
 
+.detailSummaryBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.detailSummaryTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.detailSummaryTop .summaryLeft {
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+.detailSummaryTop .detailConfirmPanel {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.detailSummaryBar .detailIssueFilters {
+    width: 100%;
+    flex: 0 1 auto;
+    justify-content: flex-end;
+    padding-top: 4px;
+    border-top: 1px dashed #e2e8f0;
+}
+
 .summaryRight {
     display: flex;
     gap: 6px;
@@ -810,6 +842,14 @@
 
     .summaryBar {
         align-items: stretch;
+    }
+
+    .detailSummaryTop {
+        flex-wrap: wrap;
+    }
+
+    .detailSummaryTop .detailConfirmPanel {
+        margin-left: 0;
     }
 
     .summaryLeft,

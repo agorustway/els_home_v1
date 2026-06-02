@@ -902,6 +902,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.doesNotMatch(source, /DETAIL_CARRIER_CODE_DATALIST_ID/);
   assert.match(source, /mainView === 'detail'/);
   assert.match(source, /mainView === 'detail-change'/);
+  assert.match(source, /DISPATCH_CHANGE_DETAIL_HEADERS/);
   assert.match(source, /DISPATCH_CHANGE_HEADERS/);
   assert.match(source, /detailChangeRows/);
   assert.match(source, /detailChangeEvents/);
@@ -931,6 +932,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /\/api\/branches\/asan\/export\/view/);
   assert.match(source, /detailDisplayRowToExportRow/);
   assert.match(source, /setDetailRowValue\(row, '수정일시', changeUpdatedAt\)/);
+  assert.match(source, /detailChangeDisplayValues/);
   assert.match(source, /buildGlapsUploadRowsFromDetailRows/);
   assert.match(source, /GLAPS_UPLOAD_HEADERS/);
   assert.match(source, /GLAPS_UPLOAD_SHEET_NAME/);
@@ -945,6 +947,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /buildDetailChangeDisplayValues/);
   assert.match(source, /updateDetailChangeDraft/);
   assert.match(source, /saveDetailChangeValues/);
+  assert.doesNotMatch(source, /현재값저장/);
   assert.match(source, /setDetailRowValue\(draft, '상차지'/);
   assert.match(source, /const nextValues = setDetailRowValue\(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent\.target\.value\)/);
   assert.match(source, /setDetailRowValue\(draft, 'BKG확정'/);
@@ -961,7 +964,6 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /disabled=\{detailOverrideSetupRequired \|\| !detailScope\}/);
   assert.match(source, /const isDisabledBkg = detailConfirmationLocked \|\| detailOverrideSetupRequired \|\| !detailScope \|\| !bkgValue;/);
   assert.doesNotMatch(source, /DETAIL_CHANGE_EDITABLE_HEADERS/);
-  assert.match(source, /현재값저장/);
   assert.match(source, /detailChangedRow/);
   assert.match(source, /detailChangeDeleteRow/);
   assert.match(source, /isConfirmedEvent \? styles\.detailChangeConfirmedRow : ''/);
@@ -1055,6 +1057,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(css, /\.detailChangePanel/);
   assert.match(css, /\.detailChangeTypeCell/);
   assert.match(css, /\.detailChangeDiffCell/);
+  assert.match(css, /\.detailSummaryBar/);
+  assert.match(css, /\.detailSummaryTop/);
   assert.match(css, /\.detailChangeConfirmedRow \.detailChangeDiffCell/);
   assert.match(css, /\.detailChangeDeleteRow td\s*{[\s\S]*background: #e5e7eb !important;/);
   assert.match(css, /\.detailLockedRow td\s*{[\s\S]*background: #f1f5f9 !important;/);

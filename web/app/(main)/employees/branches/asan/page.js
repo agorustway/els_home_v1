@@ -26,6 +26,7 @@ import {
     summarizeDispatchDetailLines,
 } from '@/utils/asanDispatchDetailLines.mjs';
 import {
+    DISPATCH_CHANGE_DETAIL_HEADERS,
     DISPATCH_CHANGE_HEADERS,
     changeEventToEditableValues,
     formatDispatchChangeStatus,
@@ -2918,14 +2919,14 @@ function AsanDispatchContent() {
                 const displayEditableValues = eventChangedAt && !getDetailRowValue(editableValues, '수정일시')
                     ? setDetailRowValue(editableValues, '수정일시', eventChangedAt)
                     : editableValues;
-                const hasCalculatedDiff = editableValues.some((value, idx) => value !== (storedValues[idx] || ''));
                 const changedHeaderSet = getDisplayChangedHeaderSet(event);
                 const memoBaseValues = snapshotRowValues(event.before_snapshot);
                 const memoDiffHeaders = memoBaseValues.length > 0
                     ? [...getDetailMemoDiffSet(memoBaseValues, displayEditableValues)]
                     : [];
+                const detailChangeDisplayValues = DISPATCH_CHANGE_DETAIL_HEADERS.map(header => getDetailRowValue(displayEditableValues, header));
                 const values = [
-                    ...displayEditableValues,
+                    ...detailChangeDisplayValues,
                     formatDispatchChangeType(event.change_type),
                     formatDispatchChangeStatus(event.event_status),
                     eventChangedAt,
@@ -2935,7 +2936,6 @@ function AsanDispatchContent() {
                 return {
                     event,
                     changedHeaderSet,
-                    hasCalculatedDiff,
                     line: {
                         ...line,
                         memoBaseValues,
@@ -4085,7 +4085,8 @@ function AsanDispatchContent() {
                 />
             ) : mainView === 'detail' ? (
                 <>
-                    <div className={styles.summaryBar}>
+                    <div className={`${styles.summaryBar} ${styles.detailSummaryBar}`}>
+                        <div className={styles.detailSummaryTop}>
                         <div className={styles.summaryLeft}>
                             <span className={styles.summaryItem}><b>상세배차수량</b> {detailSummary.total.toLocaleString()}건</span>
                             {detailChangeSummary.total > 0 && (
@@ -4105,8 +4106,7 @@ function AsanDispatchContent() {
                             </span>
                             {detailIssueFilter && <span className={styles.summaryItem}><b>필터표시</b> {detailSummary.visible.toLocaleString()}건</span>}
                         </div>
-                        <div className={styles.summaryRight}>
-                            <div className={styles.detailConfirmPanel}>
+                        <div className={styles.detailConfirmPanel}>
                                 {detailConfirmationLocked ? (
                                     <span className={styles.detailConfirmBadge}>
                                         배차확정 {fmtShortTs(detailStatusConfirmation?.confirmed_at)}
@@ -4136,8 +4136,9 @@ function AsanDispatchContent() {
                                         {detailConfirmationLocked ? '배차확정취소' : '배차확정'}
                                     </button>
                                 )}
-                            </div>
-                            <div className={styles.detailIssueFilters}>
+                        </div>
+                        </div>
+                        <div className={styles.detailIssueFilters}>
                                 {DETAIL_ISSUE_GROUPS.map(group => (
                                     <div key={group.key} className={styles.detailIssueGroup}>
                                         <span className={styles.detailIssueGroupLabel}>{group.label}</span>
@@ -4158,7 +4159,6 @@ function AsanDispatchContent() {
                                         })}
                                     </div>
                                 ))}
-                            </div>
                         </div>
                     </div>
                     <div className={styles.tableWrap}>
@@ -4494,16 +4494,15 @@ function AsanDispatchContent() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {detailChangeRows.slice(0, effectiveDisplayLimit).map(({ event, changedHeaderSet, hasCalculatedDiff, line, rawValues, values }, rowIdx) => {
+                                        {detailChangeRows.slice(0, effectiveDisplayLimit).map(({ event, changedHeaderSet, line, rawValues, values }, rowIdx) => {
                                             const hasManualDraft = Boolean(detailChangeDrafts[event.id]);
-                                            const hasDraft = hasManualDraft || hasCalculatedDiff;
                                             const isDeleteEvent = event.change_type === 'delete';
                                             const isConfirmedEvent = event.event_status === 'confirmed';
                                             const editDisabled = detailChangeSaving;
                                             return (
                                                 <tr key={`change-${event.id}`} className={`${rowIdx % 2 === 0 ? styles.evenRow : styles.oddRow} ${isDeleteEvent ? styles.detailChangeDeleteRow : ''} ${isConfirmedEvent ? styles.detailChangeConfirmedRow : ''}`}>
                                                     {DISPATCH_CHANGE_HEADERS.map((header, colIdx) => {
-                                                        const isDetailValue = colIdx < DISPATCH_DETAIL_HEADERS.length;
+                                                        const isDetailValue = colIdx < DISPATCH_CHANGE_DETAIL_HEADERS.length;
                                                         const isChangeType = header === '변동구분';
                                                         const isManage = header === '관리';
                                                         const memoCellClass = isDetailValue ? getDetailMemoCellClass(line, header) : '';
@@ -4681,14 +4680,14 @@ function AsanDispatchContent() {
                                                                     values[colIdx] || ''
                                                                 ) : isManage ? (
                                                                     <span className={styles.detailChangeActions}>
-                                                                        {hasDraft && (
+                                                                        {hasManualDraft && (
                                                                             <button
                                                                                 type="button"
                                                                                 className={styles.detailChangeActionButton}
                                                                                 onClick={() => saveDetailChangeValues(event, rawValues)}
                                                                                 disabled={detailChangeSaving}
                                                                             >
-                                                                                {hasManualDraft ? '저장' : '현재값저장'}
+                                                                                저장
                                                                             </button>
                                                                         )}
                                                                         {event.event_status !== 'confirmed' ? (

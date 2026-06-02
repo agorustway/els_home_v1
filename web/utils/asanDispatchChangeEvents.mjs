@@ -21,8 +21,12 @@ export const DISPATCH_CHANGE_STATUS_LABELS = Object.freeze({
   confirmed: '확인완료',
 });
 
+export const DISPATCH_CHANGE_DETAIL_HEADERS = Object.freeze(
+  DISPATCH_DETAIL_HEADERS.filter(header => header !== '수정일시'),
+);
+
 export const DISPATCH_CHANGE_HEADERS = Object.freeze([
-  ...DISPATCH_DETAIL_HEADERS,
+  ...DISPATCH_CHANGE_DETAIL_HEADERS,
   '변동구분',
   '확인상태',
   '발생일시',
@@ -52,6 +56,7 @@ const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '작업지',
   '하차지(선적)',
   '포트(DIST)',
+  '라인',
   '타입',
   DISPATCH_DETAIL_DG_HEADER,
   DISPATCH_DETAIL_RF_HEADER,
@@ -119,7 +124,6 @@ const TRANSPORT_MATCH_FALLBACK_HEADERS = Object.freeze([
   '작업일자',
   '구분',
   '화주',
-  '라인',
 ]);
 
 function cleanText(value = '') {
@@ -178,7 +182,6 @@ function makeTransportMatchKey(headerMap = {}, rowContext = {}) {
       rowContext.shipper || headerMap['화주'] || '',
       sourceType,
       sourceRowIndex,
-      headerMap['라인'] || rowContext.line || '',
     ]);
   }
   return makeKey(TRANSPORT_MATCH_FALLBACK_HEADERS.map(header => headerMap[header] || ''));
