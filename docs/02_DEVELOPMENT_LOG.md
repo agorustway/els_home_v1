@@ -1,3 +1,21 @@
+## [2026-06-02] GLAPS 운송경로표 상차지(청구) 적용 보정 (v5.14.329)
+### 원인
+- 운송경로표에 `상차지(청구)`를 직접 입력해도 상세배차 계산은 먼저 운송경로를 찾아야 해당 청구 상차지를 읽을 수 있었습니다.
+- 기존 색인은 청구 상차지가 있는 운송경로를 청구 상차지 키로만 찾는 경우가 있어, 상세라인이 물리 상차지만 가진 상태에서는 해당 운송경로를 놓칠 수 있었습니다.
+### 조치
+- GLAPS 운송경로 색인을 물리 `상차지`와 `상차지(청구)` 양쪽 후보로 생성했습니다.
+- 상세/변동 계산은 물리 상차지 또는 요청된 청구 상차지로 운송경로를 찾은 뒤, 찾은 운송경로의 `상차지(청구)`를 상세라인과 GLAPS `반출지(출발)코드`에 다시 반영합니다.
+- GLAPS코드 안내 문구를 운영 표 기준으로 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 80개 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] GLAPS 상차지(청구) 분리 적용 (v5.14.328)
 ### 원인
 - 일부 화주/구간은 실제 상차지와 GLAPS 청구 기준 출발 코드가 달라, 기존 `상차지` 하나로 운송경로를 매칭하면 청구용 운송경로코드가 도출되지 않을 수 있었습니다.

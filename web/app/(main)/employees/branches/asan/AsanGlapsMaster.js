@@ -1150,7 +1150,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             <div className={styles.fieldGuide}>
                 <span><b>매핑항목</b> 수출입코드·포트·선사·실출하지코드·컨테이너규격·운송사·컨샤이니처럼 코드가 쓰이는 종류입니다.</span>
                 <span><b>검수메모</b> 출처·참고용 메모입니다. 기존 기타 행은 검수메모가 항목을 말하면 매핑항목으로 승격됩니다.</span>
-                <span><b>특이적용건</b> 컨샤이니·화주사코드·상차지 예외를 경유지(GLAPS/ELS) 기준으로 우선 적용합니다.</span>
+                <span><b>특이적용건</b> 컨샤이니·화주사코드·상차지·상차지(청구) 예외를 경유지(GLAPS/ELS) 기준으로 우선 적용합니다.</span>
             </div>
 
             <div className={styles.toolbar}>

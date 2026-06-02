@@ -2569,7 +2569,8 @@ function AsanDispatchContent() {
         (glapsDetailLookup.routes || []).forEach((route) => {
             const waypointCandidates = [...new Set([route.waypoint_els_name, route.waypoint_name].filter(Boolean))];
             const billingStart = getGlapsRouteBillingStartLocation(route);
-            const startCandidates = getGlapsRouteLocationCodeCandidates(billingStart || route.start_location_name);
+            const routeStartValues = [route.start_location_name, billingStart].filter(Boolean);
+            const startCandidates = [...new Set(routeStartValues.flatMap(value => getGlapsRouteLocationCodeCandidates(value)))];
             const destinationCandidates = getGlapsRouteLocationCodeCandidates(route.destination_name);
             startCandidates.forEach((startLocationName) => {
                 waypointCandidates.forEach((waypointElsName) => {
@@ -2670,16 +2671,19 @@ function AsanDispatchContent() {
                 waypointElsName: line.workplace,
                 shipperName: line.shipper,
             });
-        const billingStartLocation = explicitBillingStartLocation || specialBillingStartLocation || startLocation;
-        const routeKeys = buildGlapsDispatchRouteFingerprintsWithAliasMaps({
+        const requestedBillingStartLocation = explicitBillingStartLocation || specialBillingStartLocation || startLocation;
+        const routeStartNames = [...new Set([requestedBillingStartLocation, startLocation].filter(Boolean))];
+        const routeKeys = routeStartNames.flatMap(startLocationName => buildGlapsDispatchRouteFingerprintsWithAliasMaps({
             shipperCode: lineShipperCode,
-            startLocationName: billingStartLocation,
+            startLocationName,
             waypointElsName: line.workplace,
             destinationName: line.destination,
             routeLocationAliasMap: glapsAliasMaps.routeLocation,
             waypointAliasMap: glapsAliasMaps.waypoint,
-        });
+        }));
         const glapsRoute = routeKeys.map(key => glapsRouteMap.get(key)).find(Boolean) || null;
+        const routeBillingStartLocation = getGlapsRouteBillingStartLocation(glapsRoute);
+        const billingStartLocation = explicitBillingStartLocation || specialBillingStartLocation || routeBillingStartLocation || startLocation;
         const portCodeOverride = String(options.portCodeOverride || portOverride?.value || line.glapsPortCodeOverride || '').trim();
         const glapsPortCodeOptions = getGlapsAliasCodeOptions(glapsAliasMaps.portOptions, line.port);
         const glapsPortCode = getGlapsAliasDefaultCode(glapsAliasMaps.portOptions, line.port, portCodeOverride)
