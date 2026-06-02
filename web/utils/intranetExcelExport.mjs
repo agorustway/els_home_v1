@@ -200,13 +200,15 @@ export function applyIntranetExcelBodyCell(cell, options = {}) {
 export function fitIntranetExcelColumns(sheet, options = {}) {
   const minWidth = Number(options.minWidth || 8);
   const maxWidth = Number(options.maxWidth || 80);
-  sheet.columns.forEach(col => {
+  const startRowNumber = Math.max(1, Number(options.startRowNumber || 1));
+  sheet.columns.forEach((col, colIdx) => {
     let maxLen = minWidth;
-    col.eachCell({ includeEmpty: true }, cell => {
-      const value = cell.value ? String(cell.value) : '';
+    for (let rowNumber = startRowNumber; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const cell = sheet.getRow(rowNumber).getCell(colIdx + 1);
+      const value = cell.text || (cell.value ? String(cell.value) : '');
       const len = measureExcelTextWidth(value);
       if (len > maxLen) maxLen = len;
-    });
+    }
     col.width = Math.min(Math.ceil(maxLen) + 2, maxWidth);
   });
 }
@@ -273,6 +275,6 @@ export function addIntranetExportWorksheet(workbook, exportSheet = {}, options =
   });
 
   freezeAndFilterIntranetSheet(sheet, { headerRowNumber, columnCount: headers.length });
-  fitIntranetExcelColumns(sheet);
+  fitIntranetExcelColumns(sheet, { startRowNumber: headerRowNumber });
   return sheet;
 }
