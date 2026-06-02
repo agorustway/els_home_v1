@@ -51,6 +51,13 @@
     border-left: 3px solid #2563eb;
 }
 
+.titleRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
 .headerBanner .pathBadge {
     background: #f8fafc;
     color: #475569;
@@ -74,8 +81,11 @@
 
 .headerControls {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
     align-items: center;
+    min-width: 0;
 }
 
 .selectionToolbar {
@@ -205,8 +215,8 @@
 .mainArea {
     min-height: 60vh;
     background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
     padding: 20px;
     position: relative;
     border: 2px dashed transparent;
@@ -249,6 +259,23 @@
 .td {
     padding: 14px 12px;
     border-bottom: 1px solid #f7fafc;
+}
+
+.emptyCell,
+.emptyGrid {
+    color: #94a3b8;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.emptyCell {
+    padding: 56px 12px;
+}
+
+.emptyGrid {
+    grid-column: 1 / -1;
+    padding: 64px 12px;
 }
 
 .nameCell {
@@ -294,6 +321,7 @@
 }
 
 .cardIcon {
+    position: relative;
     font-size: 3rem;
     margin-bottom: 12px;
     width: 80px;
@@ -510,34 +538,50 @@
     }
 
     .headerBanner {
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: nowrap;
-        padding: 8px 10px;
-        gap: 6px;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px;
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    .titleRow {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .pathBadge {
+        max-width: 44vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .headerControls {
-        width: auto;
+        width: 100%;
         display: flex;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 4px;
+        justify-content: flex-start;
+        min-width: 0;
     }
 
     .viewToggle {
         flex: none;
+        min-width: 110px;
     }
 
     .viewBtn {
-        padding: 4px 8px;
+        padding: 0 8px;
         font-size: 0.75rem;
+        height: 28px;
     }
 
     .btn {
         flex: none;
-        padding: 4px 8px;
+        padding: 0 8px;
         font-size: 0.75rem;
-        height: 32px;
+        height: 30px;
         justify-content: center;
         align-items: center;
     }
@@ -560,14 +604,40 @@
 
     .table th,
     .table td {
-        padding: 12px 8px;
+        padding: 10px 4px;
     }
 
     .nameCell {
-        font-size: 0.85rem;
-        word-break: break-all;
+        gap: 6px;
+        font-size: 0.86rem;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
         white-space: normal;
         line-height: 1.4;
+    }
+
+    .icon {
+        flex: none;
+        color: #475569;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .mainArea {
+        min-height: calc(100dvh - 290px);
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .breadcrumbs {
+        margin-bottom: 10px;
+        padding: 0;
+    }
+
+    .moreBtn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
     }
 
     .container {

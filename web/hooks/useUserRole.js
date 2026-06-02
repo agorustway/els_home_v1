@@ -13,14 +13,14 @@ export function useUserRole() {
     useEffect(() => {
         async function fetchRole() {
             try {
+                const hasDebugCookie = typeof document !== 'undefined' && document.cookie.includes('__debug_mode=true');
+                const debugModeActive = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || hasDebugCookie;
                 console.log('useUserRole: Fetching user...');
                 const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
 
                 if (userError || !authUser) {
                     console.log('useUserRole: No user found');
-                    // Vercel 환경 변수 오류 방지를 위해 쿠키도 함께 체크
-                    const hasDebugCookie = typeof document !== 'undefined' && document.cookie.includes('__debug_mode=true');
-                    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' || hasDebugCookie) {
+                    if (debugModeActive) {
                         console.log('useUserRole: Debug mode active, granting admin role');
                         setRole('admin');
                         setUser({ email: 'debug_admin@elssolution.com', user_metadata: { name: '디버그관리자' } });
@@ -32,6 +32,13 @@ export function useUserRole() {
                 }
 
                 setUser(authUser);
+                if (debugModeActive && authUser.email === 'debug_admin@elssolution.com') {
+                    console.log('useUserRole: Debug admin user detected, skipping user_roles lookup');
+                    setRole('admin');
+                    setUser(prev => ({ ...prev, name: '디버그관리자' }));
+                    return;
+                }
+
                 console.log('useUserRole: User found, fetching role...', authUser.email);
 
                 const { data: roleData, error: roleError } = await supabase

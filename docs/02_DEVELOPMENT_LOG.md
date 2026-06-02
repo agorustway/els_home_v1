@@ -191,6 +191,32 @@
 
 ---
 
+## [2026-06-02] 자료실(NAS) 모바일 CSS/디버그 로딩 보정 (v5.14.332)
+### 원인
+- 자료실(NAS) 헤더가 모바일에서 `nowrap`에 가까운 한 줄 구성이라 `파일 업로드` 버튼이 오른쪽으로 잘려 보였습니다.
+- 디버그 쿠키 사용 시 `debug_admin@elssolution.com`은 auth user로 인식되지만 `user_roles` row가 없으면 role이 `visitor`로 떨어졌고, 자료실 fetch가 early return 하면서 `loading`이 계속 남을 수 있었습니다.
+- NAS 루트가 빈 목록을 반환하면 표 헤더만 남아 CSS가 깨진 것처럼 보였습니다.
+### 조치
+- 자료실 헤더에 `titleRow`를 추가하고 모바일에서 제목/경로와 버튼 그룹이 2줄로 안정적으로 배치되도록 CSS를 보정했습니다.
+- 모바일 버튼 그룹은 줄바꿈 가능한 flex로 바꾸고, 경로 배지는 ellipsis로 줄이며 파일명은 필요 시 줄바꿈되도록 정리했습니다.
+- 디버그 관리자 사용자는 `user_roles` 조회를 건너뛰고 admin role로 확정하도록 `useUserRole()`을 보정했습니다.
+- 권한 fallback에서 `loading`을 명시적으로 종료하고, 빈 목록에는 `표시할 자료가 없습니다.` 안내를 표시하도록 했습니다.
+- 이미지 썸네일은 `next/image` + `unoptimized`로 전환해 lint 경고를 제거했습니다.
+### 검증
+- `node --test tests/archiveBrowserCss.test.mjs`: 2개 통과.
+- `npm run lint -- "app/(main)/employees/(intranet)/archive/ArchiveBrowser.js" hooks/useUserRole.js tests/archiveBrowserCss.test.mjs`: 통과.
+- Playwright 모바일 mock/실제 로컬 흐름: `overflowX=false`, `/api/nas/files?path=/` 200 확인, 빈 목록 안내 표시 확인.
+- `npm run build`: 통과.
+- `git diff --check`: 통과.
+### 변경 파일
+- `web/app/(main)/employees/(intranet)/archive/ArchiveBrowser.js`
+- `web/app/(main)/employees/(intranet)/archive/archive.module.css`
+- `web/hooks/useUserRole.js`
+- `web/tests/archiveBrowserCss.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-01] Vercel 사용량 방어용 middleware/폴링 축소 (v5.14.322)
 ### 원인
 - Vercel MCP 연결 계정에서는 프로젝트 목록이 비어 있어 대시보드 Usage 항목을 직접 조회하지 못했습니다.

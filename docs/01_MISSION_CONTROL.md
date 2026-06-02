@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.331 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.332 / APK v5.11.29)
 
-> 최신 업데이트: 배차변동내역은 라인까지 운송조건 변경으로 감지하고, 상세 요약바/변동 관리 버튼/발생일시 표시를 정리했다.
+> 최신 업데이트: 자료실(NAS) 모바일 CSS 깨짐과 디버그 role 로딩 고착을 보정했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.331
+- **웹 버전**: v5.14.332
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -82,8 +82,8 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.332**: 자료실(NAS) 헤더/버튼을 모바일에서 줄바꿈 가능한 구조로 바꾸고, 빈 NAS 응답은 안내문으로 표시한다. 디버그 관리자 role fallback은 `user_roles` 조회 없이 통과해 로딩 고착을 막는다.
 - **v5.14.331**: 배차변동내역에서 라인 변경도 `변경` 이벤트로 감지하고, `현재값저장` 자동 버튼과 `수정일시/발생일시` 중복 노출을 제거했다. 상세배차 상단은 수량/확정상태와 차이 필터를 분리했다.
-- **v5.14.330**: 상세/변동 `상차지(청구)`를 input 필터 대신 전체 후보 select로 전환해 현재 상차지 값과 무관하게 KRBNP/부산신항 등 청구 픽업 후보를 바로 선택하게 했다.
 ## VERIFICATION
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 

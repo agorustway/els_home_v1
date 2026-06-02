@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUserRole } from '@/hooks/useUserRole';
 import styles from './archive.module.css';
@@ -36,7 +37,14 @@ export default function ArchiveBrowser() {
     }, [role, authLoading, router]);
 
     const fetchFiles = useCallback(async (currentPath) => {
-        if (!role || role === 'visitor') return;
+        if (!role || role === 'visitor') {
+            setFiles([]);
+            setSelectedPaths(new Set());
+            setSelectionMode(false);
+            setLoading(false);
+            if (role === 'visitor') setError('자료실 접근 권한이 없습니다.');
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -469,7 +477,7 @@ export default function ArchiveBrowser() {
     return (
         <div className={styles.container}>
             <div className={styles.headerBanner}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.titleRow}>
                     <h1 className={styles.title}>자료실</h1>
                     <div className={styles.pathBadge}>{path}</div>
                 </div>
@@ -551,6 +559,13 @@ export default function ArchiveBrowser() {
                             </tr>
                         </thead>
                         <tbody>
+                            {sortedFiles.length === 0 && (
+                                <tr>
+                                    <td colSpan={selectionMode ? 5 : 4} className={styles.emptyCell}>
+                                        표시할 자료가 없습니다.
+                                    </td>
+                                </tr>
+                            )}
                             {sortedFiles.map((file) => (
                                 <tr
                                     key={file.path}
@@ -605,6 +620,9 @@ export default function ArchiveBrowser() {
                     </table>
                 ) : (
                     <div className={styles.grid}>
+                        {sortedFiles.length === 0 && (
+                            <div className={styles.emptyGrid}>표시할 자료가 없습니다.</div>
+                        )}
                         {sortedFiles.map((file) => (
                             <div
                                 key={file.path}
@@ -643,7 +661,16 @@ export default function ArchiveBrowser() {
                                     ⋮
                                 </button>
                                 <div className={styles.cardIcon}>
-                                    {isImage(file.name) ? <img src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`} className={styles.thumb} /> : (file.type === 'directory' ? '폴더' : '파일')}
+                                    {isImage(file.name) ? (
+                                        <Image
+                                            src={`/api/nas/preview?path=${encodeURIComponent(file.path)}`}
+                                            className={styles.thumb}
+                                            alt={file.name}
+                                            fill
+                                            sizes="80px"
+                                            unoptimized
+                                        />
+                                    ) : (file.type === 'directory' ? '폴더' : '파일')}
                                 </div>
                                 <div className={styles.cardName}>{file.name}</div>
                             </div>
