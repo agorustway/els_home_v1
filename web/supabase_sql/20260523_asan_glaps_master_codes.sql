@@ -349,6 +349,7 @@ VALUES
     ('asan', 'consignee', 'B000034432', '모비스 AS천안수출물류센터', '모비스천안(입장)수출물류센터', 'GA1588', '', 10, '모비스 특이 경유지 컨샤이니 우선적용', TRUE, 'system:seed', 'system:seed'),
     ('asan', 'shipper_code', 'N084', '', '현대제철', '', '', 10, '현대제철 경유지 화주사코드 우선적용', TRUE, 'system:seed', 'system:seed'),
     ('asan', 'start_location', 'N084', '', '현대제철', '', '부산신항', 10, '현대제철 컨테이너 상차지 부산신항 우선적용', TRUE, 'system:seed', 'system:seed'),
+    ('asan', 'billing_start_location', 'N084', '', '현대제철', '', 'KRBNP', 10, '현대제철 청구 상차지 KRBNP 우선적용', TRUE, 'system:seed', 'system:seed'),
     ('asan', 'consignee', 'B000034432', '', '', 'MOBBEL', '', 999, 'B000034432 기본 컨샤이니', TRUE, 'system:seed', 'system:seed')
 ON CONFLICT (branch_id, rule_type, shipper_code, waypoint_name, waypoint_els_name) WHERE active
 DO UPDATE SET

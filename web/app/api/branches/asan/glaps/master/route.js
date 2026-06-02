@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_GLAPS_BRANCH_ID,
   buildGlapsRouteFingerprint,
+  getGlapsRouteBillingStartLocation,
   getGlapsRouteShipperCode,
   getGlapsRouteWaypointCode,
   getGlapsRouteReviewStatus,
@@ -31,7 +32,7 @@ const GLAPS_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination', 'order_ty
 const GLAPS_REVIEW_STATUSES = new Set(['ready', 'needs_mapping', 'missing_route_code']);
 const GLAPS_LOOKUP_ALIAS_TYPES = Object.freeze(['order_type', 'port', 'line', 'actual_unloading', 'container_type', 'carrier', 'consignee']);
 const GLAPS_LOOKUP_SHEET_NAMES = Object.freeze(['컨테이너규격', '수출입코드']);
-const GLAPS_SPECIAL_RULE_TYPES = new Set(['consignee', 'shipper_code', 'start_location']);
+const GLAPS_SPECIAL_RULE_TYPES = new Set(['consignee', 'shipper_code', 'start_location', 'billing_start_location']);
 const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
   {
     id: 'default-b000034432-mobis-cheonan-green-ga1588',
@@ -104,6 +105,20 @@ const DEFAULT_SPECIAL_CONSIGNEE_RULES = Object.freeze([
     updated_by: 'system:default',
   },
   {
+    id: 'default-n084-hyundai-steel-billing-start-krbnp',
+    branch_id: DEFAULT_GLAPS_BRANCH_ID,
+    rule_type: 'billing_start_location',
+    shipper_code: 'N084',
+    waypoint_name: '',
+    waypoint_els_name: '',
+    consignee_code: '',
+    start_location_name: 'KRBNP',
+    priority: 10,
+    review_note: '현대제철 청구 상차지 KRBNP 우선적용',
+    active: true,
+    updated_by: 'system:default',
+  },
+  {
     id: 'default-b000034432-mobbel-fallback',
     branch_id: DEFAULT_GLAPS_BRANCH_ID,
     rule_type: 'consignee',
@@ -123,6 +138,7 @@ const ROUTE_DIRECT_BULK_FIELDS = new Set([
   'routeCode',
   'routeName',
   'startLocationName',
+  'billingStartLocationName',
   'waypointCode',
   'waypointElsName',
   'destinationName',
@@ -210,6 +226,7 @@ function normalizeSpecialRuleType(value, row = {}) {
   const normalized = text.replace(/\s+/g, '').toLowerCase();
   if (['컨샤이니', '컨사이니', 'consignee'].includes(normalized)) return 'consignee';
   if (['화주사코드', '화주코드', 'shipper', 'shippercode'].includes(normalized)) return 'shipper_code';
+  if (['상차지청구', '청구상차지', 'billingstart', 'billingstartlocation', 'billingstartlocationname'].includes(normalized)) return 'billing_start_location';
   if (['상차지', '출발지', 'start', 'startlocation', 'startlocationname'].includes(normalized)) return 'start_location';
   if (cleanText(row.startLocationName ?? row.start_location_name)) return 'start_location';
   if (cleanText(row.consigneeCode ?? row.consignee_code)) return 'consignee';
@@ -258,6 +275,7 @@ function directRouteFromPayload(row = {}) {
     routeCode: cleanText(row.routeCode ?? row.route_code),
     routeName: cleanText(row.routeName ?? row.route_name),
     startLocationName: cleanText(row.startLocationName ?? row.start_location_name),
+    billingStartLocationName: cleanText(row.billingStartLocationName ?? row.billing_start_location_name),
     waypointName: cleanText(row.waypointName ?? row.waypoint_name),
     waypointElsName: cleanText(row.waypointElsName ?? row.waypoint_els_name),
     waypointCode,
@@ -272,6 +290,8 @@ function directRouteFromPayload(row = {}) {
       waypoint_code: waypointCode,
       '경유지코드': waypointCode,
       '작업지(하차지)코드': waypointCode,
+      billing_start_location_name: cleanText(row.billingStartLocationName ?? row.billing_start_location_name),
+      '상차지(청구)': cleanText(row.billingStartLocationName ?? row.billing_start_location_name),
       edit_source: 'web',
     },
   };
@@ -306,7 +326,7 @@ function directSpecialConsigneeRuleFromPayload(row = {}) {
     waypointName: cleanText(row.waypointName ?? row.waypoint_name),
     waypointElsName: cleanText(row.waypointElsName ?? row.waypoint_els_name),
     consigneeCode: ruleType === 'consignee' ? cleanText(row.consigneeCode ?? row.consignee_code) : '',
-    startLocationName: ruleType === 'start_location' ? cleanText(row.startLocationName ?? row.start_location_name) : '',
+    startLocationName: ['start_location', 'billing_start_location'].includes(ruleType) ? cleanText(row.startLocationName ?? row.start_location_name) : '',
     priority: Number(row.priority ?? 100) || 100,
     reviewNote: cleanText(row.reviewNote ?? row.review_note),
   };
@@ -424,6 +444,8 @@ async function loadPlainSheetsFromForm(formData) {
 function toRouteDbRow(route, { branchId, versionId, userEmail }) {
   const shipperCode = getGlapsRouteShipperCode(route);
   const waypointCode = cleanText(route.waypointCode ?? route.waypoint_code) || getGlapsRouteWaypointCode(route);
+  const billingStartLocationName = cleanText(route.billingStartLocationName ?? route.billing_start_location_name)
+    || getGlapsRouteBillingStartLocation(route);
   const routeFingerprint = buildGlapsRouteFingerprint({
     ...route,
     shipperCode,
@@ -434,6 +456,10 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
     waypoint_code: waypointCode,
     '경유지코드': waypointCode,
     '작업지(하차지)코드': waypointCode,
+    ...(billingStartLocationName ? {
+      billing_start_location_name: billingStartLocationName,
+      '상차지(청구)': billingStartLocationName,
+    } : {}),
   };
   return {
     branch_id: branchId,
@@ -457,10 +483,13 @@ function toRouteDbRow(route, { branchId, versionId, userEmail }) {
 
 function withRouteDerivedFields(row = {}) {
   const waypointCode = getGlapsRouteWaypointCode(row);
+  const billingStartLocationName = getGlapsRouteBillingStartLocation(row);
   return {
     ...row,
     waypoint_code: waypointCode,
     waypointCode,
+    billing_start_location_name: billingStartLocationName,
+    billingStartLocationName,
   };
 }
 
@@ -503,7 +532,7 @@ function toSpecialConsigneeRuleDbRow(rule, { branchId, userEmail }) {
     waypoint_name: cleanText(rule.waypointName),
     waypoint_els_name: cleanText(rule.waypointElsName),
     consignee_code: ruleType === 'consignee' ? cleanText(rule.consigneeCode) : '',
-    start_location_name: ruleType === 'start_location' ? cleanText(rule.startLocationName) : '',
+    start_location_name: ['start_location', 'billing_start_location'].includes(ruleType) ? cleanText(rule.startLocationName) : '',
     priority: Number(rule.priority) || 100,
     review_note: cleanText(rule.reviewNote),
     active: true,
@@ -1357,8 +1386,8 @@ async function handleSpecialConsigneeRuleMutation({ adminSupabase, payload, bran
   if (rule.ruleType === 'consignee' && !rule.consigneeCode) {
     return { error: jsonError('컨샤이니 적용값은 필수입니다.', 400) };
   }
-  if (rule.ruleType === 'start_location' && !rule.startLocationName) {
-    return { error: jsonError('상차지 적용값은 필수입니다.', 400) };
+  if (['start_location', 'billing_start_location'].includes(rule.ruleType) && !rule.startLocationName) {
+    return { error: jsonError(rule.ruleType === 'billing_start_location' ? '상차지(청구) 적용값은 필수입니다.' : '상차지 적용값은 필수입니다.', 400) };
   }
   if (rule.ruleType === 'shipper_code' && !rule.waypointName && !rule.waypointElsName) {
     return { error: jsonError('화주사코드 특이적용은 경유지(GLAPS/ELS) 중 하나가 필요합니다.', 400) };

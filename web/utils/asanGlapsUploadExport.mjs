@@ -86,11 +86,16 @@ function buildHeaderIndex(headers = []) {
 }
 
 function getByHeader(row = [], headerIndex, candidates = []) {
+  let fallback = '';
   for (const candidate of candidates) {
     const idx = headerIndex.get(normalizeHeader(candidate));
-    if (idx !== undefined) return cleanText(row[idx]);
+    if (idx !== undefined) {
+      const value = cleanText(row[idx]);
+      if (value) return value;
+      fallback = value;
+    }
   }
-  return '';
+  return fallback;
 }
 
 function setUploadValue(uploadRow, header, value) {
@@ -106,7 +111,7 @@ function detailRowToGlapsUploadRow(headerIndex, row = []) {
   setUploadValue(uploadRow, '오더구분', getByHeader(row, headerIndex, ['오더구분코드']));
   setUploadValue(uploadRow, '선사코드', getByHeader(row, headerIndex, ['라인코드']));
   setUploadValue(uploadRow, '화주사 코드', getByHeader(row, headerIndex, ['화주사코드']));
-  setUploadValue(uploadRow, '반출지(출발)코드 ', getByHeader(row, headerIndex, ['반출지(출발)코드']));
+  setUploadValue(uploadRow, '반출지(출발)코드 ', getByHeader(row, headerIndex, ['상차지(청구)', '반출지(출발)코드']));
   setUploadValue(uploadRow, '작업지(하차지)코드', getByHeader(row, headerIndex, ['작업지(하차지)코드']));
   setUploadValue(uploadRow, '반입지(도착)코드', getByHeader(row, headerIndex, ['반입지(도착)코드']));
   setUploadValue(uploadRow, '운송경로 코드', getByHeader(row, headerIndex, ['운송경로코드']));

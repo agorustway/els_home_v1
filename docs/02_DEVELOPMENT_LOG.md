@@ -1,3 +1,30 @@
+## [2026-06-02] GLAPS 상차지(청구) 분리 적용 (v5.14.328)
+### 원인
+- 일부 화주/구간은 실제 상차지와 GLAPS 청구 기준 출발 코드가 달라, 기존 `상차지` 하나로 운송경로를 매칭하면 청구용 운송경로코드가 도출되지 않을 수 있었습니다.
+- 현대제철 `N084`처럼 특정 화주사코드/경유지 기준으로 청구 상차지를 강제해야 하는 특이적용 정책이 필요했습니다.
+### 조치
+- GLAPS 운송경로 원장/수정양식에 `상차지(청구)` 컬럼을 추가하고, 비어 있으면 기존 상차지를 fallback으로 사용하게 했습니다.
+- 상세배차내역/배차변동내역에 `상차지(청구)`를 `상차지` 오른쪽에 추가하고, 배차확정/확인완료 후에도 수정 가능하게 했습니다.
+- `billing_start_location` 특이적용 유형을 추가해 `N084 + 현대제철 -> KRBNP` 청구 상차지 우선 적용을 seed했습니다.
+- GLAPS 업로드 `반출지(출발)코드`와 운송경로 매칭은 `상차지(청구)` 값을 우선 사용합니다.
+- `상차지(청구)` 헤더가 기존 `상차지`로 부분 매칭되는 문제와 UUID 오염행 필터 기준을 함께 보정했습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 80개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/dispatch/detail-override/route.js`
+- `web/app/api/branches/asan/glaps/master/route.js`
+- `web/app/api/branches/asan/glaps/master/template/route.js`
+- `web/utils/asanDispatchDetailLines.mjs`, `web/utils/asanDispatchChangeEvents.mjs`, `web/utils/asanGlapsUploadExport.mjs`, `web/utils/glapsMasterData.mjs`
+- `web/supabase_sql/20260523_asan_glaps_master_codes.sql`, `web/supabase_sql/20260601_glaps_special_start_location_rules.sql`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDispatchDetailLines.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 상세/변동 헤더 기호형 정렬 추가 (v5.14.327)
 ### 원인
 - 상세배차/배차변동 상단 요약바가 좁은 폭에서 확정 배지와 검수 버튼 묶음의 세로 기준이 맞지 않아 깨져 보였습니다.

@@ -7,6 +7,7 @@ import {
   GLAPS_REVIEW_STATUS_LABELS,
   GLAPS_ROUTE_TEMPLATE_HEADERS,
   formatGlapsAliasType,
+  getGlapsRouteBillingStartLocation,
   getGlapsRouteShipperCode,
   getGlapsRouteWaypointCode,
 } from '@/utils/glapsMasterData.mjs';
@@ -18,7 +19,7 @@ const PAGE_SIZE = 1000;
 const TEMPLATE_HEADER_ROW_NUMBER = 3;
 const ROUTE_ALIAS_TYPES = new Set(['start', 'waypoint', 'destination']);
 const ROUTE_PROTECTED_TEMPLATE_COLUMNS = new Set(['ID', '운송경로명', '경유지', '수정출처', '수정일시']);
-const ROUTE_KEY_TEMPLATE_COLUMNS = new Set(['화주사코드', '경유지코드', '운송경로코드']);
+const ROUTE_KEY_TEMPLATE_COLUMNS = new Set(['화주사코드', '상차지(청구)', '경유지코드', '운송경로코드']);
 const ALIAS_PROTECTED_TEMPLATE_COLUMNS = new Set([
   'ID',
   'GLAPS 디스크립션(설명)',
@@ -197,6 +198,7 @@ function addGuideWorksheet(workbook) {
     ['운송경로', '중복검출/병합', '운송경로코드', '운송경로코드가 같은 행만 중복검출/병합 대상입니다. 상차지/경유지/하차지는 중복 기준이 아닙니다.', '같은 값은 1개로, 다른 값은 쉼표로 합침'],
     ['운송경로', '운송경로_수정양식', '운송경로명', '회색 보호칸입니다. GLAPS 운송경로명을 유지합니다.', '참고/검색용'],
     ['운송경로', '운송경로_수정양식', '상차지', '배차 상세의 상차지와 매칭될 값을 입력합니다.', '예: 부산신항, 의왕ICD'],
+    ['운송경로', '운송경로_수정양식', '상차지(청구)', '청구 기준 출발 코드가 실제 상차지와 다를 때 입력합니다. 비우면 상차지를 사용합니다.', '예: N084 → KRBNP'],
     ['운송경로', '운송경로_수정양식', '경유지', '회색 보호칸입니다. GLAPS 원장 작업지명을 유지합니다.', '배차판 매칭은 경유지(ELS)로 보정'],
     ['운송경로', '운송경로_수정양식', '경유지(ELS)', '우리 배차판 작업지명과 맞출 값을 입력합니다.', '상세배차 매칭 핵심'],
     ['운송경로', '운송경로_수정양식', '경유지코드', '초록 키 칸입니다. 상세배차 작업지(하차지)코드에 들어갈 GLAPS 경유지코드를 입력합니다.', '예: S013_M12'],
@@ -241,6 +243,7 @@ function routeToTemplateRow(row = {}) {
     row.id || '',
     getGlapsRouteShipperCode(row),
     row.start_location_name || '',
+    getGlapsRouteBillingStartLocation(row),
     row.waypoint_els_name || '',
     getGlapsRouteWaypointCode(row),
     row.destination_name || '',
@@ -292,7 +295,7 @@ export async function GET(request) {
       const sheet = workbook.addWorksheet('운송경로_수정양식');
       addTemplateHeader(sheet, {
         title: 'GLAPS 운송경로 수정양식',
-        note: '상세배차 매칭 기준: 화주사코드 + 상차지 + 경유지(ELS) + 하차지(선적). 기존 GLAPS 운송경로코드를 도출하기 위한 원장 보정용입니다.',
+        note: '상세배차 매칭 기준: 화주사코드 + 상차지(청구 우선) + 경유지(ELS) + 하차지(선적). 기존 GLAPS 운송경로코드를 도출하기 위한 원장 보정용입니다.',
         headers: GLAPS_ROUTE_TEMPLATE_HEADERS,
       });
       if (version) {

@@ -1,4 +1,5 @@
 import {
+  DISPATCH_DETAIL_BILLING_START_HEADER,
   DISPATCH_DETAIL_DG_HEADER,
   DISPATCH_DETAIL_HEADERS,
   DISPATCH_DETAIL_RF_HEADER,
@@ -7,7 +8,7 @@ import {
   normalizeDispatchDetailRowValues,
 } from './asanDispatchDetailLines.mjs';
 
-export const DISPATCH_CHANGE_SCHEMA_VERSION = 3;
+export const DISPATCH_CHANGE_SCHEMA_VERSION = 4;
 
 export const DISPATCH_CHANGE_TYPE_LABELS = Object.freeze({
   add: '추가',
@@ -47,6 +48,7 @@ const DERIVED_GLAPS_HEADERS = new Set([
 const TRANSPORT_CHANGE_HEADERS = Object.freeze([
   '고객사',
   '상차지',
+  DISPATCH_DETAIL_BILLING_START_HEADER,
   '작업지',
   '하차지(선적)',
   '포트(DIST)',
@@ -90,6 +92,7 @@ const NEUTRAL_ADD_DELETE_HEADERS = Object.freeze([
   '구분',
   '화주',
   '상차지',
+  DISPATCH_DETAIL_BILLING_START_HEADER,
   '작업지',
   '하차지(선적)',
   '고객사',
@@ -353,6 +356,7 @@ export function makeDispatchChangeSnapshotLine(line = {}, detailLineKey = '') {
     shipper: line.shipper || '',
     direction: line.direction || '',
     startLocation: line.startLocation || '',
+    billingStartLocation: line.billingStartLocation || line.startLocation || '',
     workplace: line.workplace || '',
     destination: line.destination || '',
     customer: line.customer || '',

@@ -12,6 +12,7 @@ import {
     validateDispatchWebCellValue,
 } from '@/utils/asanDispatchWebCellFields.mjs';
 import {
+    DISPATCH_DETAIL_BILLING_START_HEADER,
     DISPATCH_DETAIL_DG_HEADER,
     DISPATCH_DETAIL_HEADERS,
     DISPATCH_DETAIL_PORT_HEADER,
@@ -41,6 +42,7 @@ import {
 } from '@/utils/asanGlapsUploadExport.mjs';
 import {
     buildGlapsRouteFingerprint,
+    getGlapsRouteBillingStartLocation,
     getGlapsRouteLocationCodeCandidates,
     getGlapsRouteShipperCode,
     getGlapsRouteWaypointCode,
@@ -180,7 +182,9 @@ const BRANCH_NAMES = ['아산', '부산', '광양', '평택', '중부', '부곡'
 const PREFS_KEY = 'asan_dispatch_prefs';
 const QUICK_DATE_TAB_LIMIT = 7;
 const DETAIL_START_LOCATION_DATALIST_ID = 'asan-detail-start-location-options';
+const DETAIL_BILLING_START_LOCATION_DATALIST_ID = 'asan-detail-billing-start-location-options';
 const DETAIL_START_OVERRIDE_FIELD_KEY = 'start_location';
+const DETAIL_BILLING_START_OVERRIDE_FIELD_KEY = 'billing_start_location';
 const DETAIL_PORT_OVERRIDE_FIELD_KEY = 'glaps_port_code';
 const DETAIL_DG_OVERRIDE_FIELD_KEY = 'dg';
 const DETAIL_RF_OVERRIDE_FIELD_KEY = 'rf';
@@ -192,6 +196,7 @@ const GLAPS_SPECIAL_RULE_TYPES = Object.freeze({
     CONSIGNEE: 'consignee',
     SHIPPER_CODE: 'shipper_code',
     START_LOCATION: 'start_location',
+    BILLING_START_LOCATION: 'billing_start_location',
 });
 const BKG_WEB_CELL_LOCK_FIELDS = new Set([
     ASAN_DISPATCH_WEB_CELL_FIELDS.BKG1,
@@ -643,7 +648,7 @@ function formatGlapsPortOptionLabel(option = {}) {
     return code ? `${code}${defaultMark}` : option.label || '';
 }
 function detailColumnClass(header) {
-    return header === '상차지' ? styles.detailStartColumn : '';
+    return header === '상차지' || header === DISPATCH_DETAIL_BILLING_START_HEADER ? styles.detailStartColumn : '';
 }
 function getDetailRowValue(values = [], header) {
     const idx = DETAIL_HEADER_INDEX[header];
@@ -732,6 +737,7 @@ function detailLineFromChangeValues(values = [], event = {}, options = {}) {
         shipper: getDetailRowValue(values, '화주') || context.shipper || '',
         startRegion: context.startRegion || context.sourceRegion || '',
         startLocation: getDetailRowValue(values, '상차지') || context.startLocation || '',
+        billingStartLocation: getDetailRowValue(values, DISPATCH_DETAIL_BILLING_START_HEADER) || context.billingStartLocation || context.startLocation || '',
         workplace: getDetailRowValue(values, '작업지') || context.workplace || '',
         destination: getDetailRowValue(values, '하차지(선적)') || context.destination || '',
         customer: getDetailRowValue(values, '고객사') || context.customer || '',
@@ -768,6 +774,7 @@ function buildDetailChangeRowContext(rowValues = [], baseContext = {}) {
         shipper: getDetailRowValue(rowValues, '화주'),
         startRegion: baseContext.startRegion || baseContext.sourceRegion || '',
         startLocation: getDetailRowValue(rowValues, '상차지'),
+        billingStartLocation: getDetailRowValue(rowValues, DISPATCH_DETAIL_BILLING_START_HEADER) || getDetailRowValue(rowValues, '상차지'),
         workplace: getDetailRowValue(rowValues, '작업지'),
         destination: getDetailRowValue(rowValues, '하차지(선적)'),
         customer: getDetailRowValue(rowValues, '고객사'),
@@ -796,6 +803,7 @@ function buildDetailLineContext(line = {}) {
         sourceRegion: line.sourceRegion || '',
         workplace: line.workplace || '',
         startLocation: line.startLocation || '',
+        billingStartLocation: line.billingStartLocation || line.startLocation || '',
         destination: line.destination || '',
         port: line.port || '',
         transportRemark: line.transportRemark || '',
@@ -976,6 +984,36 @@ function resolveGlapsSpecialStartLocation(rules = [], {
     if (!normalizedShipper) return '';
     const candidates = (rules || [])
         .filter(rule => rule?.active !== false && getGlapsSpecialRuleType(rule) === GLAPS_SPECIAL_RULE_TYPES.START_LOCATION)
+        .map(rule => ({
+            rule,
+            shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
+            startLocationName: String(rule.start_location_name || rule.startLocationName || '').trim(),
+            waypointKeys: [
+                rule.waypoint_name || rule.waypointName,
+                rule.waypoint_els_name || rule.waypointElsName,
+            ].map(normalizeGlapsKey).filter(Boolean),
+            priority: Number(rule.priority ?? 100) || 100,
+        }))
+        .filter(item => item.shipperKey === normalizedShipper && item.startLocationName)
+        .filter(item => item.waypointKeys.length === 0 || item.waypointKeys.some(key => requestedMatchKeys.has(key)))
+        .sort((a, b) => (
+            Number(b.waypointKeys.length > 0) - Number(a.waypointKeys.length > 0)
+            || a.priority - b.priority
+            || String(a.startLocationName).localeCompare(String(b.startLocationName))
+        ));
+    return candidates[0]?.startLocationName || '';
+}
+function resolveGlapsSpecialBillingStartLocation(rules = [], {
+    shipperCode = '',
+    waypointName = '',
+    waypointElsName = '',
+    shipperName = '',
+} = {}) {
+    const normalizedShipper = normalizeGlapsKey(shipperCode);
+    const requestedMatchKeys = new Set([waypointName, waypointElsName, shipperName].map(normalizeGlapsKey).filter(Boolean));
+    if (!normalizedShipper) return '';
+    const candidates = (rules || [])
+        .filter(rule => rule?.active !== false && getGlapsSpecialRuleType(rule) === GLAPS_SPECIAL_RULE_TYPES.BILLING_START_LOCATION)
         .map(rule => ({
             rule,
             shipperKey: normalizeGlapsKey(rule.shipper_code || rule.shipperCode),
@@ -1481,6 +1519,7 @@ function AsanDispatchContent() {
     const [webCellStatus, setWebCellStatus] = useState({});
     const [dispatchConfirmationMap, setDispatchConfirmationMap] = useState({});
     const [detailStartOverrides, setDetailStartOverrides] = useState({});
+    const [detailBillingStartOverrides, setDetailBillingStartOverrides] = useState({});
     const [detailBkgOverrides, setDetailBkgOverrides] = useState({});
     const [detailPortOverrides, setDetailPortOverrides] = useState({});
     const [detailDgOverrides, setDetailDgOverrides] = useState({});
@@ -1531,6 +1570,7 @@ function AsanDispatchContent() {
 
     useEffect(() => {
         setDetailStartOverrides({});
+        setDetailBillingStartOverrides({});
         setDetailBkgOverrides({});
     }, [viewType, activeTab, allTabMonth, allTabWeek]);
 
@@ -2139,6 +2179,7 @@ function AsanDispatchContent() {
             setDetailChangeDrafts({});
             setDetailChangePortOverrides({});
             setDetailPortOverrides({});
+            setDetailBillingStartOverrides({});
             setDetailDgOverrides({});
             setDetailRfOverrides({});
             detailChangeSyncRef.current = '';
@@ -2173,6 +2214,7 @@ function AsanDispatchContent() {
                 setDetailChangeEvents(changePayload.data || []);
                 const nextOverrides = {};
                 const nextStartOverrides = {};
+                const nextBillingStartOverrides = {};
                 const nextPortOverrides = {};
                 const nextDgOverrides = {};
                 const nextRfOverrides = {};
@@ -2190,6 +2232,16 @@ function AsanDispatchContent() {
                     .filter(row => row.field_key === DETAIL_START_OVERRIDE_FIELD_KEY)
                     .forEach((row) => {
                         nextStartOverrides[row.detail_line_key] = {
+                            value: row.value || '',
+                            source: row.source || 'manual',
+                            updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
+                            updatedAt: row.updated_at || row.created_at || '',
+                        };
+                    });
+                (overridePayload.data || [])
+                    .filter(row => row.field_key === DETAIL_BILLING_START_OVERRIDE_FIELD_KEY)
+                    .forEach((row) => {
+                        nextBillingStartOverrides[row.detail_line_key] = {
                             value: row.value || '',
                             source: row.source || 'manual',
                             updatedBy: row.updated_by_name || row.updated_by || row.created_by_name || row.created_by || '',
@@ -2228,6 +2280,7 @@ function AsanDispatchContent() {
                     });
                 setDetailBkgOverrides(nextOverrides);
                 setDetailStartOverrides(nextStartOverrides);
+                setDetailBillingStartOverrides(nextBillingStartOverrides);
                 setDetailPortOverrides(nextPortOverrides);
                 setDetailDgOverrides(nextDgOverrides);
                 setDetailRfOverrides(nextRfOverrides);
@@ -2236,6 +2289,7 @@ function AsanDispatchContent() {
                     setDetailConfirmation(null);
                     setDetailBkgOverrides({});
                     setDetailStartOverrides({});
+                    setDetailBillingStartOverrides({});
                     setDetailPortOverrides({});
                     setDetailDgOverrides({});
                     setDetailRfOverrides({});
@@ -2514,7 +2568,8 @@ function AsanDispatchContent() {
         const map = new Map();
         (glapsDetailLookup.routes || []).forEach((route) => {
             const waypointCandidates = [...new Set([route.waypoint_els_name, route.waypoint_name].filter(Boolean))];
-            const startCandidates = getGlapsRouteLocationCodeCandidates(route.start_location_name);
+            const billingStart = getGlapsRouteBillingStartLocation(route);
+            const startCandidates = getGlapsRouteLocationCodeCandidates(billingStart || route.start_location_name);
             const destinationCandidates = getGlapsRouteLocationCodeCandidates(route.destination_name);
             startCandidates.forEach((startLocationName) => {
                 waypointCandidates.forEach((waypointElsName) => {
@@ -2531,6 +2586,19 @@ function AsanDispatchContent() {
             });
         });
         return map;
+    }, [glapsDetailLookup.routes]);
+
+    const glapsBillingStartLocationOptions = useMemo(() => {
+        const options = new Set(GLAPS_START_LOCATION_OPTIONS.filter(Boolean));
+        (glapsDetailLookup.routes || []).forEach((route) => {
+            [
+                route.start_location_name,
+                getGlapsRouteBillingStartLocation(route),
+                ...(getGlapsRouteLocationCodeCandidates(route.start_location_name) || []),
+                ...(getGlapsRouteLocationCodeCandidates(getGlapsRouteBillingStartLocation(route)) || []),
+            ].filter(Boolean).forEach(value => options.add(value));
+        });
+        return [...options].sort((a, b) => a.localeCompare(b, 'ko'));
     }, [glapsDetailLookup.routes]);
 
     const glapsAliasMaps = useMemo(() => ({
@@ -2558,6 +2626,7 @@ function AsanDispatchContent() {
 
     const enrichDetailLine = useCallback((line = {}, options = {}) => {
         const startOverride = options.startOverride || null;
+        const billingStartOverride = options.billingStartOverride || null;
         const bkgOverride = options.bkgOverride || null;
         const portOverride = options.portOverride || null;
         const dgOverride = options.dgOverride || null;
@@ -2586,9 +2655,25 @@ function AsanDispatchContent() {
             shipperName: line.shipper,
         });
         const startLocation = specialStartLocation || sourceStartLocation;
+        const explicitBillingStartLocation = billingStartOverride
+            ? billingStartOverride.value || ''
+            : (
+                Object.prototype.hasOwnProperty.call(options, 'billingStartLocation')
+                    ? options.billingStartLocation || ''
+                    : line.billingStartLocation || ''
+            );
+        const specialBillingStartLocation = (billingStartOverride || explicitBillingStartLocation)
+            ? ''
+            : resolveGlapsSpecialBillingStartLocation(glapsSpecialConsigneeRules, {
+                shipperCode: lineShipperCode,
+                waypointName: line.workplace,
+                waypointElsName: line.workplace,
+                shipperName: line.shipper,
+            });
+        const billingStartLocation = explicitBillingStartLocation || specialBillingStartLocation || startLocation;
         const routeKeys = buildGlapsDispatchRouteFingerprintsWithAliasMaps({
             shipperCode: lineShipperCode,
-            startLocationName: startLocation,
+            startLocationName: billingStartLocation,
             waypointElsName: line.workplace,
             destinationName: line.destination,
             routeLocationAliasMap: glapsAliasMaps.routeLocation,
@@ -2612,7 +2697,11 @@ function AsanDispatchContent() {
         const glapsTransportServiceCode = inferGlapsTransportServiceCode(glapsAliasMaps.transportService, line.direction);
         const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
         const glapsShipperCode = routeShipperCode || lineShipperCode;
-        const glapsStartLocationCode = glapsRoute?.start_location_name || '';
+        const glapsStartLocationCode = getGlapsRouteBillingStartLocation(glapsRoute)
+            || glapsRoute?.start_location_name
+            || getGlapsRouteLocationCodeCandidates(billingStartLocation)[0]
+            || billingStartLocation
+            || '';
         const glapsWorkplaceCode = getGlapsRouteWaypointCode(glapsRoute);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
         const glapsSpecialConsigneeCode = resolveGlapsSpecialConsigneeCode(glapsSpecialConsigneeRules, {
@@ -2623,12 +2712,14 @@ function AsanDispatchContent() {
         const glapsConsigneeCode = glapsSpecialConsigneeCode || getGlapsAliasCode(glapsAliasMaps.consignee, line.customer);
         const confirmedBkg = bkgOverride ? bkgOverride.value : snapshotConfirmedBkg || line.confirmedBkg || line.bkg1 || '';
         const startUpdatedAt = startOverride?.updatedAt || '';
+        const billingStartUpdatedAt = billingStartOverride?.updatedAt || '';
         const portUpdatedAt = portOverride?.updatedAt || '';
         const dgUpdatedAt = dgOverride?.updatedAt || '';
         const rfUpdatedAt = rfOverride?.updatedAt || '';
         const bkgUpdatedAt = bkgOverride?.updatedAt || '';
         const confirmedAt = options.confirmedAt || '';
         const shouldMarkStartUpdated = Boolean(startUpdatedAt && confirmedAt && isTimestampAfter(startUpdatedAt, confirmedAt));
+        const shouldMarkBillingStartUpdated = Boolean(billingStartUpdatedAt && confirmedAt && isTimestampAfter(billingStartUpdatedAt, confirmedAt));
         const shouldMarkPortUpdated = Boolean(portUpdatedAt && confirmedAt && isTimestampAfter(portUpdatedAt, confirmedAt));
         const shouldMarkDgUpdated = Boolean(dgUpdatedAt && confirmedAt && isTimestampAfter(dgUpdatedAt, confirmedAt));
         const shouldMarkRfUpdated = Boolean(rfUpdatedAt && confirmedAt && isTimestampAfter(rfUpdatedAt, confirmedAt));
@@ -2639,6 +2730,9 @@ function AsanDispatchContent() {
             startLocation,
             startLocationUpdatedAt: shouldMarkStartUpdated ? startUpdatedAt : '',
             startLocationUpdatedBy: shouldMarkStartUpdated ? startOverride?.updatedBy || '' : '',
+            billingStartLocation,
+            billingStartLocationUpdatedAt: shouldMarkBillingStartUpdated ? billingStartUpdatedAt : '',
+            billingStartLocationUpdatedBy: shouldMarkBillingStartUpdated ? billingStartOverride?.updatedBy || '' : '',
             confirmedBkg,
             confirmedBkgSource: bkgOverride?.source || snapshotBkgSource || line.confirmedBkgSource || (confirmedBkg ? inferBkgSourceFromDetailValues(detailLineToRow({ ...line, confirmedBkg })) : 'BKG1'),
             confirmedBkgUpdatedAt: shouldMarkBkgUpdated ? bkgUpdatedAt : '',
@@ -2693,6 +2787,7 @@ function AsanDispatchContent() {
     const detailDisplayLines = useMemo(() => detailLines.map((line) => {
         const lineKey = makeDispatchDetailLineKey(line);
         const startOverride = detailStartOverrides[lineKey] || null;
+        const billingStartOverride = detailBillingStartOverrides[lineKey] || null;
         const bkgOverride = detailBkgOverrides[lineKey] || null;
         const portOverride = detailPortOverrides[lineKey] || null;
         const dgOverride = detailDgOverrides[lineKey] || null;
@@ -2700,6 +2795,7 @@ function AsanDispatchContent() {
         const snapshotValues = getConfirmationSnapshotValues(detailConfirmationSnapshotByLineKey.get(lineKey));
         const enriched = enrichDetailLine(line, {
             startOverride,
+            billingStartOverride,
             bkgOverride,
             portOverride,
             dgOverride,
@@ -2715,7 +2811,7 @@ function AsanDispatchContent() {
             memoDiffHeaders,
             bkgConfirmStale: isDetailBkgConfirmStale({ ...enriched, memoDiffHeaders }),
         };
-    }), [detailBkgOverrides, detailConfirmation?.confirmed_at, detailConfirmationSnapshotByLineKey, detailDgOverrides, detailLines, detailPortOverrides, detailRfOverrides, detailStartOverrides, enrichDetailLine]);
+    }), [detailBkgOverrides, detailBillingStartOverrides, detailConfirmation?.confirmed_at, detailConfirmationSnapshotByLineKey, detailDgOverrides, detailLines, detailPortOverrides, detailRfOverrides, detailStartOverrides, enrichDetailLine]);
 
     const searchedDetailLines = useMemo(() => {
         const term = String(searchTerm || '').trim().toLowerCase();
@@ -3114,6 +3210,66 @@ function AsanDispatchContent() {
         }
     }, [detailScope, detailStartOverrides, getDetailAuthHeaders]);
 
+    const updateDetailBillingStartDraft = useCallback((line, value) => {
+        const lineKey = makeDispatchDetailLineKey(line);
+        setDetailBillingStartOverrides(prev => ({
+            ...prev,
+            [lineKey]: {
+                ...(prev[lineKey] || {}),
+                value: String(value ?? '').trim(),
+                source: 'manual',
+                dirty: true,
+            },
+        }));
+    }, []);
+
+    const saveDetailBillingStartOverride = useCallback(async (line, value) => {
+        if (!detailScope) return;
+        const lineKey = makeDispatchDetailLineKey(line);
+        const nextValue = String(value ?? '').trim();
+        const currentOverride = detailBillingStartOverrides[lineKey] || {};
+        if (!currentOverride.dirty && nextValue === String(line.billingStartLocation || line.startLocation || '').trim()) return;
+        setDetailBillingStartOverrides(prev => ({
+            ...prev,
+            [lineKey]: {
+                ...(prev[lineKey] || {}),
+                value: nextValue,
+                source: 'manual',
+                dirty: true,
+            },
+        }));
+        try {
+            const response = await fetch('/api/branches/asan/dispatch/detail-override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...await getDetailAuthHeaders() },
+                body: JSON.stringify({
+                    ...detailScope,
+                    detailLineKey: lineKey,
+                    fieldKey: DETAIL_BILLING_START_OVERRIDE_FIELD_KEY,
+                    value: nextValue,
+                    source: 'manual',
+                    rowContext: buildDetailLineContext({ ...line, billingStartLocation: nextValue }),
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || '상차지(청구) 저장 실패');
+            if (payload.setupRequired) setDetailOverrideSetupRequired(true);
+            const savedAt = payload.data?.updated_at || payload.data?.created_at || new Date().toISOString();
+            setDetailBillingStartOverrides(prev => ({
+                ...prev,
+                [lineKey]: {
+                    ...(prev[lineKey] || {}),
+                    value: nextValue,
+                    source: 'manual',
+                    updatedAt: savedAt,
+                    dirty: false,
+                },
+            }));
+        } catch (error) {
+            setSyncStatus({ message: error.message || '상차지(청구) 저장 실패', isError: true });
+        }
+    }, [detailBillingStartOverrides, detailScope, getDetailAuthHeaders]);
+
     const saveDetailBkgOverride = useCallback(async (line, source, value) => {
         if (!detailScope) return;
         const lineKey = makeDispatchDetailLineKey(line);
@@ -3296,9 +3452,9 @@ function AsanDispatchContent() {
         });
     }, []);
 
-    const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null, contextPatch = {}) => {
+    const saveDetailChangeEvent = useCallback(async (event, rowValuesOverride = null, contextPatch = {}, options = {}) => {
         if (!detailScope || !event?.id || detailChangeSaving) return;
-        if (event.event_status === 'confirmed') {
+        if (event.event_status === 'confirmed' && !options.allowConfirmed) {
             setSyncStatus({ message: '확인완료된 변동은 확인취소 후 수정할 수 있습니다.', isError: true });
             return;
         }
@@ -3359,7 +3515,7 @@ function AsanDispatchContent() {
             contextPatch.glapsPortCodeOverride = String(options.portCodeOverride || '').trim();
         }
         const calculatedValues = buildDetailChangeDisplayValues(event, rawValues, contextPatch);
-        saveDetailChangeEvent(event, calculatedValues, contextPatch);
+        saveDetailChangeEvent(event, calculatedValues, contextPatch, { allowConfirmed: Boolean(options.allowConfirmed) });
     }, [buildDetailChangeDisplayValues, saveDetailChangeEvent]);
 
     const confirmDetailChangeEvents = useCallback(async (eventIds = [], { bulk = false } = {}) => {
@@ -4002,6 +4158,11 @@ function AsanDispatchContent() {
                                     <option key={option} value={option} />
                                 ))}
                             </datalist>
+                            <datalist id={DETAIL_BILLING_START_LOCATION_DATALIST_ID}>
+                                {glapsBillingStartLocationOptions.map((option) => (
+                                    <option key={option} value={option} />
+                                ))}
+                            </datalist>
                             <table className={`${styles.table} ${styles.detailTable}`}>
                                 <thead>
                                     <tr>
@@ -4042,6 +4203,29 @@ function AsanDispatchContent() {
                                                                 ) : (
                                                                     <span title={postConfirmTitle}>{line.startLocation || ''}</span>
                                                                 )}
+                                                            </td>
+                                                        );
+                                                    }
+                                                    if (header === DISPATCH_DETAIL_BILLING_START_HEADER) {
+                                                        const postConfirmClass = line.billingStartLocationUpdatedAt ? styles.detailPostConfirmOverrideCell : '';
+                                                        const postConfirmTitle = line.billingStartLocationUpdatedAt
+                                                            ? `배차확정 후 상차지(청구) 변경\n수정일시: ${fmtShortTs(line.billingStartLocationUpdatedAt)}${line.billingStartLocationUpdatedBy ? `\n수정자: ${line.billingStartLocationUpdatedBy}` : ''}`
+                                                            : '청구 기준 출발 코드';
+                                                        return (
+                                                            <td key={header} className={[styles.detailStartCell, postConfirmClass].filter(Boolean).join(' ')}>
+                                                                <input
+                                                                    className={`${styles.detailComboInput} ${styles.detailStartInput}`}
+                                                                    list={DETAIL_BILLING_START_LOCATION_DATALIST_ID}
+                                                                    data-detail-row-index={detailRowIdx}
+                                                                    data-detail-col-index={colIdx}
+                                                                    value={line.billingStartLocation || line.startLocation || ''}
+                                                                    onChange={(event) => updateDetailBillingStartDraft(line, event.target.value)}
+                                                                    onBlur={(event) => saveDetailBillingStartOverride(line, event.target.value)}
+                                                                    onKeyDown={focusDetailGridInput}
+                                                                    disabled={detailOverrideSetupRequired || !detailScope}
+                                                                    placeholder="선택"
+                                                                    title={postConfirmTitle}
+                                                                />
                                                             </td>
                                                         );
                                                     }
@@ -4281,6 +4465,11 @@ function AsanDispatchContent() {
                                         <option key={option} value={option} />
                                     ))}
                                 </datalist>
+                                <datalist id={DETAIL_BILLING_START_LOCATION_DATALIST_ID}>
+                                    {glapsBillingStartLocationOptions.map((option) => (
+                                        <option key={option} value={option} />
+                                    ))}
+                                </datalist>
                                 <table className={`${styles.table} ${styles.detailTable}`}>
                                     <thead>
                                         <tr>
@@ -4323,6 +4512,25 @@ function AsanDispatchContent() {
                                                                     ) : (
                                                                         getDetailRowValue(rawValues, '상차지')
                                                                     )}
+                                                                </td>
+                                                            );
+                                                        }
+                                                        if (isDetailValue && header === DISPATCH_DETAIL_BILLING_START_HEADER) {
+                                                            return (
+                                                                <td key={header} className={[styles.detailStartCell, changedCellClass].filter(Boolean).join(' ')}>
+                                                                    <input
+                                                                        className={`${styles.detailComboInput} ${styles.detailStartInput}`}
+                                                                        list={DETAIL_BILLING_START_LOCATION_DATALIST_ID}
+                                                                        data-detail-row-index={rowIdx}
+                                                                        data-detail-col-index={colIdx}
+                                                                        value={getDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER) || getDetailRowValue(rawValues, '상차지')}
+                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent.target.value))}
+                                                                        onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent.target.value), { allowConfirmed: true })}
+                                                                        onKeyDown={focusDetailGridInput}
+                                                                        disabled={editDisabled}
+                                                                        placeholder="선택"
+                                                                        title="청구 기준 출발 코드"
+                                                                    />
                                                                 </td>
                                                             );
                                                         }

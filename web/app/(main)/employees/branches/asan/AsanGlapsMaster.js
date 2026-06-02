@@ -6,6 +6,7 @@ import { buildGlapsDuplicateInfo } from '@/utils/glapsDuplicateGroups.mjs';
 import {
     buildGlapsRouteDisplayName,
     formatGlapsAliasType,
+    getGlapsRouteBillingStartLocation,
     getGlapsRouteShipperCode,
     getGlapsRouteWaypointCode,
     normalizeGlapsKey,
@@ -38,6 +39,7 @@ const SPECIAL_RULE_TYPE_OPTIONS = [
     ['consignee', '컨샤이니'],
     ['shipper_code', '화주사코드'],
     ['start_location', '상차지'],
+    ['billing_start_location', '상차지(청구)'],
 ];
 
 const SPECIAL_RULE_TYPE_LABELS = Object.fromEntries(SPECIAL_RULE_TYPE_OPTIONS);
@@ -48,6 +50,7 @@ const ROUTE_BULK_FIELD_OPTIONS = [
     { field: 'routeCode', label: '운송경로코드', type: 'text' },
     { field: 'routeName', label: '운송경로명', type: 'text' },
     { field: 'startLocationName', label: '상차지', type: 'text' },
+    { field: 'billingStartLocationName', label: '상차지(청구)', type: 'text' },
     { field: 'waypointElsName', label: '경유지(ELS)', type: 'text' },
     { field: 'waypointCode', label: '경유지코드', type: 'text' },
     { field: 'destinationName', label: '하차지', type: 'text' },
@@ -76,6 +79,7 @@ const EMPTY_ROUTE_EDITOR = {
     routeCode: '',
     routeName: '',
     startLocationName: '',
+    billingStartLocationName: '',
     waypointName: '',
     waypointElsName: '',
     waypointCode: '',
@@ -147,9 +151,10 @@ function routeValue(row = {}, snakeKey, camelKey = snakeKey) {
 
 function routeMatchKey(row) {
     const waypointCode = getGlapsRouteWaypointCode(row);
+    const billingStartLocation = getGlapsRouteBillingStartLocation(row);
     return [
         getGlapsRouteShipperCode(row),
-        routeValue(row, 'start_location_name', 'startLocationName'),
+        billingStartLocation || routeValue(row, 'start_location_name', 'startLocationName'),
         waypointCode,
         routeValue(row, 'destination_name', 'destinationName'),
     ]
@@ -199,7 +204,7 @@ function specialRuleTypeLabel(row = {}) {
 
 function specialRuleValue(row = {}) {
     const type = specialRuleType(row);
-    if (type === 'start_location') return row.start_location_name || row.startLocationName || '';
+    if (type === 'start_location' || type === 'billing_start_location') return row.start_location_name || row.startLocationName || '';
     if (type === 'consignee') return row.consignee_code || row.consigneeCode || '';
     return row.shipper_code || row.shipperCode || '';
 }
@@ -210,6 +215,7 @@ function routeToEditorValues(row = {}) {
         routeCode: row.route_code || '',
         routeName: row.route_name || '',
         startLocationName: row.start_location_name || '',
+        billingStartLocationName: getGlapsRouteBillingStartLocation(row),
         waypointName: row.waypoint_name || '',
         waypointElsName: row.waypoint_els_name || '',
         waypointCode: getGlapsRouteWaypointCode(row),
@@ -660,6 +666,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
                 { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name, className: styles.routeCodeCell },
+                { key: 'billing_start_location_name', label: '상차지(청구)', value: row => getGlapsRouteBillingStartLocation(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name, className: styles.routeTextCell },
                 { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name, className: styles.routeCodeCell },
@@ -894,6 +901,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 status: 'reviewStatus',
                 shipper_code: 'shipperCode',
                 start_location_name: 'startLocationName',
+                billing_start_location_name: 'billingStartLocationName',
                 waypoint_els_name: 'waypointElsName',
                 waypoint_code: 'waypointCode',
                 destination_name: 'destinationName',
@@ -945,6 +953,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             return routeMatchKey({
                 shipperCode: editor.values.shipperCode,
                 start_location_name: editor.values.startLocationName,
+                billing_start_location_name: editor.values.billingStartLocationName,
                 waypoint_els_name: editor.values.waypointElsName,
                 waypoint_name: editor.values.waypointName,
                 waypoint_code: editor.values.waypointCode,
@@ -953,7 +962,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         }
         if (column.key === 'special_value' && editor?.mode === 'specialRules') {
             const type = editor.values.ruleType;
-            const field = type === 'start_location' ? 'startLocationName' : (type === 'consignee' ? 'consigneeCode' : 'shipperCode');
+            const field = ['start_location', 'billing_start_location'].includes(type) ? 'startLocationName' : (type === 'consignee' ? 'consigneeCode' : 'shipperCode');
             return (
                 <input
                     className={styles.inlineEditInput}

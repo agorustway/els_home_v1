@@ -3,12 +3,14 @@ export const DISPATCH_DETAIL_TIME_HEADER = '시간';
 export const DISPATCH_DETAIL_DG_HEADER = 'DG';
 export const DISPATCH_DETAIL_RF_HEADER = 'RF';
 export const DISPATCH_DETAIL_DG_RF_HEADER = DISPATCH_DETAIL_RF_HEADER;
+export const DISPATCH_DETAIL_BILLING_START_HEADER = '상차지(청구)';
 
 export const DISPATCH_DETAIL_HEADERS = Object.freeze([
   '작업일자',
   '구분',
   '화주',
   '상차지',
+  DISPATCH_DETAIL_BILLING_START_HEADER,
   '작업지',
   '하차지(선적)',
   '운송경로',
@@ -127,17 +129,31 @@ function normalizeHeader(value) {
 export function normalizeDispatchDetailRowValues(values = []) {
   const rawValues = Array.isArray(values) ? values : [];
   let sourceValues = rawValues;
-  if (rawValues.length === DISPATCH_DETAIL_HEADERS.length - 1 && DISPATCH_DETAIL_DG_INDEX >= 0) {
+  const billingStartIndex = DISPATCH_DETAIL_HEADERS.indexOf(DISPATCH_DETAIL_BILLING_START_HEADER);
+  const workplaceIndex = DISPATCH_DETAIL_HEADERS.indexOf('작업지');
+  const looksLikeLegacyWithoutBillingStart = (
+    rawValues.length === DISPATCH_DETAIL_HEADERS.length - 1
+    && billingStartIndex >= 0
+    && workplaceIndex >= 0
+  );
+  if (looksLikeLegacyWithoutBillingStart) {
     sourceValues = [
-      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
-      '',
-      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+      ...rawValues.slice(0, billingStartIndex),
+      rawValues[billingStartIndex - 1] || '',
+      ...rawValues.slice(billingStartIndex),
     ];
-  } else if (rawValues.length === DISPATCH_DETAIL_HEADERS.length - 2 && DISPATCH_DETAIL_DG_INDEX >= 0) {
-    const withDg = [
-      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
+  }
+  if (sourceValues.length === DISPATCH_DETAIL_HEADERS.length - 1 && DISPATCH_DETAIL_DG_INDEX >= 0) {
+    sourceValues = [
+      ...sourceValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
       '',
-      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+      ...sourceValues.slice(DISPATCH_DETAIL_DG_INDEX),
+    ];
+  } else if (sourceValues.length === DISPATCH_DETAIL_HEADERS.length - 2 && DISPATCH_DETAIL_DG_INDEX >= 0) {
+    const withDg = [
+      ...sourceValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
+      '',
+      ...sourceValues.slice(DISPATCH_DETAIL_DG_INDEX),
     ];
     sourceValues = [
       ...withDg.slice(0, DISPATCH_DETAIL_RF_INDEX),
@@ -145,14 +161,14 @@ export function normalizeDispatchDetailRowValues(values = []) {
       ...withDg.slice(DISPATCH_DETAIL_RF_INDEX),
     ];
   } else if (
-    rawValues.length === DISPATCH_DETAIL_HEADERS.length - 3
+    sourceValues.length === DISPATCH_DETAIL_HEADERS.length - 3
     && DISPATCH_DETAIL_DG_INDEX >= 0
     && DISPATCH_DETAIL_TIME_INDEX >= 0
   ) {
     const withDg = [
-      ...rawValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
+      ...sourceValues.slice(0, DISPATCH_DETAIL_DG_INDEX),
       '',
-      ...rawValues.slice(DISPATCH_DETAIL_DG_INDEX),
+      ...sourceValues.slice(DISPATCH_DETAIL_DG_INDEX),
     ];
     const withRf = [
       ...withDg.slice(0, DISPATCH_DETAIL_RF_INDEX),
@@ -435,11 +451,13 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
 }
 
 export function detailLineToRow(line = {}) {
+  const billingStartLocation = line.billingStartLocation || line.startLocation || '';
   return [
     line.workDate || '',
     line.direction || '',
     line.shipper || '',
     line.startLocation || '',
+    billingStartLocation,
     line.workplace || '',
     line.destination || '',
     line.glapsRouteName || '',
@@ -463,7 +481,7 @@ export function detailLineToRow(line = {}) {
     line.note || '',
     line.glapsOrderTypeCode || '',
     line.glapsShipperCode || '',
-    line.glapsStartLocationCode || '',
+    line.glapsStartLocationCode || billingStartLocation || '',
     line.glapsWorkplaceCode || '',
     line.glapsDestinationCode || '',
     line.glapsTransportServiceCode || '',

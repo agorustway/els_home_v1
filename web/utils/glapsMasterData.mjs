@@ -4,6 +4,7 @@ export const GLAPS_ROUTE_TEMPLATE_HEADERS = Object.freeze([
   'ID',
   '화주사코드',
   '상차지',
+  '상차지(청구)',
   '경유지(ELS)',
   '경유지코드',
   '하차지(선적)',
@@ -65,12 +66,23 @@ export const GLAPS_ROUTE_WAYPOINT_CODE_KEYS = Object.freeze([
   'WORKPLACE CODE',
   'WORKPLACECODE',
 ]);
+export const GLAPS_ROUTE_BILLING_START_KEYS = Object.freeze([
+  '상차지(청구)',
+  '청구상차지',
+  '청구 상차지',
+  '상차지청구',
+  'billing_start_location_name',
+  'billingStartLocationName',
+  'BILLING START',
+  'BILLING START LOCATION',
+]);
 
 const ROUTE_HEADER_CANDIDATES = Object.freeze({
   shipperCode: ['화주사코드', '화주사 코드', '화주사', '화주코드', '화주 코드', 'SHIPPER CODE', 'SHIPPERCODE'],
   routeCode: ['운송경로코드', '경로코드', 'ROUTE CODE', 'ROUTECODE'],
   routeName: ['운송경로명', '경로명', 'ROUTE NAME', 'ROUTENAME'],
   startLocationName: ['상차지', '상차지명', '출발지', '출발지명'],
+  billingStartLocationName: GLAPS_ROUTE_BILLING_START_KEYS,
   waypointName: ['경유지', '경유지명', '작업지', '작업지명'],
   waypointElsName: ['경유지(ELS)', 'ELS경유지', 'ELS작업지', '우리작업지'],
   waypointCode: GLAPS_ROUTE_WAYPOINT_CODE_KEYS,
@@ -84,6 +96,7 @@ const ROUTE_TEMPLATE_ALIASES = Object.freeze({
   routeCode: ['route_code', '운송경로코드', '경로코드'],
   routeName: ['route_name', '운송경로명', '경로명'],
   startLocationName: ['start_location_name', '상차지'],
+  billingStartLocationName: ['billing_start_location_name', 'billingStartLocationName', ...GLAPS_ROUTE_BILLING_START_KEYS],
   waypointName: ['waypoint_name', '경유지', '작업지'],
   waypointElsName: ['waypoint_els_name', '경유지(ELS)'],
   waypointCode: ['waypoint_code', 'waypointCode', ...GLAPS_ROUTE_WAYPOINT_CODE_KEYS],
@@ -325,6 +338,13 @@ function isRouteWaypointCodeHeader(value) {
     .some(candidate => normalized === candidate || normalized.includes(candidate));
 }
 
+function isRouteBillingStartHeader(value) {
+  const normalized = normalizeGlapsKey(value);
+  return GLAPS_ROUTE_BILLING_START_KEYS
+    .map(normalizeGlapsKey)
+    .some(candidate => normalized === candidate || normalized.includes(candidate));
+}
+
 export function findGlapsHeaderIndex(headers = [], candidates = [], options = {}) {
   const normalizedHeaders = headers.map(normalizeGlapsKey);
   const normalizedCandidates = candidates.map(normalizeGlapsKey).filter(Boolean);
@@ -458,6 +478,17 @@ export function getGlapsRouteWaypointCode(route = {}) {
   );
 }
 
+export function getGlapsRouteBillingStartLocation(route = {}) {
+  route = route || {};
+  const payload = route.raw_payload || route.rawPayload || {};
+  return cleanGlapsText(
+    route.billingStartLocationName
+    || route.billing_start_location_name
+    || getPayloadCandidateValue(payload, GLAPS_ROUTE_BILLING_START_KEYS)
+    || '',
+  );
+}
+
 function withRouteShipperPayload(rawPayload = {}, shipperCode = '') {
   const code = cleanGlapsText(shipperCode);
   if (!code) return rawPayload;
@@ -476,6 +507,16 @@ function withRouteWaypointCodePayload(rawPayload = {}, waypointCode = '') {
     waypoint_code: code,
     '경유지코드': code,
     '작업지(하차지)코드': code,
+  };
+}
+
+function withRouteBillingStartPayload(rawPayload = {}, billingStartLocationName = '') {
+  const code = cleanGlapsText(billingStartLocationName);
+  if (!code) return rawPayload;
+  return {
+    ...rawPayload,
+    billing_start_location_name: code,
+    '상차지(청구)': code,
   };
 }
 
@@ -516,7 +557,10 @@ function buildRouteColumns(headers = []) {
     shipperCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.shipperCode),
     routeCode: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeCode),
     routeName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.routeName),
-    startLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.startLocationName),
+    startLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.startLocationName, {
+      predicate: (header) => !isRouteBillingStartHeader(header),
+    }),
+    billingStartLocationName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.billingStartLocationName),
     waypointName: findGlapsHeaderIndex(headers, ROUTE_HEADER_CANDIDATES.waypointName, {
       predicate: (header) => !isElsHeader(header) && !isRouteWaypointCodeHeader(header) && !normalizeGlapsKey(header).includes('주소'),
     }),
@@ -546,8 +590,13 @@ export function parseGlapsRouteSheet(sheet = {}) {
     const shipperCode = getRowValue(row, cols.shipperCode);
     const baseRawPayload = buildRawPayload(headers, row);
     const waypointCode = getRowValue(row, cols.waypointCode) || getPayloadCandidateValue(baseRawPayload, GLAPS_ROUTE_WAYPOINT_CODE_KEYS);
+    const billingStartLocationName = getRowValue(row, cols.billingStartLocationName)
+      || getPayloadCandidateValue(baseRawPayload, GLAPS_ROUTE_BILLING_START_KEYS);
     const rawPayload = withRouteWaypointCodePayload(
-      withRouteShipperPayload(baseRawPayload, shipperCode),
+      withRouteBillingStartPayload(
+        withRouteShipperPayload(baseRawPayload, shipperCode),
+        billingStartLocationName,
+      ),
       waypointCode,
     );
     const route = {
@@ -555,6 +604,7 @@ export function parseGlapsRouteSheet(sheet = {}) {
       routeCode,
       routeName,
       startLocationName: getRowValue(row, cols.startLocationName) || inferred.startLocationName,
+      billingStartLocationName,
       waypointName: getRowValue(row, cols.waypointName) || inferred.waypointName,
       waypointElsName: getRowValue(row, cols.waypointElsName),
       waypointCode,
@@ -940,12 +990,16 @@ function isUuidText(value) {
 }
 
 function isCorruptedRouteTemplateRow(route = {}) {
-  return [
+  const uuidRouteFieldCount = [
     route.routeCode,
     route.startLocationName,
+    route.billingStartLocationName,
+    route.waypointName,
     route.waypointElsName,
+    route.waypointCode,
     route.destinationName,
-  ].every(isUuidText);
+  ].filter(isUuidText).length;
+  return isUuidText(route.routeCode) && uuidRouteFieldCount >= 3;
 }
 
 export function parseGlapsRouteTemplateSheets(sheets = []) {
@@ -958,6 +1012,7 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
       routeCode: getRowValue(row, cols.routeCode),
       routeName: getRowValue(row, cols.routeName),
       startLocationName: getRowValue(row, cols.startLocationName),
+      billingStartLocationName: getRowValue(row, cols.billingStartLocationName),
       waypointName: getRowValue(row, cols.waypointName),
       waypointElsName: getRowValue(row, cols.waypointElsName),
       waypointCode: getRowValue(row, cols.waypointCode),
@@ -967,7 +1022,10 @@ export function parseGlapsRouteTemplateSheets(sheets = []) {
       sourceSheet: cleanGlapsText(sheet.name),
       sourceRowNumber,
     };
-    route.rawPayload = withRouteWaypointCodePayload(withRouteShipperPayload({}, route.shipperCode), route.waypointCode);
+    route.rawPayload = withRouteWaypointCodePayload(
+      withRouteBillingStartPayload(withRouteShipperPayload({}, route.shipperCode), route.billingStartLocationName),
+      route.waypointCode,
+    );
     route.routeFingerprint = buildGlapsRouteFingerprint(route);
     route.reviewStatus = normalizeReviewStatus(getRowValue(row, cols.reviewStatus), getGlapsRouteReviewStatus(route));
     return route;
@@ -1002,7 +1060,7 @@ export function getGlapsRouteMatchQuery() {
     "branch_id = 'asan'",
     'active_version = true',
     '상세배차.화주사코드 = route.화주사코드',
-    '상세배차.상차지 = route.start_location_name',
+    '상세배차.상차지(청구 우선) = route.billing_start_location_name || route.start_location_name',
     '상세배차.경유지(ELS) = route.waypoint_els_name',
     '상세배차.하차지(선적) = route.destination_name',
   ];
