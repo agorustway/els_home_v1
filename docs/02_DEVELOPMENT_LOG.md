@@ -1,3 +1,43 @@
+## [2026-06-02] 상세배차 반출지(출발)코드 이름 fallback 차단 (v5.14.333)
+### 원인
+- 상세배차 GLAPS 코드 계산에서 `getGlapsRouteLocationCodeCandidates('부산신항')`의 첫 후보가 표시명 `부산신항`이라, 운송경로 매칭이 없는 행의 `반출지(출발)코드`에 이름이 들어갈 수 있었습니다.
+- `GLAPS_업로드` 변환도 `상차지(청구)`를 `반출지(출발)코드`보다 먼저 읽어 화면상 코드가 있어도 이름을 우선 내보낼 위험이 있었습니다.
+### 조치
+- GLAPS 위치 후보에서 실제 코드처럼 보이는 값만 고르는 `getGlapsRouteLocationPrimaryCode()`를 추가했습니다.
+- 상세배차 enrich 로직과 `detailLineToRow()`는 코드 후보/항목매핑 코드만 `반출지(출발)코드`에 넣고, 이름 fallback은 차단했습니다.
+- `GLAPS_업로드` 시트는 `반출지(출발)코드` 칼럼을 우선 사용하고, 그 값이 비어 있을 때만 `상차지(청구)`를 fallback으로 사용합니다.
+### 검증
+- `node --test web/tests/asanDispatchDetailLines.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDashboardView.test.mjs`: 82개 통과
+### 변경 파일
+- `web/utils/glapsMasterData.mjs`
+- `web/utils/asanDispatchDetailLines.mjs`
+- `web/utils/asanGlapsUploadExport.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-02] NAS 배차 원본 `-1.xlsm` 계산/VBA/용량 보정
+### 원인
+- NAS `2026년_배차-일일배차(글로비스KD외)-1.xlsm`, `2026년_배차-일일배차(모비스AS)-1.xlsm`에서 calcChain이 남아 있고 `calcPr` 자동 계산 플래그가 부족해 첫 셀 입력 전 수식 재계산이 늦게 걸릴 수 있었습니다.
+- 모비스 `-1` 파일은 기준 원본과 `xl/vbaProject.bin` 바이너리가 달랐고, `xl/media/image1.png`에 13.3MB 출하의뢰 사진이 들어가 파일 크기가 비정상적으로 커졌습니다.
+### 조치
+- `openpyxl.save()`를 사용하지 않고 OOXML ZIP 엔트리만 직접 패치했습니다.
+- 두 `-1.xlsm`에서 `xl/calcChain.xml`과 관련 workbook relationship/content type을 제거하고 `calcMode="auto"`, `fullCalcOnLoad="1"`, `forceFullCalc="1"`, `calcOnSave="1"`을 적용했습니다.
+- 모비스 `-1`은 NAS 기준 원본의 `vbaProject.bin`으로 복원하고, 대형 PNG는 내용을 유지한 채 1500px PNG로 압축했습니다.
+- 교체 전 NAS 백업을 남겼습니다: `.backup-vba-fix-20260602-170005`.
+### 검증
+- 로컬 Excel COM 열기 검증: 두 보정본 모두 31시트, `FileFormat=52`, `HasVBProject=True`, `ForceFullCalculation=True`.
+- VBA 코드 검증: 글로비스 `Module1` 219줄 해시 유지, 모비스 `Module1` 218줄 기준 원본 해시와 일치.
+- NAS 업로드 검증: SHA256 일치 후 교체, `zipfile.testzip()` 결과 두 파일 모두 `None`.
+- 최종 크기: 글로비스 `4,403,611 -> 3,483,670`, 모비스 `17,419,607 -> 5,362,716`.
+### 변경 파일
+- NAS 원본: `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외)-1.xlsm`, `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(모비스AS)-1.xlsm`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 배차변동 변경 컬럼 감지/표시 정리 (v5.14.331)
 ### 원인
 - 배차변동내역에서 `라인` 변경이 예전 정책상 매칭키에 포함되어 추가/삭제로 갈라질 수 있었습니다.

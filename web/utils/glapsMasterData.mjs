@@ -298,6 +298,16 @@ export function getGlapsRouteLocationCodeCandidates(value = '') {
   return [...new Set(candidates.map(cleanGlapsText).filter(Boolean))];
 }
 
+export function isGlapsRouteLocationCodeValue(value = '') {
+  const text = cleanGlapsText(value);
+  if (!text || /[가-힣]/.test(text)) return false;
+  return /^[A-Z0-9_.,/\s-]+$/i.test(text) && /[A-Z]/i.test(text);
+}
+
+export function getGlapsRouteLocationPrimaryCode(value = '') {
+  return getGlapsRouteLocationCodeCandidates(value).find(isGlapsRouteLocationCodeValue) || '';
+}
+
 export function buildGlapsRouteDisplayName(route = {}, waypointCodeLabelMap = new Map()) {
   const waypointCode = getGlapsRouteWaypointCode(route) || route.waypointCode || '';
   const waypointFromCode = waypointCodeLabelMap.get?.(normalizeGlapsKey(waypointCode)) || '';

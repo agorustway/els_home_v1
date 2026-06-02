@@ -15,6 +15,7 @@ import {
   getGlapsRouteBillingStartLocation,
   getGlapsRouteLocationCodeCandidates,
   getGlapsRouteLocationDisplayName,
+  getGlapsRouteLocationPrimaryCode,
   getGlapsRouteShipperCode,
   getGlapsRouteWaypointCode,
   getGlapsRouteMatchQuery,
@@ -250,6 +251,8 @@ test('GLAPS 상세배차 매칭 키는 화주사코드, 상차지, 경유지(ELS
     destinationName: '부산신항',
   }).includes('B000034432|KRBNP|글로비스KD센터2포장장|KRBNP'));
   assert.ok(getGlapsRouteLocationCodeCandidates('KRBNP,KRUWN').includes('KRUWN'));
+  assert.equal(getGlapsRouteLocationPrimaryCode('부산신항'), 'KRBNP');
+  assert.equal(getGlapsRouteLocationPrimaryCode('의왕ICD'), 'KRUWN');
   assert.ok(buildGlapsDispatchRouteFingerprints({
     shipperCode: 'N084',
     startLocationName: 'KRBNP,KRUWN',

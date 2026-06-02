@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.332 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.333 / APK v5.11.29)
 
-> 최신 업데이트: 자료실(NAS) 모바일 CSS 깨짐과 디버그 role 로딩 고착을 보정했다.
+> 최신 업데이트: 상세배차/GLAPS 업로드의 반출지(출발)코드에 상차지명이 들어가는 fallback을 차단했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.332
+- **웹 버전**: v5.14.333
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -57,6 +57,7 @@
 - 1순위 완료 신호(`quick_done`)를 받으면 웹은 즉시 새로고침한다. 전/후 작업일과 나머지 날짜는 백그라운드에서 순차 반영한다.
 - 상세배차/배차변동 다운로드는 기존 우리 기준 시트와 별도로 `GLAPS_업로드` 시트를 추가한다. GLAPS 시트는 상세 1행=1대 기준이며 같은 부킹도 묶지 않고 `컨테이너 수량=1`로 내보낸다. 우리 기준 `시간`과 GLAPS `배차요청시간`은 `0800/1300` 형태의 `HHMM` 텍스트로 출력하고, `배차요청일자`는 텍스트 날짜, `POD`는 공란, `선적지`는 우리쪽 업체명으로 출력한다.
 - 상세배차/배차변동은 `상차지` 오른쪽에 `상차지(청구)`를 표시한다. 비어 있으면 물리 상차지로 채우고, 값이 있으면 GLAPS `반출지(출발)코드`와 운송경로 매칭에 우선 사용한다. 이 칼럼은 배차판 원천 상차지 잠금과 분리해 배차확정/확인완료 후에도 전체 GLAPS 출발 후보에서 웹 수정 우선으로 선택한다.
+- `반출지(출발)코드`는 GLAPS 위치 코드/항목매핑 코드만 표시한다. `부산신항`, `의왕ICD` 같은 이름은 `KRBNP`, `KRUWN` 등 코드 후보로 변환하고, 코드 후보가 없으면 이름을 fallback으로 넣지 않는다.
 - 상세배차 상차지/포트코드 선택값은 `branch_dispatch_detail_overrides`에 저장한다. 배차확정 후에도 두 항목은 수정 가능하며, 확정 이후 바뀐 셀은 붉은 배경으로 표시한다.
 - 상세배차/배차변동은 `업체명` 다음에 `시간` 컬럼을 표시한다. 지역 배차칸 메모가 `13 14 15`면 단일 업체 수량에 순서 배정하고, 화면에서는 `08/13` 같은 정시값을 `08:00/13:00`으로 표시하되 엑셀 다운로드는 `0800/1300`으로 출력한다.
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고, 전체 원장은 전체/주간/월간 선택 시 지연 조회한다. `mode=meta`는 `row_count/valid_row_count`가 있으면 data JSON 없이 행수만 읽는다.
@@ -82,11 +83,11 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.333**: 상세배차와 `GLAPS_업로드` 반출지(출발)코드는 코드 칼럼을 우선 사용하고, 상차지명 fallback을 차단했다.
+- **운영보정**: 글로비스KD외/모비스AS `-1.xlsm`은 calcChain 제거, 자동 계산 플래그 적용, 모비스 VBA 바이너리 복원/대형 PNG 압축 후 NAS에 백업본을 남기고 교체했다.
 - **v5.14.332**: 자료실(NAS) 헤더/버튼을 모바일에서 줄바꿈 가능한 구조로 바꾸고, 빈 NAS 응답은 안내문으로 표시한다. 디버그 관리자 role fallback은 `user_roles` 조회 없이 통과해 로딩 고착을 막는다.
-- **v5.14.331**: 배차변동내역에서 라인 변경도 `변경` 이벤트로 감지하고, `현재값저장` 자동 버튼과 `수정일시/발생일시` 중복 노출을 제거했다. 상세배차 상단은 수량/확정상태와 차이 필터를 분리했다.
 ## VERIFICATION
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
-
 ## IN-PROGRESS
 - GLAPS 다음 단계: 실제 GLAPS 업로드 샘플 검증 후 `GLAPS_컨테이너배차관리` 후속 입력/수정 양식 설계.
 - DB 다음 단계: 일일 배차/상세배차 1년 1개월 초과분을 NAS archive worker로 압축 저장하고 checksum 검증 후 staging 복원 샘플을 통과시킨다.
@@ -96,5 +97,4 @@
 - PowerShell에서 `web\app\(main)\...` 경로는 반드시 따옴표로 감싼다.
 - Android 앱 수정은 `web/driver-src/`만 편집하고 APK는 `scripts/build_driver_apk.ps1`만 사용.
 - 매크로/배열수식 포함 `.xlsm` 원본 수정 시 `openpyxl.save()` 금지.
-- Git push는 명시 요청 또는 자동승인 범위에서만 실행.
-- 코드 변경 시 `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md` 갱신 필수.
+- Git push는 명시 요청/자동승인 범위에서만 실행하고, 코드 변경 시 `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`를 갱신한다.

@@ -841,6 +841,8 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /buildGlapsAliasCodeMap/);
   assert.match(source, /buildGlapsAliasCodeMapForTypes/);
   assert.match(source, /buildGlapsDispatchRouteFingerprintsWithAliasMaps/);
+  assert.match(source, /getGlapsRouteLocationPrimaryCode/);
+  assert.match(source, /function resolveGlapsRouteLocationCode/);
   assert.match(source, /buildGlapsAliasCodeOptionsMap/);
   assert.match(source, /isGlapsDefaultAlias/);
   assert.match(source, /splitGlapsAliasValues/);
@@ -896,6 +898,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /styles\.detailStartInput/);
   assert.match(source, /styles\.detailPortCandidateCell/);
   assert.doesNotMatch(source, /glapsPortCode: glapsPortCode \|\| line\.port/);
+  assert.doesNotMatch(source, /glapsStartLocationCode[\s\S]*\|\| billingStartLocation/);
   assert.match(source, /DETAIL_ISSUE_GROUPS\.map/);
   assert.match(source, /group: 'missing'/);
   assert.match(source, /detailIssueGroupLabel/);

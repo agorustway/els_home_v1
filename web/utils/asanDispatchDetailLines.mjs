@@ -1,3 +1,5 @@
+import { isGlapsRouteLocationCodeValue } from './glapsMasterData.mjs';
+
 export const DISPATCH_DETAIL_PORT_HEADER = '포트(DIST)';
 export const DISPATCH_DETAIL_TIME_HEADER = '시간';
 export const DISPATCH_DETAIL_DG_HEADER = 'DG';
@@ -452,6 +454,8 @@ export function buildDispatchDetailLines({ headers = [], rows = [], workDate = '
 
 export function detailLineToRow(line = {}) {
   const billingStartLocation = line.billingStartLocation || line.startLocation || '';
+  const glapsStartLocationCode = line.glapsStartLocationCode
+    || (isGlapsRouteLocationCodeValue(billingStartLocation) ? billingStartLocation : '');
   return [
     line.workDate || '',
     line.direction || '',
@@ -481,7 +485,7 @@ export function detailLineToRow(line = {}) {
     line.note || '',
     line.glapsOrderTypeCode || '',
     line.glapsShipperCode || '',
-    line.glapsStartLocationCode || billingStartLocation || '',
+    glapsStartLocationCode,
     line.glapsWorkplaceCode || '',
     line.glapsDestinationCode || '',
     line.glapsTransportServiceCode || '',

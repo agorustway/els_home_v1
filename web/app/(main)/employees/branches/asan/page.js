@@ -45,6 +45,7 @@ import {
     buildGlapsRouteFingerprint,
     getGlapsRouteBillingStartLocation,
     getGlapsRouteLocationCodeCandidates,
+    getGlapsRouteLocationPrimaryCode,
     getGlapsRouteShipperCode,
     getGlapsRouteWaypointCode,
     normalizeGlapsKey,
@@ -900,6 +901,11 @@ function buildRouteLocationCandidates(value = '', aliasMap = new Map()) {
     const baseCandidates = getGlapsRouteLocationCodeCandidates(value);
     const aliasCandidate = getGlapsAliasCode(aliasMap, value);
     return [...new Set([...baseCandidates, aliasCandidate].filter(Boolean))];
+}
+function resolveGlapsRouteLocationCode(value = '', aliasMap = new Map()) {
+    return getGlapsAliasCode(aliasMap, value)
+        || getGlapsRouteLocationPrimaryCode(value)
+        || '';
 }
 function buildWaypointCandidates(value = '', aliasMap = new Map()) {
     const aliasCandidate = getGlapsAliasCode(aliasMap, value);
@@ -2708,10 +2714,9 @@ function AsanDispatchContent() {
         const glapsTransportServiceCode = inferGlapsTransportServiceCode(glapsAliasMaps.transportService, line.direction);
         const routeShipperCode = getGlapsRouteShipperCode(glapsRoute) || getGlapsRoutePayload(glapsRoute, ['화주사코드', '화주사']);
         const glapsShipperCode = routeShipperCode || lineShipperCode;
-        const glapsStartLocationCode = getGlapsRouteBillingStartLocation(glapsRoute)
-            || glapsRoute?.start_location_name
-            || getGlapsRouteLocationCodeCandidates(billingStartLocation)[0]
-            || billingStartLocation
+        const glapsStartLocationCode = resolveGlapsRouteLocationCode(billingStartLocation, glapsAliasMaps.routeLocation)
+            || resolveGlapsRouteLocationCode(getGlapsRouteBillingStartLocation(glapsRoute), glapsAliasMaps.routeLocation)
+            || resolveGlapsRouteLocationCode(glapsRoute?.start_location_name, glapsAliasMaps.routeLocation)
             || '';
         const glapsWorkplaceCode = getGlapsRouteWaypointCode(glapsRoute);
         const glapsDestinationCode = glapsRoute?.destination_name || '';
