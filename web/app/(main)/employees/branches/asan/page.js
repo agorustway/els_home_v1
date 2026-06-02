@@ -711,6 +711,12 @@ function canEditDetailStartLocation(line = {}) {
     const region = line.startRegion || line.sourceRegion || '';
     return !line.startLocation || DETAIL_MANUAL_START_REGIONS.has(region);
 }
+function buildDetailBillingStartOptions(currentValue = '', options = []) {
+    const values = [currentValue, ...options]
+        .map(value => String(value ?? '').trim())
+        .filter(Boolean);
+    return [...new Set(values)];
+}
 function inferBkgSourceFromDetailValues(values = []) {
     const confirmed = getDetailRowValue(values, 'BKG확정');
     if (confirmed && confirmed === getDetailRowValue(values, 'BKG2')) return 'BKG2';
@@ -4215,21 +4221,28 @@ function AsanDispatchContent() {
                                                         const postConfirmTitle = line.billingStartLocationUpdatedAt
                                                             ? `배차확정 후 상차지(청구) 변경\n수정일시: ${fmtShortTs(line.billingStartLocationUpdatedAt)}${line.billingStartLocationUpdatedBy ? `\n수정자: ${line.billingStartLocationUpdatedBy}` : ''}`
                                                             : '청구 기준 출발 코드';
+                                                        const billingStartValue = line.billingStartLocation || line.startLocation || '';
+                                                        const billingStartOptions = buildDetailBillingStartOptions(billingStartValue, glapsBillingStartLocationOptions);
                                                         return (
                                                             <td key={header} className={[styles.detailStartCell, postConfirmClass].filter(Boolean).join(' ')}>
-                                                                <input
-                                                                    className={`${styles.detailComboInput} ${styles.detailStartInput}`}
-                                                                    list={DETAIL_BILLING_START_LOCATION_DATALIST_ID}
+                                                                <select
+                                                                    className={`${styles.detailSelect} ${styles.detailStartInput}`}
                                                                     data-detail-row-index={detailRowIdx}
                                                                     data-detail-col-index={colIdx}
-                                                                    value={line.billingStartLocation || line.startLocation || ''}
-                                                                    onChange={(event) => updateDetailBillingStartDraft(line, event.target.value)}
-                                                                    onBlur={(event) => saveDetailBillingStartOverride(line, event.target.value)}
+                                                                    value={billingStartValue}
+                                                                    onChange={(event) => {
+                                                                        updateDetailBillingStartDraft(line, event.target.value);
+                                                                        saveDetailBillingStartOverride(line, event.target.value);
+                                                                    }}
                                                                     onKeyDown={focusDetailGridInput}
                                                                     disabled={detailOverrideSetupRequired || !detailScope}
-                                                                    placeholder="선택"
                                                                     title={postConfirmTitle}
-                                                                />
+                                                                >
+                                                                    <option value="">선택</option>
+                                                                    {billingStartOptions.map(option => (
+                                                                        <option key={option} value={option}>{option}</option>
+                                                                    ))}
+                                                                </select>
                                                             </td>
                                                         );
                                                     }
@@ -4520,21 +4533,29 @@ function AsanDispatchContent() {
                                                             );
                                                         }
                                                         if (isDetailValue && header === DISPATCH_DETAIL_BILLING_START_HEADER) {
+                                                            const billingStartValue = getDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER) || getDetailRowValue(rawValues, '상차지');
+                                                            const billingStartOptions = buildDetailBillingStartOptions(billingStartValue, glapsBillingStartLocationOptions);
                                                             return (
                                                                 <td key={header} className={[styles.detailStartCell, changedCellClass].filter(Boolean).join(' ')}>
-                                                                    <input
-                                                                        className={`${styles.detailComboInput} ${styles.detailStartInput}`}
-                                                                        list={DETAIL_BILLING_START_LOCATION_DATALIST_ID}
+                                                                    <select
+                                                                        className={`${styles.detailSelect} ${styles.detailStartInput}`}
                                                                         data-detail-row-index={rowIdx}
                                                                         data-detail-col-index={colIdx}
-                                                                        value={getDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER) || getDetailRowValue(rawValues, '상차지')}
-                                                                        onChange={(inputEvent) => updateDetailChangeDraft(event, draft => setDetailRowValue(draft, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent.target.value))}
-                                                                        onBlur={(inputEvent) => saveDetailChangeValues(event, setDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent.target.value), { allowConfirmed: true })}
+                                                                        value={billingStartValue}
+                                                                        onChange={(inputEvent) => {
+                                                                            const nextValues = setDetailRowValue(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent.target.value);
+                                                                            updateDetailChangeDraft(event, () => nextValues);
+                                                                            saveDetailChangeValues(event, nextValues, { allowConfirmed: true });
+                                                                        }}
                                                                         onKeyDown={focusDetailGridInput}
                                                                         disabled={editDisabled}
-                                                                        placeholder="선택"
                                                                         title="청구 기준 출발 코드"
-                                                                    />
+                                                                    >
+                                                                        <option value="">선택</option>
+                                                                        {billingStartOptions.map(option => (
+                                                                            <option key={option} value={option}>{option}</option>
+                                                                        ))}
+                                                                    </select>
                                                                 </td>
                                                             );
                                                         }

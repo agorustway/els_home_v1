@@ -880,6 +880,9 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /glapsPortCodeOptions,/);
   assert.match(source, /fieldKey: DETAIL_START_OVERRIDE_FIELD_KEY/);
   assert.match(source, /fieldKey: DETAIL_BILLING_START_OVERRIDE_FIELD_KEY/);
+  assert.match(source, /function buildDetailBillingStartOptions/);
+  assert.match(source, /const billingStartOptions = buildDetailBillingStartOptions\(billingStartValue, glapsBillingStartLocationOptions\)/);
+  assert.match(source, /saveDetailBillingStartOverride\(line, event\.target\.value\)/);
   assert.match(source, /fieldKey: DETAIL_PORT_OVERRIDE_FIELD_KEY/);
   assert.match(source, /fieldKey,/);
   assert.match(source, /header === '포트코드' && \(line\.glapsPortCodeOptions \|\| \[\]\)\.length > 1/);
@@ -943,7 +946,7 @@ test('아산 배차판은 GLAPS 검수용 상세배차내역 탭을 제공한다
   assert.match(source, /updateDetailChangeDraft/);
   assert.match(source, /saveDetailChangeValues/);
   assert.match(source, /setDetailRowValue\(draft, '상차지'/);
-  assert.match(source, /setDetailRowValue\(draft, DISPATCH_DETAIL_BILLING_START_HEADER/);
+  assert.match(source, /const nextValues = setDetailRowValue\(rawValues, DISPATCH_DETAIL_BILLING_START_HEADER, inputEvent\.target\.value\)/);
   assert.match(source, /setDetailRowValue\(draft, 'BKG확정'/);
   assert.match(source, /setDetailRowValue\(rawValues, header, inputEvent\.target\.value\)/);
   assert.match(source, /BKG_CONFIRM_SOURCE_OPTIONS\.includes\(header\)/);

@@ -1,3 +1,22 @@
+## [2026-06-02] GLAPS 상차지(청구) 선택 범위 확대 (v5.14.330)
+### 원인
+- 물리 `상차지`는 배차판 원천값을 우선해 선택필요 행 외에는 잠겨 있어야 하지만, `상차지(청구)`는 GLAPS 청구 픽업 코드 보정용이라 운영자가 더 넓은 후보에서 덮어쓸 수 있어야 했습니다.
+- 기존 `상차지(청구)` 입력은 datalist 방식이라 현재값이 `의왕ICD`이면 목록도 해당 텍스트로 필터링되어 다른 후보를 고르기 불편했습니다.
+### 조치
+- `상차지(청구)` 칼럼을 상세배차/배차변동 모두 전체 후보 select로 전환했습니다.
+- 후보 목록은 현재값과 GLAPS 운송경로/상차지 후보 전체를 합쳐 구성하고, 선택 즉시 WEB override로 저장해 배차판 원천값보다 우선 적용합니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 80개 통과
+- `npm.cmd run lint`: 통과
+- `npm.cmd run build`: 통과
+- `git diff --check`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] GLAPS 운송경로표 상차지(청구) 적용 보정 (v5.14.329)
 ### 원인
 - 운송경로표에 `상차지(청구)`를 직접 입력해도 상세배차 계산은 먼저 운송경로를 찾아야 해당 청구 상차지를 읽을 수 있었습니다.
