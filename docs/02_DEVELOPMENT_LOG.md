@@ -1,3 +1,29 @@
+## [2026-06-03] 아산 운송내역 전체/연도 보기와 테이블 도구 보강 (v5.14.338)
+### 원인
+- 월 카드가 `target_month` 월 라벨과 `sheet_name`을 함께 표시해 `1월 1월`처럼 중복으로 보였습니다.
+- 전체 누적 원장을 볼 수 있는 DB 기반 화면이 없었고, 한 번에 전체 데이터를 불러오면 Vercel/Supabase 응답 부담이 커질 수 있었습니다.
+### 조치
+- 월 카드 라벨은 `target_month` 기준 월과 건수만 표시하도록 바꾸고, `전체` 카드를 월 카드 왼쪽 기본 선택값으로 추가했습니다.
+- `mode=rows` API를 추가해 선택 연도의 DB 누적 원장을 날짜/입력순으로 합치고, SEQ를 offset 기준으로 다시 부여하게 했습니다.
+- 전체 보기는 첫 호출 100건, 이후 `더보기`로 이어 받도록 제한했습니다.
+- 상단에 연도 선택을 추가하고 현재/다음 연도 및 DB에 존재하는 연도를 함께 노출했습니다.
+- 선적관리 톤앤매너에 맞춰 검색, 필터, 정렬, 컬럼 숨김/복원, 컬럼 이동, P1/P2 프리셋 저장/로드를 운송내역 테이블에 적용했습니다.
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 16개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+- 로컬 API `mode=rows&year=2026&limit=100&offset=0`: 전체 9,772건 중 100건 응답, `has_more=true` 확인
+- Browser 플러그인 스모크는 `windows sandbox failed: spawn setup refresh`로 실패해 API/빌드 검증으로 대체했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/transport-history/route.js`
+- `web/utils/asanTransportHistory.mjs`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 경로/찾기/설정 저장 보정 (v5.14.337)
 ### 원인
 - 실제 `2026_수출리스트.xlsx` 파일은 `/아산지점` 직하에 있는데 초기 기본 경로가 `/아산지점/A_운송실무/2026_수출리스트.xlsx`로 잡혀 있었습니다.

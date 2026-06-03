@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import {
+    buildTransportHistoryRowsPage,
     getTransportHistoryQueryMode,
     makeTransportHistoryMetaItem,
     normalizeTransportHistoryHeaders,
     normalizeTransportHistoryMonth,
+    normalizeTransportHistoryYear,
 } from '@/utils/asanTransportHistory.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +52,13 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const mode = getTransportHistoryQueryMode(searchParams.get('mode'));
     const month = normalizeTransportHistoryMonth(searchParams.get('month') || searchParams.get('date'));
+    const year = normalizeTransportHistoryYear(searchParams.get('year'));
     const sheetName = String(searchParams.get('sheet') || '').trim();
+    const limit = Number(searchParams.get('limit') || 100);
+    const offset = Number(searchParams.get('offset') || 0);
+    const search = String(searchParams.get('search') || '').trim();
+    const sortKey = String(searchParams.get('sort') || '').trim();
+    const sortDirection = String(searchParams.get('direction') || '').trim().toLowerCase();
 
     if (mode === 'date' && !month) {
         return NextResponse.json({ error: 'month required' }, { status: 400 });
@@ -64,6 +72,11 @@ export async function GET(request) {
             .order('target_month', { ascending: true })
             .order('sheet_name', { ascending: true });
 
+        if (year && mode !== 'date') {
+            query = query
+                .gte('target_month', `${year}-01-01`)
+                .lt('target_month', `${Number(year) + 1}-01-01`);
+        }
         if (mode === 'date') {
             query = query.eq('target_month', month);
         }
@@ -83,6 +96,37 @@ export async function GET(request) {
     const records = (data || []).map(normalizeTransportHistoryRecord);
     if (mode === 'meta') {
         return NextResponse.json({ data: records.map(makeTransportHistoryMetaItem), mode });
+    }
+
+    if (mode === 'rows') {
+        const page = buildTransportHistoryRowsPage(records, {
+            limit,
+            offset,
+            search,
+            sortKey,
+            sortDirection,
+        });
+        return NextResponse.json({
+            data: [{
+                branch_id: 'asan',
+                target_month: year ? `${year}-01-01` : 'all',
+                sheet_name: '전체',
+                headers: page.headers,
+                source_headers: page.headers,
+                data: page.data,
+                row_count: page.row_count,
+                valid_row_count: page.valid_row_count,
+                metadata: {
+                    year: year || null,
+                    paged: true,
+                },
+                total: page.total,
+                limit: page.limit,
+                offset: page.offset,
+                has_more: page.has_more,
+            }],
+            mode,
+        });
     }
 
     return NextResponse.json({ data: records, mode });
