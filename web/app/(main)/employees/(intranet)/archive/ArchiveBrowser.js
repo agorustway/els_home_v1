@@ -598,7 +598,10 @@ export default function ArchiveBrowser() {
                                             handleDownloadFile(file);
                                         }
                                     }}>
-                                        <span className={styles.icon}>{file.type === 'directory' ? '[폴더]' : '[파일]'}</span>
+                                        <span
+                                            className={`${styles.icon} ${file.type === 'directory' ? styles.folderIcon : styles.fileIcon}`}
+                                            aria-hidden="true"
+                                        />
                                         {file.name}
                                     </td>
                                     <td className={styles.hideMobile}>{new Date(file.lastMod).toLocaleDateString()}</td>
@@ -670,7 +673,12 @@ export default function ArchiveBrowser() {
                                             sizes="80px"
                                             unoptimized
                                         />
-                                    ) : (file.type === 'directory' ? '폴더' : '파일')}
+                                    ) : (
+                                        <span
+                                            className={`${styles.cardExplorerIcon} ${file.type === 'directory' ? styles.folderIcon : styles.fileIcon}`}
+                                            aria-hidden="true"
+                                        />
+                                    )}
                                 </div>
                                 <div className={styles.cardName}>{file.name}</div>
                             </div>
