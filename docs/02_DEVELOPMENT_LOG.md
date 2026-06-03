@@ -10,7 +10,7 @@
 - Excel 저장 중 생기는 `file:///C:\...`, `x15ac:absPath`, `xxl21:absoluteUrl` 절대경로 흔적은 저장 후 OOXML 후처리로 제거해 산출물과 원본 파일을 폴더째 옮겨도 같은 폴더 원본을 보게 했습니다.
 - Excel COM 생성 단계에서 `GLAPS컨테이너배차관리` 시트 복사를 제거하고, 산출물에는 `ELS`, `GLAPS자동계산`, `GLAPS정리`, `CKD고객사코드`만 남깁니다.
 - 기본 산출물명을 `work-docs/glaps/GLAPS 업로드양식_자동_최신파일참조.xlsx`로 분리했습니다.
-- `work-docs/glaps/GLAPS입력계산기.bat`을 추가해 같은 폴더의 최신 원본을 기준으로 산출물을 만들고, 성공 시 최종 산출물을 바로 열게 했습니다.
+- `work-docs/glaps/GLAPS입력계산기.bat`과 `glaps-input-calculator.ps1`을 추가해 Node 없이 Excel+PowerShell 기본 환경에서도 같은 폴더 최신 원본 링크를 갱신하고, 성공 시 최종 산출물을 바로 열게 했습니다.
 
 ### 검증
 - `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
@@ -26,6 +26,7 @@
 - `web/tests/glapsContainerUploadBuilder.test.mjs`
 - `work-docs/glaps/컨테이너배차관리___20260603152546.xlsx`
 - `work-docs/glaps/GLAPS입력계산기.bat`
+- `work-docs/glaps/glaps-input-calculator.ps1`
 - `work-docs/glaps/GLAPS 업로드양식_자동_최신파일참조.xlsx`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
