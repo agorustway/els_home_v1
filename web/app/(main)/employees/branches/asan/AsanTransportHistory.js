@@ -13,6 +13,7 @@ import {
     normalizeDateOnly,
     reconcileShippingLayoutPrefs,
 } from '@/utils/asanShippingView.mjs';
+import { isIso6346Valid, normalizeContainerNo } from '@/utils/containerInput.mjs';
 import styles from './dispatch.module.css';
 
 const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스트.xlsx';
@@ -20,7 +21,19 @@ const ALL_RECORD_KEY = '__all__';
 const ALL_PAGE_SIZE = 100;
 const PREF_PAGE_KEY = 'asan_transport_history_preset';
 const DEFAULT_SORT = { key: null, direction: 'asc' };
-const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(column => column.header);
+const TRANSPORT_LOOKUP_HEADERS = [
+    '이력 수출입',
+    '이력 구분',
+    '이력 터미널',
+    '이력 MOVE TIME',
+    '이력 선사',
+    '이력 차량번호',
+    '이력 SIZE',
+    '이력 조회시각',
+];
+const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS
+    .filter(column => TRANSPORT_LOOKUP_HEADERS.includes(column.header))
+    .map(column => column.header);
 const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_POLL_MS = 4000;
 
@@ -124,6 +137,42 @@ function triggerBlobDownload(blob, filename) {
     URL.revokeObjectURL(url);
 }
 
+function getDateFilterBounds(filter = {}) {
+    if (filter.mode !== 'range') return { from: '', to: '' };
+    const from = filter.from || '';
+    const to = filter.to || '';
+    if (from && to && from > to) return { from: to, to: from };
+    return { from, to };
+}
+
+function matchesDateFilter(value, filter = {}) {
+    const rowDate = normalizeDateOnly(value);
+    if (!rowDate) return false;
+    if (filter.mode === 'day') {
+        return !filter.day || rowDate === filter.day;
+    }
+    if (filter.mode === 'range') {
+        const { from, to } = getDateFilterBounds(filter);
+        if (!from && !to) return true;
+        if (from && rowDate < from) return false;
+        if (to && rowDate > to) return false;
+        return true;
+    }
+    return true;
+}
+
+function isTransportContainerHeader(header) {
+    if (isContainerLookupColumn(header)) return false;
+    const text = String(header || '').replace(/\s+/g, '').toUpperCase();
+    return text.includes('CONTAINER') || text.includes('컨테이너');
+}
+
+function isInvalidTransportContainerValue(header, value) {
+    if (!isTransportContainerHeader(header)) return false;
+    const normalized = normalizeContainerNo(value);
+    return Boolean(normalized) && !isIso6346Valid(normalized);
+}
+
 export default function AsanTransportHistory() {
     const [metaRecords, setMetaRecords] = useState([]);
     const [activeKey, setActiveKey] = useState(ALL_RECORD_KEY);
@@ -133,11 +182,12 @@ export default function AsanTransportHistory() {
     const [loadingTable, setLoadingTable] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [syncGate, setSyncGate] = useState({ running: false, quickDone: false, message: '' });
     const [syncStatus, setSyncStatus] = useState(null);
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState(DEFAULT_SORT);
     const [columnFilters, setColumnFilters] = useState({});
-    const [dateFilter, setDateFilter] = useState({ col: '', day: '' });
+    const [dateFilter, setDateFilter] = useState({ col: '', mode: 'all', day: '', from: '', to: '' });
     const [filterDropdown, setFilterDropdown] = useState(null);
     const [hiddenCols, setHiddenCols] = useState(new Set());
     const [colOrder, setColOrder] = useState([]);
@@ -160,6 +210,7 @@ export default function AsanTransportHistory() {
     const containerLookupResultsRef = useRef({});
     const containerLookupJobIdRef = useRef('');
     const containerLookupStoppedRef = useRef(false);
+    const autoLoadMoreRef = useRef(false);
 
     const isAllView = activeKey === ALL_RECORD_KEY;
     const transportHistoryPath = settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH;
@@ -217,8 +268,15 @@ export default function AsanTransportHistory() {
                 t: String(Date.now()),
             });
             if (search.trim()) params.set('search', search.trim());
-            if (dateFilter.day) params.set('date', dateFilter.day);
             if (dateFilter.col) params.set('date_col', dateFilter.col);
+            if (dateFilter.mode === 'day' && dateFilter.day) {
+                params.set('date', dateFilter.day);
+            }
+            if (dateFilter.mode === 'range') {
+                const { from, to } = getDateFilterBounds(dateFilter);
+                if (from) params.set('date_from', from);
+                if (to) params.set('date_to', to);
+            }
             if (sortConfig.key && !isContainerLookupColumn(sortConfig.key)) {
                 params.set('sort', sortConfig.key);
                 params.set('direction', sortConfig.direction || 'asc');
@@ -249,7 +307,7 @@ export default function AsanTransportHistory() {
             if (reset) setLoadingTable(false);
             else setLoadingMore(false);
         }
-    }, [activeKey, dateFilter.col, dateFilter.day, search, selectedYear, sortConfig.direction, sortConfig.key]);
+    }, [activeKey, dateFilter, search, selectedYear, sortConfig.direction, sortConfig.key]);
 
     const loadMeta = useCallback(async ({ keepActive = true } = {}) => {
         setLoadingMeta(true);
@@ -281,7 +339,10 @@ export default function AsanTransportHistory() {
             const json = await response.json();
             if (!response.ok || json.error) throw new Error(json.error || '동기화 상태 조회 실패');
             const status = json.status || {};
-            setSyncing(Boolean(status.running));
+            const running = Boolean(status.running);
+            const quickDone = Boolean(status.quick_done);
+            setSyncGate({ running, quickDone, message: status.message || '' });
+            setSyncing(Boolean(running && !quickDone));
             if (status.message) {
                 setSyncStatus({ message: status.message, isError: status.ok === false });
             }
@@ -300,10 +361,10 @@ export default function AsanTransportHistory() {
     }, [loadSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        if (!syncing) return undefined;
+        if (!(syncGate.running && !syncGate.quickDone)) return undefined;
         const timer = window.setInterval(loadSyncStatus, 2200);
         return () => window.clearInterval(timer);
-    }, [loadSyncStatus, syncing]);
+    }, [loadSyncStatus, syncGate.quickDone, syncGate.running]);
 
     useEffect(() => {
         if (activeKey !== ALL_RECORD_KEY) return undefined;
@@ -328,6 +389,7 @@ export default function AsanTransportHistory() {
 
     const syncNow = async () => {
         setSyncing(true);
+        setSyncGate(prev => ({ ...prev, running: true, quickDone: false }));
         setSyncStatus({ message: '운송내역 NAS 동기화 요청 중...', isError: false });
         try {
             const response = await fetch('/api/branches/asan/transport-history/sync', {
@@ -343,6 +405,22 @@ export default function AsanTransportHistory() {
             setSyncStatus({ message: error.message || 'NAS 동기화 실패', isError: true });
         }
     };
+
+    const loadMoreRows = useCallback(() => {
+        if (!isAllView || loadingTable || loadingMore || !activeRecord?.has_more || autoLoadMoreRef.current) return;
+        autoLoadMoreRef.current = true;
+        loadAllRows({ reset: false, offset: rows.length })
+            .finally(() => {
+                autoLoadMoreRef.current = false;
+            });
+    }, [activeRecord?.has_more, isAllView, loadAllRows, loadingMore, loadingTable, rows.length]);
+
+    const handleTableScroll = useCallback((event) => {
+        if (!isAllView || !activeRecord?.has_more) return;
+        const target = event.currentTarget;
+        const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+        if (remaining < 280) loadMoreRows();
+    }, [activeRecord?.has_more, isAllView, loadMoreRows]);
 
     const saveSettings = async () => {
         try {
@@ -459,10 +537,10 @@ export default function AsanTransportHistory() {
     const processedRows = useMemo(() => {
         const keyword = search.trim().toLowerCase();
         let nextRows = [...rows];
-        if (!isAllView && dateFilter.day) {
+        if (!isAllView && dateFilter.mode !== 'all') {
             const dateColumn = dateFilter.col || dateColumns[0] || '';
             if (dateColumn) {
-                nextRows = nextRows.filter(row => normalizeDateOnly(getCellValue(row, dateColumn)) === dateFilter.day);
+                nextRows = nextRows.filter(row => matchesDateFilter(getCellValue(row, dateColumn), dateFilter));
             }
         }
         if (!isAllView && keyword) {
@@ -483,7 +561,7 @@ export default function AsanTransportHistory() {
             ));
         }
         return nextRows;
-    }, [allHeaders, columnFilters, dateColumns, dateFilter.col, dateFilter.day, getCellValue, isAllView, rows, search, sortConfig.direction, sortConfig.key]);
+    }, [allHeaders, columnFilters, dateColumns, dateFilter, getCellValue, isAllView, rows, search, sortConfig.direction, sortConfig.key]);
 
     const visibleHeaders = useMemo(() => (
         normalizeColumnOrder(colOrder, allHeaders).filter(header => !hiddenCols.has(header))
@@ -834,6 +912,10 @@ export default function AsanTransportHistory() {
     const rowCount = isAllView ? Number(activeRecord?.total || activeRecord?.valid_row_count || 0) : (activeRecord?.valid_row_count ?? rows.length);
     const loadedCount = rows.length;
     const fileModifiedLabel = formatDateTime(activeRecord?.file_modified_at);
+    const syncActionBlocked = syncing || (syncGate.running && !syncGate.quickDone);
+    const syncButtonText = syncActionBlocked
+        ? '동기화 중'
+        : (syncGate.running && syncGate.quickDone ? '1순위 재동기화' : 'NAS 동기화');
 
     return (
         <div className={styles.container}>
@@ -859,9 +941,6 @@ export default function AsanTransportHistory() {
                         )}
                     </div>
                 </div>
-            </div>
-
-            <div className={styles.transportToolbar}>
                 <div className={styles.transportSearchRow}>
                     <input
                         className={`${styles.pathInput} ${styles.transportSearchInput}`}
@@ -875,37 +954,33 @@ export default function AsanTransportHistory() {
                     </span>
                 </div>
                 <div className={styles.transportActionRow}>
-                    <div className={styles.transportActionGroup}>
-                        <button className={styles.transportActionBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">P1 저장</button>
-                        <button className={styles.transportActionBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">P1 로드</button>
-                        <button className={styles.transportActionBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">P2 저장</button>
-                        <button className={styles.transportActionBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">P2 로드</button>
-                        <button className={styles.transportActionBtn} onClick={downloadCurrentSheet} disabled={!visibleHeaders.length || loadingTable}>엑셀</button>
-                    </div>
-                    <div className={`${styles.transportActionGroup} ${styles.transportPrimaryActions}`}>
-                        <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
-                        <button className={styles.transportActionBtn} onClick={() => setShowSettings(true)}>설정</button>
-                        <button className={styles.transportActionBtn} onClick={() => loadMeta({ keepActive: true })} disabled={loadingMeta || loadingTable}>새로고침</button>
-                        <button className={`${styles.transportActionBtn} ${styles.transportSyncBtn}`} onClick={syncNow} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
+                    <button className={styles.transportActionBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">P1 저장</button>
+                    <button className={styles.transportActionBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">P1 로드</button>
+                    <button className={styles.transportActionBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">P2 저장</button>
+                    <button className={styles.transportActionBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">P2 로드</button>
+                    <button className={styles.transportActionBtn} onClick={downloadCurrentSheet} disabled={!visibleHeaders.length || loadingTable}>엑셀</button>
+                    <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
+                    <button className={styles.transportActionBtn} onClick={() => setShowSettings(true)}>설정</button>
+                    <button className={styles.transportActionBtn} onClick={() => loadMeta({ keepActive: true })} disabled={loadingMeta || loadingTable}>새로고침</button>
+                    <button className={`${styles.transportActionBtn} ${styles.transportSyncBtn}`} onClick={syncNow} disabled={syncActionBlocked}>{syncButtonText}</button>
+                    <button
+                        className={styles.lookupBtn}
+                        onClick={handleContainerLookup}
+                        disabled={containerLookupRunning || loadingTable || !processedRows.length}
+                        title="현재 검색/필터 결과에 남아있는 컨테이너를 이력조회합니다."
+                    >
+                        {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                    </button>
+                    {containerLookupRunning && (
                         <button
-                            className={styles.lookupBtn}
-                            onClick={handleContainerLookup}
-                            disabled={containerLookupRunning || loadingTable || !processedRows.length}
-                            title="현재 검색/필터 결과에 남아있는 컨테이너를 이력조회합니다."
+                            className={styles.stopLookupBtn}
+                            onClick={handleStopContainerLookup}
+                            disabled={containerLookupStopping}
+                            title="현재 컨테이너 이력 조회를 중단하고 지금까지 받은 결과만 남깁니다."
                         >
-                            {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                            {containerLookupStopping ? '멈추는 중' : '조회 멈춤'}
                         </button>
-                        {containerLookupRunning && (
-                            <button
-                                className={styles.stopLookupBtn}
-                                onClick={handleStopContainerLookup}
-                                disabled={containerLookupStopping}
-                                title="현재 컨테이너 이력 조회를 중단하고 지금까지 받은 결과만 남깁니다."
-                            >
-                                {containerLookupStopping ? '멈추는 중' : '조회 멈춤'}
-                            </button>
-                        )}
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -960,21 +1035,19 @@ export default function AsanTransportHistory() {
 
             <div className={styles.dateFilterZone}>
                 <span className={styles.dateFilterLabel}>연도</span>
-                <div className={styles.monthFilterGroup}>
+                <select
+                    className={`${styles.dateSelect} ${styles.yearSelect}`}
+                    value={selectedYear}
+                    onChange={(event) => {
+                        setSelectedYear(event.target.value);
+                        setActiveKey(ALL_RECORD_KEY);
+                    }}
+                    aria-label="연도 선택"
+                >
                     {yearOptions.map(year => (
-                        <button
-                            key={year}
-                            type="button"
-                            className={`${styles.monthFilterBtn} ${selectedYear === year ? styles.monthFilterBtnActive : ''}`}
-                            onClick={() => {
-                                setSelectedYear(year);
-                                setActiveKey(ALL_RECORD_KEY);
-                            }}
-                        >
-                            {year}년
-                        </button>
+                        <option key={year} value={year}>{year}년</option>
                     ))}
-                </div>
+                </select>
                 <span className={styles.dateFilterLabel}>날짜 필터</span>
                 <select
                     className={styles.dateSelect}
@@ -988,57 +1061,99 @@ export default function AsanTransportHistory() {
                         <option key={column} value={column}>{column}</option>
                     ))}
                 </select>
-                <input
+                <select
                     className={styles.dateSelect}
-                    type="date"
-                    value={dateFilter.day}
+                    value={dateFilter.mode}
                     onChange={(event) => {
-                        const day = event.target.value;
-                        setDateFilter(prev => ({ ...prev, day }));
-                        const dayYear = day.slice(0, 4);
-                        if (dayYear && yearOptions.includes(dayYear)) {
-                            setSelectedYear(dayYear);
-                        }
-                        if (day) setActiveKey(ALL_RECORD_KEY);
+                        const mode = event.target.value;
+                        setDateFilter(prev => ({ ...prev, mode }));
+                        setActiveKey(ALL_RECORD_KEY);
                     }}
-                    aria-label="일자 필터"
-                />
-                <button
-                    type="button"
-                    className={`${styles.monthFilterBtn} ${dateFilter.day ? '' : styles.monthFilterBtnActive}`}
-                    onClick={() => setDateFilter(prev => ({ ...prev, day: '' }))}
-                    title="일자 제한 없이 선택 연도/월 데이터를 표시합니다."
+                    aria-label="날짜 필터 방식"
                 >
-                    전체
-                </button>
+                    <option value="all">전체</option>
+                    <option value="day">하루</option>
+                    <option value="range">기간</option>
+                </select>
+                {dateFilter.mode === 'day' && (
+                    <input
+                        className={styles.dateSelect}
+                        type="date"
+                        value={dateFilter.day}
+                        onChange={(event) => {
+                            const day = event.target.value;
+                            setDateFilter(prev => ({ ...prev, day }));
+                            const dayYear = day.slice(0, 4);
+                            if (dayYear && yearOptions.includes(dayYear)) {
+                                setSelectedYear(dayYear);
+                            }
+                            setActiveKey(ALL_RECORD_KEY);
+                        }}
+                        aria-label="하루 필터"
+                    />
+                )}
+                {dateFilter.mode === 'range' && (
+                    <>
+                        <input
+                            className={styles.dateSelect}
+                            type="date"
+                            value={dateFilter.from}
+                            onChange={(event) => {
+                                const from = event.target.value;
+                                setDateFilter(prev => ({ ...prev, from }));
+                                const fromYear = from.slice(0, 4);
+                                if (fromYear && yearOptions.includes(fromYear)) {
+                                    setSelectedYear(fromYear);
+                                }
+                                setActiveKey(ALL_RECORD_KEY);
+                            }}
+                            aria-label="기간 시작일"
+                        />
+                        <span className={styles.dateFilterLabel}>~</span>
+                        <input
+                            className={styles.dateSelect}
+                            type="date"
+                            value={dateFilter.to}
+                            onChange={(event) => {
+                                const to = event.target.value;
+                                setDateFilter(prev => ({ ...prev, to }));
+                                const toYear = to.slice(0, 4);
+                                if (toYear && yearOptions.includes(toYear)) {
+                                    setSelectedYear(toYear);
+                                }
+                                setActiveKey(ALL_RECORD_KEY);
+                            }}
+                            aria-label="기간 종료일"
+                        />
+                    </>
+                )}
                 <span className={styles.resultCountText}>
                     전체 {rowCount.toLocaleString('ko-KR')}건 / 조회 {processedRows.length.toLocaleString('ko-KR')}건
                 </span>
-            </div>
-
-            <div className={styles.dateTabs}>
-                <button
-                    className={`${styles.dateTab} ${isAllView ? styles.dateTabActive : ''}`}
-                    onClick={selectAll}
-                >
-                    <span>전체</span>
-                    <span className={styles.tabDay}>{formatCount(selectedYearTotal)}</span>
-                </button>
-                {selectedYearRecords.map(record => {
-                    const key = recordKey(record);
-                    const active = key === activeKey;
-                    return (
-                        <button
-                            key={key}
-                            className={`${styles.dateTab} ${active ? styles.dateTabActive : ''}`}
-                            onClick={() => selectRecord(record)}
-                        >
-                            <span>{formatMonthLabel(record.target_month)}</span>
-                            <span className={styles.tabDay}>{formatCount(record.valid_row_count || record.row_count)}</span>
-                        </button>
-                    );
-                })}
-                {!selectedYearRecords.length && <span className={styles.dateTabsMeta}>동기화된 시트 없음</span>}
+                <div className={`${styles.dateTabs} ${styles.transportInlineDateTabs}`}>
+                    <button
+                        className={`${styles.dateTab} ${isAllView ? styles.dateTabActive : ''}`}
+                        onClick={selectAll}
+                    >
+                        <span>전체</span>
+                        <span className={styles.tabDay}>{formatCount(selectedYearTotal)}</span>
+                    </button>
+                    {selectedYearRecords.map(record => {
+                        const key = recordKey(record);
+                        const active = key === activeKey;
+                        return (
+                            <button
+                                key={key}
+                                className={`${styles.dateTab} ${active ? styles.dateTabActive : ''}`}
+                                onClick={() => selectRecord(record)}
+                            >
+                                <span>{formatMonthLabel(record.target_month)}</span>
+                                <span className={styles.tabDay}>{formatCount(record.valid_row_count || record.row_count)}</span>
+                            </button>
+                        );
+                    })}
+                    {!selectedYearRecords.length && <span className={styles.dateTabsMeta}>동기화된 시트 없음</span>}
+                </div>
             </div>
 
             {Object.keys(columnFilters).length > 0 && (
@@ -1054,7 +1169,7 @@ export default function AsanTransportHistory() {
             )}
 
             <div className={styles.tableWrap}>
-                <div className={styles.tableScroll}>
+                <div className={styles.tableScroll} onScroll={handleTableScroll}>
                     {loadingTable ? (
                         <div className={styles.emptyState}>데이터를 불러오는 중입니다...</div>
                     ) : visibleHeaders.length ? (
@@ -1115,11 +1230,15 @@ export default function AsanTransportHistory() {
                                     <tr key={`${activeKey}-${rowIndex}`}>
                                         {visibleHeaders.map((header) => {
                                             const value = getCellValue(row, header);
+                                            const invalidContainerNo = isInvalidTransportContainerValue(header, value);
                                             return (
                                                 <td
                                                     key={header}
-                                                    title={String(value || '')}
-                                                    className={isContainerLookupColumn(header) ? styles.lookupCell : ''}
+                                                    title={invalidContainerNo ? `ISO 6346 오류: ${String(value || '')}` : String(value || '')}
+                                                    className={[
+                                                        isContainerLookupColumn(header) ? styles.lookupCell : '',
+                                                        invalidContainerNo ? styles.invalidContainerCell : '',
+                                                    ].filter(Boolean).join(' ')}
                                                 >
                                                     {String(value || '')}
                                                 </td>
@@ -1137,13 +1256,11 @@ export default function AsanTransportHistory() {
 
             {isAllView && activeRecord?.has_more && (
                 <div className={styles.loadMoreWrap}>
-                    <button
-                        className={styles.loadMoreBtn}
-                        onClick={() => loadAllRows({ reset: false, offset: rows.length })}
-                        disabled={loadingMore}
-                    >
-                        {loadingMore ? '불러오는 중...' : `더보기 (${rows.length.toLocaleString('ko-KR')} / ${rowCount.toLocaleString('ko-KR')})`}
-                    </button>
+                    <span className={styles.loadMoreHint}>
+                        {loadingMore
+                            ? '다음 100건 불러오는 중...'
+                            : `아래로 스크롤하면 다음 100건을 자동으로 불러옵니다. (${rows.length.toLocaleString('ko-KR')} / ${rowCount.toLocaleString('ko-KR')})`}
+                    </span>
                 </div>
             )}
 

@@ -55,6 +55,8 @@ export async function GET(request) {
     const month = normalizeTransportHistoryMonth(searchParams.get('month') || searchParams.get('date'));
     const year = normalizeTransportHistoryYear(searchParams.get('year'));
     const day = normalizeTransportHistoryDay(searchParams.get('date') || searchParams.get('day'));
+    const dateFrom = normalizeTransportHistoryDay(searchParams.get('date_from') || searchParams.get('from'));
+    const dateTo = normalizeTransportHistoryDay(searchParams.get('date_to') || searchParams.get('to'));
     const dateColumn = String(searchParams.get('date_col') || searchParams.get('dateColumn') || '').trim();
     const sheetName = String(searchParams.get('sheet') || '').trim();
     const limit = Number(searchParams.get('limit') || 100);
@@ -109,6 +111,8 @@ export async function GET(request) {
             sortKey,
             sortDirection,
             date: day,
+            dateFrom,
+            dateTo,
             dateColumn,
         });
         return NextResponse.json({
@@ -125,6 +129,8 @@ export async function GET(request) {
                     year: year || null,
                     paged: true,
                     date: day || null,
+                    dateFrom: dateFrom || null,
+                    dateTo: dateTo || null,
                     dateColumn: dateColumn || null,
                 },
                 total: page.total,

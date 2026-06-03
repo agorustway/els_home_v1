@@ -129,7 +129,12 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
     .filter(Boolean);
   const sortKey = String(options.sortKey || '').trim();
   const sortDirection = options.sortDirection === 'desc' ? 'desc' : 'asc';
+  const defaultDateDirection = options.defaultDateDirection === 'asc' ? 'asc' : 'desc';
   const dateFilter = normalizeTransportHistoryDay(options.date || options.day);
+  const dateFrom = normalizeTransportHistoryDay(options.dateFrom || options.date_from);
+  const dateTo = normalizeTransportHistoryDay(options.dateTo || options.date_to);
+  const rangeStart = dateFrom && dateTo && dateFrom > dateTo ? dateTo : dateFrom;
+  const rangeEnd = dateFrom && dateTo && dateFrom > dateTo ? dateFrom : dateTo;
   const dateColumn = String(options.dateColumn || '').trim();
 
   const headers = [];
@@ -164,8 +169,15 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
   });
 
   let rows = flattened;
-  if (dateFilter && dateIndex >= 0) {
-    rows = rows.filter(item => parseTransportHistoryDate(item.values[dateIndex]) === dateFilter);
+  if ((dateFilter || rangeStart || rangeEnd) && dateIndex >= 0) {
+    rows = rows.filter(item => {
+      const rowDate = parseTransportHistoryDate(item.values[dateIndex]);
+      if (!rowDate) return false;
+      if (dateFilter) return rowDate === dateFilter;
+      if (rangeStart && rowDate < rangeStart) return false;
+      if (rangeEnd && rowDate > rangeEnd) return false;
+      return true;
+    });
   }
   if (searchTerms.length) {
     rows = rows.filter(item => {
@@ -181,9 +193,9 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
     }
     const dateA = dateIndex >= 0 ? parseTransportHistoryDate(a.values[dateIndex]) : a.targetMonth;
     const dateB = dateIndex >= 0 ? parseTransportHistoryDate(b.values[dateIndex]) : b.targetMonth;
-    const byDate = compareTransportHistoryValues(dateA, dateB, 'asc');
+    const byDate = compareTransportHistoryValues(dateA, dateB, defaultDateDirection);
     if (byDate !== 0) return byDate;
-    const byMonth = compareTransportHistoryValues(a.targetMonth, b.targetMonth, 'asc');
+    const byMonth = compareTransportHistoryValues(a.targetMonth, b.targetMonth, defaultDateDirection);
     if (byMonth !== 0) return byMonth;
     return a.sourceRowIndex - b.sourceRowIndex;
   });

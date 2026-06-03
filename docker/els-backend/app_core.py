@@ -156,6 +156,9 @@ transport_history_sync_gate = StableFileSyncGate(
 )
 transport_history_sync_lock = threading.Lock()
 transport_history_sync_start_time = 0
+transport_history_sync_control_lock = threading.Lock()
+transport_history_sync_cancel_generation = 0
+transport_history_sync_restart_lock = threading.Lock()
 transport_history_sync_status_lock = threading.Lock()
 transport_history_sync_status = {
     "running": False,
@@ -963,6 +966,29 @@ def _get_transport_history_sync_status():
         return dict(transport_history_sync_status)
 
 
+class AsanTransportHistorySyncCancelled(Exception):
+    pass
+
+
+def _get_transport_history_sync_cancel_generation():
+    with transport_history_sync_control_lock:
+        return transport_history_sync_cancel_generation
+
+
+def _request_transport_history_sync_cancel(reason=""):
+    global transport_history_sync_cancel_generation
+    with transport_history_sync_control_lock:
+        transport_history_sync_cancel_generation += 1
+        generation = transport_history_sync_cancel_generation
+    _set_transport_history_sync_status(cancel_requested=True, message=reason or "운송내역 백그라운드 동기화 중단 요청")
+    return generation
+
+
+def _raise_if_transport_history_sync_cancelled(sync_cancel_generation):
+    if _get_transport_history_sync_cancel_generation() != sync_cancel_generation:
+        raise AsanTransportHistorySyncCancelled()
+
+
 def _transport_history_cooldown_active(now_dt):
     if ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS <= 0:
         return False
@@ -1247,6 +1273,7 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
         return {"ok": True, "running": True, "message": "이미 동기화가 진행 중입니다.", "results": []}
 
     transport_history_sync_start_time = time.time()
+    sync_cancel_generation = _get_transport_history_sync_cancel_generation()
     sync_results = []
     sync_error = None
     sync_started_at = datetime.now(KST)
@@ -1276,6 +1303,7 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
         results=[],
         force=bool(force),
         phase=phase,
+        cancel_requested=False,
         **quick_updates,
     )
 
@@ -1349,6 +1377,7 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
 
         metadata_only_items = []
         for _, target_month, sheet_name in sheet_jobs:
+            _raise_if_transport_history_sync_cancelled(sync_cancel_generation)
             is_primary = _transport_history_month_in_primary(target_month, priority_context)
             is_adjacent = _transport_history_month_in_adjacent(target_month, priority_context)
             if phase == "quick" and not is_primary:
@@ -1410,6 +1439,7 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
             df = None
             data_df = None
             gc.collect()
+            _raise_if_transport_history_sync_cancelled(sync_cancel_generation)
 
         if metadata_only_items:
             result["metadata_touched"] = _touch_transport_history_file_modified_at(metadata_only_items, mtime, now.isoformat())
@@ -1421,6 +1451,10 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
         if phase in ("all", "quick"):
             _mark_transport_history_quick(sync_results)
         return {"ok": True, "message": "운송내역 동기화 완료", "results": sync_results}
+    except AsanTransportHistorySyncCancelled:
+        message = "운송내역 백그라운드 동기화 중단됨"
+        app.logger.info(f"[운송내역 동기화] {message}")
+        return {"ok": True, "cancelled": True, "message": message, "results": sync_results}
     except Exception as exc:
         sync_error = str(exc)
         app.logger.error(f"[운송내역 동기화] 오류: {exc}", exc_info=True)
@@ -1436,6 +1470,7 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
                 os.remove(temp_path)
         except Exception as exc:
             app.logger.warning(f"[운송내역 동기화] 임시 파일 삭제 실패: {exc}")
+        cancelled = _get_transport_history_sync_cancel_generation() != sync_cancel_generation
         ok = sync_error is None
         if phase == "quick" and ok:
             message = "운송내역 1순위 월 동기화 완료"
@@ -1447,12 +1482,15 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
             message = "운송내역 동기화 완료"
         else:
             message = sync_error or "운송내역 동기화 실패"
+        if cancelled:
+            message = "운송내역 백그라운드 동기화 중단됨"
         _set_transport_history_sync_status(
             running=False,
             finished_at=datetime.now(KST).isoformat(),
             ok=ok,
             message=message,
             results=sync_results,
+            cancel_requested=False if cancelled else _get_transport_history_sync_status().get("cancel_requested", False),
         )
         try:
             transport_history_sync_lock.release()
@@ -1463,12 +1501,21 @@ def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=
 
 def sync_asan_transport_history_manual_python():
     quick_result = sync_asan_transport_history_python(force=True, phase="quick")
-    if quick_result.get("ok") is False:
+    if quick_result.get("ok") is False or quick_result.get("cancelled"):
         return quick_result
     adjacent_result = sync_asan_transport_history_python(force=True, phase="adjacent", preserve_quick=True)
-    if adjacent_result.get("ok") is False:
+    if adjacent_result.get("ok") is False or adjacent_result.get("cancelled"):
         return adjacent_result
     return sync_asan_transport_history_python(force=True, phase="rest", preserve_quick=True)
+
+
+def _restart_asan_transport_history_manual_after_current():
+    with transport_history_sync_restart_lock:
+        for _ in range(1200):
+            if not transport_history_sync_lock.locked():
+                break
+            time.sleep(0.25)
+        sync_asan_transport_history_manual_python()
 
 
 def _asan_transport_history_auto_ready_to_sync():
@@ -3066,6 +3113,38 @@ def trigger_asan_transport_history_sync():
 
     try:
         now_dt = datetime.now(KST)
+        if transport_history_sync_lock.locked():
+            status = _get_transport_history_sync_status()
+            if status.get("quick_done"):
+                _request_transport_history_sync_cancel("인접월/나머지 월 백그라운드 동기화를 중단하고 1순위 월 재동기화를 예약했습니다.")
+                _set_transport_history_sync_status(
+                    running=True,
+                    started_at=now_dt.isoformat(),
+                    finished_at=None,
+                    ok=True,
+                    message="기존 백그라운드 동기화 중단 후 1순위 월 재동기화를 시작합니다.",
+                    results=[],
+                    force=True,
+                    last_requested_at=now_dt.isoformat(),
+                    request_cooldown_until=(now_dt + timedelta(seconds=ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS)).isoformat(),
+                    quick_done=False,
+                    quick_finished_at=None,
+                    cancel_requested=True,
+                )
+                threading.Thread(target=_restart_asan_transport_history_manual_after_current, daemon=True).start()
+                return jsonify({
+                    "ok": True,
+                    "running": True,
+                    "status": _get_transport_history_sync_status(),
+                    "message": "백그라운드 동기화를 중단하고 1순위 월 재동기화를 시작합니다.",
+                }), 202
+            return jsonify({
+                "ok": True,
+                "running": True,
+                "status": status,
+                "message": "운송내역 1순위 월 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
+            }), 202
+
         if _transport_history_cooldown_active(now_dt):
             status = _get_transport_history_sync_status()
             return jsonify({
@@ -3074,14 +3153,6 @@ def trigger_asan_transport_history_sync():
                 "cooldown": True,
                 "status": status,
                 "message": "최근 1분 이내 동기화 요청이 있어 새 요청은 건너뜁니다. 새로고침으로 최신 DB를 확인해 주세요.",
-            }), 202
-
-        if transport_history_sync_lock.locked():
-            return jsonify({
-                "ok": True,
-                "running": True,
-                "status": _get_transport_history_sync_status(),
-                "message": "운송내역 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
             }), 202
 
         _set_transport_history_sync_status(
@@ -3096,6 +3167,7 @@ def trigger_asan_transport_history_sync():
             request_cooldown_until=(now_dt + timedelta(seconds=ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS)).isoformat(),
             quick_done=False,
             quick_finished_at=None,
+            cancel_requested=False,
         )
         threading.Thread(target=sync_asan_transport_history_manual_python, daemon=True).start()
         return jsonify({
