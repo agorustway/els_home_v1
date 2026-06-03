@@ -31,7 +31,8 @@ const WEB_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 
 const DEFAULT_REFERENCE_TEMPLATE_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식.xlsx');
-const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx');
+const DEFAULT_OUTPUT_FILE_NAME = 'GLAPS 업로드양식_자동_최신파일참조.xlsx';
+const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', DEFAULT_OUTPUT_FILE_NAME);
 const EMBEDDED_SOURCE_SHEET_NAME = 'GLAPS컨테이너배차관리';
 const SOURCE_WORKBOOK_FILE_PATTERN = /^컨테이너배차관리___(\d+)\.xlsx$/i;
 const ELS_INPUT_START_COLUMN = 2;
@@ -449,6 +450,108 @@ function runExcelComBuilder({ referenceTemplatePath, sourceWorkbookPath, outputP
   return result.stdout.trim();
 }
 
+function normalizePathForXmlSearch(value = '') {
+  return String(value || '').replace(/\\/g, '[\\\\/]');
+}
+
+export function removeAbsoluteExternalLinkXmlArtifacts({
+  workbookXml = '',
+  externalLinkXml = '',
+  externalLinkRelsXml = '',
+  sourceWorkbookPath = '',
+} = {}) {
+  const sourceFileName = path.basename(sourceWorkbookPath);
+  const sourcePathPattern = normalizePathForXmlSearch(sourceWorkbookPath);
+  const sourceFilePattern = escapeRegex(sourceFileName);
+  let removedAbsoluteLinks = 0;
+
+  let nextWorkbookXml = String(workbookXml || '')
+    .replace(
+      /<mc:AlternateContent\b[\s\S]*?<x15ac:absPath\b[\s\S]*?<\/mc:AlternateContent>/g,
+      '',
+    )
+    .replace(/\s+xmlns:x15ac="http:\/\/schemas\.microsoft\.com\/office\/spreadsheetml\/2010\/11\/ac"/g, '');
+
+  const nextExternalLinkXml = String(externalLinkXml || '')
+    .replace(/<xxl21:alternateUrls>[\s\S]*?<\/xxl21:alternateUrls>/g, '');
+
+  let nextExternalLinkRelsXml = String(externalLinkRelsXml || '').replace(
+    /<Relationship\b(?=[^>]*\bType="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/relationships\/externalLinkPath")(?=[^>]*\bTarget="file:\/\/\/[^"]*")[^>]*\/>/g,
+    (match) => {
+      if (!sourceFileName || new RegExp(sourcePathPattern, 'i').test(match) || new RegExp(sourceFilePattern, 'i').test(match)) {
+        removedAbsoluteLinks += 1;
+        return '';
+      }
+      return match;
+    },
+  );
+
+  const hasRelativeSourceLink = new RegExp(
+    `<Relationship\\b(?=[^>]*\\bType="http://schemas\\.openxmlformats\\.org/officeDocument/2006/relationships/externalLinkPath")(?=[^>]*\\bTarget="${sourceFilePattern}")`,
+    'i',
+  ).test(nextExternalLinkRelsXml);
+
+  if (!hasRelativeSourceLink && sourceFileName) {
+    nextExternalLinkRelsXml = nextExternalLinkRelsXml.replace(
+      /(<Relationship\b(?=[^>]*\bType="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/relationships\/externalLinkPath")[^>]*\bTarget=")([^"]*)("[^>]*\/>)/,
+      `$1${escapeXmlAttr(sourceFileName)}$3`,
+    );
+  }
+
+  return {
+    workbookXml: nextWorkbookXml,
+    externalLinkXml: nextExternalLinkXml,
+    externalLinkRelsXml: nextExternalLinkRelsXml,
+    removedAbsoluteLinks,
+  };
+}
+
+async function makeExternalLinksPortable({ outputPath, sourceWorkbookPath }) {
+  const buffer = await fs.readFile(outputPath);
+  const zip = await JSZip.loadAsync(buffer);
+  const workbookFile = zip.file('xl/workbook.xml');
+  if (!workbookFile) return { removedAbsoluteLinks: 0, patchedExternalLinks: 0 };
+
+  let workbookXml = await workbookFile.async('string');
+  let totalRemoved = 0;
+  let patchedExternalLinks = 0;
+
+  const externalLinkFiles = Object.keys(zip.files)
+    .filter(name => /^xl\/externalLinks\/externalLink\d+\.xml$/i.test(name))
+    .sort();
+
+  for (const externalLinkPath of externalLinkFiles) {
+    const relsPath = externalLinkPath.replace('xl/externalLinks/', 'xl/externalLinks/_rels/') + '.rels';
+    const externalLinkFile = zip.file(externalLinkPath);
+    const relsFile = zip.file(relsPath);
+    if (!externalLinkFile || !relsFile) continue;
+
+    const externalLinkXml = await externalLinkFile.async('string');
+    const externalLinkRelsXml = await relsFile.async('string');
+    const patched = removeAbsoluteExternalLinkXmlArtifacts({
+      workbookXml,
+      externalLinkXml,
+      externalLinkRelsXml,
+      sourceWorkbookPath,
+    });
+
+    workbookXml = patched.workbookXml;
+    zip.file(externalLinkPath, patched.externalLinkXml);
+    zip.file(relsPath, patched.externalLinkRelsXml);
+    totalRemoved += patched.removedAbsoluteLinks;
+    patchedExternalLinks += 1;
+  }
+
+  zip.file('xl/workbook.xml', workbookXml);
+  const nextBuffer = await zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+  await fs.writeFile(outputPath, nextBuffer);
+  return { removedAbsoluteLinks: totalRemoved, patchedExternalLinks };
+}
+
 function parseWorkbookSheets(workbookXml, relsXml) {
   const rels = new Map();
   for (const match of relsXml.matchAll(/<Relationship\b[^>]*\/>/g)) {
@@ -729,8 +832,16 @@ async function loadWorkbook(filePath) {
 async function main() {
   const args = parseArgs();
   const referenceTemplatePath = path.resolve(args.template || args.reference || DEFAULT_REFERENCE_TEMPLATE_PATH);
-  const outputPath = path.resolve(args.output || DEFAULT_OUTPUT_PATH);
-  const sourceSelectDirectory = path.resolve(args.sourceDir || args['source-dir'] || path.dirname(outputPath));
+  const sourceDirArg = args.sourceDir || args['source-dir'];
+  const sourceDirPath = sourceDirArg ? path.resolve(sourceDirArg) : '';
+  const outputPath = path.resolve(
+    args.output || (
+      sourceDirPath
+        ? path.join(sourceDirPath, DEFAULT_OUTPUT_FILE_NAME)
+        : DEFAULT_OUTPUT_PATH
+    ),
+  );
+  const sourceSelectDirectory = path.resolve(sourceDirPath || path.dirname(outputPath));
   const sourceWorkbookPath = args.source
     ? path.resolve(args.source)
     : await findLatestContainerSourceWorkbook(sourceSelectDirectory);
@@ -776,6 +887,7 @@ async function main() {
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
+  const portableLinkOutput = await makeExternalLinksPortable({ outputPath, sourceWorkbookPath });
 
   console.log(JSON.stringify({
     outputPath,
@@ -790,6 +902,7 @@ async function main() {
     outputRows: GLAPS_FORMULA_OUTPUT_ROW_COUNT,
     helperSheet: GLAPS_FORMULA_HELPER_SHEET_NAME,
     excelComOutput: excelComOutput ? JSON.parse(excelComOutput) : null,
+    portableLinkOutput,
     preservedReferenceSheets: [GLAPS_CONTAINER_CODE_SHEET_NAME, 'CKD고객사코드'],
     outputMethod: 'excel-com',
   }, null, 2));

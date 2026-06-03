@@ -23,6 +23,7 @@ import {
 import {
   buildExternalSourceSheetName,
   findLatestContainerSourceWorkbook,
+  removeAbsoluteExternalLinkXmlArtifacts,
 } from '../scripts/build-glaps-container-formula-workbook.mjs';
 
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -346,6 +347,7 @@ test('수식형 자동 템플릿은 원본 행수와 출력 행수를 분리한�
   assert.match(scriptSource, /GLAPS_CONTAINER_SOURCE_SHEET_NAME/);
   assert.match(scriptSource, /findLatestContainerSourceWorkbook/);
   assert.match(scriptSource, /buildExternalSourceSheetName/);
+  assert.match(scriptSource, /makeExternalLinksPortable/);
   assert.match(scriptSource, /sourceSelectMode/);
   assert.match(scriptSource, /containerColumnNumber/);
   assert.match(scriptSource, /excelColumnLetter\(col \+ 1\)/);
@@ -391,6 +393,40 @@ test('수식형 자동 템플릿은 원본 시트를 복사하지 않고 외부�
   assert.doesNotMatch(psSource, /sourceMergeAreas/);
   assert.doesNotMatch(psSource, /\$copiedSourceSheet/);
   assert.doesNotMatch(psSource, /\.Range\(\$plan\.sourceRange\)\.Value2 = \$sourceMatrix/);
+});
+
+test('수식형 자동 템플릿은 외부참조의 절대경로 흔적을 제거해 폴더 이동에 대응한다', () => {
+  const sourceWorkbookPath = 'C:\\Users\\hoon\\Desktop\\els_home_v1\\work-docs\\glaps\\컨테이너배차관리___20260603134247.xlsx';
+  const workbookXml = [
+    '<workbook xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">',
+    '<mc:AlternateContent><mc:Choice Requires="x15"><x15ac:absPath url="C:\\Users\\hoon\\Desktop\\els_home_v1\\work-docs\\glaps\\" xmlns:x15ac="http://schemas.microsoft.com/office/spreadsheetml/2010/11/ac"/></mc:Choice></mc:AlternateContent>',
+    '<externalReferences><externalReference r:id="rId5"/></externalReferences>',
+    '</workbook>',
+  ].join('');
+  const externalLinkXml = [
+    '<externalLink xmlns:xxl21="http://schemas.microsoft.com/office/spreadsheetml/2021/extlinks2021">',
+    '<externalBook r:id="rId1"><xxl21:alternateUrls><xxl21:absoluteUrl r:id="rId2"/></xxl21:alternateUrls></externalBook>',
+    '</externalLink>',
+  ].join('');
+  const externalLinkRelsXml = [
+    '<Relationships>',
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///C:\\Users\\hoon\\Desktop\\els_home_v1\\work-docs\\glaps\\컨테이너배차관리___20260603134247.xlsx" TargetMode="External"/>',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="컨테이너배차관리___20260603134247.xlsx" TargetMode="External"/>',
+    '</Relationships>',
+  ].join('');
+
+  const patched = removeAbsoluteExternalLinkXmlArtifacts({
+    workbookXml,
+    externalLinkXml,
+    externalLinkRelsXml,
+    sourceWorkbookPath,
+  });
+
+  assert.equal(patched.removedAbsoluteLinks, 1);
+  assert.doesNotMatch(patched.workbookXml, /absPath|els_home_v1/);
+  assert.doesNotMatch(patched.externalLinkXml, /alternateUrls|absoluteUrl/);
+  assert.doesNotMatch(patched.externalLinkRelsXml, /file:\/\/\/|els_home_v1/);
+  assert.match(patched.externalLinkRelsXml, /Target="컨테이너배차관리___20260603134247\.xlsx"/);
 });
 
 test('수식형 자동 템플릿은 엑셀 복구창을 부르는 전역 자동필터 예약 이름을 제거한다', () => {
