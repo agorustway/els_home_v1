@@ -57,13 +57,14 @@ import { createClient as createBrowserSupabaseClient } from '@/utils/supabase/cl
 const ASAN_MAIN_TAB_KEY = 'asan_main_tab';
 const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';
 const ASAN_DISPATCH_RELOAD_STATE_KEY = 'asan_dispatch_reload_state';
-const MAIN_TABS = ['dispatch', 'shipping', 'performance'];
+const MAIN_TABS = ['dispatch', 'transport-history', 'shipping', 'performance'];
 const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-performance', 'route-unit-price'];
 const ASAN_DISPATCH_VIEW_TYPES = Object.freeze(['integrated', 'glovis', 'mobis']);
 const ASAN_DISPATCH_MAIN_VIEWS = Object.freeze(['dashboard', 'grid', 'detail', 'detail-change', 'glaps-master']);
 const DAILY_DISPLAY_LIMIT = Number.MAX_SAFE_INTEGER;
 
 const loadAsanShipping = () => import('./AsanShipping');
+const loadAsanTransportHistory = () => import('./AsanTransportHistory');
 const loadAsanGlapsMaster = () => import('./AsanGlapsMaster');
 const loadAsanSummaryPerformance = () => import('./AsanSummaryPerformance');
 const loadAsanMonthlyPerformance = () => import('./AsanMonthlyPerformance');
@@ -74,12 +75,14 @@ function AsanModuleLoading() {
 }
 
 const AsanShipping = dynamic(loadAsanShipping, { ssr: false, loading: AsanModuleLoading });
+const AsanTransportHistory = dynamic(loadAsanTransportHistory, { ssr: false, loading: AsanModuleLoading });
 const AsanGlapsMaster = dynamic(loadAsanGlapsMaster, { ssr: false, loading: AsanModuleLoading });
 const AsanSummaryPerformance = dynamic(loadAsanSummaryPerformance, { ssr: false, loading: AsanModuleLoading });
 const AsanMonthlyPerformance = dynamic(loadAsanMonthlyPerformance, { ssr: false, loading: AsanModuleLoading });
 const AsanAnnualPerformance = dynamic(loadAsanAnnualPerformance, { ssr: false, loading: AsanModuleLoading });
 
 const ASAN_MAIN_TAB_LOADERS = {
+    'transport-history': [loadAsanTransportHistory],
     shipping: [loadAsanShipping],
     performance: [loadAsanSummaryPerformance, loadAsanMonthlyPerformance, loadAsanAnnualPerformance],
 };
@@ -5157,6 +5160,15 @@ export default function AsanBranchPage() {
                     >
                         배차판
                     </button>
+                    <button
+                        className={`${styles.mainTabBtn} ${activeMainTab === 'transport-history' ? styles.mainTabBtnActive : ''}`}
+                        onClick={() => switchMainTab('transport-history')}
+                        onMouseEnter={() => prefetchMainTab('transport-history')}
+                        onFocus={() => prefetchMainTab('transport-history')}
+                        onTouchStart={() => prefetchMainTab('transport-history')}
+                    >
+                        운송내역
+                    </button>
                     <button 
                         className={`${styles.mainTabBtn} ${activeMainTab === 'shipping' ? styles.mainTabBtnActive : ''}`}
                         onClick={() => switchMainTab('shipping')}
@@ -5181,6 +5193,7 @@ export default function AsanBranchPage() {
             {/* 탭 내용 영역 */}
             <div className={styles.contentArea}>
                 {activeMainTab === 'dispatch' && <AsanDispatchContent />}
+                {activeMainTab === 'transport-history' && <AsanTransportHistory />}
                 {activeMainTab === 'shipping' && <AsanShipping />}
                 {activeMainTab === 'performance' && <AsanPerformanceManagement />}
             </div>

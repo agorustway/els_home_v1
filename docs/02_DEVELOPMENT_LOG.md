@@ -1,3 +1,27 @@
+## [2026-06-03] 아산 운송내역 탭 및 NAS 수출리스트 원장화 (v5.14.335)
+### 핵심
+- 아산 상위 탭에 `운송내역`을 `배차판` 바로 옆에 추가하고, 현재 선택 월/시트만 조회하는 테이블 관리 화면을 만들었습니다.
+- NAS Core에 `/아산지점/A_운송실무/2026_수출리스트.xlsx` 월별 시트 동기화를 추가했습니다. 배차판과 같은 파일 안정화 게이트, 수동 quick/adjacent/rest 순서, 상태 조회 API를 사용합니다.
+- Supabase `branch_transport_history` 테이블과 `transport_history_path` 설정 컬럼을 추가했습니다. `mode=meta` 조회는 `data` JSONB 없이 행수만 읽고, 실제 테이블은 선택 시트만 로드합니다.
+- 6월/이전 시트 헤더 차이는 `출차시간`을 `청구금액`으로 정규화해 같은 컬럼으로 표시/저장하게 했습니다.
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanDashboardView.test.mjs`: 88개 통과
+- `py -3 -m py_compile docker/els-backend/app_core.py`: 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+- Browser 플러그인 검증은 `windows sandbox failed: spawn setup refresh`로 2회 실패해 빌드 검증으로 대체했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/transport-history/route.js`, `web/app/api/branches/asan/transport-history/sync/route.js`
+- `web/app/api/branches/asan/settings/route.js`
+- `web/utils/asanTransportHistory.mjs`
+- `docker/els-backend/app_core.py`
+- `web/supabase_sql/20260603_asan_transport_history.sql`
+- `web/tests/asanTransportHistory.test.mjs`, `web/tests/asanShippingFlow.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+
+---
+
 ## [2026-06-02] 상세배차 반출지(출발)코드 이름 fallback 차단 (v5.14.333)
 ### 원인
 - 상세배차 GLAPS 코드 계산에서 `getGlapsRouteLocationCodeCandidates('부산신항')`의 첫 후보가 표시명 `부산신항`이라, 운송경로 매칭이 없는 행의 `반출지(출발)코드`에 이름이 들어갈 수 있었습니다.

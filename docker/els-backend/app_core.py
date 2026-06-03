@@ -127,6 +127,11 @@ ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS = _env_int("ASAN_DISPATCH_DASHBOAR
 ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
 ASAN_SHIPPING_SYNC_RETRY_SECONDS = _env_int("ASAN_SHIPPING_SYNC_RETRY_SECONDS", 90, 10)
+ASAN_TRANSPORT_HISTORY_DEFAULT_PATH = "/아산지점/A_운송실무/2026_수출리스트.xlsx"
+ASAN_TRANSPORT_HISTORY_SYNC_POLL_SECONDS = _env_int("ASAN_TRANSPORT_HISTORY_SYNC_POLL_SECONDS", 60, 15)
+ASAN_TRANSPORT_HISTORY_SYNC_QUIET_SECONDS = _env_int("ASAN_TRANSPORT_HISTORY_SYNC_QUIET_SECONDS", 8, 0)
+ASAN_TRANSPORT_HISTORY_SYNC_RETRY_SECONDS = _env_int("ASAN_TRANSPORT_HISTORY_SYNC_RETRY_SECONDS", 60, 10)
+ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS = _env_int("ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS", 60, 0)
 ASAN_DISPATCH_SETTINGS_CACHE_SECONDS = _env_int("ASAN_DISPATCH_SETTINGS_CACHE_SECONDS", 300, 30)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_HOUR", 3, 0)
 ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE = _env_int("ASAN_SHIPPING_CONTAINER_AUTO_LOOKUP_MINUTE", 10, 0)
@@ -145,6 +150,31 @@ shipping_sync_gate = StableFileSyncGate(
     quiet_seconds=ASAN_SHIPPING_SYNC_QUIET_SECONDS,
     retry_seconds=ASAN_SHIPPING_SYNC_RETRY_SECONDS,
 )
+transport_history_sync_gate = StableFileSyncGate(
+    quiet_seconds=ASAN_TRANSPORT_HISTORY_SYNC_QUIET_SECONDS,
+    retry_seconds=ASAN_TRANSPORT_HISTORY_SYNC_RETRY_SECONDS,
+)
+transport_history_sync_lock = threading.Lock()
+transport_history_sync_start_time = 0
+transport_history_sync_status_lock = threading.Lock()
+transport_history_sync_status = {
+    "running": False,
+    "started_at": None,
+    "finished_at": None,
+    "ok": True,
+    "message": "대기 중",
+    "results": [],
+    "last_requested_at": None,
+    "request_cooldown_until": None,
+    "quick_done": False,
+    "quick_finished_at": None,
+    "quick_window_start": None,
+    "quick_window_end": None,
+    "priority_primary_month": None,
+    "priority_adjacent_months": [],
+}
+last_transport_history_file_signature_cache = {}
+last_transport_history_sheet_hash_cache = {}
 
 register_asan_performance_routes(app, supabase, KST)
 
@@ -916,6 +946,580 @@ def asan_sync_scheduler():
             time.sleep(ASAN_DISPATCH_SYNC_POLL_SECONDS)
 
 threading.Thread(target=asan_sync_scheduler, daemon=True).start()
+
+TRANSPORT_HISTORY_HEADER_ALIASES = {
+    "출차시간": "청구금액",
+}
+
+
+def _set_transport_history_sync_status(**updates):
+    with transport_history_sync_status_lock:
+        transport_history_sync_status.update(updates)
+        return dict(transport_history_sync_status)
+
+
+def _get_transport_history_sync_status():
+    with transport_history_sync_status_lock:
+        return dict(transport_history_sync_status)
+
+
+def _transport_history_cooldown_active(now_dt):
+    if ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS <= 0:
+        return False
+    cooldown_until = _parse_iso_datetime(_get_transport_history_sync_status().get("request_cooldown_until"))
+    return bool(cooldown_until and now_dt < cooldown_until)
+
+
+def _normalize_transport_history_rel_path(value):
+    rel_path = str(value or "").strip() or ASAN_TRANSPORT_HISTORY_DEFAULT_PATH
+    rel_path = rel_path.replace("\\", "/")
+    return "/" + rel_path.lstrip("/")
+
+
+def _path_to_transport_history_rel(path):
+    try:
+        rel = Path(path).resolve().relative_to(Path("/app/data").resolve())
+        return "/" + str(rel).replace("\\", "/")
+    except Exception:
+        return _normalize_transport_history_rel_path(path)
+
+
+def _find_transport_history_file():
+    root = Path("/app/data/아산지점")
+    if not root.exists():
+        return None
+    for pattern in ("**/2026_수출리스트*.xlsx", "**/2026_수출리스트*.xlsm"):
+        matches = sorted(root.glob(pattern), key=lambda p: len(str(p)))
+        if matches:
+            return matches[0]
+    return None
+
+
+def _resolve_asan_transport_history_path(settings=None):
+    settings = settings or {}
+    rel_path = _normalize_transport_history_rel_path(settings.get("transport_history_path"))
+    candidates = [Path("/app/data") / rel_path.lstrip("/")]
+
+    default_candidate = Path("/app/data") / ASAN_TRANSPORT_HISTORY_DEFAULT_PATH.lstrip("/")
+    if default_candidate not in candidates:
+        candidates.append(default_candidate)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return _path_to_transport_history_rel(candidate), candidate
+
+    found = _find_transport_history_file()
+    if found:
+        return _path_to_transport_history_rel(found), found
+
+    return rel_path, candidates[0]
+
+
+def _extract_transport_history_source_year(rel_path, full_path):
+    for value in (rel_path, str(full_path)):
+        match = re.search(r"(20\d{2})", str(value or ""))
+        if match:
+            return int(match.group(1))
+    return datetime.now(KST).year
+
+
+def _resolve_transport_history_sheet_month(sheet_name, source_year):
+    text = str(sheet_name or "").strip()
+    year_month = re.search(r"(20\d{2})\D{0,4}(\d{1,2})\s*월?", text)
+    if year_month:
+        year = int(year_month.group(1))
+        month = int(year_month.group(2))
+    else:
+        month_match = re.search(r"(\d{1,2})\s*월", text) or re.match(r"^\s*(\d{1,2})\s*$", text)
+        if not month_match:
+            return None
+        year = int(source_year)
+        month = int(month_match.group(1))
+
+    if month < 1 or month > 12:
+        return None
+    return f"{year}-{month:02d}-01"
+
+
+def _parse_transport_history_month_day(target_month):
+    try:
+        return datetime.strptime(str(target_month), "%Y-%m-%d").date().replace(day=1)
+    except Exception:
+        return None
+
+
+def _transport_history_priority_context(target_months, now):
+    current_month = now.date().replace(day=1)
+    available_months = sorted({
+        day for day in (_parse_transport_history_month_day(target_month) for target_month in target_months)
+        if day is not None
+    })
+    if not available_months:
+        return {"primary": None, "adjacent": set(), "ordered": []}
+
+    if current_month in available_months:
+        primary = current_month
+    else:
+        future = [day for day in available_months if day > current_month]
+        primary = future[0] if future else available_months[-1]
+
+    primary_idx = available_months.index(primary)
+    adjacent = set()
+    if primary_idx > 0:
+        adjacent.add(available_months[primary_idx - 1])
+    if primary_idx + 1 < len(available_months):
+        adjacent.add(available_months[primary_idx + 1])
+
+    return {"primary": primary, "adjacent": adjacent, "ordered": available_months}
+
+
+def _transport_history_month_in_primary(target_month, priority_context):
+    target_day = _parse_transport_history_month_day(target_month)
+    return bool(target_day and target_day == priority_context.get("primary"))
+
+
+def _transport_history_month_in_adjacent(target_month, priority_context):
+    target_day = _parse_transport_history_month_day(target_month)
+    return bool(target_day and target_day in (priority_context.get("adjacent") or set()))
+
+
+def _transport_history_sheet_sort_key(target_month, now, priority_context=None):
+    target_day = _parse_transport_history_month_day(target_month)
+    if not target_day:
+        return (2, target_month)
+    context = priority_context or _transport_history_priority_context([target_month], now)
+    primary = context.get("primary")
+    adjacent = context.get("adjacent") or set()
+    if primary and target_day == primary:
+        return (0, 0, target_day.toordinal())
+    if target_day in adjacent:
+        distance = abs(target_day.toordinal() - primary.toordinal()) if primary else 0
+        return (1, distance, target_day.toordinal())
+    if primary and target_day > primary:
+        return (2, target_day.toordinal(), 0)
+    return (3, -target_day.toordinal(), 0)
+
+
+def _transport_history_cell_to_text(value):
+    try:
+        if pd.isna(value):
+            return ""
+    except Exception:
+        pass
+    if isinstance(value, pd.Timestamp):
+        value = value.to_pydatetime()
+    if isinstance(value, datetime):
+        if value.year <= 1901:
+            return value.strftime("%H:%M")
+        if value.hour == 0 and value.minute == 0 and value.second == 0:
+            return value.strftime("%Y-%m-%d")
+        return value.strftime("%Y-%m-%d %H:%M")
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return str(int(value))
+    return str(value).replace("\n", " ").strip()
+
+
+def _compact_transport_history_header(value):
+    return re.sub(r"\s+", "", str(value or "")).strip()
+
+
+def _normalize_transport_history_headers(source_headers):
+    headers = []
+    used = {}
+    for idx, header in enumerate(source_headers or []):
+        raw = str(header or "").replace("\n", " ").strip()
+        compact = _compact_transport_history_header(raw)
+        normalized = TRANSPORT_HISTORY_HEADER_ALIASES.get(compact, raw or f"col_{idx + 1}")
+        count = used.get(normalized, 0)
+        used[normalized] = count + 1
+        headers.append(f"{normalized}_{count + 1}" if count else normalized)
+    return headers
+
+
+def _transport_history_header_score(values):
+    nonempty = [v for v in values if v]
+    joined = "".join(nonempty)
+    score = len(nonempty)
+    matched = 0
+    for token in ("컨테이너", "청구", "출차", "차량", "상차", "하차", "수출", "수입", "작업지", "운송", "비고"):
+        if token in joined:
+            matched += 1
+            score += 5
+    if "합계" in joined or "소계" in joined:
+        score -= 8
+    if matched == 0:
+        return min(score, 4)
+    return score
+
+
+def _find_transport_history_header_idx(df):
+    best_idx = -1
+    best_score = -1
+    for idx, row in df.head(40).iterrows():
+        values = [_transport_history_cell_to_text(value) for value in row.tolist()]
+        score = _transport_history_header_score(values)
+        if score > best_score:
+            best_idx = idx
+            best_score = score
+    return best_idx if best_score >= 8 else -1
+
+
+def _is_meaningful_transport_history_row(values):
+    nonempty = [str(value or "").strip() for value in values if str(value or "").strip()]
+    if len(nonempty) < 2:
+        return False
+    joined = "".join(nonempty)
+    if joined in ("합계", "소계") or joined.startswith("합계"):
+        return False
+    return True
+
+
+def _upsert_branch_transport_history(payload):
+    return supabase.from_("branch_transport_history").upsert(
+        payload,
+        on_conflict="branch_id,target_month,sheet_name",
+    ).execute()
+
+
+def _touch_transport_history_file_modified_at(items, file_modified_at, updated_at):
+    touched = 0
+    for item in items:
+        res = (
+            supabase.from_("branch_transport_history")
+            .update({"file_modified_at": file_modified_at, "updated_at": updated_at})
+            .eq("branch_id", "asan")
+            .eq("target_month", item["target_month"])
+            .eq("sheet_name", item["sheet_name"])
+            .execute()
+        )
+        touched += len(res.data or []) or 1
+    return touched
+
+
+def _transport_history_db_has_current_mtime(mtime_ts, mtime):
+    if not supabase:
+        return False
+    try:
+        res = (
+            supabase.from_("branch_transport_history")
+            .select("file_modified_at")
+            .eq("branch_id", "asan")
+            .order("file_modified_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        db_mtime = (res.data or [{}])[0].get("file_modified_at")
+        if not db_mtime:
+            return False
+        db_ts = datetime.fromisoformat(str(db_mtime).replace("Z", "+00:00")).timestamp()
+        return abs(db_ts - mtime_ts) < 1
+    except Exception as exc:
+        app.logger.warning(f"[운송내역 자동동기화] DB 파일수정일 확인 실패: {exc}")
+    return False
+
+
+def _mark_transport_history_quick(sync_results=None):
+    updates = {
+        "quick_done": True,
+        "quick_finished_at": datetime.now(KST).isoformat(),
+        "message": "운송내역 1순위 월 자료 반영 완료. 인접월과 나머지 월은 계속 동기화 중입니다.",
+    }
+    if sync_results is not None:
+        updates["results"] = sync_results
+    return _set_transport_history_sync_status(**updates)
+
+
+def sync_asan_transport_history_python(force=False, phase="all", preserve_quick=False):
+    global transport_history_sync_start_time
+    if not supabase:
+        return {"ok": False, "message": "Supabase 미설정", "results": []}
+
+    if transport_history_sync_lock.locked():
+        if time.time() - transport_history_sync_start_time > 1800:
+            app.logger.warning("[운송내역 동기화] 이전 동기화가 30분 이상 지연되어 락을 강제 해제합니다.")
+            try:
+                transport_history_sync_lock.release()
+            except Exception:
+                pass
+
+    if not transport_history_sync_lock.acquire(blocking=False):
+        _set_transport_history_sync_status(running=True, ok=True, message="이미 동기화가 진행 중입니다.")
+        return {"ok": True, "running": True, "message": "이미 동기화가 진행 중입니다.", "results": []}
+
+    transport_history_sync_start_time = time.time()
+    sync_results = []
+    sync_error = None
+    sync_started_at = datetime.now(KST)
+    quick_updates = {} if preserve_quick else {
+        "quick_done": False,
+        "quick_finished_at": None,
+        "quick_window_start": None,
+        "quick_window_end": None,
+        "priority_primary_month": None,
+        "priority_adjacent_months": [],
+    }
+    if phase == "quick":
+        phase_message = "운송내역 1순위 월 동기화 준비 중"
+    elif phase == "adjacent":
+        phase_message = "운송내역 인접월 동기화 준비 중"
+    elif phase == "rest":
+        phase_message = "운송내역 나머지 월 동기화 준비 중"
+    else:
+        phase_message = "운송내역 동기화 준비 중"
+
+    _set_transport_history_sync_status(
+        running=True,
+        started_at=sync_started_at.isoformat(),
+        finished_at=None,
+        ok=True,
+        message=phase_message,
+        results=[],
+        force=bool(force),
+        phase=phase,
+        **quick_updates,
+    )
+
+    xl = None
+    temp_path = None
+    try:
+        settings = get_asan_dispatch_settings(force=force) or {}
+        rel_path, full_path = _resolve_asan_transport_history_path(settings)
+        result = {"type": "transport-history", "phase": phase, "success": True, "sheets": 0, "metadata_touched": 0, "message": ""}
+
+        if not full_path.exists():
+            result.update({"success": False, "message": f"파일을 찾을 수 없음: {rel_path}"})
+            sync_results.append(result)
+            sync_error = result["message"]
+            return {"ok": False, "message": sync_error, "results": sync_results}
+
+        file_stat = full_path.stat()
+        mtime_ts = file_stat.st_mtime
+        mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+        file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
+        cache_key = "transport-history"
+
+        if not force and last_transport_history_file_signature_cache.get(cache_key) == file_signature:
+            result["message"] = "파일 서명 동일"
+            sync_results.append(result)
+            return {"ok": True, "message": result["message"], "results": sync_results}
+
+        if not force and cache_key not in last_transport_history_file_signature_cache and _transport_history_db_has_current_mtime(mtime_ts, mtime):
+            last_transport_history_file_signature_cache[cache_key] = file_signature
+            transport_history_sync_gate.mark_synced(cache_key, file_signature)
+            result["message"] = "DB 최신 상태"
+            sync_results.append(result)
+            return {"ok": True, "message": result["message"], "results": sync_results}
+
+        decision = transport_history_sync_gate.check(cache_key, file_signature, force=force)
+        if not decision.ready:
+            result["message"] = f"파일 안정화 대기 중: {decision.reason}"
+            sync_results.append(result)
+            return {"ok": True, "message": result["message"], "results": sync_results}
+
+        import tempfile, shutil
+        temp_path = tempfile.mktemp(suffix=full_path.suffix or ".xlsx")
+        shutil.copy2(full_path, temp_path)
+        app.logger.info(f"[운송내역 동기화] 로컬 임시 파일 복사 완료: {temp_path}")
+
+        xl = pd.ExcelFile(temp_path, engine="openpyxl")
+        source_year = _extract_transport_history_source_year(rel_path, full_path)
+        sheet_jobs = []
+        for sheet_name in xl.sheet_names:
+            target_month = _resolve_transport_history_sheet_month(sheet_name, source_year)
+            if target_month:
+                sheet_jobs.append((target_month, sheet_name))
+
+        now = datetime.now(KST)
+        priority_context = _transport_history_priority_context([target_month for target_month, _ in sheet_jobs], now)
+        primary = priority_context.get("primary")
+        adjacent = sorted(day.isoformat() for day in (priority_context.get("adjacent") or set()))
+        if phase in ("all", "quick") and primary:
+            _set_transport_history_sync_status(
+                quick_window_start=primary.isoformat(),
+                quick_window_end=primary.isoformat(),
+                priority_primary_month=primary.isoformat(),
+                priority_adjacent_months=adjacent,
+            )
+
+        sheet_jobs = [
+            (_transport_history_sheet_sort_key(target_month, now, priority_context), target_month, sheet_name)
+            for target_month, sheet_name in sheet_jobs
+        ]
+        sheet_jobs.sort(key=lambda item: item[0])
+
+        metadata_only_items = []
+        for _, target_month, sheet_name in sheet_jobs:
+            is_primary = _transport_history_month_in_primary(target_month, priority_context)
+            is_adjacent = _transport_history_month_in_adjacent(target_month, priority_context)
+            if phase == "quick" and not is_primary:
+                continue
+            if phase == "adjacent" and not is_adjacent:
+                continue
+            if phase == "rest" and (is_primary or is_adjacent):
+                continue
+
+            _set_transport_history_sync_status(message=f"{sheet_name} 시트 처리 중", results=sync_results)
+            df = pd.read_excel(xl, sheet_name=sheet_name, header=None, dtype=object)
+            header_idx = _find_transport_history_header_idx(df)
+            if header_idx < 0:
+                app.logger.warning(f"[운송내역 동기화] '{sheet_name}' 헤더 행을 찾지 못해 건너뜁니다.")
+                continue
+
+            source_headers = [_transport_history_cell_to_text(value) or f"col_{idx + 1}" for idx, value in enumerate(df.iloc[header_idx].tolist())]
+            headers = _normalize_transport_history_headers(source_headers)
+            data_df = df.iloc[header_idx + 1:]
+            rows = []
+            for _, row in data_df.iterrows():
+                values = [_transport_history_cell_to_text(value) for value in row.tolist()[:len(headers)]]
+                if _is_meaningful_transport_history_row(values):
+                    if len(values) < len(headers):
+                        values += [""] * (len(headers) - len(values))
+                    rows.append(values)
+
+            sheet_hash_payload = json.dumps(
+                {"headers": headers, "source_headers": source_headers, "rows": rows},
+                ensure_ascii=False,
+                sort_keys=True,
+                default=str,
+            )
+            sheet_hash = hashlib.md5(sheet_hash_payload.encode("utf-8")).hexdigest()
+            sheet_cache_key = f"{target_month}:{sheet_name}"
+            if not force and last_transport_history_sheet_hash_cache.get(sheet_cache_key) == sheet_hash:
+                metadata_only_items.append({"target_month": target_month, "sheet_name": sheet_name})
+                continue
+
+            _upsert_branch_transport_history({
+                "branch_id": "asan",
+                "target_month": target_month,
+                "sheet_name": sheet_name,
+                "headers": headers,
+                "source_headers": source_headers,
+                "data": rows,
+                "row_count": len(rows),
+                "valid_row_count": len(rows),
+                "file_modified_at": mtime,
+                "metadata": {
+                    "source_path": rel_path,
+                    "source_year": source_year,
+                    "header_row_index": int(header_idx),
+                },
+                "updated_at": now.isoformat(),
+            })
+            last_transport_history_sheet_hash_cache[sheet_cache_key] = sheet_hash
+            result["sheets"] += 1
+            df = None
+            data_df = None
+            gc.collect()
+
+        if metadata_only_items:
+            result["metadata_touched"] = _touch_transport_history_file_modified_at(metadata_only_items, mtime, now.isoformat())
+
+        last_transport_history_file_signature_cache[cache_key] = file_signature
+        transport_history_sync_gate.mark_synced(cache_key, file_signature)
+        result["message"] = "동기화 완료"
+        sync_results.append(result)
+        if phase in ("all", "quick"):
+            _mark_transport_history_quick(sync_results)
+        return {"ok": True, "message": "운송내역 동기화 완료", "results": sync_results}
+    except Exception as exc:
+        sync_error = str(exc)
+        app.logger.error(f"[운송내역 동기화] 오류: {exc}", exc_info=True)
+        return {"ok": False, "message": sync_error, "results": sync_results}
+    finally:
+        try:
+            if xl:
+                xl.close()
+        except Exception:
+            pass
+        try:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception as exc:
+            app.logger.warning(f"[운송내역 동기화] 임시 파일 삭제 실패: {exc}")
+        ok = sync_error is None
+        if phase == "quick" and ok:
+            message = "운송내역 1순위 월 동기화 완료"
+        elif phase == "adjacent" and ok:
+            message = "운송내역 인접월 동기화 완료"
+        elif phase == "rest" and ok:
+            message = "운송내역 나머지 월 동기화 완료"
+        elif ok:
+            message = "운송내역 동기화 완료"
+        else:
+            message = sync_error or "운송내역 동기화 실패"
+        _set_transport_history_sync_status(
+            running=False,
+            finished_at=datetime.now(KST).isoformat(),
+            ok=ok,
+            message=message,
+            results=sync_results,
+        )
+        try:
+            transport_history_sync_lock.release()
+        except Exception:
+            pass
+        gc.collect()
+
+
+def sync_asan_transport_history_manual_python():
+    quick_result = sync_asan_transport_history_python(force=True, phase="quick")
+    if quick_result.get("ok") is False:
+        return quick_result
+    adjacent_result = sync_asan_transport_history_python(force=True, phase="adjacent", preserve_quick=True)
+    if adjacent_result.get("ok") is False:
+        return adjacent_result
+    return sync_asan_transport_history_python(force=True, phase="rest", preserve_quick=True)
+
+
+def _asan_transport_history_auto_ready_to_sync():
+    if not supabase:
+        return False
+    try:
+        settings = get_asan_dispatch_settings(force=False) or {}
+        _, full_path = _resolve_asan_transport_history_path(settings)
+        if not full_path.exists():
+            return False
+        file_stat = full_path.stat()
+        mtime_ts = file_stat.st_mtime
+        mtime = datetime.fromtimestamp(mtime_ts, tz=KST).isoformat()
+        file_signature = (getattr(file_stat, "st_mtime_ns", int(mtime_ts * 1_000_000_000)), file_stat.st_size)
+        cache_key = "transport-history"
+        if last_transport_history_file_signature_cache.get(cache_key) == file_signature:
+            return False
+        if cache_key not in last_transport_history_file_signature_cache and _transport_history_db_has_current_mtime(mtime_ts, mtime):
+            last_transport_history_file_signature_cache[cache_key] = file_signature
+            transport_history_sync_gate.mark_synced(cache_key, file_signature)
+            return False
+        decision = transport_history_sync_gate.check(cache_key, file_signature, force=False)
+        return decision.ready
+    except Exception as exc:
+        app.logger.warning(f"[운송내역 자동동기화] 준비 확인 실패: {exc}")
+        return False
+
+
+def sync_asan_transport_history_auto_python():
+    if not _asan_transport_history_auto_ready_to_sync():
+        return {"ok": True, "message": "변경 없음", "results": []}
+    return sync_asan_transport_history_manual_python()
+
+
+def asan_transport_history_sync_scheduler():
+    app.logger.info(
+        f"[스케줄러] 아산 운송내역 자동 동기화 스케줄러 시작 "
+        f"(poll={ASAN_TRANSPORT_HISTORY_SYNC_POLL_SECONDS}s, quiet={ASAN_TRANSPORT_HISTORY_SYNC_QUIET_SECONDS}s)"
+    )
+    while True:
+        try:
+            now = datetime.now(KST)
+            if 6 <= now.hour <= 23:
+                sync_asan_transport_history_auto_python()
+            time.sleep(ASAN_TRANSPORT_HISTORY_SYNC_POLL_SECONDS)
+        except Exception as exc:
+            app.logger.error(f"[운송내역 스케줄러] 에러: {exc}")
+            time.sleep(ASAN_TRANSPORT_HISTORY_SYNC_POLL_SECONDS)
+
+
+threading.Thread(target=asan_transport_history_sync_scheduler, daemon=True).start()
 
 def nas_sync_scheduler():
     """매일 새벽 01:30에 나스 전 지점 폴더를 스캔하여 AI 지식을 업데이트합니다. (자료실 제외)"""
@@ -2452,6 +3056,56 @@ def trigger_asan_sync():
         }), 202
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/branches/asan/transport-history/sync", methods=["GET", "POST"])
+def trigger_asan_transport_history_sync():
+    """웹 UI의 운송내역 'NAS 동기화' 버튼 클릭 시 호출됨"""
+    if request.method == "GET":
+        return jsonify({"ok": True, "status": _get_transport_history_sync_status()})
+
+    try:
+        now_dt = datetime.now(KST)
+        if _transport_history_cooldown_active(now_dt):
+            status = _get_transport_history_sync_status()
+            return jsonify({
+                "ok": True,
+                "running": bool(status.get("running")),
+                "cooldown": True,
+                "status": status,
+                "message": "최근 1분 이내 동기화 요청이 있어 새 요청은 건너뜁니다. 새로고침으로 최신 DB를 확인해 주세요.",
+            }), 202
+
+        if transport_history_sync_lock.locked():
+            return jsonify({
+                "ok": True,
+                "running": True,
+                "status": _get_transport_history_sync_status(),
+                "message": "운송내역 동기화가 진행 중입니다. 완료까지 기다려 주세요.",
+            }), 202
+
+        _set_transport_history_sync_status(
+            running=True,
+            started_at=now_dt.isoformat(),
+            finished_at=None,
+            ok=True,
+            message="운송내역 1순위 월 동기화 대기 중",
+            results=[],
+            force=True,
+            last_requested_at=now_dt.isoformat(),
+            request_cooldown_until=(now_dt + timedelta(seconds=ASAN_TRANSPORT_HISTORY_SYNC_REQUEST_COOLDOWN_SECONDS)).isoformat(),
+            quick_done=False,
+            quick_finished_at=None,
+        )
+        threading.Thread(target=sync_asan_transport_history_manual_python, daemon=True).start()
+        return jsonify({
+            "ok": True,
+            "running": True,
+            "status": _get_transport_history_sync_status(),
+            "message": "운송내역 동기화를 시작했습니다. 완료까지 기다려 주세요.",
+        }), 202
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 # 4. 공휴일/나스파일/스크린샷-릴레이
 @app.route("/api/off-days", methods=["GET"])

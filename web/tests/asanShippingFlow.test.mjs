@@ -200,7 +200,7 @@ test('아산 페이지는 마지막 메인 탭을 기억해 불필요한 기본 
 
   assert.match(source, /const ASAN_MAIN_TAB_KEY = 'asan_main_tab';/);
   assert.match(source, /const ASAN_PERFORMANCE_TAB_KEY = 'asan_performance_tab';/);
-  assert.match(source, /const MAIN_TABS = \['dispatch', 'shipping', 'performance'\];/);
+  assert.match(source, /const MAIN_TABS = \['dispatch', 'transport-history', 'shipping', 'performance'\];/);
   assert.match(source, /import dynamic from 'next\/dynamic';/);
   assert.match(source, /const loadAsanShipping = \(\) => import\('\.\/AsanShipping'\);/);
   assert.match(source, /const AsanShipping = dynamic\(loadAsanShipping/);

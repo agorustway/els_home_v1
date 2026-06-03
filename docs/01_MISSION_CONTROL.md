@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.333 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.335 / APK v5.11.29)
 
-> 최신 업데이트: 상세배차/GLAPS 업로드의 반출지(출발)코드에 상차지명이 들어가는 fallback을 차단했다.
+> 최신 업데이트: 아산 상위 탭에 운송내역을 추가하고 NAS `2026_수출리스트.xlsx` 월별 시트를 Supabase 테이블 원장으로 동기화한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.333
+- **웹 버전**: v5.14.335
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -12,9 +12,9 @@
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 배차판 표는 경량 meta/date 조회, 현황판은 집계 캐시 우선 조회 |
-| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차 row_count와 현황판 cache/service_role grant 적용 |
-| NAS 백엔드 | 정상 | Core는 동기화 후 현황판 캐시를 비동기 프리워밍 |
+| Next.js 웹 | 정상 | 배차판/운송내역 표는 경량 meta/date 조회, 현황판은 집계 캐시 우선 조회 |
+| Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차/운송내역 row_count 메타 조회 적용 |
+| NAS 백엔드 | 정상 | Core는 배차판/운송내역 NAS 엑셀을 파일 안정화 후 DB에 반영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
 | Android 드라이버 앱 | 정상 | APK v5.11.29 빌드 완료 |
 
@@ -61,6 +61,7 @@
 - 상세배차 상차지/포트코드 선택값은 `branch_dispatch_detail_overrides`에 저장한다. 배차확정 후에도 두 항목은 수정 가능하며, 확정 이후 바뀐 셀은 붉은 배경으로 표시한다.
 - 상세배차/배차변동은 `업체명` 다음에 `시간` 컬럼을 표시한다. 지역 배차칸 메모가 `13 14 15`면 단일 업체 수량에 순서 배정하고, 화면에서는 `08/13` 같은 정시값을 `08:00/13:00`으로 표시하되 엑셀 다운로드는 `0800/1300`으로 출력한다.
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고, 전체 원장은 전체/주간/월간 선택 시 지연 조회한다. `mode=meta`는 `row_count/valid_row_count`가 있으면 data JSON 없이 행수만 읽는다.
+- 운송내역은 상위 `배차판` 옆 탭이며 `/아산지점/A_운송실무/2026_수출리스트.xlsx` 월별 시트를 `branch_transport_history`에 저장한다. `출차시간` 헤더는 `청구금액`으로 정규화하고, 동기화는 현재월 1순위 후 인접월/나머지 월 순서로 진행한다.
 - 배차 `현황판`은 `branch_dispatch_dashboard_cache`의 집계 payload를 우선 사용한다. 캐시가 없을 때만 full 원장을 보강 조회하며, NAS 동기화 후 Core가 캐시를 비동기 프리워밍한다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
@@ -83,6 +84,7 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.335**: 아산 `운송내역` 탭과 `branch_transport_history` 원장을 추가했다. NAS `2026_수출리스트.xlsx`는 월 시트 단위로 동기화하고 `출차시간` 헤더는 `청구금액`으로 통합한다.
 - **v5.14.333**: 상세배차와 `GLAPS_업로드` 반출지(출발)코드는 코드 칼럼을 우선 사용하고, 상차지명 fallback을 차단했다.
 - **운영보정**: 글로비스KD외/모비스AS `-1.xlsm`은 calcChain 제거, 자동 계산 플래그 적용, 모비스 VBA 바이너리 복원/대형 PNG 압축 후 NAS에 백업본을 남기고 교체했다.
 - **v5.14.332**: 자료실(NAS) 헤더/버튼을 모바일에서 줄바꿈 가능한 구조로 바꾸고, 빈 NAS 응답은 안내문으로 표시한다. 디버그 관리자 role fallback은 `user_roles` 조회 없이 통과해 로딩 고착을 막는다.

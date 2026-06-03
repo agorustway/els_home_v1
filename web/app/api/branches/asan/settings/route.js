@@ -17,6 +17,7 @@ function normalizeSettings(data) {
     return {
         ...data,
         shipping_container_auto_lookup_enabled: data.shipping_container_auto_lookup_enabled !== false,
+        transport_history_path: data.transport_history_path || '/아산지점/A_운송실무/2026_수출리스트.xlsx',
     };
 }
 
@@ -67,6 +68,10 @@ export async function PATCH(request) {
             : (current?.mobis_path || ''),
         updated_at: new Date().toISOString()
     };
+
+    if (Object.prototype.hasOwnProperty.call(body, 'transport_history_path')) {
+        payload.transport_history_path = body.transport_history_path || '/아산지점/A_운송실무/2026_수출리스트.xlsx';
+    }
 
     if (Object.prototype.hasOwnProperty.call(body, 'shipping_container_auto_lookup_enabled')) {
         payload.shipping_container_auto_lookup_enabled = body.shipping_container_auto_lookup_enabled !== false;
