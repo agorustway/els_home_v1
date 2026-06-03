@@ -4,6 +4,7 @@ import {
     buildTransportHistoryRowsPage,
     getTransportHistoryQueryMode,
     makeTransportHistoryMetaItem,
+    normalizeTransportHistoryDay,
     normalizeTransportHistoryHeaders,
     normalizeTransportHistoryMonth,
     normalizeTransportHistoryYear,
@@ -53,6 +54,8 @@ export async function GET(request) {
     const mode = getTransportHistoryQueryMode(searchParams.get('mode'));
     const month = normalizeTransportHistoryMonth(searchParams.get('month') || searchParams.get('date'));
     const year = normalizeTransportHistoryYear(searchParams.get('year'));
+    const day = normalizeTransportHistoryDay(searchParams.get('date') || searchParams.get('day'));
+    const dateColumn = String(searchParams.get('date_col') || searchParams.get('dateColumn') || '').trim();
     const sheetName = String(searchParams.get('sheet') || '').trim();
     const limit = Number(searchParams.get('limit') || 100);
     const offset = Number(searchParams.get('offset') || 0);
@@ -105,6 +108,8 @@ export async function GET(request) {
             search,
             sortKey,
             sortDirection,
+            date: day,
+            dateColumn,
         });
         return NextResponse.json({
             data: [{
@@ -119,6 +124,8 @@ export async function GET(request) {
                 metadata: {
                     year: year || null,
                     paged: true,
+                    date: day || null,
+                    dateColumn: dateColumn || null,
                 },
                 total: page.total,
                 limit: page.limit,

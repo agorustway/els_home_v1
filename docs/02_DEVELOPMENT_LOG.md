@@ -1,3 +1,31 @@
+## [2026-06-03] 아산 운송내역 선적관리형 UX와 컨테이너 이력 조회 (v5.14.342)
+
+### 원인
+- 운송내역 숨김/드래그/프리셋은 선적관리와 같은 방식이어야 했지만, 원본 컬럼만 기준으로 동작해 컨테이너 이력 컬럼까지 테이블 관리 흐름에 포함하지 못했습니다.
+- 연도 선택에 자료가 없는 2027년이 선노출되고, 일자 단위로 조회 범위를 좁힌 뒤 해당 결과만 컨테이너 이력 조회하는 흐름이 부족했습니다.
+
+### 조치
+- 운송내역 컬럼 세트를 `원본 헤더 + 컨테이너 이력 헤더`로 확장하고, 헤더 드래그 숨김/복원과 P1/P2 프리셋 저장/로드를 선적관리 방식에 맞췄습니다.
+- `rows` API에 `date/date_col` 필터를 연결해 선택 연도 전체, 월별, 일별 범위에서 조회할 수 있게 했습니다.
+- 컨테이너 조회 버튼을 추가하고 현재 검색/필터/로드 결과의 컨테이너만 백그라운드 이력 조회 대상으로 보냅니다. 저장된 이력 결과는 같은 운송내역 파일 경로와 컨테이너 번호 기준으로 전체/월별 화면에 재사용됩니다.
+- 연도 버튼은 DB 메타에 존재하는 연도만 노출하도록 바꿔 2027년은 실제 자료가 생긴 뒤 표시됩니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 18개 통과
+- `npm run lint`: 통과
+- `.next` 정리 후 `npm run build`: 통과
+- 로컬 HTTP 스모크: `/employees/branches/asan?debug=true`, `mode=meta`, `mode=rows&year=2026&limit=5&date=2026-06-03` 응답 확인
+- Browser 자동화는 `node_repl`의 `windows sandbox failed: spawn setup refresh`로 실패해 HTTP/API/빌드 검증으로 대체했습니다.
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/api/branches/asan/transport-history/route.js`
+- `web/utils/asanTransportHistory.mjs`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
 ## [2026-06-03] GLAPS 컨테이너 원본 시트 평탄화 (v5.14.339)
 ### 원인
 - `GLAPS컨테이너배차관리` 원본에는 오더번호/진행상태/정산상태 등 세로 통합셀이 있어 날짜별 행수가 달라질 때 선택하여붙여넣기와 행삭제 보정이 깨질 수 있었습니다.

@@ -51,6 +51,25 @@ export function normalizeTransportHistoryYear(value) {
   return String(year);
 }
 
+export function normalizeTransportHistoryDay(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return '';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    !Number.isInteger(year)
+    || !Number.isInteger(month)
+    || !Number.isInteger(day)
+    || date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return '';
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export function countTransportHistoryRows(item = {}) {
   const explicitCount = Number(item.valid_row_count ?? item.row_count);
   if (Number.isFinite(explicitCount) && explicitCount >= 0) return explicitCount;
@@ -110,6 +129,8 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
     .filter(Boolean);
   const sortKey = String(options.sortKey || '').trim();
   const sortDirection = options.sortDirection === 'desc' ? 'desc' : 'asc';
+  const dateFilter = normalizeTransportHistoryDay(options.date || options.day);
+  const dateColumn = String(options.dateColumn || '').trim();
 
   const headers = [];
   const addHeader = (header) => {
@@ -121,7 +142,9 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
   });
 
   const seqIndex = getHeaderIndex(headers, ['SEQ', 'Seq', 'seq']);
-  const dateIndex = getHeaderIndex(headers, ['작업일자', '작업일', '날짜', '일자']);
+  const dateIndex = dateColumn && headers.includes(dateColumn)
+    ? headers.indexOf(dateColumn)
+    : getHeaderIndex(headers, ['작업일자', '작업일', '날짜', '일자']);
   const sortIndex = sortKey ? headers.indexOf(sortKey) : -1;
   const flattened = [];
 
@@ -141,6 +164,9 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
   });
 
   let rows = flattened;
+  if (dateFilter && dateIndex >= 0) {
+    rows = rows.filter(item => parseTransportHistoryDate(item.values[dateIndex]) === dateFilter);
+  }
   if (searchTerms.length) {
     rows = rows.filter(item => {
       const haystack = item.values.map(value => normalizeCellValue(value).toLowerCase()).join(' ');

@@ -1,6 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    CONTAINER_LOOKUP_DISPLAY_COLUMNS,
+    extractUniqueContainerNos,
+    getContainerLookupValue,
+    isContainerLookupColumn,
+    orderContainerLookupTargets,
+} from '@/utils/containerHistoryResults.mjs';
+import {
+    mergePendingContainerLookupResults,
+    normalizeDateOnly,
+    reconcileShippingLayoutPrefs,
+} from '@/utils/asanShippingView.mjs';
 import styles from './dispatch.module.css';
 
 const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스트.xlsx';
@@ -8,6 +20,9 @@ const ALL_RECORD_KEY = '__all__';
 const ALL_PAGE_SIZE = 100;
 const PREF_PAGE_KEY = 'asan_transport_history_preset';
 const DEFAULT_SORT = { key: null, direction: 'asc' };
+const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS.map(column => column.header);
+const CONTAINER_RESULTS_CHUNK_SIZE = 150;
+const LOOKUP_POLL_MS = 4000;
 
 function recordKey(record = {}) {
     return `${record.target_month || ''}::${record.sheet_name || ''}`;
@@ -48,6 +63,22 @@ function normalizeColumnOrder(order = [], headers = []) {
         if (!ordered.includes(header)) ordered.push(header);
     });
     return ordered;
+}
+
+function getHiddenChipLabel(column) {
+    return isContainerLookupColumn(column) ? String(column).replace(/^이력\s*/, '') : column;
+}
+
+function isDateHeader(column) {
+    const text = String(column || '').replace(/\s+/g, '').toLowerCase();
+    return (
+        text.includes('date')
+        || text.includes('날짜')
+        || text.includes('일자')
+        || (text.includes('작업') && text.includes('일'))
+        || (text.includes('픽업') && text.includes('일'))
+        || (text.includes('청구') && text.includes('일'))
+    );
 }
 
 function normalizeFilterValue(value) {
@@ -106,6 +137,7 @@ export default function AsanTransportHistory() {
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState(DEFAULT_SORT);
     const [columnFilters, setColumnFilters] = useState({});
+    const [dateFilter, setDateFilter] = useState({ col: '', day: '' });
     const [filterDropdown, setFilterDropdown] = useState(null);
     const [hiddenCols, setHiddenCols] = useState(new Set());
     const [colOrder, setColOrder] = useState([]);
@@ -119,8 +151,18 @@ export default function AsanTransportHistory() {
     const [browserPath, setBrowserPath] = useState('/아산지점');
     const [browserFiles, setBrowserFiles] = useState([]);
     const [browserLoading, setBrowserLoading] = useState(false);
+    const [containerLookupResults, setContainerLookupResults] = useState({});
+    const [containerLookupRunning, setContainerLookupRunning] = useState(false);
+    const [containerLookupStopping, setContainerLookupStopping] = useState(false);
+    const [containerLookupStatus, setContainerLookupStatus] = useState('');
+    const [containerLookupProgress, setContainerLookupProgress] = useState(null);
+    const [containerLookupErrorSummary, setContainerLookupErrorSummary] = useState(null);
+    const containerLookupResultsRef = useRef({});
+    const containerLookupJobIdRef = useRef('');
+    const containerLookupStoppedRef = useRef(false);
 
     const isAllView = activeKey === ALL_RECORD_KEY;
+    const transportHistoryPath = settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH;
 
     const loadSettings = useCallback(async () => {
         try {
@@ -175,7 +217,9 @@ export default function AsanTransportHistory() {
                 t: String(Date.now()),
             });
             if (search.trim()) params.set('search', search.trim());
-            if (sortConfig.key) {
+            if (dateFilter.day) params.set('date', dateFilter.day);
+            if (dateFilter.col) params.set('date_col', dateFilter.col);
+            if (sortConfig.key && !isContainerLookupColumn(sortConfig.key)) {
                 params.set('sort', sortConfig.key);
                 params.set('direction', sortConfig.direction || 'asc');
             }
@@ -205,7 +249,7 @@ export default function AsanTransportHistory() {
             if (reset) setLoadingTable(false);
             else setLoadingMore(false);
         }
-    }, [activeKey, search, selectedYear, sortConfig.direction, sortConfig.key]);
+    }, [activeKey, dateFilter.col, dateFilter.day, search, selectedYear, sortConfig.direction, sortConfig.key]);
 
     const loadMeta = useCallback(async ({ keepActive = true } = {}) => {
         setLoadingMeta(true);
@@ -362,14 +406,11 @@ export default function AsanTransportHistory() {
 
     const headers = activeRecord?.headers || [];
     const rows = activeRecord?.data || [];
+    const allHeaders = useMemo(() => (
+        [...headers, ...LOOKUP_HEADERS.filter(header => !headers.includes(header))]
+    ), [headers]);
     const yearOptions = useMemo(() => {
-        const currentYear = new Date().getFullYear();
-        const years = Array.from(new Set([
-            ...metaRecords.map(recordYear).filter(Boolean),
-            String(currentYear),
-            String(currentYear + 1),
-            selectedYear,
-        ].filter(Boolean))).sort();
+        const years = Array.from(new Set(metaRecords.map(recordYear).filter(Boolean))).sort();
         return years.length ? years : [selectedYear];
     }, [metaRecords, selectedYear]);
     const selectedYearRecords = useMemo(() => (
@@ -380,30 +421,60 @@ export default function AsanTransportHistory() {
     ), [selectedYearRecords]);
 
     useEffect(() => {
-        setColOrder(prev => normalizeColumnOrder(prev, headers));
-        setHiddenCols(prev => new Set(Array.from(prev).filter(header => headers.includes(header))));
-        setColumnFilters(prev => restoreColumnFilters(serializeColumnFilters(prev), headers));
+        setColOrder(prev => normalizeColumnOrder(prev, allHeaders));
+        setHiddenCols(prev => new Set(Array.from(prev).filter(header => allHeaders.includes(header))));
+        setColumnFilters(prev => restoreColumnFilters(serializeColumnFilters(prev), allHeaders));
+    }, [allHeaders]);
+
+    const dateColumns = useMemo(() => (
+        headers.filter(isDateHeader)
+    ), [headers]);
+
+    useEffect(() => {
+        if (!headers.length) return;
+        setDateFilter(prev => {
+            if (prev.col && headers.includes(prev.col)) return prev;
+            return { ...prev, col: dateColumns[0] || '' };
+        });
+    }, [dateColumns, headers]);
+
+    useEffect(() => {
+        containerLookupResultsRef.current = containerLookupResults;
+    }, [containerLookupResults]);
+
+    const getRowContainerNo = useCallback((row) => {
+        return extractUniqueContainerNos(headers, [row])[0] || '';
     }, [headers]);
 
     const getCellValue = useCallback((row, column) => {
+        if (isContainerLookupColumn(column)) {
+            const containerNo = getRowContainerNo(row);
+            return getContainerLookupValue(containerLookupResults[containerNo], column);
+        }
         const index = headers.indexOf(column);
         return index >= 0 ? row[index] : '';
-    }, [headers]);
+    }, [containerLookupResults, getRowContainerNo, headers]);
 
     const processedRows = useMemo(() => {
         const keyword = search.trim().toLowerCase();
         let nextRows = [...rows];
+        if (!isAllView && dateFilter.day) {
+            const dateColumn = dateFilter.col || dateColumns[0] || '';
+            if (dateColumn) {
+                nextRows = nextRows.filter(row => normalizeDateOnly(getCellValue(row, dateColumn)) === dateFilter.day);
+            }
+        }
         if (!isAllView && keyword) {
             const terms = keyword.split(',').map(term => term.trim()).filter(Boolean);
             nextRows = nextRows.filter(row => terms.some(term => (
-                row.some(cell => String(cell || '').toLowerCase().includes(term))
+                allHeaders.some(header => String(getCellValue(row, header) || '').toLowerCase().includes(term))
             )));
         }
         Object.entries(columnFilters).forEach(([column, selectedSet]) => {
             if (!selectedSet?.size) return;
             nextRows = nextRows.filter(row => selectedSet.has(normalizeFilterValue(getCellValue(row, column))));
         });
-        if (!isAllView && sortConfig.key) {
+        if (sortConfig.key && (!isAllView || isContainerLookupColumn(sortConfig.key))) {
             nextRows.sort((a, b) => compareCellValues(
                 getCellValue(a, sortConfig.key),
                 getCellValue(b, sortConfig.key),
@@ -411,14 +482,18 @@ export default function AsanTransportHistory() {
             ));
         }
         return nextRows;
-    }, [columnFilters, getCellValue, isAllView, rows, search, sortConfig.direction, sortConfig.key]);
+    }, [allHeaders, columnFilters, dateColumns, dateFilter.col, dateFilter.day, getCellValue, isAllView, rows, search, sortConfig.direction, sortConfig.key]);
 
     const visibleHeaders = useMemo(() => (
-        normalizeColumnOrder(colOrder, headers).filter(header => !hiddenCols.has(header))
-    ), [colOrder, headers, hiddenCols]);
-    const hiddenColumnList = useMemo(() => (
-        headers.filter(header => hiddenCols.has(header))
-    ), [headers, hiddenCols]);
+        normalizeColumnOrder(colOrder, allHeaders).filter(header => !hiddenCols.has(header))
+    ), [allHeaders, colOrder, hiddenCols]);
+    const hiddenColumnList = useMemo(() => {
+        const columns = Array.from(hiddenCols).filter(header => allHeaders.includes(header));
+        return [
+            ...columns.filter(header => !isContainerLookupColumn(header)),
+            ...columns.filter(header => isContainerLookupColumn(header)),
+        ];
+    }, [allHeaders, hiddenCols]);
 
     const handleSort = (column) => {
         setSortConfig(prev => {
@@ -445,10 +520,10 @@ export default function AsanTransportHistory() {
             return;
         }
         setColOrder(prev => {
-            const next = normalizeColumnOrder(prev, headers).filter(column => column !== draggedCol);
+            const next = normalizeColumnOrder(prev, allHeaders).filter(column => column !== draggedCol);
             const targetIndex = Math.max(0, next.indexOf(targetColumn));
             next.splice(targetIndex, 0, draggedCol);
-            return normalizeColumnOrder(next, headers);
+            return normalizeColumnOrder(next, allHeaders);
         });
         setHiddenCols(prev => {
             const next = new Set(prev);
@@ -461,7 +536,7 @@ export default function AsanTransportHistory() {
     const handleDropToHidden = (event) => {
         event.preventDefault();
         setIsDragOverHidden(false);
-        if (draggedCol && headers.includes(draggedCol)) {
+        if (draggedCol && allHeaders.includes(draggedCol)) {
             setHiddenCols(prev => new Set(prev).add(draggedCol));
         }
         setDraggedCol(null);
@@ -473,7 +548,7 @@ export default function AsanTransportHistory() {
             next.delete(column);
             return next;
         });
-        setColOrder(prev => normalizeColumnOrder([...prev, column], headers));
+        setColOrder(prev => normalizeColumnOrder([...prev, column], allHeaders));
     };
 
     const getUniqueValues = (column) => {
@@ -511,7 +586,7 @@ export default function AsanTransportHistory() {
     };
 
     const resetLayout = () => {
-        setColOrder(normalizeColumnOrder(headers, headers));
+        setColOrder(normalizeColumnOrder(allHeaders, allHeaders));
         setHiddenCols(new Set());
         setColumnFilters({});
         setSortConfig(DEFAULT_SORT);
@@ -520,11 +595,10 @@ export default function AsanTransportHistory() {
 
     const savePreset = async (num) => {
         const settingsPayload = {
-            colOrder: normalizeColumnOrder(colOrder, headers),
+            colOrder: normalizeColumnOrder(colOrder, allHeaders),
             hiddenCols: Array.from(hiddenCols),
             sortConfig,
-            columnFilters: serializeColumnFilters(columnFilters),
-            sourceHeaders: headers,
+            sourceHeaders: allHeaders,
         };
         try {
             const response = await fetch('/api/user/prefs', {
@@ -534,8 +608,10 @@ export default function AsanTransportHistory() {
             });
             if (!response.ok) throw new Error('저장 실패');
             setSyncStatus({ message: `운송내역 P${num} 저장 완료`, isError: false });
+            alert(`프리셋 ${num}번 저장 완료!`);
         } catch (error) {
             setSyncStatus({ message: error.message || '프리셋 저장 실패', isError: true });
+            alert(error.message || '저장 실패');
         }
     };
 
@@ -546,15 +622,197 @@ export default function AsanTransportHistory() {
             if (!response.ok || json.error) throw new Error(json.error || '로드 실패');
             const prefs = json.data || {};
             if (!prefs.colOrder) throw new Error(`저장된 P${num} 프리셋이 없습니다.`);
-            setColOrder(normalizeColumnOrder(prefs.colOrder, headers));
-            setHiddenCols(new Set((prefs.hiddenCols || []).filter(header => headers.includes(header))));
+            let finalOrder = prefs.colOrder;
+            let finalHidden = new Set((prefs.hiddenCols || []).filter(header => allHeaders.includes(header)));
+            if (prefs.sourceHeaders && allHeaders) {
+                const reconciled = reconcileShippingLayoutPrefs({
+                    order: prefs.colOrder,
+                    hiddenCols: prefs.hiddenCols || [],
+                    sourceHeaders: prefs.sourceHeaders,
+                    currentHeaders: allHeaders,
+                });
+                finalOrder = reconciled.colOrder;
+                finalHidden = reconciled.hiddenCols;
+            }
+            setColOrder(normalizeColumnOrder(finalOrder, allHeaders));
+            setHiddenCols(finalHidden);
             setSortConfig(prefs.sortConfig || DEFAULT_SORT);
-            setColumnFilters(restoreColumnFilters(prefs.columnFilters || {}, headers));
             setSyncStatus({ message: `운송내역 P${num} 로드 완료`, isError: false });
+            alert(`프리셋 ${num}번 로드 완료!`);
         } catch (error) {
             setSyncStatus({ message: error.message || '프리셋 로드 실패', isError: true });
+            alert(error.message || '로드 실패');
         }
     };
+
+    const fetchSavedContainerLookupResults = useCallback(async (containers) => {
+        const resultMap = {};
+        if (!transportHistoryPath || !containers?.length) return resultMap;
+        for (let index = 0; index < containers.length; index += CONTAINER_RESULTS_CHUNK_SIZE) {
+            const chunk = containers.slice(index, index + CONTAINER_RESULTS_CHUNK_SIZE);
+            const params = new URLSearchParams({
+                path: transportHistoryPath,
+                containers: chunk.join(','),
+            });
+            const response = await fetch(`/api/branches/asan/shipping/container-results?${params.toString()}`, { cache: 'no-store' });
+            const json = await response.json();
+            if (json.data) Object.assign(resultMap, json.data);
+        }
+        return resultMap;
+    }, [transportHistoryPath]);
+
+    const loadSavedContainerLookupResults = useCallback(async (containers) => {
+        const missingContainers = Array.from(new Set(containers || []))
+            .filter(containerNo => containerNo && !containerLookupResultsRef.current?.[containerNo]?.mainRow);
+        if (!missingContainers.length) return;
+        try {
+            const savedMap = await fetchSavedContainerLookupResults(missingContainers);
+            if (Object.keys(savedMap).length > 0) {
+                setContainerLookupResults(prev => {
+                    const next = { ...prev, ...savedMap };
+                    containerLookupResultsRef.current = next;
+                    return next;
+                });
+            }
+        } catch (error) {
+            console.warn('운송내역 컨테이너 저장 이력 조회 실패:', error);
+        }
+    }, [fetchSavedContainerLookupResults]);
+
+    const fetchContainerLookupJob = useCallback(async (jobId) => {
+        const suffix = jobId ? `?id=${encodeURIComponent(jobId)}` : '';
+        const response = await fetch(`/api/branches/asan/shipping/container-lookup/jobs${suffix}`, { cache: 'no-store' });
+        if (!response.ok) return null;
+        const json = await response.json();
+        return json.job || null;
+    }, []);
+
+    const applyContainerLookupJob = useCallback(async (job, containers) => {
+        if (!job) return false;
+        const progress = {
+            total: Number(job.total || containers.length),
+            completed: Number(job.completed || 0),
+            failed: Number(job.failed || 0),
+            remaining: Math.max(0, Number(job.remaining ?? (Number(job.total || containers.length) - Number(job.completed || 0) - Number(job.failed || 0)))),
+        };
+        setContainerLookupProgress(progress);
+        setContainerLookupErrorSummary(job.errorSummary || null);
+        setContainerLookupStatus(job.status || '컨테이너 이력 조회 상태 확인 중');
+        if (progress.completed > 0 || ['completed', 'failed', 'cancelled'].includes(job.state)) {
+            await loadSavedContainerLookupResults(containers);
+        }
+        const done = ['completed', 'failed', 'cancelled'].includes(job.state)
+            || (progress.total > 0 && progress.completed + progress.failed >= progress.total);
+        if (done) {
+            const status = progress.failed > 0
+                ? `컨테이너 조회 종료: 완료 ${progress.completed.toLocaleString('ko-KR')}건, 실패 ${progress.failed.toLocaleString('ko-KR')}건`
+                : `컨테이너 조회 완료: ${progress.completed.toLocaleString('ko-KR')}건`;
+            setContainerLookupStatus(job.status || status);
+            await loadSavedContainerLookupResults(containers);
+        }
+        return done;
+    }, [loadSavedContainerLookupResults]);
+
+    const handleStopContainerLookup = async () => {
+        if ((!containerLookupRunning && !containerLookupJobIdRef.current) || containerLookupStopping) return;
+        containerLookupStoppedRef.current = true;
+        setContainerLookupStopping(true);
+        setContainerLookupStatus('조회 중지 요청 중');
+        try {
+            if (containerLookupJobIdRef.current) {
+                const response = await fetch('/api/branches/asan/shipping/container-lookup/jobs', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: containerLookupJobIdRef.current }),
+                });
+                if (!response.ok) {
+                    const json = await response.json().catch(() => ({}));
+                    throw new Error(json.error || `중지 요청 실패 (${response.status})`);
+                }
+            }
+            setContainerLookupStatus('조회 중단됨. 지금까지 저장된 결과만 표시합니다.');
+            setContainerLookupRunning(false);
+        } catch (error) {
+            setContainerLookupStatus(`조회 중지 요청 실패: ${error.message || error}`);
+        } finally {
+            setContainerLookupStopping(false);
+        }
+    };
+
+    const handleContainerLookup = async () => {
+        if (containerLookupRunning) return;
+        const tableContainers = extractUniqueContainerNos(headers, processedRows);
+        const containers = orderContainerLookupTargets(tableContainers, containerLookupResultsRef.current);
+        if (!containers.length) {
+            alert('현재 검색/필터 결과에서 조회할 컨테이너 번호가 없습니다.');
+            return;
+        }
+        const missingLookupCount = containers.filter(containerNo => !containerLookupResultsRef.current?.[containerNo]?.mainRow).length;
+        containerLookupStoppedRef.current = false;
+        setContainerLookupRunning(true);
+        setContainerLookupStopping(false);
+        setContainerLookupErrorSummary(null);
+        setContainerLookupProgress({ total: containers.length, completed: 0, failed: 0, remaining: containers.length });
+        setContainerLookupStatus(`현재 조회 결과 ${processedRows.length.toLocaleString('ko-KR')}행 중 컨테이너 ${containers.length.toLocaleString('ko-KR')}건 조회 준비 중 (미조회 ${missingLookupCount.toLocaleString('ko-KR')}건 우선)`);
+        setContainerLookupResults(prev => {
+            const next = mergePendingContainerLookupResults(prev, containers);
+            containerLookupResultsRef.current = next;
+            return next;
+        });
+        try {
+            const response = await fetch('/api/branches/asan/shipping/container-lookup/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: transportHistoryPath,
+                    containers,
+                    reserveSingle: false,
+                }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !payload.ok || !payload.job) {
+                throw new Error(payload.error || `백그라운드 조회 시작 실패 (${response.status})`);
+            }
+            const job = payload.job;
+            containerLookupJobIdRef.current = job.id || '';
+            await applyContainerLookupJob(job, containers);
+            while (!containerLookupStoppedRef.current && containerLookupJobIdRef.current) {
+                await new Promise(resolve => window.setTimeout(resolve, LOOKUP_POLL_MS));
+                if (containerLookupStoppedRef.current) break;
+                const nextJob = await fetchContainerLookupJob(containerLookupJobIdRef.current);
+                if (!nextJob) {
+                    setContainerLookupStatus('컨테이너 조회 상태 확인이 끊겼습니다. 저장된 결과만 표시합니다.');
+                    break;
+                }
+                const done = await applyContainerLookupJob(nextJob, containers);
+                if (done) break;
+            }
+        } catch (error) {
+            const progress = { total: containers.length, completed: 0, failed: containers.length, remaining: 0 };
+            setContainerLookupProgress(progress);
+            setContainerLookupErrorSummary({
+                total: containers.length,
+                reasons: [{ reason: error.message || '백그라운드 조회 시작 실패', count: containers.length }],
+                samples: [],
+                message: `${error.message || '백그라운드 조회 시작 실패'} ${containers.length.toLocaleString('ko-KR')}건`,
+            });
+            setContainerLookupStatus(`오류: ${error.message || '컨테이너 조회 실패'}`);
+            alert(error.message || '컨테이너 조회에 실패했습니다.');
+        } finally {
+            containerLookupJobIdRef.current = '';
+            setContainerLookupStopping(false);
+            setContainerLookupRunning(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!headers.length || !rows.length) return undefined;
+        const containers = extractUniqueContainerNos(headers, rows);
+        const timer = window.setTimeout(() => {
+            loadSavedContainerLookupResults(containers);
+        }, 250);
+        return () => window.clearTimeout(timer);
+    }, [headers, loadSavedContainerLookupResults, rows]);
 
     const downloadCurrentSheet = async () => {
         if (!visibleHeaders.length) return;
@@ -604,6 +862,24 @@ export default function AsanTransportHistory() {
                         <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
                         <button className={styles.headerBtn} onClick={() => loadMeta({ keepActive: true })} disabled={loadingMeta || loadingTable}>새로고침</button>
                         <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={syncNow} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
+                        <button
+                            className={styles.lookupBtn}
+                            onClick={handleContainerLookup}
+                            disabled={containerLookupRunning || loadingTable || !processedRows.length}
+                            title="현재 검색/필터 결과에 남아있는 컨테이너를 이력조회합니다."
+                        >
+                            {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                        </button>
+                        {containerLookupRunning && (
+                            <button
+                                className={styles.stopLookupBtn}
+                                onClick={handleStopContainerLookup}
+                                disabled={containerLookupStopping}
+                                title="현재 컨테이너 이력 조회를 중단하고 지금까지 받은 결과만 남깁니다."
+                            >
+                                {containerLookupStopping ? '멈추는 중' : '조회 멈춤'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -628,6 +904,32 @@ export default function AsanTransportHistory() {
                 </div>
             </div>
 
+            {containerLookupStatus && (
+                <div className={styles.lookupStatus}>
+                    {containerLookupProgress && (
+                        <span className={styles.lookupStatusCounts}>
+                            <span>컨테이너 조회건수 {Number(containerLookupProgress.total || 0).toLocaleString('ko-KR')}건</span>
+                            <span>조회완료 {Number(containerLookupProgress.completed || 0).toLocaleString('ko-KR')}건</span>
+                            <span className={Number(containerLookupProgress.failed || 0) > 0 ? styles.lookupStatusFailed : ''}>
+                                조회실패 {Number(containerLookupProgress.failed || 0).toLocaleString('ko-KR')}건
+                            </span>
+                            {Number(containerLookupProgress.remaining || 0) > 0 && (
+                                <span>미조회 {Number(containerLookupProgress.remaining || 0).toLocaleString('ko-KR')}건</span>
+                            )}
+                        </span>
+                    )}
+                    <span className={styles.lookupStatusMessage}>{containerLookupStatus}</span>
+                    {containerLookupErrorSummary?.message && (
+                        <span
+                            className={styles.lookupStatusErrorDetail}
+                            title={containerLookupErrorSummary.samples?.join('\n') || containerLookupErrorSummary.message}
+                        >
+                            실패 사유: {containerLookupErrorSummary.message}
+                        </span>
+                    )}
+                </div>
+            )}
+
             <div className={styles.dateFilterZone}>
                 <span className={styles.dateFilterLabel}>연도</span>
                 <div className={styles.monthFilterGroup}>
@@ -645,6 +947,45 @@ export default function AsanTransportHistory() {
                         </button>
                     ))}
                 </div>
+                <span className={styles.dateFilterLabel}>날짜 필터</span>
+                <select
+                    className={styles.dateSelect}
+                    value={dateFilter.col}
+                    onChange={(event) => setDateFilter(prev => ({ ...prev, col: event.target.value }))}
+                    disabled={!dateColumns.length}
+                    aria-label="날짜 필터 컬럼"
+                >
+                    <option value="">컬럼 선택</option>
+                    {dateColumns.map(column => (
+                        <option key={column} value={column}>{column}</option>
+                    ))}
+                </select>
+                <input
+                    className={styles.dateSelect}
+                    type="date"
+                    value={dateFilter.day}
+                    onChange={(event) => {
+                        const day = event.target.value;
+                        setDateFilter(prev => ({ ...prev, day }));
+                        const dayYear = day.slice(0, 4);
+                        if (dayYear && yearOptions.includes(dayYear)) {
+                            setSelectedYear(dayYear);
+                        }
+                        if (day) setActiveKey(ALL_RECORD_KEY);
+                    }}
+                    aria-label="일자 필터"
+                />
+                <button
+                    type="button"
+                    className={`${styles.monthFilterBtn} ${dateFilter.day ? '' : styles.monthFilterBtnActive}`}
+                    onClick={() => setDateFilter(prev => ({ ...prev, day: '' }))}
+                    title="일자 제한 없이 선택 연도/월 데이터를 표시합니다."
+                >
+                    전체
+                </button>
+                <span className={styles.resultCountText}>
+                    전체 {rowCount.toLocaleString('ko-KR')}건 / 조회 {processedRows.length.toLocaleString('ko-KR')}건
+                </span>
             </div>
 
             <div className={styles.dateTabs}>
@@ -686,9 +1027,10 @@ export default function AsanTransportHistory() {
                         draggable
                         onDragStart={(event) => handleDragStart(event, column)}
                         onClick={() => handleRestoreColumn(column)}
-                        className={styles.hiddenChip}
+                        className={`${styles.hiddenChip} ${isContainerLookupColumn(column) ? styles.hiddenLookupChip : ''}`}
+                        title={`표로 복구: ${column}`}
                     >
-                        {column}
+                        {getHiddenChipLabel(column)}
                     </button>
                 ))}
             </div>
@@ -720,7 +1062,7 @@ export default function AsanTransportHistory() {
                                             onDragStart={(event) => handleDragStart(event, header)}
                                             onDragOver={(event) => handleDragOver(event, header)}
                                             onDrop={(event) => handleDrop(event, header)}
-                                            className={dragOverCol === header ? styles.dragOver : ''}
+                                            className={`${dragOverCol === header ? styles.dragOver : ''} ${isContainerLookupColumn(header) ? styles.lookupHeader : ''}`}
                                         >
                                             <span className={styles.thText} onClick={() => handleSort(header)}>
                                                 {header}
@@ -768,7 +1110,11 @@ export default function AsanTransportHistory() {
                                         {visibleHeaders.map((header) => {
                                             const value = getCellValue(row, header);
                                             return (
-                                                <td key={header} title={String(value || '')}>
+                                                <td
+                                                    key={header}
+                                                    title={String(value || '')}
+                                                    className={isContainerLookupColumn(header) ? styles.lookupCell : ''}
+                                                >
                                                     {String(value || '')}
                                                 </td>
                                             );

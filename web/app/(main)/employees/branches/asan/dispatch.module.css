@@ -167,6 +167,95 @@
     background: #dbeafe;
 }
 
+.lookupBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 6px;
+    border: 1px solid #86efac;
+    background: #ecfdf5;
+    color: #047857;
+    font-weight: 800;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.lookupBtn:hover {
+    background: #d1fae5;
+}
+
+.lookupBtn:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.stopLookupBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 6px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #be123c;
+    font-weight: 800;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.stopLookupBtn:hover {
+    background: #ffe4e6;
+}
+
+.stopLookupBtn:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.lookupStatus {
+    min-height: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    background: #f0fdf4;
+    color: #047857;
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.lookupStatusCounts {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.lookupStatusMessage {
+    min-width: 0;
+}
+
+.lookupStatusFailed {
+    color: #dc2626;
+}
+
+.lookupStatusErrorDetail {
+    min-width: 0;
+    color: #be123c;
+}
+
 .headerLeft {
     display: flex;
     align-items: center;
@@ -1113,31 +1202,31 @@
 .detailChangeDiffCell {
     background: #fef3c7 !important;
     color: #92400e !important;
-    box-shadow: inset 0 0 0 1px #f59e0b;
+    box-shadow: none;
 }
 
 .detailChangeConfirmedRow .detailChangeDiffCell {
     background: #fef3c7 !important;
     color: #92400e !important;
-    box-shadow: inset 0 0 0 1px #f59e0b;
+    box-shadow: none;
 }
 
 .detailMemoDiffCell {
     background: #fee2e2 !important;
     color: #991b1b !important;
-    box-shadow: inset 0 0 0 1px #fca5a5;
+    box-shadow: none;
 }
 
 .detailBkgMemoDiffCell {
     background: #fef3c7 !important;
     color: #92400e !important;
-    box-shadow: inset 0 0 0 1px #f59e0b;
+    box-shadow: none;
 }
 
 .detailPostConfirmOverrideCell {
     background: #fee2e2 !important;
     color: #991b1b !important;
-    box-shadow: inset 0 0 0 1px #f87171;
+    box-shadow: none;
 }
 
 .detailChangeDiffCell input,
@@ -1454,6 +1543,23 @@
     white-space: nowrap;
 }
 
+.dateSelect {
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #fff;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: inherit;
+}
+
+.dateSelect:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+}
+
 .monthFilterGroup {
     display: inline-flex;
     flex-wrap: wrap;
@@ -1494,6 +1600,17 @@
 .monthFilterBtnActive:hover {
     background: #dbeafe;
     border-color: #60a5fa;
+}
+
+.resultCountText {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 2px;
+    color: #2563eb;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .dateTabs {
@@ -1563,6 +1680,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: inherit;
+}
+
+.hiddenLookupChip {
+    background: #e8f7ee;
+    border-color: #a7d8b9;
+    color: #166534;
 }
 
 .dateTab {
@@ -1827,9 +1950,17 @@
     font-size: 0.78rem;
 }
 
+.table th,
+.table td {
+    height: 24px;
+    box-sizing: border-box;
+    font-size: 0.76rem;
+    line-height: 1.18;
+}
+
 .table th {
     background: #1f5673;
-    padding: 3px 6px;
+    padding: 2px 6px;
     font-weight: 700;
     color: #fff;
     border-bottom: 1px solid #184862;
@@ -1839,8 +1970,6 @@
     top: 0;
     z-index: 5;
     text-align: left;
-    font-size: 0.72rem;
-    line-height: 1.15;
     user-select: none;
 }
 
@@ -1859,6 +1988,11 @@
 
 .table th:hover {
     background: #184a63;
+}
+
+.table th.lookupHeader {
+    background: #15803d;
+    box-shadow: 0 1px 0 #166534;
 }
 
 /* 컨럼 너비 조절 핸들 */
@@ -1906,14 +2040,17 @@
 }
 
 .table td {
-    padding: 3px 6px;
+    padding: 2px 6px;
     border-bottom: 1px solid #cbd5e1;
     border-right: 1px solid #d1d5db;
     color: #334155;
     white-space: nowrap;
-    font-size: 0.76rem;
-    line-height: 1.18;
     position: relative;
+}
+
+.table td.lookupCell {
+    font-weight: 650;
+    background: #f8fff9;
 }
 
 .table td:last-child {
@@ -2163,7 +2300,7 @@
 
 .detailPortCandidateCell {
     background: #fef3c7;
-    box-shadow: inset 0 0 0 1px #facc15;
+    box-shadow: none;
 }
 
 .detailPortSelect {
@@ -2181,6 +2318,7 @@
 
 .detailDgRfCell .detailPortSelect {
     min-width: 0;
+    font-weight: 400 !important;
 }
 
 .detailPortCandidateCell .detailPortSelect {
@@ -2235,7 +2373,7 @@
 .detailLockedRow.detailChangedRow td.detailPostConfirmOverrideCell {
     background: #fee2e2 !important;
     color: #991b1b !important;
-    box-shadow: inset 0 0 0 1px #f87171;
+    box-shadow: none;
 }
 
 .detailLockedRow .detailPostConfirmOverrideCell input,
