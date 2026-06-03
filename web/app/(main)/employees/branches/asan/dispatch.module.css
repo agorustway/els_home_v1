@@ -171,8 +171,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 30px;
-    padding: 0 11px;
+    height: 28px;
+    padding: 0 8px;
     border-radius: 6px;
     border: 1px solid #86efac;
     background: #ecfdf5;
@@ -197,8 +197,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 30px;
-    padding: 0 11px;
+    height: 28px;
+    padding: 0 8px;
     border-radius: 6px;
     border: 1px solid #fecaca;
     background: #fff1f2;
@@ -434,6 +434,99 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.transportToolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.transportSearchRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 520px;
+    min-width: 360px;
+    max-width: 640px;
+}
+
+.transportSearchInput {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 320px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 0.82rem;
+}
+
+.transportActionRow {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+    flex: 1 1 720px;
+    min-width: 320px;
+}
+
+.transportActionGroup {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-width: 0;
+}
+
+.transportPrimaryActions {
+    justify-content: flex-end;
+}
+
+.transportActionBtn {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 0.72rem;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    line-height: 1;
+    vertical-align: middle;
+    font-family: inherit;
+}
+
+.transportActionBtn:hover {
+    background: #f8fafc;
+}
+
+.transportActionBtn:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.transportSyncBtn {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+
+.transportSyncBtn:hover {
+    background: #dbeafe;
 }
 
 .colToolbar {
@@ -2778,6 +2871,29 @@
         flex-direction: column;
         gap: 8px;
         order: 1;
+    }
+
+    .transportToolbar {
+        align-items: stretch;
+        padding: 6px 8px;
+        gap: 8px;
+    }
+
+    .transportSearchRow,
+    .transportActionRow {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .transportSearchInput {
+        min-width: 0;
+    }
+
+    .transportActionGroup {
+        justify-content: flex-start;
     }
 
     .pageTitle {

@@ -406,9 +406,10 @@ export default function AsanTransportHistory() {
 
     const headers = activeRecord?.headers || [];
     const rows = activeRecord?.data || [];
-    const allHeaders = useMemo(() => (
-        [...headers, ...LOOKUP_HEADERS.filter(header => !headers.includes(header))]
-    ), [headers]);
+    const allHeaders = useMemo(() => {
+        if (!headers.length) return [];
+        return [...headers, ...LOOKUP_HEADERS.filter(header => !headers.includes(header))];
+    }, [headers]);
     const yearOptions = useMemo(() => {
         const years = Array.from(new Set(metaRecords.map(recordYear).filter(Boolean))).sort();
         return years.length ? years : [selectedYear];
@@ -857,11 +858,35 @@ export default function AsanTransportHistory() {
                             </span>
                         )}
                     </div>
-                    <div className={styles.headerButtons}>
-                        <button className={styles.headerBtn} onClick={downloadCurrentSheet} disabled={!visibleHeaders.length || loadingTable}>엑셀</button>
-                        <button className={styles.headerBtn} onClick={() => setShowSettings(true)}>설정</button>
-                        <button className={styles.headerBtn} onClick={() => loadMeta({ keepActive: true })} disabled={loadingMeta || loadingTable}>새로고침</button>
-                        <button className={`${styles.headerBtn} ${styles.headerBtnPoint}`} onClick={syncNow} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
+                </div>
+            </div>
+
+            <div className={styles.transportToolbar}>
+                <div className={styles.transportSearchRow}>
+                    <input
+                        className={`${styles.pathInput} ${styles.transportSearchInput}`}
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder={isAllView ? '전체 검색 (콤마 구분)' : '현재 선택 시트 검색'}
+                        aria-label={isAllView ? '전체 검색' : '현재 선택 시트 검색'}
+                    />
+                    <span className={styles.dateTabsMeta}>
+                        {isAllView ? `전체 ${processedRows.length.toLocaleString('ko-KR')} / ${rowCount.toLocaleString('ko-KR')}건` : `현재 선택 시트 ${processedRows.length.toLocaleString('ko-KR')}건`}
+                    </span>
+                </div>
+                <div className={styles.transportActionRow}>
+                    <div className={styles.transportActionGroup}>
+                        <button className={styles.transportActionBtn} onClick={() => savePreset(1)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 1에 저장합니다">P1 저장</button>
+                        <button className={styles.transportActionBtn} onClick={() => loadPreset(1)} title="프리셋 1을 불러옵니다">P1 로드</button>
+                        <button className={styles.transportActionBtn} onClick={() => savePreset(2)} title="현재 보이는 컬럼과 정렬 순서를 프리셋 2에 저장합니다">P2 저장</button>
+                        <button className={styles.transportActionBtn} onClick={() => loadPreset(2)} title="프리셋 2를 불러옵니다">P2 로드</button>
+                        <button className={styles.transportActionBtn} onClick={downloadCurrentSheet} disabled={!visibleHeaders.length || loadingTable}>엑셀</button>
+                    </div>
+                    <div className={`${styles.transportActionGroup} ${styles.transportPrimaryActions}`}>
+                        <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
+                        <button className={styles.transportActionBtn} onClick={() => setShowSettings(true)}>설정</button>
+                        <button className={styles.transportActionBtn} onClick={() => loadMeta({ keepActive: true })} disabled={loadingMeta || loadingTable}>새로고침</button>
+                        <button className={`${styles.transportActionBtn} ${styles.transportSyncBtn}`} onClick={syncNow} disabled={syncing}>{syncing ? '동기화 중' : 'NAS 동기화'}</button>
                         <button
                             className={styles.lookupBtn}
                             onClick={handleContainerLookup}
@@ -881,26 +906,6 @@ export default function AsanTransportHistory() {
                             </button>
                         )}
                     </div>
-                </div>
-            </div>
-
-            <div className={styles.topBar}>
-                <div className={styles.topBarLeft}>
-                    <input
-                        className={styles.pathInput}
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder={isAllView ? '전체 검색 (콤마 구분)' : '현재 선택 시트 검색'}
-                        aria-label={isAllView ? '전체 검색' : '현재 선택 시트 검색'}
-                    />
-                    <span className={styles.dateTabsMeta}>
-                        {isAllView ? `전체 ${processedRows.length.toLocaleString('ko-KR')} / ${rowCount.toLocaleString('ko-KR')}건` : `현재 선택 시트 ${processedRows.length.toLocaleString('ko-KR')}건`}
-                    </span>
-                    <button className={styles.resetBtn} onClick={() => savePreset(1)}>P1 저장</button>
-                    <button className={styles.resetBtn} onClick={() => loadPreset(1)}>P1 로드</button>
-                    <button className={styles.resetBtn} onClick={() => savePreset(2)}>P2 저장</button>
-                    <button className={styles.resetBtn} onClick={() => loadPreset(2)}>P2 로드</button>
-                    <button className={styles.dangerBtn} onClick={resetLayout}>↺ 정렬 초기화</button>
                 </div>
             </div>
 
@@ -929,6 +934,29 @@ export default function AsanTransportHistory() {
                     )}
                 </div>
             )}
+
+            <div
+                className={`${styles.hiddenColsZone} ${isDragOverHidden ? styles.hiddenColsZoneActive : ''}`}
+                onDragOver={(event) => { event.preventDefault(); setIsDragOverHidden(true); }}
+                onDragLeave={() => setIsDragOverHidden(false)}
+                onDrop={handleDropToHidden}
+                title="숨긴 컬럼입니다. 칩을 클릭하거나 표로 드래그하면 다시 표시됩니다. 표 헤더를 이 영역으로 드래그하면 숨길 수 있습니다."
+                aria-label="숨긴 컬럼 영역"
+            >
+                <span className={styles.hiddenColsHint}>숨김</span>
+                {hiddenColumnList.map(column => (
+                    <button
+                        key={column}
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, column)}
+                        onClick={() => handleRestoreColumn(column)}
+                        className={`${styles.hiddenChip} ${isContainerLookupColumn(column) ? styles.hiddenLookupChip : ''}`}
+                        title={`표로 복구: ${column}`}
+                    >
+                        {getHiddenChipLabel(column)}
+                    </button>
+                ))}
+            </div>
 
             <div className={styles.dateFilterZone}>
                 <span className={styles.dateFilterLabel}>연도</span>
@@ -1011,28 +1039,6 @@ export default function AsanTransportHistory() {
                     );
                 })}
                 {!selectedYearRecords.length && <span className={styles.dateTabsMeta}>동기화된 시트 없음</span>}
-            </div>
-
-            <div
-                className={`${styles.hiddenColsZone} ${isDragOverHidden ? styles.hiddenColsZoneActive : ''}`}
-                onDragOver={(event) => { event.preventDefault(); setIsDragOverHidden(true); }}
-                onDragLeave={() => setIsDragOverHidden(false)}
-                onDrop={handleDropToHidden}
-                title="헤더를 이 영역으로 드래그하면 숨김 처리됩니다. 칩을 클릭하면 다시 표시됩니다."
-            >
-                <span className={styles.hiddenColsHint}>숨김</span>
-                {hiddenColumnList.map(column => (
-                    <button
-                        key={column}
-                        draggable
-                        onDragStart={(event) => handleDragStart(event, column)}
-                        onClick={() => handleRestoreColumn(column)}
-                        className={`${styles.hiddenChip} ${isContainerLookupColumn(column) ? styles.hiddenLookupChip : ''}`}
-                        title={`표로 복구: ${column}`}
-                    >
-                        {getHiddenChipLabel(column)}
-                    </button>
-                ))}
             </div>
 
             {Object.keys(columnFilters).length > 0 && (
