@@ -1,3 +1,26 @@
+## [2026-06-04] 아산 운송내역 배차시간 초 단위 숨김 (v5.14.347)
+
+### 원인
+- 운송내역 원장 시간값이 `09:00:00`, `13:00:00`처럼 초 단위까지 표시되어 실제 배차시간 확인 UX가 선적관리 톤앤매너보다 길게 보였습니다.
+- 형 요청 기준으로 `배차 시간`은 초가 필요 없고 `13:00` 형태면 충분합니다.
+
+### 조치
+- `AsanTransportHistory.js`에 `배차 시간` 전용 셀 포맷터를 추가해 `HH:MM:SS` 값을 화면 표시 시 `HH:MM`으로 정리했습니다.
+- 원본 DB 값은 변경하지 않고, 테이블 셀 값 산출 경로에서만 표시값을 변환하도록 적용했습니다.
+- `asanTransportHistory.test.mjs`에 배차시간 포맷터와 셀 적용 경로 회귀 테스트를 추가했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 19개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 무한스크롤 TDZ 오류 수정 (v5.14.346)
 
 ### 원인

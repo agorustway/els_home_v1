@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.346 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.347 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운송내역 무한스크롤 콜백의 rows 선언 순서를 바로잡아 동적 청크 TDZ 런타임 오류를 해결했다.
+> 최신 업데이트: 아산 운송내역 `배차 시간` 표시를 초 단위 없이 `HH:MM` 형식으로 정리했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.346
+- **웹 버전**: v5.14.347
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -60,7 +60,7 @@
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고, 전체 원장은 전체/주간/월간 선택 시 지연 조회한다. `mode=meta`는 `row_count/valid_row_count`가 있으면 data JSON 없이 행수만 읽는다.
 - 운송내역은 상위 `배차판` 옆 탭이며 `/아산지점/2026_수출리스트.xlsx` 월별 시트를 `branch_transport_history`에 `target_month` 날짜키로 누적 저장한다. 웹은 NAS 파일을 직접 읽지 않고 DB `mode=meta/date/rows`만 조회하며, 설정 모달은 `/아산지점` 기준 NAS 파일 찾기를 제공한다. `출차시간` 헤더는 `청구금액`으로 정규화하고, 동기화는 현재월 1순위 후 인접월/나머지 월 순서로 진행한다.
 - 운송내역 `전체` 카드는 월 카드 왼쪽에 고정한다. `전체`는 선택 연도 DB 누적 원장을 날짜/입력순으로 합쳐 SEQ를 다시 부여하고, 첫 호출은 100건만 가져온 뒤 `더보기`로 이어 받는다. 연도 선택은 DB에 자료가 있는 연도만 표시해 2027년은 실제 자료 발생 후 노출한다.
-- 운송내역 테이블은 선적관리처럼 원본 컬럼과 컨테이너 이력 컬럼을 하나의 컬럼 세트로 보고, 헤더 드래그 숨김/복원, P1/P2 프리셋, 날짜 컬럼+일자 필터를 제공한다. 컨테이너 조회는 현재 검색/필터/로드 결과의 컨테이너만 대상으로 하며 저장된 이력값은 전체/월별 화면에서 같은 파일 경로와 컨테이너 번호 기준으로 재사용한다.
+- 운송내역 테이블은 선적관리처럼 원본 컬럼과 컨테이너 이력 컬럼을 하나의 컬럼 세트로 보고, 헤더 드래그 숨김/복원, P1/P2 프리셋, 날짜 컬럼+일자 필터를 제공한다. `배차 시간`은 화면에서 `HH:MM`으로 표시한다. 컨테이너 조회는 현재 검색/필터/로드 결과의 컨테이너만 대상으로 하며 저장된 이력값은 전체/월별 화면에서 같은 파일 경로와 컨테이너 번호 기준으로 재사용한다.
 - 배차 `현황판`은 `branch_dispatch_dashboard_cache`의 집계 payload를 우선 사용한다. 캐시가 없을 때만 full 원장을 보강 조회하며, NAS 동기화 후 Core가 캐시를 비동기 프리워밍한다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
@@ -83,6 +83,7 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.347**: 아산 운송내역 `배차 시간` 컬럼을 `09:00:00` 대신 `09:00`처럼 초 단위 없이 표시하도록 셀 포맷터를 추가하고 회귀 테스트를 보강했다.
 - **v5.14.346**: 운송내역 동적 청크에서 무한스크롤 콜백이 `rows.length`를 rows 선언 전에 평가해 `Cannot access 'e0' before initialization`이 발생하던 문제를 수정했다. `headers/rows` 선언을 콜백 위로 이동하고 회귀 테스트를 추가했다.
 - **v5.14.345**: `/employees/branches/asan` 라우트에 서버 `layout.js`를 추가해 `force-dynamic`, `revalidate=0`, `force-no-store`로 고정했다. 운영에서 정적 HTML 캐시 HIT가 남아 이전 청크와 최신 청크가 섞이며 페이지 로드 오류가 나는 경로를 차단했다.
 - **v5.14.344**: 아산 운송내역 `branch_transport_history`를 AI RAG에 연결해 월/일자/컨테이너/업체/차량/청구금액 질문을 사내 데이터베이스 기준으로 답하게 했다. AI 소개·가이드·RAG 문구의 Supabase 노출 표현은 사내 데이터베이스로 바꿨다.
@@ -90,6 +91,7 @@
 - **v5.14.342**: 아산 운송내역에 선적관리형 숨김 드래그/프리셋 방식을 적용하고, DB `rows` 일자 필터와 컨테이너 이력 조회 컬럼을 연결했다. 연도 선택은 DB 존재 연도만 표시한다.
 - **v5.14.341**: 상세배차/배차변동 테이블 헤더와 데이터 행 높이·글자 크기를 통일하고, DG/RF 선택값은 일반 굵기로 표시한다. 노란 변경/선택 셀은 box-shadow 테두리 없이 배경색만 남겼다.
 ## VERIFICATION
+- 운송내역 배차시간 표시 변경은 `node --test web/tests/asanTransportHistory.test.mjs` 19개, `npm run lint`, `npm run build`를 통과했다.
 - 운송내역 TDZ 대응은 `node --test web/tests/asanTransportHistory.test.mjs` 19개, `npm run lint`, `npm run build`를 통과했고, 새 빌드 청크에서 rows 선언이 무한스크롤 offset 참조보다 먼저 나오는 것을 확인했다.
 - 아산 라우트 캐시 대응은 `node --test web/tests/asanDashboardView.test.mjs` 42개, `npm run lint`, `npm run build`를 통과했고, 빌드 결과 `/employees/branches/asan`가 `ƒ Dynamic`으로 표시됨을 확인했다.
 - 운송내역 RAG/UX 보강은 관련 RAG·운송내역 테스트 48개, 실제 DB RAG 스모크, `npm run lint`, `.next` 정리 후 `npm run build`를 통과했다. 로컬 HTTP 스모크는 `/employees/branches/asan?debug=true`와 `mode=meta/rows` 응답 200을 확인했다.

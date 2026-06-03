@@ -94,6 +94,22 @@ function isDateHeader(column) {
     );
 }
 
+function isDispatchTimeHeader(column) {
+    const text = String(column || '').replace(/\s+/g, '').toLowerCase();
+    return text === '배차시간';
+}
+
+function formatTransportTimeValue(value) {
+    const text = String(value ?? '').trim();
+    const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/);
+    if (!match) return text;
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
+}
+
+function formatTransportCellValue(column, value) {
+    return isDispatchTimeHeader(column) ? formatTransportTimeValue(value) : value;
+}
+
 function normalizeFilterValue(value) {
     const text = String(value ?? '').trim();
     return text || '(빈 값)';
@@ -532,7 +548,7 @@ export default function AsanTransportHistory() {
             return getContainerLookupValue(containerLookupResults[containerNo], column);
         }
         const index = headers.indexOf(column);
-        return index >= 0 ? row[index] : '';
+        return index >= 0 ? formatTransportCellValue(column, row[index]) : '';
     }, [containerLookupResults, getRowContainerNo, headers]);
 
     const processedRows = useMemo(() => {
