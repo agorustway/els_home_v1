@@ -1,3 +1,19 @@
+## [2026-06-03] 선적관리 정렬 중 확정모선 우선노출 차단 (v5.14.336)
+### 원인
+- `작업일 ▲` 같은 사용자 정렬은 Supabase 서버 정렬로 이미 적용됐지만, 프론트 `processedData`에서 확정모선 값이 있는 행을 위로 올리는 기본 우선노출을 다시 실행했습니다.
+- 그래서 확정모선 값이 있는 2행이 오름차순 결과 앞에 붙어 정렬이 깨진 것처럼 보였습니다.
+### 조치
+- 확정모선 기본 우선노출은 정렬 컬럼이 없을 때만 적용하도록 조건을 좁혔습니다.
+- 사용자 정렬이 서버 정렬이든 컨테이너 이력 컬럼 클라이언트 정렬이든 최종 표 순서를 덮어쓰지 않게 했습니다.
+### 검증
+- `node --test --test-name-pattern "아산 선적관리 화면은 DB 조회를 페이지 단위로 가져온다" web/tests/asanShippingFlow.test.mjs`: 통과
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanShipping.js`
+- `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 탭 및 NAS 수출리스트 원장화 (v5.14.335)
 ### 핵심
 - 아산 상위 탭에 `운송내역`을 `배차판` 바로 옆에 추가하고, 현재 선택 월/시트만 조회하는 테이블 관리 화면을 만들었습니다.

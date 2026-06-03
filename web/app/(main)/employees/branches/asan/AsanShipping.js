@@ -1277,7 +1277,7 @@ export default function AsanShipping() {
                     sortConfig.direction,
                 );
             });
-        } else {
+        } else if (!sortConfig.key) {
             // Default Sort: AD, AE, AF values to top
             const targetCols = getConfirmedVesselColumnIndexes(data.headers);
             if (targetCols.length > 0) {
