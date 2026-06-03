@@ -1,3 +1,26 @@
+## [2026-06-03] GLAPS 컨테이너 원본 시트 평탄화 (v5.14.339)
+### 원인
+- `GLAPS컨테이너배차관리` 원본에는 오더번호/진행상태/정산상태 등 세로 통합셀이 있어 날짜별 행수가 달라질 때 선택하여붙여넣기와 행삭제 보정이 깨질 수 있었습니다.
+- 수동으로 행을 지우면 `GLAPS자동계산`이 컨테이너 번호 기준으로 다시 세는 물리 행번호와 실제 원본 행이 어긋날 위험이 있었습니다.
+### 조치
+- 별도 연결 파일을 만들지 않고, 수식완성본 생성 단계에서 `GLAPS컨테이너배차관리`를 통합셀 없는 일반 값 표로 새로 만들게 했습니다.
+- 병합셀 대표값은 하위 행까지 펼쳐 넣고, 날짜/시간/일시 컬럼은 Excel 숫자값과 표시 형식을 유지했습니다.
+- `GLAPS자동계산`은 평탄화된 표의 컨테이너 번호 컬럼을 기준으로 원본행을 다시 찾습니다.
+- 기존 파일명 `GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`도 같은 정상본으로 덮어썼습니다.
+### 검증
+- `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
+- `node --test web/tests/glapsContainerUploadBuilder.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 48개 통과
+- 산출물 검증: `GLAPS컨테이너배차관리` 병합셀 0개, `GLAPS자동계산!B2=12`, `ELS!T3=WHSU6549777`, 수식 오류 문자열 0건.
+### 변경 파일
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.ps1`
+- `web/tests/glapsContainerUploadBuilder.test.mjs`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 전체/연도 보기와 테이블 도구 보강 (v5.14.338)
 ### 원인
 - 월 카드가 `target_month` 월 라벨과 `sheet_name`을 함께 표시해 `1월 1월`처럼 중복으로 보였습니다.
@@ -20,6 +43,35 @@
 - `web/app/api/branches/asan/transport-history/route.js`
 - `web/utils/asanTransportHistory.mjs`
 - `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-03] GLAPS 업로드양식 수식완성본 생성
+### 핵심
+- 형이 준 수기 원본 `work-docs/glaps/GLAPS 26년 6월 업로드양식.xlsx`를 서식 기준본으로 사용하고, `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동.xlsx`의 `GLAPS컨테이너배차관리` 데이터만 읽어 수식완성본을 다시 만들었습니다.
+- `GLAPS자동계산` 보조시트를 추가해 `GLAPS컨테이너배차관리` 시트의 `컨테이너 번호`가 있는 행만 순서대로 뽑습니다.
+- 원본 시트는 행이 많아질 수 있으므로 `X2:X20000`까지 스캔하고, 최종 `ELS` 출력은 200행까지만 수식화했습니다.
+- `ELS` AC:CL 정규코드화 기존 수식은 유지하되 빈 입력행에서 오류가 나오지 않도록 `IF($B행="","",원래수식)`으로 감쌌고, 203행 이후 입력/업로드 영역은 비웠습니다.
+- 1차 산출물의 Excel 복구창/서식 풀림 원인은 ExcelJS 전체 재저장 과정에서 원본 시트 XML(`ELS`, `GLAPS정리`, `CKD고객사코드`)이 다시 쓰인 것이어서, 전체 재저장을 금지하고 Excel COM이 원본 복사본에 직접 수식을 주입/저장하는 방식으로 교체했습니다.
+- `GLAPS정리`, `CKD고객사코드`, `ELS` 열폭/목록/서식은 수기 원본을 Excel이 그대로 들고 가며, `GLAPS컨테이너배차관리`와 `GLAPS자동계산`만 새로 붙입니다.
+- 원래 3행 기준 업로드 수식이 4행 이후에서도 `F3/I3` 같은 입력행을 계속 보던 문제도 함께 잡아, 코드표 범위(`$G$3:$J$114`)는 유지하고 입력행 참조만 행별로 이동하게 했습니다.
+- 원본값이 비어 있는 필드는 `INDEX()` 결과가 `0`이나 `01월 00일`로 보이지 않도록 빈칸 가드를 추가했습니다. 입력값이 있는데 코드표에서 못 찾는 `#N/A`는 확인 필요 신호라 숨기지 않습니다.
+- 산출물: `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx`. 기존 오류 산출물명 `GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`도 같은 정상 파일로 덮어썼습니다.
+### 검증
+- `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/glapsContainerUploadBuilder.test.mjs`: 47개 통과
+- Excel COM 검증: `GLAPS자동계산!B2=12`, `ELS!T3=WHSU6549777`, `ELS` ContainerNo 152건, 첫 행 `06월 04일/ELS솔루션/H000_GB` 계산 확인.
+- 빈값 표시 검증: 155행 이후 빈 슬롯은 공란, 원본 빈 필드는 `0`/`01월 00일` 없이 공란 처리.
+- OpenXML 검증: ZIP `testzip=None`, `GLAPS자동계산!B2`가 `GLAPS컨테이너배차관리!X2:X20000` 스캔.
+- 원본 데이터 검증: `GLAPS컨테이너배차관리` 195행 중 컨테이너 번호가 있는 행 152건을 출력 대상으로 확인.
+### 변경 파일
+- `web/utils/glapsContainerFormulaTemplate.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.ps1`
+- `web/tests/glapsContainerUploadBuilder.test.mjs`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
@@ -94,6 +146,26 @@
 
 ---
 
+## [2026-06-03] 컨테이너배차관리 GLAPS 업로드 자동기입 산출 (v5.14.334)
+### 핵심
+- `컨테이너배차관리___20260603110551.xlsx`를 `GLAPS 26년 6월 업로드양식.xlsx`의 `GLAPS정리`/`CKD고객사코드` 코드표로 역매칭하는 변환기를 추가했습니다.
+- 기존 수식 의존 대신 `ELS` 시트의 우리 기준 영역과 GLAPS 업로드 영역을 계산 완료 값으로 직접 채워 `#NAME?`/수식 계산 지연 영향을 차단했습니다.
+- `EMC -> EMA` 에버그린 선사 보정을 추가했고, 코드표에 없는 값은 `확인필요` 시트로 분리했습니다.
+- 산출물: `work-docs/glaps/GLAPS_26년_6월_업로드_자동기입_20260603.xlsx` (193행).
+### 확인필요
+- 31행/70항목: `AAAAAAAAA` 운송경로 31건, `AAA` 반출지 23건, `LYG` 선사 3건, `S103_K16/S103_K01` 작업지 및 `S009_H02/S103_K16/S103_K01` 실출하지 미매칭.
+### 검증
+- `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/glapsContainerUploadBuilder.test.mjs`: 45개 통과
+- 산출물 재열기 검증: `ELS` 데이터 193행, 오류 문자열 0건, `확인필요` 31행/70항목.
+### 변경 파일
+- `web/utils/glapsContainerUploadBuilder.mjs`
+- `web/scripts/build-glaps-container-upload.mjs`
+- `web/tests/glapsContainerUploadBuilder.test.mjs`
+- `work-docs/glaps/GLAPS_26년_6월_업로드_자동기입_20260603.xlsx`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-02] 상세배차 반출지(출발)코드 이름 fallback 차단 (v5.14.333)
 ### 원인
 - 상세배차 GLAPS 코드 계산에서 `getGlapsRouteLocationCodeCandidates('부산신항')`의 첫 후보가 표시명 `부산신항`이라, 운송경로 매칭이 없는 행의 `반출지(출발)코드`에 이름이 들어갈 수 있었습니다.
@@ -110,6 +182,27 @@
 - `web/utils/asanGlapsUploadExport.mjs`
 - `web/app/(main)/employees/branches/asan/page.js`
 - `web/tests/asanDispatchDetailLines.test.mjs`, `web/tests/glapsMasterData.test.mjs`, `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-02] NAS 배차 원본 `-1.xlsm` 열기/저장 오류 재보정
+### 원인
+- 글로비스KD외/모비스AS `-1.xlsm`은 `SumNumbersFromRange`, `SplitKakao`, `GetTextQuantityListFasT` 같은 VBA UDF와 배열/스필 수식이 많아, `forceFullCalc/fullCalcOnLoad`가 켜진 상태에서 열면 매크로 로드 전에 강제 재계산되어 `#NAME?`와 배열 저장 오류가 발생할 수 있었습니다.
+- 수식 본문을 XML에서 직접 감싸는 방식은 배열/스필 수식 메타와 충돌해 Excel 열기 실패 위험이 있어 중단했습니다.
+### 조치
+- 두 파일 모두 수식 본문은 그대로 보존하고 `calcPr`는 `calcMode="manual"`만 남기도록 보정했습니다.
+- `ThisWorkbook`에 `Workbook_Open` 이벤트를 추가해 매크로가 허용된 경우에만 `Application.Calculation = xlCalculationAutomatic`과 `CalculateFullRebuild`가 실행되도록 했습니다.
+- 모비스 대형 PNG 압축과 VBA 바이너리 복원은 유지했습니다.
+- 재교체 전 문제 버전도 `.backup-open-fix-20260602-174600`으로 백업했습니다.
+### 검증
+- 매크로 차단 상태: 두 파일 모두 열기 성공, 샘플 UDF 셀(`#NAME?` 대신 기존 계산값) 확인, `CalcMode=manual`.
+- 매크로 허용 상태: 두 파일 모두 열기 성공, `Workbook_Open` 후 `CalcMode=automatic`, 샘플 UDF 셀 정상 확인.
+- 로컬 복사본 수정 후 저장: 글로비스/모비스 모두 저장 성공.
+- NAS 업로드 검증: SHA256 일치 후 교체, `zipfile.testzip()` 결과 두 파일 모두 `None`.
+- 최종 크기: 글로비스 `4,419,182`, 모비스 `5,697,626`.
+### 변경 파일
+- NAS 원본: `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외)-1.xlsm`, `/volume2/아산지점/A_운송실무/2026년_배차-일일배차(모비스AS)-1.xlsm`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
