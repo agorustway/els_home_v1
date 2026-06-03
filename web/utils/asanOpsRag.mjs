@@ -117,7 +117,7 @@ export function buildAsanChangeEventsRagText(rows = [], intent = {}) {
   });
 
   let text = `\n\n## 아산지점 배차변동내역\n`;
-  text += `[시스템: Supabase branch_dispatch_detail_change_events / 조회 범위 ${intent.dateScope.label} / 조회 ${rows.length}건]\n`;
+  text += `[시스템: 사내 데이터베이스 branch_dispatch_detail_change_events / 조회 범위 ${intent.dateScope.label} / 조회 ${rows.length}건]\n`;
   text += `- 변경유형별: ${topMapText(byType)}\n`;
   text += `- 처리상태별: ${topMapText(byStatus)}\n`;
   text += `- 수량변동 합계: ${deltaTotal}대\n`;
@@ -175,7 +175,7 @@ export function buildAsanGlapsRagText({ version = null, routes = [], aliases = [
   const byAliasType = {};
   aliases.forEach((row) => addCount(byAliasType, row.alias_type || 'unknown'));
   let text = `\n\n## 아산지점 GLAPS코드\n`;
-  text += `[시스템: Supabase glaps_master_versions/glaps_transport_routes/glaps_master_aliases / 활성버전 ${version?.id || '없음'} / 검색 ${intent.searchTerms?.join(', ') || '전체'}]\n`;
+  text += `[시스템: 사내 데이터베이스 glaps_master_versions/glaps_transport_routes/glaps_master_aliases / 활성버전 ${version?.id || '없음'} / 검색 ${intent.searchTerms?.join(', ') || '전체'}]\n`;
   text += `- 원장: ${version?.source_name || '-'} / 반영일시: ${version?.imported_at || '-'}\n`;
   text += `- 운송경로 샘플: ${routes.length}건 / 코드표 샘플: ${aliases.length}건 / 코드유형: ${topMapText(byAliasType)}\n`;
   text += `> [해석 규칙] 상세배차 GLAPS 매칭은 상차지 + 경유지(ELS/작업지) + 하차지(선적)을 기준으로 기존 운송경로코드를 찾는다. 없는 코드를 새로 만들지 마라.\n`;

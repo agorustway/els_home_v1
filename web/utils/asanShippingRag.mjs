@@ -127,7 +127,7 @@ export function buildAsanShippingRagText(data = {}, intent = {}, options = {}) {
   const terms = (intent.searchTerms || []).join(', ') || '전체';
 
   let text = `\n\n## 아산지점 선적관리\n`;
-  text += `[시스템: Supabase branch_shipping_files/branch_shipping_rows / 조회 조건 ${terms} / 표시 ${rows.length}건 / 전체 ${data.total ?? rows.length}건 / 소스 ${data.source || 'unknown'}]\n`;
+  text += `[시스템: 사내 데이터베이스 branch_shipping_files/branch_shipping_rows / 조회 조건 ${terms} / 표시 ${rows.length}건 / 전체 ${data.total ?? rows.length}건 / 소스 ${data.source || 'unknown'}]\n`;
   text += `- 헤더: ${headers.join(', ') || '미탐지'}\n`;
   text += `> [해석 규칙] 선적관리 질문은 이 DB 행을 기준으로 답한다. 주입되지 않은 NAS 원본 파일이나 이미지 내용을 추정하지 마라.\n`;
 

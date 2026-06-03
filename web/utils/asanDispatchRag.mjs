@@ -852,7 +852,7 @@ function queryBuilderForIntent(supabase, intent) {
 function buildNoDataText(intent, detail) {
   return `\n\n## 아산지점 배차판 (${intent.dateScope.label})\n`
     + `> [DB 미동기화/데이터 없음] ${detail}\n`
-    + `> Supabase branch_dispatch 기준으로 조회했지만 해당 범위의 배차 데이터가 없습니다. 상세 내역은 [아산 배차판](/employees/branches/asan)에서 확인해 주세요.`;
+    + `> 사내 데이터베이스 branch_dispatch 기준으로 조회했지만 해당 범위의 배차 데이터가 없습니다. 상세 내역은 [아산 배차판](/employees/branches/asan)에서 확인해 주세요.`;
 }
 
 export function buildAsanDispatchRagText(records = [], intent, options = {}) {
@@ -889,7 +889,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
   const answerScopeLabel = hasActiveFilters ? `질문 조건(${filterLabel}) 매칭` : '조회 범위 전체';
 
   let text = `\n\n## 아산지점 배차판\n`;
-  text += `[시스템: Supabase branch_dispatch / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
+  text += `[시스템: 사내 데이터베이스 branch_dispatch / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
   text += buildAnswerSummaryText(answerSummary, intent, answerScopeLabel);
   text += `### 도표형 스키마(동적 추론)\n`;
   for (const profile of schemaProfile) {
@@ -1233,7 +1233,7 @@ export function buildAsanDispatchDetailRagText(records = [], intent, options = {
   ].filter(Boolean).join(', ') || '전체';
 
   let text = `\n\n## 아산지점 상세배차\n`;
-  text += `[시스템: Supabase branch_dispatch 원장 -> 상세배차 라인 변환 / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
+  text += `[시스템: 사내 데이터베이스 branch_dispatch 원장 -> 상세배차 라인 변환 / 레코드 ${sortedRecords.length}개 / 조회 범위 ${intent.dateScope.label} / 실제 날짜 ${loadedDates.join(', ') || '없음'} / 질문 필터 ${filterLabel}]\n`;
   text += `- 상세배차 라인 총 ${formatCount(targetLines.length)}대`;
   if (hasActiveIntentFilters(intent)) text += ` (전체 ${formatCount(allLines.length)}대 중 조건 매칭)`;
   text += `\n`;

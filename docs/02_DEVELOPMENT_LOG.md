@@ -1,3 +1,35 @@
+## [2026-06-03] 아산 운송내역 DB RAG 연결 및 AI 문구 정리 (v5.14.344)
+
+### 원인
+- 아산 운송내역 원장(`2026_수출리스트.xlsx`)이 `branch_transport_history`에 누적 저장되기 시작했지만, AI 채팅 RAG 파이프라인에는 아직 연결되지 않아 운송내역 관련 질문을 직접 읽어 답하지 못했습니다.
+- AI 소개/가이드와 RAG 주입 문구 일부에 일반 사용자에게 낯선 `Supabase` 표현이 남아 있어, 형 요청대로 사용자 노출 문구는 사내 데이터베이스 기준으로 정리할 필요가 있었습니다.
+
+### 조치
+- `web/utils/asanTransportHistoryRag.mjs`를 추가해 운송내역 질문의 월/일자/컨테이너/검색어 의도를 파싱하고, 월별 DB 원장을 제한적으로 펼쳐 행수·업체/차량/선사 상위값·청구금액·행 샘플을 주입하게 했습니다.
+- `/api/chat`의 아산 운영 DB RAG 병렬 묶음에 운송내역 컨텍스트를 추가했습니다.
+- 실제 청구금액 칸이 공란인 경우 `0원`처럼 오해하지 않도록 `청구금액 값 없음(조건 행의 청구금액 칸 공란)`으로 표시하게 했습니다.
+- AI 버전을 `v5.14.344`로 올리고, 소개/가이드/시스템 능력 설명과 기존 아산 RAG 문구에서 `Supabase` 사용자 노출 표현을 `사내 데이터베이스` 또는 `운영 데이터베이스`로 바꿨습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistoryRag.test.mjs web/tests/aiAssistantMeta.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanTransportHistory.test.mjs web/tests/asanPerformanceRag.test.mjs web/tests/asanDispatchRag.test.mjs`: 48개 통과
+- 실제 DB 스모크: `6월 아산 운송내역 KCC 청구금액 찾아줘` 기준 `shouldQuery=true`, `success=true`, 6월 원장 200건 중 조건 5건 조회 확인
+- 임시 스모크 파일은 `.tmp_test`에 생성 후 삭제했습니다.
+
+### 변경 파일
+- `web/utils/asanTransportHistoryRag.mjs`
+- `web/app/api/chat/route.js`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/utils/asanDispatchRag.mjs`
+- `web/utils/asanShippingRag.mjs`
+- `web/utils/asanOpsRag.mjs`
+- `web/utils/asanPerformanceRag.mjs`
+- `web/tests/asanTransportHistoryRag.test.mjs`
+- `web/tests/aiAssistantMeta.test.mjs`
+- `web/tests/asanOpsRag.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] GLAPS 수식완성본 최신 파일 상대경로 외부참조 전환 (v5.14.343)
 
 ### 원인
@@ -11,6 +43,7 @@
 - Excel COM 생성 단계에서 `GLAPS컨테이너배차관리` 시트 복사를 제거하고, 산출물에는 `ELS`, `GLAPS자동계산`, `GLAPS정리`, `CKD고객사코드`만 남깁니다.
 - 기본 산출물명을 `work-docs/glaps/GLAPS 업로드양식_자동_최신파일참조.xlsx`로 분리했습니다.
 - `work-docs/glaps/GLAPS입력계산기.bat`과 `glaps-input-calculator.ps1`을 추가해 Node 없이 Excel+PowerShell 기본 환경에서도 같은 폴더 최신 원본 링크를 갱신하고, 성공 시 최종 산출물을 바로 열게 했습니다.
+- 최종 사용본은 `work-docs/glaps/GLAPS강범수계산기`에 보관합니다. 향후 GLAPS 원본 양식 업데이트 때는 형이 지정한 ELS 코드화/스크린샷 영역 수식과 `GLAPS정리`, `CKD고객사코드`의 헤더 구조를 우선 기준으로 삼고, 우리 역입력 수식은 그 기준 위에 다시 얹습니다.
 
 ### 검증
 - `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
@@ -19,6 +52,7 @@
 - Excel COM 재오픈 검증: 내부 `GLAPS컨테이너배차관리` 시트 없음, 외부 링크 소스 1건, `GLAPS자동계산!B201`과 `ELS!T202`까지 200행 수식 유지.
 - 폴더 이동 검증: 산출물과 원본을 `.tmp_test/glaps-portable-move`로 함께 복사해 열었을 때 링크가 복사된 폴더의 원본 파일로 해석되고 `ELS` 컨테이너 건수가 유지됨.
 - OOXML 검증: 외부참조 관련 XML에서 기존 폴더명, `file:///`, `absPath`, `absoluteUrl` 흔적 0건.
+- 최종본 추가 점검: `GLAPS강범수계산기` 폴더 기준으로 열림 확인, 최신 소스 70건 산출, 빈 꼬리행 표시 누수 0건. `AI/CL` 일부 `#N/A`는 파일 손상 문제가 아니라 GLAPS 코드화 수식의 목록 미매칭 후보로 분리합니다.
 
 ### 변경 파일
 - `web/scripts/build-glaps-container-formula-workbook.mjs`
