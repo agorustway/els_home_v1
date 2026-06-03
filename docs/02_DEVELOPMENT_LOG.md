@@ -1,3 +1,30 @@
+## [2026-06-03] GLAPS 수식완성본 최신 파일 외부참조 전환 (v5.14.343)
+
+### 원인
+- `GLAPS컨테이너배차관리` 원본은 GLAPS 다운로드 자체에 병합셀이 있어, 산출물 안으로 복사하거나 붙여넣기로 교체하면 병합/행삭제/수식 참조 리스크가 계속 남았습니다.
+- 형이 새 다운로드 파일을 같은 폴더에 두면 파일명 timestamp 기준 최신본을 자동으로 쓰는 방식이 더 안전하다고 판단했습니다.
+
+### 조치
+- `web/scripts/build-glaps-container-formula-workbook.mjs`가 `--source` 미지정 시 출력 파일 폴더에서 `컨테이너배차관리___*.xlsx` 중 가장 큰 timestamp 파일을 자동 선택하게 했습니다.
+- `GLAPS자동계산` 수식은 내부 원본 시트가 아니라 `[컨테이너배차관리___YYYYMMDDHHMMSS.xlsx]컨테이너배차관리__` 외부참조를 사용합니다.
+- Excel COM 생성 단계에서 `GLAPS컨테이너배차관리` 시트 복사를 제거하고, 산출물에는 `ELS`, `GLAPS자동계산`, `GLAPS정리`, `CKD고객사코드`만 남깁니다.
+- 기본 산출물명을 `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx`로 분리했습니다.
+
+### 검증
+- `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
+- `node --test web/tests/glapsContainerUploadBuilder.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 49개 통과
+- 실제 생성 검증: 최신 원본 `컨테이너배차관리___20260603134247.xlsx` 자동 선택, 원본 52행/컨테이너 9건, `ELS` 출력 9건.
+- Excel COM 재오픈 검증: 내부 `GLAPS컨테이너배차관리` 시트 없음, 외부 링크 소스 1건, `GLAPS자동계산!B201`과 `ELS!T202`까지 200행 수식 유지.
+
+### 변경 파일
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.ps1`
+- `web/tests/glapsContainerUploadBuilder.test.mjs`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 선적관리형 UX와 컨테이너 이력 조회 (v5.14.342)
 
 ### 원인
@@ -26,6 +53,44 @@
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
+
+## [2026-06-03] 자료실 NAS 데스크탑 탐색기형 리스트 복구 (v5.14.340)
+
+### 배경
+- 자료실(NAS) 데스크탑 화면이 윈도우 탐색기형 파일 브라우저가 아니라 `[폴더]` 텍스트 라벨과 평평한 테이블처럼 보였습니다.
+- 직전 모바일 CSS 보정은 유지해야 하지만, 데스크탑에서는 행 밀도·컬럼 폭·파일/폴더 시각 신호가 다시 살아야 했습니다.
+
+### 조치
+- `ArchiveBrowser.js`의 `[폴더]`/`[파일]` 텍스트 라벨을 CSS 기반 파일/폴더 아이콘 마커로 교체했습니다.
+- `archive.module.css`에서 데스크탑 자료실을 탐색기형 주소줄, 고정 컬럼 테이블, 조밀한 행 높이, hover/selection 색상, 카드 아이콘 보기로 재구성했습니다.
+- 모바일 헤더 줄바꿈, 빈 NAS 응답 안내, 디버그 role fallback 보정은 유지했습니다.
+- `archiveBrowserCss.test.mjs`에 데스크탑 탐색기형 표/아이콘 회귀 테스트를 추가했습니다.
+
+### 검증
+- `node --test tests/archiveBrowserCss.test.mjs`
+- `npm run lint -- "app/(main)/employees/(intranet)/archive/ArchiveBrowser.js" tests/archiveBrowserCss.test.mjs`
+
+## [2026-06-03] 아산 상세/변동 테이블 행 밀도와 선택 표시 정리 (v5.14.341)
+### 원인
+- 상세배차/배차변동 표 헤더는 `0.72rem`, 데이터 셀은 `0.76rem`로 달라 제목과 데이터행이 같은 밀도로 보이지 않았습니다.
+- DG/RF 선택값은 공통 select 굵기(`800`)를 그대로 타서 다른 코드 셀보다 과하게 강조됐습니다.
+- 변경/선택 셀은 배경색 위에 노란 inset 테두리까지 있어 변동내역에서 카드 테두리처럼 번잡하게 보였습니다.
+### 조치
+- 공통 배차 테이블 헤더/데이터 셀을 `height: 24px`, `font-size: 0.76rem`, `line-height: 1.18`로 통일했습니다.
+- DG/RF select는 일반 굵기(`400`)로 낮췄습니다.
+- 변경/선택/확정후수정 셀의 inset `box-shadow`를 제거하고 기존 표 grid border와 배경색만 남겼습니다.
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 41개 통과
+- `npm run lint`: 통과
+- `git diff --check`: 통과
+- `npm run build`: 컴파일은 성공했으나 기존 동적 라우트 `/employees/board/free/[id]/edit` page data 수집 단계에서 `PageNotFoundError`가 발생해 완료 실패. 해당 `page.js` 파일은 실제로 존재해 이번 CSS 변경과 별도 빌드/Next 캐시 이슈로 분리했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] GLAPS 컨테이너 원본 시트 평탄화 (v5.14.339)
 ### 원인
 - `GLAPS컨테이너배차관리` 원본에는 오더번호/진행상태/정산상태 등 세로 통합셀이 있어 날짜별 행수가 달라질 때 선택하여붙여넣기와 행삭제 보정이 깨질 수 있었습니다.
@@ -85,12 +150,15 @@
 - `GLAPS정리`, `CKD고객사코드`, `ELS` 열폭/목록/서식은 수기 원본을 Excel이 그대로 들고 가며, `GLAPS컨테이너배차관리`와 `GLAPS자동계산`만 새로 붙입니다.
 - 원래 3행 기준 업로드 수식이 4행 이후에서도 `F3/I3` 같은 입력행을 계속 보던 문제도 함께 잡아, 코드표 범위(`$G$3:$J$114`)는 유지하고 입력행 참조만 행별로 이동하게 했습니다.
 - 원본값이 비어 있는 필드는 `INDEX()` 결과가 `0`이나 `01월 00일`로 보이지 않도록 빈칸 가드를 추가했습니다. 입력값이 있는데 코드표에서 못 찾는 `#N/A`는 확인 필요 신호라 숨기지 않습니다.
+- `GLAPS컨테이너배차관리` 교체는 행 삭제/붙여넣기 대신 GLAPS 다운로드 원본 시트를 통째로 복사하도록 바꿨습니다. `컨테이너배차관리___20260603134247.xlsx`처럼 병합셀이 있는 원본도 병합범위를 보존합니다.
 - 산출물: `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx`. 기존 오류 산출물명 `GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`도 같은 정상 파일로 덮어썼습니다.
+- 새 원본 교체 산출물: `work-docs/glaps/GLAPS 26년 6월 업로드양식_134247_원본서식보존.xlsx`.
 ### 검증
 - `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
 - `node --test web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs web/tests/glapsContainerUploadBuilder.test.mjs`: 47개 통과
 - Excel COM 검증: `GLAPS자동계산!B2=12`, `ELS!T3=WHSU6549777`, `ELS` ContainerNo 152건, 첫 행 `06월 04일/ELS솔루션/H000_GB` 계산 확인.
 - 빈값 표시 검증: 155행 이후 빈 슬롯은 공란, 원본 빈 필드는 `0`/`01월 00일` 없이 공란 처리.
+- 13:42 원본 교체 검증: `GLAPS컨테이너배차관리` 52행/컨테이너 9건, 병합 6개(`E4:E7`, `H4:H7`, `I4:I7`, `E28:E29`, `H28:H29`, `I28:I29`) 보존, `ELS` 산출 9건.
 - OpenXML 검증: ZIP `testzip=None`, `GLAPS자동계산!B2`가 `GLAPS컨테이너배차관리!X2:X20000` 스캔.
 - 원본 데이터 검증: `GLAPS컨테이너배차관리` 195행 중 컨테이너 번호가 있는 행 152건을 출력 대상으로 확인.
 ### 변경 파일
@@ -100,6 +168,7 @@
 - `web/tests/glapsContainerUploadBuilder.test.mjs`
 - `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx`
 - `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_수식완성.xlsx`
+- `work-docs/glaps/GLAPS 26년 6월 업로드양식_134247_원본서식보존.xlsx`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---

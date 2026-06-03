@@ -21,6 +21,7 @@ import {
   wrapFormulaWithInputGuard,
 } from '../utils/glapsContainerFormulaTemplate.mjs';
 import {
+  GLAPS_CONTAINER_SOURCE_SHEET_NAME,
   GLAPS_CONTAINER_CODE_SHEET_NAME,
   GLAPS_CONTAINER_TEMPLATE_SHEET_NAME,
 } from '../utils/glapsContainerUploadBuilder.mjs';
@@ -30,9 +31,9 @@ const WEB_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 
 const DEFAULT_REFERENCE_TEMPLATE_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식.xlsx');
-const DEFAULT_SOURCE_WORKBOOK_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식_자동.xlsx');
-const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식_자동_원본서식보존.xlsx');
-const SOURCE_SHEET_NAME = 'GLAPS컨테이너배차관리';
+const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, 'work-docs', 'glaps', 'GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx');
+const EMBEDDED_SOURCE_SHEET_NAME = 'GLAPS컨테이너배차관리';
+const SOURCE_WORKBOOK_FILE_PATTERN = /^컨테이너배차관리___(\d+)\.xlsx$/i;
 const ELS_INPUT_START_COLUMN = 2;
 const ELS_INPUT_END_COLUMN = 27;
 const ELS_UPLOAD_START_COLUMN = 29;
@@ -153,6 +154,35 @@ function requiredColumn(headerMap, headerName) {
 function optionalColumn(headerMap, headerName) {
   const col = headerMap.get(normalizeGlapsFormulaHeader(headerName));
   return col ? excelColumnLetter(col) : '';
+}
+
+export async function findLatestContainerSourceWorkbook(directoryPath) {
+  const dir = path.resolve(directoryPath);
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const candidates = entries
+    .filter(entry => entry.isFile() && !entry.name.startsWith('~$'))
+    .map(entry => {
+      const match = entry.name.match(SOURCE_WORKBOOK_FILE_PATTERN);
+      if (!match) return null;
+      return {
+        fileName: entry.name,
+        timestamp: BigInt(match[1]),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      if (left.timestamp === right.timestamp) return left.fileName.localeCompare(right.fileName);
+      return left.timestamp > right.timestamp ? -1 : 1;
+    });
+
+  if (!candidates.length) {
+    throw new Error(`${dir} 폴더에서 컨테이너배차관리___*.xlsx 원본 파일을 찾지 못했습니다.`);
+  }
+  return path.join(dir, candidates[0].fileName);
+}
+
+export function buildExternalSourceSheetName(sourceWorkbookPath, sourceWorksheetName) {
+  return `[${path.basename(sourceWorkbookPath)}]${sourceWorksheetName}`;
 }
 
 function sourceIndex(sourceSheet, sourceColumnLetter, rowCell = '$B2') {
@@ -317,53 +347,14 @@ function readUploadFormulaMap(elsSheet) {
   return formulas;
 }
 
-function buildSourcePlan(sourceSheet, sourceColumns) {
-  const sourceRows = Math.max(sourceSheet.rowCount, 1);
-  const sourceCols = Math.max(sourceSheet.columnCount, 1);
-  const sourceMatrix = [];
-  for (let rowNumber = 1; rowNumber <= sourceRows; rowNumber += 1) {
-    const row = sourceSheet.getRow(rowNumber);
-    const values = [];
-    for (let colNumber = 1; colNumber <= sourceCols; colNumber += 1) {
-      values.push(planCellValue(row.getCell(colNumber).value));
-    }
-    sourceMatrix.push(values);
-  }
-
-  const sourceColumnFormats = [];
-  const headerRow = sourceSheet.getRow(1);
-  for (let colNumber = 1; colNumber <= sourceCols; colNumber += 1) {
-    const header = String(plainCellValue(headerRow.getCell(colNumber).value) || '');
-    const normalized = normalizeGlapsFormulaHeader(header);
-    if (!normalized) continue;
-    if (normalized.includes('일시')) {
-      sourceColumnFormats.push({ col: colNumber, numberFormat: 'yyyy-mm-dd hh:mm' });
-    } else if (normalized.includes('시간')) {
-      sourceColumnFormats.push({ col: colNumber, numberFormat: 'hh:mm' });
-    } else if (normalized.includes('일') || normalized.includes('날짜')) {
-      sourceColumnFormats.push({ col: colNumber, numberFormat: 'yyyy-mm-dd' });
-    }
-  }
-
-  return {
-    sourceMatrix,
-    sourceRows,
-    sourceCols,
-    sourceRange: `A1:${excelRef(sourceRows, sourceCols)}`,
-    sourceAutoFilterRange: `A1:${excelColumnLetter(sourceCols)}1`,
-    sourceColumnFormats,
-    containerColumnNumber: columnNumberFromRef(sourceColumns['컨테이너 번호']),
-  };
-}
-
-function buildFormulaPlan({ uploadFormulaByColumn, sourceColumns }) {
+function buildFormulaPlan({ uploadFormulaByColumn, sourceColumns, formulaSourceSheetName }) {
   const helperMatrix = [GLAPS_FORMULA_HELPER_HEADERS];
   for (let rowOffset = 0; rowOffset < GLAPS_FORMULA_OUTPUT_ROW_COUNT; rowOffset += 1) {
     const rowNumber = rowOffset + 2;
     const row = [rowOffset + 1];
     GLAPS_FORMULA_HELPER_HEADERS.forEach((header, idx) => {
       if (idx === 0) return;
-      const formula = buildHelperFormulaByHeader(header, sourceColumns, SOURCE_SHEET_NAME, rowNumber);
+      const formula = buildHelperFormulaByHeader(header, sourceColumns, formulaSourceSheetName, rowNumber);
       row.push(formula ? `=${formula}` : null);
     });
     helperMatrix.push(row);
@@ -709,7 +700,7 @@ function buildHelperWorksheetXml(columns) {
     const cells = [valueCellXml(`A${rowNumber}`, rowOffset + 1)];
     GLAPS_FORMULA_HELPER_HEADERS.forEach((header, idx) => {
       if (idx === 0) return;
-      const formula = buildHelperFormulaByHeader(header, columns, SOURCE_SHEET_NAME, rowNumber);
+      const formula = buildHelperFormulaByHeader(header, columns, EMBEDDED_SOURCE_SHEET_NAME, rowNumber);
       if (formula) cells.push(formulaTextCellXml(excelRef(rowNumber, idx + 1), formula));
     });
     rows.push(`<row r="${rowNumber}">${cells.join('')}</row>`);
@@ -738,31 +729,40 @@ async function loadWorkbook(filePath) {
 async function main() {
   const args = parseArgs();
   const referenceTemplatePath = path.resolve(args.template || args.reference || DEFAULT_REFERENCE_TEMPLATE_PATH);
-  const sourceWorkbookPath = path.resolve(args.source || DEFAULT_SOURCE_WORKBOOK_PATH);
   const outputPath = path.resolve(args.output || DEFAULT_OUTPUT_PATH);
+  const sourceSelectDirectory = path.resolve(args.sourceDir || args['source-dir'] || path.dirname(outputPath));
+  const sourceWorkbookPath = args.source
+    ? path.resolve(args.source)
+    : await findLatestContainerSourceWorkbook(sourceSelectDirectory);
+  const sourceSelectMode = args.source ? 'explicit' : 'latest-in-output-folder';
 
   const [referenceWorkbook, sourceWorkbook] = await Promise.all([
     loadWorkbook(referenceTemplatePath),
     loadWorkbook(sourceWorkbookPath),
   ]);
   const elsTemplateSheet = referenceWorkbook.getWorksheet(GLAPS_CONTAINER_TEMPLATE_SHEET_NAME);
-  const sourceSheet = sourceWorkbook.getWorksheet(SOURCE_SHEET_NAME);
+  const sourceSheet = sourceWorkbook.getWorksheet(EMBEDDED_SOURCE_SHEET_NAME)
+    || sourceWorkbook.getWorksheet(GLAPS_CONTAINER_SOURCE_SHEET_NAME)
+    || sourceWorkbook.worksheets[0];
   const glapsCodeSheet = referenceWorkbook.getWorksheet(GLAPS_CONTAINER_CODE_SHEET_NAME);
   if (!elsTemplateSheet) throw new Error(`${GLAPS_CONTAINER_TEMPLATE_SHEET_NAME} 시트를 기준 양식에서 찾지 못했습니다.`);
-  if (!sourceSheet) throw new Error(`${SOURCE_SHEET_NAME} 시트를 원본 데이터 파일에서 찾지 못했습니다.`);
+  if (!sourceSheet) throw new Error(`${EMBEDDED_SOURCE_SHEET_NAME} 시트를 원본 데이터 파일에서 찾지 못했습니다.`);
   if (!glapsCodeSheet) throw new Error(`${GLAPS_CONTAINER_CODE_SHEET_NAME} 시트를 기준 양식에서 찾지 못했습니다.`);
 
   const sourceColumns = collectSourceColumns(sourceSheet);
   const uploadFormulaByColumn = readUploadFormulaMap(elsTemplateSheet);
   const containerColumn = columnNumberFromRef(sourceColumns['컨테이너 번호']);
+  const formulaSourceSheetName = buildExternalSourceSheetName(sourceWorkbookPath, sourceSheet.name);
   let sourceContainerRows = 0;
   for (let rowNumber = 2; rowNumber <= sourceSheet.rowCount; rowNumber += 1) {
     if (plainCellValue(sourceSheet.getRow(rowNumber).getCell(containerColumn).value)) sourceContainerRows += 1;
   }
 
   const plan = {
-    ...buildSourcePlan(sourceSheet, sourceColumns),
-    ...buildFormulaPlan({ uploadFormulaByColumn, sourceColumns }),
+    containerColumnNumber: containerColumn,
+    sourceSheetName: sourceSheet.name,
+    formulaSourceSheetName,
+    ...buildFormulaPlan({ uploadFormulaByColumn, sourceColumns, formulaSourceSheetName }),
   };
   const { tempDir, planPath } = await writeFormulaPlan(plan);
   let excelComOutput = '';
@@ -781,6 +781,9 @@ async function main() {
     outputPath,
     referenceTemplatePath,
     sourceWorkbookPath,
+    sourceSelectMode,
+    sourceSheetName: sourceSheet.name,
+    formulaSourceSheetName,
     sourceRows: sourceSheet.rowCount,
     sourceContainerRows,
     sourceScanLastRow: GLAPS_FORMULA_SOURCE_SCAN_LAST_ROW,
@@ -792,7 +795,9 @@ async function main() {
   }, null, 2));
 }
 
-main().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

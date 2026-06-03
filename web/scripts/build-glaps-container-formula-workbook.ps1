@@ -39,7 +39,6 @@ $sourceWorkbook = $null
 
 try {
   $plan = Get-Content -LiteralPath $PlanPath -Encoding UTF8 -Raw | ConvertFrom-Json
-  $sourceMatrix = Convert-ToComMatrix -Rows $plan.sourceMatrix -RowCount $plan.sourceRows -ColCount $plan.sourceCols
   $helperMatrix = Convert-ToComMatrix -Rows $plan.helperMatrix -RowCount $plan.helperRows -ColCount $plan.helperCols
   $elsMatrix = Convert-ToComMatrix -Rows $plan.elsMatrix -RowCount $plan.elsRows -ColCount $plan.elsCols
 
@@ -61,22 +60,22 @@ try {
 
   $elsSheet = $workbook.Worksheets.Item('ELS')
   $missing = [System.Type]::Missing
-  $copiedSourceSheet = $workbook.Worksheets.Add($missing, $elsSheet)
-  $copiedSourceSheet.Name = 'GLAPS컨테이너배차관리'
-  $copiedSourceSheet.Range($plan.sourceRange).Value2 = $sourceMatrix
-  $copiedSourceSheet.Rows.Item(1).Font.Bold = $true
-  $copiedSourceSheet.Range($plan.sourceAutoFilterRange).AutoFilter() | Out-Null
-  foreach ($format in $plan.sourceColumnFormats) {
-    $copiedSourceSheet.Columns.Item([int]$format.col).NumberFormat = [string]$format.numberFormat
-  }
-  $copiedSourceSheet.Columns.AutoFit() | Out-Null
-  try {
-    $copiedSourceSheet.Activate()
-    $excel.ActiveWindow.SplitRow = 1
-    $excel.ActiveWindow.FreezePanes = $true
-  } catch {}
 
-  $helperSheet = $workbook.Worksheets.Add($missing, $copiedSourceSheet)
+  $sourceWorkbook = $excel.Workbooks.Open($SourceDataPath, $null, $true)
+  $sourceSheet = $null
+  foreach ($candidateName in @('GLAPS컨테이너배차관리', '컨테이너배차관리__')) {
+    try {
+      $sourceSheet = $sourceWorkbook.Worksheets.Item($candidateName)
+      break
+    } catch {
+      # 다른 후보명을 계속 확인한다.
+    }
+  }
+  if ($null -eq $sourceSheet) {
+    $sourceSheet = $sourceWorkbook.Worksheets.Item(1)
+  }
+
+  $helperSheet = $workbook.Worksheets.Add($missing, $elsSheet)
   $helperSheet.Name = 'GLAPS자동계산'
 
   $lastUsedRow = $elsSheet.UsedRange.Row + $elsSheet.UsedRange.Rows.Count - 1
@@ -94,18 +93,28 @@ try {
   try { $workbook.FullCalculationOnLoad = $true } catch {}
   try { $excel.Calculation = -4105 } catch {}
   $excel.CalculateFullRebuild()
+  try { $workbook.UpdateLinks = 2 } catch {}
   $workbook.Save()
 
   $containerCount = 0
-  $dataSheet = $workbook.Worksheets.Item('GLAPS컨테이너배차관리')
-  $lastSourceRow = $dataSheet.UsedRange.Row + $dataSheet.UsedRange.Rows.Count - 1
+  $lastSourceRow = $sourceSheet.UsedRange.Row + $sourceSheet.UsedRange.Rows.Count - 1
   $containerColumnNumber = [int]$plan.containerColumnNumber
   for ($r = 2; $r -le $lastSourceRow; $r++) {
-    $container = $dataSheet.Cells.Item($r, $containerColumnNumber).Text
+    $container = $sourceSheet.Cells.Item($r, $containerColumnNumber).Text
     if (-not [string]::IsNullOrWhiteSpace($container)) {
       $containerCount++
     }
   }
+
+  $linkSources = @()
+  try {
+    $rawLinkSources = $workbook.LinkSources(1)
+    if ($null -ne $rawLinkSources) {
+      foreach ($linkSource in $rawLinkSources) {
+        $linkSources += [string]$linkSource
+      }
+    }
+  } catch {}
 
   [ordered]@{
     outputPath = $OutputPath
@@ -114,6 +123,7 @@ try {
     helperB2 = $helperSheet.Range('B2').Formula
     elsB3 = $elsSheet.Range('B3').Formula
     elsT3Text = $elsSheet.Range('T3').Text
+    linkSources = $linkSources
   } | ConvertTo-Json -Depth 4
 } finally {
   if ($sourceWorkbook -ne $null) {
