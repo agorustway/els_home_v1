@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS public.branch_transport_history (
 );
 
 ALTER TABLE public.branch_dispatch_settings
-    ADD COLUMN IF NOT EXISTS transport_history_path TEXT DEFAULT '/아산지점/A_운송실무/2026_수출리스트.xlsx';
+    ADD COLUMN IF NOT EXISTS transport_history_path TEXT DEFAULT '/아산지점/2026_수출리스트.xlsx';
 
 UPDATE public.branch_dispatch_settings
-SET transport_history_path = COALESCE(NULLIF(transport_history_path, ''), '/아산지점/A_운송실무/2026_수출리스트.xlsx')
+SET transport_history_path = COALESCE(NULLIF(transport_history_path, ''), '/아산지점/2026_수출리스트.xlsx')
 WHERE branch_id = 'asan';
 
 CREATE INDEX IF NOT EXISTS idx_branch_transport_history_meta_lookup

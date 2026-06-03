@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './dispatch.module.css';
 
-const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/A_운송실무/2026_수출리스트.xlsx';
+const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스트.xlsx';
 
 function recordKey(record = {}) {
     return `${record.target_month || ''}::${record.sheet_name || ''}`;
@@ -58,6 +58,10 @@ export default function AsanTransportHistory() {
     const [settings, setSettings] = useState({ transport_history_path: TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH });
     const [draftPath, setDraftPath] = useState(TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH);
     const [showSettings, setShowSettings] = useState(false);
+    const [showBrowser, setShowBrowser] = useState(false);
+    const [browserPath, setBrowserPath] = useState('/아산지점');
+    const [browserFiles, setBrowserFiles] = useState([]);
+    const [browserLoading, setBrowserLoading] = useState(false);
 
     const loadSettings = useCallback(async () => {
         try {
@@ -187,9 +191,47 @@ export default function AsanTransportHistory() {
             setSettings(next);
             setDraftPath(next.transport_history_path);
             setShowSettings(false);
-            setSyncStatus({ message: '운송내역 파일 설정을 저장했습니다.', isError: false });
+            setSyncStatus({
+                message: json.data?.transport_history_path_unpersisted
+                    ? '운송내역 경로를 화면에 반영했습니다. DB 컬럼 적용 후 영구 저장됩니다.'
+                    : '운송내역 파일 설정을 저장했습니다.',
+                isError: false,
+            });
         } catch (error) {
             setSyncStatus({ message: error.message || '설정 저장 실패', isError: true });
+        }
+    };
+
+    const loadNasFolder = async (path) => {
+        setBrowserLoading(true);
+        try {
+            const response = await fetch(`/api/nas/files?path=${encodeURIComponent(path)}`, { cache: 'no-store' });
+            const json = await response.json();
+            if (!response.ok || json.error) throw new Error(json.error || 'NAS 폴더 조회 실패');
+            setBrowserFiles(json.files || []);
+            setBrowserPath(path);
+        } catch (error) {
+            setSyncStatus({ message: error.message || 'NAS 폴더 조회 실패', isError: true });
+        } finally {
+            setBrowserLoading(false);
+        }
+    };
+
+    const openBrowser = () => {
+        loadNasFolder('/아산지점');
+        setShowSettings(false);
+        setShowBrowser(true);
+    };
+
+    const selectFile = (file) => {
+        if (file.type === 'directory') {
+            loadNasFolder(file.path);
+            return;
+        }
+        if (/\.xls[mx]?$/i.test(file.name || '')) {
+            setDraftPath(file.path);
+            setShowBrowser(false);
+            setShowSettings(true);
         }
     };
 
@@ -322,15 +364,49 @@ export default function AsanTransportHistory() {
                                     value={draftPath}
                                     onChange={(event) => setDraftPath(event.target.value)}
                                 />
+                                <button onClick={openBrowser} className={styles.browseBtn}>찾기</button>
                             </div>
                         </div>
                         <div className={styles.formGroup}>
                             <label>현재 연결</label>
-                            <input className={styles.pathInput} value={settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH} readOnly />
+                            <div className={styles.pathRow}>
+                                <input className={styles.pathInput} value={settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH} readOnly />
+                            </div>
                         </div>
                         <div className={styles.modalFooter}>
                             <button className={styles.cancelBtn} onClick={() => setShowSettings(false)}>취소</button>
                             <button className={styles.saveBtn} onClick={saveSettings}>저장</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showBrowser && (
+                <div className={styles.overlay}>
+                    <div className={styles.modal}>
+                        <h2>NAS 파일 찾기</h2>
+                        <p className={styles.browserPath}>{browserPath}</p>
+                        <div className={styles.browserList}>
+                            {browserLoading ? (
+                                <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>불러오는 중...</div>
+                            ) : (
+                                <>
+                                    {browserPath !== '/' && (
+                                        <div className={styles.browserItem} onClick={() => loadNasFolder(browserPath.split('/').slice(0, -1).join('/') || '/')}>
+                                            상위 폴더
+                                        </div>
+                                    )}
+                                    {browserFiles.map((file, index) => (
+                                        <div key={`${file.path}-${index}`} className={styles.browserItem} onClick={() => selectFile(file)}>
+                                            <span>{file.type === 'directory' ? '[폴더]' : '[파일]'}</span>
+                                            <span>{file.name}</span>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                        <div className={styles.modalFooter}>
+                            <button className={styles.cancelBtn} onClick={() => { setShowBrowser(false); setShowSettings(true); }}>닫기</button>
                         </div>
                     </div>
                 </div>

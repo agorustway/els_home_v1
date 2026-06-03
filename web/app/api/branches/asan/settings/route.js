@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스트.xlsx';
+
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,8 +19,18 @@ function normalizeSettings(data) {
     return {
         ...data,
         shipping_container_auto_lookup_enabled: data.shipping_container_auto_lookup_enabled !== false,
-        transport_history_path: data.transport_history_path || '/아산지점/A_운송실무/2026_수출리스트.xlsx',
+        transport_history_path: data.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH,
     };
+}
+
+function isTransportHistoryPathColumnMissing(error) {
+    const message = String(error?.message || '').toLowerCase();
+    const code = String(error?.code || '').toUpperCase();
+    return Boolean(error) && (
+        message.includes('transport_history_path')
+        || code === 'PGRST204'
+        || (message.includes('schema cache') && message.includes('branch_dispatch_settings'))
+    );
 }
 
 export async function GET() {
@@ -70,18 +82,35 @@ export async function PATCH(request) {
     };
 
     if (Object.prototype.hasOwnProperty.call(body, 'transport_history_path')) {
-        payload.transport_history_path = body.transport_history_path || '/아산지점/A_운송실무/2026_수출리스트.xlsx';
+        payload.transport_history_path = body.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH;
     }
 
     if (Object.prototype.hasOwnProperty.call(body, 'shipping_container_auto_lookup_enabled')) {
         payload.shipping_container_auto_lookup_enabled = body.shipping_container_auto_lookup_enabled !== false;
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from('branch_dispatch_settings')
         .upsert(payload, { onConflict: 'branch_id' })
         .select()
         .single();
+
+    if (error && Object.prototype.hasOwnProperty.call(payload, 'transport_history_path') && isTransportHistoryPathColumnMissing(error)) {
+        const retryPayload = { ...payload };
+        const requestedTransportHistoryPath = retryPayload.transport_history_path;
+        delete retryPayload.transport_history_path;
+        const retryResult = await supabase
+            .from('branch_dispatch_settings')
+            .upsert(retryPayload, { onConflict: 'branch_id' })
+            .select()
+            .single();
+        data = retryResult.data ? {
+            ...retryResult.data,
+            transport_history_path: requestedTransportHistoryPath,
+            transport_history_path_unpersisted: true,
+        } : null;
+        error = retryResult.error;
+    }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data: normalizeSettings(data) });
