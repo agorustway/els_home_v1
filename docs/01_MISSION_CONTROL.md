@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.344 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.345 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운송내역 DB를 AI RAG에 연결하고, 사용자 노출 문구의 Supabase 표현을 사내 데이터베이스로 정리했다.
+> 최신 업데이트: 아산지점 페이지를 Vercel dynamic/no-store 라우트로 전환해 배포 직후 HTML/청크 캐시 혼선을 차단했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.344
+- **웹 버전**: v5.14.345
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -83,11 +83,13 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.345**: `/employees/branches/asan` 라우트에 서버 `layout.js`를 추가해 `force-dynamic`, `revalidate=0`, `force-no-store`로 고정했다. 운영에서 정적 HTML 캐시 HIT가 남아 이전 청크와 최신 청크가 섞이며 페이지 로드 오류가 나는 경로를 차단했다.
 - **v5.14.344**: 아산 운송내역 `branch_transport_history`를 AI RAG에 연결해 월/일자/컨테이너/업체/차량/청구금액 질문을 사내 데이터베이스 기준으로 답하게 했다. AI 소개·가이드·RAG 문구의 Supabase 노출 표현은 사내 데이터베이스로 바꿨다.
 - **v5.14.343**: GLAPS 수식완성본은 같은 폴더 최신 `컨테이너배차관리___*.xlsx`를 상대경로 외부참조하고 내부 원본 시트 복사를 중단했다. 최종본은 `work-docs/glaps/GLAPS강범수계산기` 기준이며, `A_GLAPS_입력계산기.bat`은 산출 후 `GLAPS 업로드양식_자동_최신파일참조.xlsx`를 연다.
 - **v5.14.342**: 아산 운송내역에 선적관리형 숨김 드래그/프리셋 방식을 적용하고, DB `rows` 일자 필터와 컨테이너 이력 조회 컬럼을 연결했다. 연도 선택은 DB 존재 연도만 표시한다.
 - **v5.14.341**: 상세배차/배차변동 테이블 헤더와 데이터 행 높이·글자 크기를 통일하고, DG/RF 선택값은 일반 굵기로 표시한다. 노란 변경/선택 셀은 box-shadow 테두리 없이 배경색만 남겼다.
 ## VERIFICATION
+- 아산 라우트 캐시 대응은 `node --test web/tests/asanDashboardView.test.mjs` 42개, `npm run lint`, `npm run build`를 통과했고, 빌드 결과 `/employees/branches/asan`가 `ƒ Dynamic`으로 표시됨을 확인했다.
 - 운송내역 RAG/UX 보강은 관련 RAG·운송내역 테스트 48개, 실제 DB RAG 스모크, `npm run lint`, `.next` 정리 후 `npm run build`를 통과했다. 로컬 HTTP 스모크는 `/employees/branches/asan?debug=true`와 `mode=meta/rows` 응답 200을 확인했다.
 - Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 ## IN-PROGRESS

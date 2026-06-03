@@ -1,3 +1,25 @@
+## [2026-06-03] 아산지점 Vercel HTML 캐시 혼선 차단 (v5.14.345)
+
+### 원인
+- 운영 아산지점 페이지에서 `ReferenceError: Cannot access 'el' before initialization`로 페이지 에러가 발생했습니다.
+- 운영 HTML을 비교한 결과 `/employees/branches/asan?debug=true` 응답이 `X-Vercel-Cache: HIT`, `Age`가 남은 정적 HTML로 내려오고 있었습니다. 배포 직후 이전 HTML과 최신 JS 청크가 섞이면 압축 변수명 기준 런타임 오류가 발생할 수 있는 구조였습니다.
+
+### 조치
+- `web/app/(main)/employees/branches/asan/layout.js`를 추가해 아산지점 라우트를 `dynamic = 'force-dynamic'`, `revalidate = 0`, `fetchCache = 'force-no-store'`로 고정했습니다.
+- `web/tests/asanDashboardView.test.mjs`에 라우트 캐시 방지 설정 회귀 테스트를 추가했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 42개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과. 빌드 결과 `/employees/branches/asan`가 `ƒ Dynamic`으로 표시됨을 확인했습니다.
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/layout.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산 운송내역 DB RAG 연결 및 AI 문구 정리 (v5.14.344)
 
 ### 원인
