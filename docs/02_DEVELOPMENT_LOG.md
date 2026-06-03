@@ -1,3 +1,26 @@
+## [2026-06-03] 아산 운송내역 무한스크롤 TDZ 오류 수정 (v5.14.346)
+
+### 원인
+- 아산지점이 운송내역 탭을 렌더링할 때 동적 청크 `343.*.js`에서 `ReferenceError: Cannot access 'e0' before initialization`이 발생했습니다.
+- 원본 원인은 `loadMoreRows` 무한스크롤 콜백의 의존성 배열이 `rows.length`를 평가하는데, `rows = activeRecord?.data || []` 선언이 콜백보다 아래에 있어 렌더 시 TDZ에 걸린 것입니다.
+
+### 조치
+- `AsanTransportHistory.js`에서 `headers/rows` 선언을 `loadMoreRows`와 `handleTableScroll` 콜백보다 위로 이동했습니다.
+- `asanTransportHistory.test.mjs`에 rows 선언 순서 회귀 테스트를 추가했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 19개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+- 빌드 산출물 `343.*.js`에서 rows 압축 변수 선언이 `offset: rows.length` 참조보다 먼저 나오는 것을 확인했습니다.
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 아산지점 Vercel HTML 캐시 혼선 차단 (v5.14.345)
 
 ### 원인

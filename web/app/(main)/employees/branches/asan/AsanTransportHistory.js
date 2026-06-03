@@ -406,6 +406,9 @@ export default function AsanTransportHistory() {
         }
     };
 
+    const headers = activeRecord?.headers || [];
+    const rows = activeRecord?.data || [];
+
     const loadMoreRows = useCallback(() => {
         if (!isAllView || loadingTable || loadingMore || !activeRecord?.has_more || autoLoadMoreRef.current) return;
         autoLoadMoreRef.current = true;
@@ -482,8 +485,6 @@ export default function AsanTransportHistory() {
         }
     };
 
-    const headers = activeRecord?.headers || [];
-    const rows = activeRecord?.data || [];
     const allHeaders = useMemo(() => {
         if (!headers.length) return [];
         return [...headers, ...LOOKUP_HEADERS.filter(header => !headers.includes(header))];
