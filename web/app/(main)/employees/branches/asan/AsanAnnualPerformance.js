@@ -41,14 +41,17 @@ const ROUTE_UNIT_SORT_OPTIONS = [
     { key: 'purchaseAmount_desc', label: '하불 높은순', field: 'purchaseAmount', direction: 'desc' },
     { key: 'purchaseAmount_asc', label: '하불 낮은순', field: 'purchaseAmount', direction: 'asc' },
     { key: 'unitProfit_desc', label: '차액 높은순', field: 'unitProfit', direction: 'desc' },
+    { key: 'unitProfitRate_desc', label: '이익률 높은순', field: 'unitProfitRate', direction: 'desc' },
+    { key: 'unitProfitRate_asc', label: '이익률 낮은순', field: 'unitProfitRate', direction: 'asc' },
     { key: 'rowCount_desc', label: '건수 많은순', field: 'rowCount', direction: 'desc' },
     { key: 'route_asc', label: '조건명순', field: 'routeLabel', direction: 'asc' },
 ];
-const ROUTE_UNIT_NUMERIC_FIELDS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount']);
+const ROUTE_UNIT_NUMERIC_FIELDS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit', 'unitProfitRate', 'rowCount']);
 const ROUTE_UNIT_COLUMNS = [
     { key: 'revenueAmount', label: '청구금액', numeric: true },
     { key: 'purchaseAmount', label: '하불금액', numeric: true },
     { key: 'unitProfit', label: '차액', numeric: true },
+    { key: 'unitProfitRate', label: '이익률', numeric: true, percent: true },
     { key: 'salesItem', label: '매출' },
     { key: 'region', label: '지역' },
     { key: 'workSite', label: '작업지' },
@@ -63,19 +66,20 @@ const ROUTE_UNIT_COLUMNS = [
     { key: 'rowCount', label: '건수', numeric: true },
     { key: 'periodLabel', label: '기간' },
 ];
-const ROUTE_UNIT_FILTER_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
+const ROUTE_UNIT_FILTER_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['unitProfit', 'unitProfitRate', 'rowCount', 'periodLabel'].includes(column.key));
 const ROUTE_UNIT_COLUMN_KEYS = ROUTE_UNIT_COLUMNS.map(column => column.key);
 const ROUTE_UNIT_COLUMN_KEY_SET = new Set(ROUTE_UNIT_COLUMN_KEYS);
 const ROUTE_UNIT_COLUMNS_BY_KEY = new Map(ROUTE_UNIT_COLUMNS.map(column => [column.key, column]));
-const ROUTE_UNIT_LOCKED_HIDDEN_KEYS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit']);
+const ROUTE_UNIT_LOCKED_HIDDEN_KEYS = new Set(['revenueAmount', 'purchaseAmount', 'unitProfit', 'unitProfitRate']);
 const ROUTE_UNIT_FILTER_COLUMN_KEYS = new Set(ROUTE_UNIT_FILTER_COLUMNS.map(column => column.key));
-const ROUTE_UNIT_GROUP_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['revenueAmount', 'purchaseAmount', 'unitProfit', 'rowCount', 'periodLabel'].includes(column.key));
+const ROUTE_UNIT_GROUP_COLUMNS = ROUTE_UNIT_COLUMNS.filter(column => !['revenueAmount', 'purchaseAmount', 'unitProfit', 'unitProfitRate', 'rowCount', 'periodLabel'].includes(column.key));
 const ROUTE_UNIT_GROUP_COLUMN_KEYS = new Set(ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key));
 const ROUTE_UNIT_DEFAULT_GROUP_KEYS = ROUTE_UNIT_GROUP_COLUMNS.map(column => column.key);
 
 function routeUnitColumnGrid(column = {}) {
     if (column.key === 'revenueAmount' || column.key === 'purchaseAmount') return '108px';
     if (column.key === 'unitProfit') return '100px';
+    if (column.key === 'unitProfitRate') return '72px';
     if (column.key === 'workSite') return 'minmax(150px, 1.2fr)';
     if (column.key === 'billTo' || column.key === 'payTo') return 'minmax(130px, 1fr)';
     if (column.key === 'rowCount') return '56px';
@@ -187,6 +191,19 @@ function formatRouteUnitWon(value) {
     return `${num.toLocaleString('ko-KR')}원`;
 }
 
+function routeUnitProfitOf(item = {}) {
+    const explicit = item?.unitProfit;
+    if (explicit !== null && explicit !== undefined && explicit !== '') {
+        const num = Number(explicit);
+        if (Number.isFinite(num)) return num;
+    }
+    return safeNumber(item?.revenueAmount) - safeNumber(item?.purchaseAmount);
+}
+
+function routeUnitProfitRateOf(item = {}) {
+    return rate(routeUnitProfitOf(item), item?.revenueAmount);
+}
+
 function profitRateOf(item) {
     return rate(item?.profit, item?.revenue);
 }
@@ -237,6 +254,7 @@ function routeUnitTermMatches(values = [], rawTerm = '') {
 
 function routeUnitFilterOptionLabel(column = {}, value = '') {
     if (!value) return '전체';
+    if (column.percent) return formatPercent(value, 2);
     if (column.numeric) return formatRouteUnitWon(value);
     return String(value);
 }
@@ -276,6 +294,7 @@ function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}, matc
         item.revenueAmount,
         item.purchaseAmount,
         item.unitProfit,
+        item.unitProfitRate,
         item.rowCount,
         item.periodLabel,
     ];
@@ -325,6 +344,7 @@ function aggregateRouteUnitGroups(items = [], groupKeys = ROUTE_UNIT_DEFAULT_GRO
                 revenueAmount: safeNumber(item.revenueAmount),
                 purchaseAmount: safeNumber(item.purchaseAmount),
                 unitProfit: safeNumber(item.revenueAmount) - safeNumber(item.purchaseAmount),
+                unitProfitRate: 0,
                 rowCount: 0,
                 routeLabel: groupValues.filter(value => value !== '-').join(' / ') || '금액 기준',
                 sourceGroupCount: 0,
@@ -341,8 +361,9 @@ function aggregateRouteUnitGroups(items = [], groupKeys = ROUTE_UNIT_DEFAULT_GRO
     });
     return Array.from(buckets.values()).map((bucket) => {
         const periodLabel = mergeRouteUnitPeriodLabels(Array.from(bucket.periodLabels));
+        const unitProfitRate = routeUnitProfitRateOf(bucket);
         const { periodLabels, ...rest } = bucket;
-        return { ...rest, periodLabel };
+        return { ...rest, unitProfitRate, periodLabel };
     });
 }
 
@@ -355,7 +376,15 @@ function normalizeRouteUnitColumnOrder(order = []) {
             return true;
         })
         : [];
-    return [...valid, ...ROUTE_UNIT_COLUMN_KEYS.filter(key => !seen.has(key))];
+    const merged = [...valid, ...ROUTE_UNIT_COLUMN_KEYS.filter(key => !seen.has(key))];
+    const withoutRate = merged.filter(key => key !== 'unitProfitRate');
+    const profitIdx = withoutRate.indexOf('unitProfit');
+    if (profitIdx < 0) return merged;
+    return [
+        ...withoutRate.slice(0, profitIdx + 1),
+        'unitProfitRate',
+        ...withoutRate.slice(profitIdx + 1),
+    ];
 }
 
 function normalizeRouteUnitHiddenColumns(hiddenColumns = []) {
@@ -378,6 +407,7 @@ function downloadRouteUnitExcel(rows = [], columns = [], scopeLabel = '전체') 
     const csvRows = [
         columns.map(column => column.label),
         ...rows.map(item => columns.map((column) => {
+            if (column.percent) return formatPercent(item[column.key], 2);
             if (ROUTE_UNIT_NUMERIC_FIELDS.has(column.key)) return Math.round(safeNumber(item[column.key]));
             return item[column.key] || '';
         })),
@@ -1132,7 +1162,18 @@ function RouteUnitPricePanel({
     const [dragRouteUnitColumn, setDragRouteUnitColumn] = useState('');
     const [hiddenDropActive, setHiddenDropActive] = useState(false);
     const [routeUnitPresetMessage, setRouteUnitPresetMessage] = useState('');
-    const groups = Array.isArray(data?.groups) ? data.groups : EMPTY_LIST;
+    const groups = useMemo(() => (
+        Array.isArray(data?.groups)
+            ? data.groups.map((item) => {
+                const unitProfit = routeUnitProfitOf(item);
+                return {
+                    ...item,
+                    unitProfit,
+                    unitProfitRate: rate(unitProfit, item.revenueAmount),
+                };
+            })
+            : EMPTY_LIST
+    ), [data?.groups]);
     const activeGroupFieldSet = useMemo(() => new Set(includedGroupFields), [includedGroupFields]);
     const routeUnitHiddenSet = useMemo(() => new Set(routeUnitHiddenColumns), [routeUnitHiddenColumns]);
     const orderedRouteUnitColumns = useMemo(() => normalizeRouteUnitColumnOrder(routeUnitColumnOrder)
@@ -1365,6 +1406,9 @@ function RouteUnitPricePanel({
         if (column.key === 'purchaseAmount') return <b key={column.key} className={styles.routeUnitPurchaseAmount}>{formatRouteUnitWon(item.purchaseAmount)}</b>;
         if (column.key === 'unitProfit') {
             return <b key={column.key} className={safeNumber(item.unitProfit) < 0 ? styles.negative : styles.positive}>{formatRouteUnitWon(item.unitProfit)}</b>;
+        }
+        if (column.key === 'unitProfitRate') {
+            return <b key={column.key} className={safeNumber(item.unitProfit) < 0 ? styles.negative : styles.positive}>{formatPercent(item.unitProfitRate, 2)}</b>;
         }
         if (column.key === 'rowCount') return <em key={column.key}>{safeNumber(item.rowCount).toLocaleString('ko-KR')}</em>;
         const value = item[column.key] || '-';
