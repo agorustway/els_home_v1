@@ -5,11 +5,12 @@
 ### 조치
 - 웹/NAS Core/Supabase SQL 기본 경로를 `/아산지점/2026_수출리스트.xlsx`로 통일했습니다.
 - 운송내역 파일 설정 모달에 `/아산지점`에서 시작하는 NAS 파일 `찾기` 버튼을 추가했습니다.
+- 시트가 월별로 나뉘어 있어도 DB는 `branch_transport_history.target_month` 날짜키와 `sheet_name`으로 누적 upsert하고, 웹은 NAS 파일이 아니라 DB `mode=meta/date` API만 조회하는 구조를 회귀 테스트로 고정했습니다.
 - 설정 저장 중 `transport_history_path` 컬럼 미반영 오류가 나면 나머지 설정은 저장하고, 선택 경로는 화면에 반영한 뒤 SQL 적용 필요 상태로 안내하게 했습니다.
 - 기존 오입력 경로를 직하 경로로 고치는 보정 SQL `web/supabase_sql/20260603_asan_transport_history_path_fix.sql`을 추가했습니다.
 ### 검증
-- `node --test web/tests/asanTransportHistory.test.mjs`: 11개 통과
-- `node --test web/tests/asanTransportHistory.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanDashboardView.test.mjs`: 90개 통과
+- `node --test web/tests/asanTransportHistory.test.mjs`: 12개 통과
+- `node --test web/tests/asanTransportHistory.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanDashboardView.test.mjs`: 91개 통과
 - `py -3 -m py_compile docker/els-backend/app_core.py`: 통과
 - `npm run lint`: 통과
 - `npm run build`: 통과
