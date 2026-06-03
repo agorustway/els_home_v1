@@ -348,6 +348,8 @@ test('수식형 자동 템플릿은 원본 행수와 출력 행수를 분리한�
   assert.match(scriptSource, /findLatestContainerSourceWorkbook/);
   assert.match(scriptSource, /buildExternalSourceSheetName/);
   assert.match(scriptSource, /makeExternalLinksPortable/);
+  assert.match(scriptSource, /openOutputWorkbook/);
+  assert.match(scriptSource, /openedOutput/);
   assert.match(scriptSource, /sourceSelectMode/);
   assert.match(scriptSource, /containerColumnNumber/);
   assert.match(scriptSource, /excelColumnLetter\(col \+ 1\)/);

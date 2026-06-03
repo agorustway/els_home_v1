@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
@@ -450,6 +450,17 @@ function runExcelComBuilder({ referenceTemplatePath, sourceWorkbookPath, outputP
   return result.stdout.trim();
 }
 
+function openOutputWorkbook(outputPath) {
+  if (process.platform !== 'win32') return false;
+  const child = spawn('cmd', ['/c', 'start', '', outputPath], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  child.unref();
+  return true;
+}
+
 function normalizePathForXmlSearch(value = '') {
   return String(value || '').replace(/\\/g, '[\\\\/]');
 }
@@ -888,6 +899,7 @@ async function main() {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
   const portableLinkOutput = await makeExternalLinksPortable({ outputPath, sourceWorkbookPath });
+  const openedOutput = args.open ? openOutputWorkbook(outputPath) : false;
 
   console.log(JSON.stringify({
     outputPath,
@@ -903,6 +915,7 @@ async function main() {
     helperSheet: GLAPS_FORMULA_HELPER_SHEET_NAME,
     excelComOutput: excelComOutput ? JSON.parse(excelComOutput) : null,
     portableLinkOutput,
+    openedOutput,
     preservedReferenceSheets: [GLAPS_CONTAINER_CODE_SHEET_NAME, 'CKD고객사코드'],
     outputMethod: 'excel-com',
   }, null, 2));
