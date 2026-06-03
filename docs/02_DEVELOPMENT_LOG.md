@@ -1,3 +1,32 @@
+## [2026-06-03] 아산 운송내역 경로/찾기/설정 저장 보정 (v5.14.337)
+### 원인
+- 실제 `2026_수출리스트.xlsx` 파일은 `/아산지점` 직하에 있는데 초기 기본 경로가 `/아산지점/A_운송실무/2026_수출리스트.xlsx`로 잡혀 있었습니다.
+- 운영 DB에 `transport_history_path` 컬럼 SQL이 아직 반영되지 않은 상태에서는 설정 저장 PATCH가 schema cache/컬럼 오류로 실패할 수 있었습니다.
+### 조치
+- 웹/NAS Core/Supabase SQL 기본 경로를 `/아산지점/2026_수출리스트.xlsx`로 통일했습니다.
+- 운송내역 파일 설정 모달에 `/아산지점`에서 시작하는 NAS 파일 `찾기` 버튼을 추가했습니다.
+- 설정 저장 중 `transport_history_path` 컬럼 미반영 오류가 나면 나머지 설정은 저장하고, 선택 경로는 화면에 반영한 뒤 SQL 적용 필요 상태로 안내하게 했습니다.
+- 기존 오입력 경로를 직하 경로로 고치는 보정 SQL `web/supabase_sql/20260603_asan_transport_history_path_fix.sql`을 추가했습니다.
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 11개 통과
+- `node --test web/tests/asanTransportHistory.test.mjs web/tests/asanShippingFlow.test.mjs web/tests/asanDashboardView.test.mjs`: 90개 통과
+- `py -3 -m py_compile docker/els-backend/app_core.py`: 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+- Supabase migration `asan_transport_history_path_fix_20260603`: 적용 성공
+- `GET /api/branches/asan/settings`: `transport_history_path=/아산지점/2026_수출리스트.xlsx` 확인
+- Browser 플러그인 스모크는 `windows sandbox failed: spawn setup refresh`로 2회 실패해 API/빌드 검증으로 대체했습니다.
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/app/api/branches/asan/settings/route.js`
+- `docker/els-backend/app_core.py`
+- `web/supabase_sql/20260603_asan_transport_history.sql`
+- `web/supabase_sql/20260603_asan_transport_history_path_fix.sql`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-03] 선적관리 정렬 중 확정모선 우선노출 차단 (v5.14.336)
 ### 원인
 - `작업일 ▲` 같은 사용자 정렬은 Supabase 서버 정렬로 이미 적용됐지만, 프론트 `processedData`에서 확정모선 값이 있는 행을 위로 올리는 기본 우선노출을 다시 실행했습니다.
