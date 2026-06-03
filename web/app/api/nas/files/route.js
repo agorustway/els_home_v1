@@ -9,7 +9,22 @@ const hasKorean = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
 
 // Helper to check if file is hidden or system temp
 const isHiddenOrTemp = (name) => {
-    return name.startsWith('.') || name.startsWith('~$') || name.toLowerCase().includes('thumbs.db') || name.toLowerCase().includes('desktop.ini') || name.toLowerCase() === 'lost+found';
+    const normalizedName = String(name || '').trim();
+    const lowerName = normalizedName.toLowerCase();
+    return (
+        normalizedName.startsWith('.') ||
+        normalizedName.startsWith('~') ||
+        normalizedName.startsWith('._') ||
+        lowerName === 'thumbs.db' ||
+        lowerName === 'desktop.ini' ||
+        lowerName === '.ds_store' ||
+        lowerName === 'lost+found' ||
+        lowerName === '#recycle' ||
+        lowerName === '@eadir' ||
+        lowerName === '@recycle' ||
+        lowerName === '$recycle.bin' ||
+        lowerName.includes('recycle bin')
+    );
 };
 
 // Branch naming map for NAS folders
@@ -29,12 +44,10 @@ const BRANCH_FOLDER_MAP = {
 
 /**
  * Access Control Logic:
- * 1. Admin: Everything accessible.
+ * 1. Admin: Every normal file/folder is accessible.
  * 2. Security Folders: Only visible if user belongs to the branch AND has can_read_security = true.
- * 3. Write Permission: 
- *    - Branch users can write to their own branch folder and '자료실' (Common).
- *    - Others are read-only.
- * 4. Filtering: Hide system files/folders and non-Korean folders (Admins see everything).
+ * 3. Branch users can access only their own branch folder and shared roots.
+ * 4. Filtering: Hide temp/system/recycle files for every web user.
  */
 function getPermissions(userRole, userCanSecurity, path) {
     if (userRole === 'admin') return { canRead: true, canWrite: true };
@@ -43,6 +56,8 @@ function getPermissions(userRole, userCanSecurity, path) {
     const userBranchName = BRANCH_FOLDER_MAP[userRole];
     const normalizedPath = path.replace(/^\//, ''); // Remove leading slash
     const rootFolder = normalizedPath.split('/')[0];
+    if (!rootFolder) return { canRead: true, canWrite: false };
+    if (!userBranchName) return { canRead: false, canWrite: false };
 
     // Visibility Check (Security Folders - Using Underscore)
     if (rootFolder.endsWith('_보안')) {
@@ -52,16 +67,16 @@ function getPermissions(userRole, userCanSecurity, path) {
         if (securityBranch !== userBranchName || !userCanSecurity) {
             return { canRead: false, canWrite: false }; // Completely hidden
         }
+        return { canRead: true, canWrite: false };
     }
 
-    // Write Permission Check
-    let canWrite = false;
-    if (rootFolder === userBranchName || rootFolder === '자료실' || rootFolder === '공지사항_첨부') {
-        canWrite = true;
-    }
+    const readableRoots = new Set([userBranchName, '자료실', '공지사항_첨부']);
+    if (!readableRoots.has(rootFolder)) return { canRead: false, canWrite: false };
 
-    return { canRead: true, canWrite };
+    return { canRead: true, canWrite: true };
 }
+
+const getBaseName = (targetPath) => String(targetPath || '').split('/').filter(Boolean).pop() || '';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -80,6 +95,10 @@ export async function GET(request) {
 
         // 1. Download Mode
         if (isDownload) {
+            if (isHiddenOrTemp(getBaseName(path))) {
+                return NextResponse.json({ error: 'File not found' }, { status: 404 });
+            }
+
             const perms = getPermissions(userRole, userCanSecurity, path);
             if (!perms.canRead) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -127,11 +146,11 @@ export async function GET(request) {
 
         // Filter Logic
         const filteredFiles = rawFiles.filter(file => {
-            // Admin sees EVERYTHING
-            if (isAdmin) return true;
-
-            // 1. Hide Hidden/Temp files for regular users
+            // 1. Hide Hidden/Temp files for every web user, including admins.
             if (isHiddenOrTemp(file.name)) return false;
+
+            // Admin sees every normal file/folder.
+            if (isAdmin) return true;
 
             // 2. Korean Folder Rule (at Root or specific levels)
             // Rule: "한글로된 폴더만 보일것"
@@ -166,6 +185,19 @@ export async function POST(request) {
         if (contentType.includes('application/json')) {
             const json = await request.json();
             const targetPath = json.path || json.to;
+            if (isHiddenOrTemp(getBaseName(targetPath))) {
+                return NextResponse.json({ error: '임시/시스템 파일명은 자료실에서 사용할 수 없습니다.' }, { status: 400 });
+            }
+            if (json.from && isHiddenOrTemp(getBaseName(json.from))) {
+                return NextResponse.json({ error: '임시/시스템 파일은 자료실에서 처리할 수 없습니다.' }, { status: 404 });
+            }
+
+            if (json.from) {
+                const sourcePerms = getPermissions(userRole, userCanSecurity, json.from);
+                if (!sourcePerms.canRead) {
+                    return NextResponse.json({ error: 'Forbidden: 원본 항목을 읽을 권한이 없습니다.' }, { status: 403 });
+                }
+            }
 
             const perms = getPermissions(userRole, userCanSecurity, targetPath);
             if (!perms.canWrite) {
@@ -187,6 +219,9 @@ export async function POST(request) {
             const formData = await request.formData();
             const file = formData.get('file');
             const path = formData.get('path') || '/';
+            if (file?.name && isHiddenOrTemp(file.name)) {
+                return NextResponse.json({ error: '임시/시스템 파일은 업로드할 수 없습니다.' }, { status: 400 });
+            }
 
             const perms = getPermissions(userRole, userCanSecurity, path);
             if (!perms.canWrite) {
@@ -222,6 +257,9 @@ export async function DELETE(request) {
     try {
         const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', user.email).single();
         const userRole = roleData?.role || 'visitor';
+        if (isHiddenOrTemp(getBaseName(path))) {
+            return NextResponse.json({ error: 'File not found' }, { status: 404 });
+        }
 
         // Policy: Web Deletion Forbidden for non-admins
         if (userRole !== 'admin') {
@@ -248,6 +286,17 @@ export async function PATCH(request) {
         const userRole = roleData?.role || 'visitor';
         const userCanSecurity = roleData?.can_read_security || false;
         const { from, to } = await request.json();
+        if (isHiddenOrTemp(getBaseName(to))) {
+            return NextResponse.json({ error: '임시/시스템 파일명은 자료실에서 사용할 수 없습니다.' }, { status: 400 });
+        }
+        if (isHiddenOrTemp(getBaseName(from))) {
+            return NextResponse.json({ error: '임시/시스템 파일은 자료실에서 처리할 수 없습니다.' }, { status: 404 });
+        }
+
+        const sourcePerms = getPermissions(userRole, userCanSecurity, from);
+        if (!sourcePerms.canRead) {
+            return NextResponse.json({ error: 'Forbidden: 원본 항목을 읽을 권한이 없습니다.' }, { status: 403 });
+        }
 
         // Check Write Permission on Destination
         const perms = getPermissions(userRole, userCanSecurity, to);

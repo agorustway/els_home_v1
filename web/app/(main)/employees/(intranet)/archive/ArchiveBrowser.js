@@ -133,7 +133,7 @@ export default function ArchiveBrowser() {
             setTimeout(() => handleRename({ path: to, name: newName, type: file.type }), 500);
         } catch (error) {
             console.error(error);
-            alert(`복제 실패: ${error.message}`);
+            alert(`복사 실패: ${error.message}`);
         }
     };
 
@@ -434,6 +434,23 @@ export default function ArchiveBrowser() {
         return direction === 'asc' ? comp : -comp;
     });
 
+    const selectedItems = files.filter(file => selectedPaths.has(file.path));
+    const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
+    const canDownloadSingleSelection = singleSelectedItem && singleSelectedItem.type !== 'directory';
+    const selectedDownloadLabel = canDownloadSingleSelection
+        ? '선택한 파일 다운로드'
+        : selectedItems.length === 1
+            ? '선택한 폴더 ZIP 다운로드'
+            : `선택한 ${selectedItems.length}개 항목 ZIP 다운로드`;
+
+    const handleSelectionDownload = () => {
+        if (canDownloadSingleSelection) {
+            handleDownloadFile(singleSelectedItem);
+            return;
+        }
+        handleZipDownload();
+    };
+
     if (authLoading || loading) {
         return (
             <div className={styles.loadingContainer}>
@@ -494,15 +511,11 @@ export default function ArchiveBrowser() {
                                         else setSelectedPaths(new Set());
                                     }}
                                 />
-                                전체선택
+                                전체 선택
                             </label>
-                            <span className={styles.selectionCount}>{selectedPaths.size}개 선택됨</span>
-                            {selectedPaths.size === 1 && files.find(f => f.path === Array.from(selectedPaths)[0])?.type !== 'directory' ? (
-                                <button onClick={() => handleDownloadFile(files.find(f => f.path === Array.from(selectedPaths)[0]))} className={`${styles.btn} ${styles.btnPoint}`}>다운로드</button>
-                            ) : (
-                                <button onClick={handleZipDownload} className={`${styles.btn} ${styles.btnPoint}`}>ZIP 압축다운로드</button>
-                            )}
-                            <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btn}>취소</button>
+                            <span className={styles.selectionCount}>{selectedPaths.size}개 선택</span>
+                            <button onClick={handleSelectionDownload} className={`${styles.btn} ${styles.btnPoint}`} disabled={selectedItems.length === 0}>{selectedDownloadLabel}</button>
+                            <button onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }} className={styles.btn}>선택 해제</button>
                         </div>
                     ) : (
                         <>
@@ -706,14 +719,14 @@ export default function ArchiveBrowser() {
                                     if (contextMenu.file.type === 'directory') handleNavigate(contextMenu.file.name);
                                     else handleDownloadFile(contextMenu.file);
                                 }}>
-                                    {contextMenu.file.type === 'directory' ? '열기' : '파일열기'}
+                                    {contextMenu.file.type === 'directory' ? '열기' : '파일 열기'}
                                 </div>
 
                                 {/* Selection Mode Context Actions */}
                                 {selectionMode && selectedPaths.size > 0 ? (
                                     <>
-                                        <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
-                                            선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                        <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleSelectionDownload}>
+                                            {selectedDownloadLabel}
                                         </div>
                                         <div className={styles.contextItem} onClick={() => { setSelectionMode(false); setSelectedPaths(new Set()); }}>
                                             선택 모드 해제
@@ -723,7 +736,7 @@ export default function ArchiveBrowser() {
                                     <>
                                         {contextMenu.file.type !== 'directory' && (
                                             <div className={styles.contextItem} onClick={() => handleDownloadFile(contextMenu.file)}>
-                                                이 파일 다운로드
+                                                다운로드
                                             </div>
                                         )}
                                         {contextMenu.file.type !== 'directory' && (
@@ -732,20 +745,20 @@ export default function ArchiveBrowser() {
                                             </div>
                                         )}
                                         <div className={styles.contextItem} onClick={() => setSelectionMode(true)}>
-                                            다중 선택 모드 시작
+                                            선택 모드 시작
                                         </div>
                                     </>
                                 )}
 
                                 <div className={styles.contextDivider}></div>
-                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>즉시 복제 (같은 폴더)</div>
+                                <div className={styles.contextItem} onClick={() => handleCopy(contextMenu.file)}>같은 폴더에 복사본 만들기</div>
                                 <div className={styles.contextItem} onClick={() => {
                                     const isPartOfSelection = selectionMode && selectedPaths.has(contextMenu.file.path);
                                     const itemsToCopy = isPartOfSelection
                                         ? files.filter(f => selectedPaths.has(f.path))
                                         : [contextMenu.file];
                                     setClipboard({ type: 'copy', items: itemsToCopy });
-                                }}>복사</div>
+                                }}>복사하기</div>
                                 {clipboard && <div className={styles.contextItem} onClick={handlePaste}>붙여넣기</div>}
                                 <div className={styles.contextItem} onClick={() => handleRename(contextMenu.file)}>이름 바꾸기</div>
                                 <div className={styles.contextDivider}></div>
@@ -756,8 +769,8 @@ export default function ArchiveBrowser() {
                         ) : (
                             <>
                                 {selectionMode && selectedPaths.size > 0 && (
-                                    <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleZipDownload}>
-                                        선택된 {selectedPaths.size}개 항목 압축 다운로드
+                                    <div className={styles.contextItem} style={{ background: '#3182ce', color: 'white', fontWeight: 'bold' }} onClick={handleSelectionDownload}>
+                                        {selectedDownloadLabel}
                                     </div>
                                 )}
                                 <div className={`${styles.contextItem} ${!clipboard ? styles.disabled : ''}`} onClick={handlePaste}>붙여넣기</div>

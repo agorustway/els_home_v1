@@ -37,6 +37,18 @@ test('자료실 NAS 데스크탑은 탐색기형 표와 CSS 파일 아이콘을 
   assert.match(css, /\.fileIcon::after/);
 });
 
+test('자료실 NAS 선택 메뉴는 단일 파일 다운로드와 쉬운 복사 문구를 사용한다', () => {
+  const component = read('web/app/(main)/employees/(intranet)/archive/ArchiveBrowser.js');
+
+  assert.match(component, /canDownloadSingleSelection/);
+  assert.match(component, /선택한 파일 다운로드/);
+  assert.match(component, /선택한 폴더 ZIP 다운로드/);
+  assert.match(component, /선택한 \$\{selectedItems\.length\}개 항목 ZIP 다운로드/);
+  assert.match(component, /같은 폴더에 복사본 만들기/);
+  assert.match(component, /복사하기/);
+  assert.doesNotMatch(component, /복제|선택된 \{selectedPaths\.size\}개 항목 압축 다운로드|파일열기/);
+});
+
 test('자료실 NAS는 권한 fallback에서 로딩 상태를 남기지 않는다', () => {
   const component = read('web/app/(main)/employees/(intranet)/archive/ArchiveBrowser.js');
   const roleHook = read('web/hooks/useUserRole.js');
