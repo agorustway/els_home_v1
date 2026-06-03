@@ -9,11 +9,12 @@
 - `GLAPS자동계산` 수식은 내부 원본 시트가 아니라 `[컨테이너배차관리___YYYYMMDDHHMMSS.xlsx]컨테이너배차관리__` 상대경로 외부참조를 사용합니다.
 - Excel 저장 중 생기는 `file:///C:\...`, `x15ac:absPath`, `xxl21:absoluteUrl` 절대경로 흔적은 저장 후 OOXML 후처리로 제거해 산출물과 원본 파일을 폴더째 옮겨도 같은 폴더 원본을 보게 했습니다.
 - Excel COM 생성 단계에서 `GLAPS컨테이너배차관리` 시트 복사를 제거하고, 산출물에는 `ELS`, `GLAPS자동계산`, `GLAPS정리`, `CKD고객사코드`만 남깁니다.
-- 기본 산출물명을 `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx`로 분리했습니다.
+- 기본 산출물명을 `work-docs/glaps/GLAPS 업로드양식_자동_최신파일참조.xlsx`로 분리했습니다.
+- `work-docs/glaps/GLAPS입력계산기.bat`을 추가해 같은 폴더의 최신 원본을 기준으로 산출물을 만들고, 성공 시 최종 산출물을 바로 열게 했습니다.
 
 ### 검증
 - `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
-- `node --test web/tests/glapsContainerUploadBuilder.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 49개 통과
+- `node --test web/tests/glapsContainerUploadBuilder.test.mjs web/tests/glapsMasterData.test.mjs web/tests/asanDispatchDetailLines.test.mjs`: 50개 통과
 - 실제 생성 검증: 최신 원본 `컨테이너배차관리___20260603152546.xlsx` 자동 선택, 원본 72행/컨테이너 70건, `ELS` 출력 70건.
 - Excel COM 재오픈 검증: 내부 `GLAPS컨테이너배차관리` 시트 없음, 외부 링크 소스 1건, `GLAPS자동계산!B201`과 `ELS!T202`까지 200행 수식 유지.
 - 폴더 이동 검증: 산출물과 원본을 `.tmp_test/glaps-portable-move`로 함께 복사해 열었을 때 링크가 복사된 폴더의 원본 파일로 해석되고 `ELS` 컨테이너 건수가 유지됨.
@@ -24,7 +25,8 @@
 - `web/scripts/build-glaps-container-formula-workbook.ps1`
 - `web/tests/glapsContainerUploadBuilder.test.mjs`
 - `work-docs/glaps/컨테이너배차관리___20260603152546.xlsx`
-- `work-docs/glaps/GLAPS 26년 6월 업로드양식_자동_최신파일참조.xlsx`
+- `work-docs/glaps/GLAPS입력계산기.bat`
+- `work-docs/glaps/GLAPS 업로드양식_자동_최신파일참조.xlsx`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
