@@ -1,4 +1,4 @@
-export const AI_ASSISTANT_VERSION = 'v5.14.348';
+export const AI_ASSISTANT_VERSION = 'v5.14.349';
 export const AI_ASSISTANT_NAME = 'ELS AI 엘스';
 
 export function getAiAssistantVersion() {
@@ -47,7 +47,7 @@ export function getAiAssistantGuideSections() {
     },
     {
       title: '아산 운송내역 데이터베이스 조회',
-      description: '아산 운송내역에 누적된 수출리스트 월별 자료에서 작업일자, 업체, 컨테이너, 차량, 청구금액을 검색합니다.',
+      description: '아산 운송내역 월별 자료에서 작업일자, 업체, 컨테이너, 차량을 찾고 청구금액 공란 시 실적관리 구간단가 후보까지 교차 확인합니다.',
       examples: [
         '6월 아산 운송내역 KCC 청구금액 찾아줘',
         '오늘 운송내역에서 0140 차량 건 찾아줘',
@@ -109,7 +109,7 @@ export function getAiSystemCapabilitySummary() {
     '- 사내 웹 문서: document_chunks 중 source_type=web_attachment로 색인된 웹 게시판/업무자료실 첨부문서.',
     '- 물류 외부 연동: 안전운임 공식 JSON/고시 원문, 컨테이너 이력 봇, OPINET 유가, K-SKILL 미세먼지, K-Law 법령.',
     '- 아산 운영 데이터베이스: 날짜/시간/상차지역/업체명 질문을 동적으로 해석하고, 운송내역/상세배차/변동내역/GLAPS코드/선적관리/실적관리도 데이터베이스 기준으로 검색한다.',
-    '- 운송내역: 월별 수출리스트 원장에서 작업일자, 업체명, 컨테이너, 차량번호, 청구금액, 선사 조건을 찾아 행수와 샘플을 제공한다.',
+    '- 운송내역: 월별 수출리스트 원장에서 작업일자, 업체명, 컨테이너, 차량번호, 청구금액, 선사 조건을 찾고, 청구금액 칸이 비면 실적관리 구간단가 후보를 교차 조회한다.',
     '- 실적관리: 원장 전체를 프롬프트에 넣지 않고 종합실적·월간실적·연간실적 화면의 도출항목/요약 스냅샷과 운송사·청구처·작업지별 breakdown을 재사용한다.',
     '- 현재 제외: 이미지 파일 자체 분석, 색인되지 않은 NAS 원본 파일 직접 파싱, 데이터베이스로 주입되지 않은 선적/실적 원본 추정.',
   ].join('\n');

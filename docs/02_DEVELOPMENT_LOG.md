@@ -1,3 +1,31 @@
+## [2026-06-04] 아산 운송내역 청구금액 교차 조회 RAG 보강 (v5.14.349)
+
+### 원인
+- 아산 운송내역 원장(`branch_transport_history`)의 `청구금액` 칸이 공란인 행에서 AI가 실적관리 데이터까지 보지 못하고 "확인 어렵다"로 답했습니다.
+- 실제로는 실적관리 월간 행과 구간단가 캐시에 KCC글라스·칸로지텍 기준 청구/하불 금액이 누적되어 있었지만, 운송내역 RAG 컨텍스트에 교차 조회 결과가 주입되지 않았습니다.
+
+### 조치
+- `asanTransportHistoryRag.mjs`에 금액 질문 감지 후 실적관리 행과 `branch_performance_monthly_route_unit_amount_cache`를 함께 조회하는 보강 경로를 추가했습니다.
+- 작업지, 운송사, 픽업/하차지, 선적, 타입, 기준 기간, 표본 수로 후보를 점수화해 청구금액 칸 공란 시에도 구간단가 후보를 RAG에 주입하게 했습니다.
+- 채팅 시스템 지침과 AI 가이드 문구를 v5.14.349 기준으로 갱신해, "금액 교차 조회" 섹션이 있으면 메뉴 안내로 끝내지 않고 숫자를 먼저 답하도록 고정했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistoryRag.test.mjs`: 4개 통과
+- `node --test web/tests/aiAssistantMeta.test.mjs`: 4개 통과
+- 실제 데이터베이스 프로브: `6월 아산 운송내역 KCC 청구금액 찾아줘` 기준 조건 행수 5건, 청구금액 칸 공란, 구간단가 후보 `청구 935,600원 / 하불 875,000원` 주입 확인
+- `npm run lint`: 통과
+- `npm run build`: 통과
+
+### 변경 파일
+- `web/utils/asanTransportHistoryRag.mjs`
+- `web/tests/asanTransportHistoryRag.test.mjs`
+- `web/app/api/chat/route.js`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-04] GLAPS 자동 계산기 원본 컬럼 헤더 매칭 전환
 
 ### 원인

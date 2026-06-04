@@ -7,10 +7,41 @@ import {
 const DEFAULT_MAX_ROWS = 50;
 const DEFAULT_MAX_MONTHS = 18;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const BILLING_ROUTE_SELECT = [
+  'scope_mode',
+  'filter_year',
+  'filter_month',
+  'rank_order',
+  'revenue_amount',
+  'purchase_amount',
+  'unit_profit',
+  'sales_item',
+  'region',
+  'work_site',
+  'carrier',
+  'category',
+  'pickup',
+  'billing_pickup',
+  'shipment',
+  'type',
+  'bill_to',
+  'pay_to',
+  'row_count',
+  'revenue',
+  'purchase',
+  'profit',
+  'period_start',
+  'period_end',
+].join(',');
 
 const TRANSPORT_HISTORY_TRIGGER_WORDS = [
   '운송내역', '운송 내역', '운송이력', '운송 이력',
   '수출리스트', '수출 리스트', '출차', '청구금액', '청구 금액',
+];
+
+const BILLING_LOOKUP_TRIGGER_WORDS = [
+  '청구', '청구금액', '청구 금액', '금액', '매출', '하불', '매입',
+  '손익', '이익', '운임', '마감', '정산', '계산서',
 ];
 
 const TRANSPORT_HISTORY_IGNORE_TERMS = new Set([
@@ -240,6 +271,16 @@ function formatMoney(value) {
   return `${amount.toLocaleString('ko-KR', { maximumFractionDigits: 0 })}원`;
 }
 
+function formatWon(value) {
+  const amount = Number(String(value ?? '').replace(/[,원\s]/g, ''));
+  if (!Number.isFinite(amount) || amount === 0) return '미기록';
+  return `${amount.toLocaleString('ko-KR')}원`;
+}
+
+function isMeaningfulAmount(value) {
+  return Number(String(value ?? '').replace(/[,원\s]/g, '')) > 0;
+}
+
 function addCount(map, key) {
   const label = cleanText(key);
   if (!label) return;
@@ -297,6 +338,351 @@ function recordsSummary(records = []) {
   )).join(', ');
 }
 
+function getDistinctColumnValues(headers = [], rows = [], candidates = [], limit = 8) {
+  const indices = Array.from(new Set(
+    candidates
+      .map((candidate) => findHeaderIndex(headers, [candidate]))
+      .filter((idx) => idx >= 0),
+  ));
+  if (!indices.length) return [];
+  const values = [];
+  const seen = new Set();
+  rows.forEach((row) => {
+    indices.forEach((idx) => {
+      const value = cleanText(row?.[idx]);
+      const compact = normalizeCompact(value);
+      if (!compact || seen.has(compact)) return;
+      seen.add(compact);
+      values.push(value);
+    });
+  });
+  return values.slice(0, limit);
+}
+
+function hasBillingLookupIntent(userText = '', intent = {}) {
+  const compact = normalizeCompact(userText);
+  if (BILLING_LOOKUP_TRIGGER_WORDS.some((word) => compact.includes(normalizeCompact(word)))) return true;
+  return (intent.searchTerms || []).some((term) => (
+    BILLING_LOOKUP_TRIGGER_WORDS.some((word) => normalizeCompact(term).includes(normalizeCompact(word)))
+  ));
+}
+
+function sanitizeLikeTerm(value) {
+  return cleanText(value)
+    .replace(/[%,*()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
+}
+
+function uniqueTerms(values = [], limit = 8) {
+  const terms = [];
+  const seen = new Set();
+  values.forEach((value) => {
+    const term = sanitizeLikeTerm(value);
+    const compact = normalizeCompact(term);
+    if (!compact || compact.length < 2 || seen.has(compact)) return;
+    if (isDateLikeTerm(compact)) return;
+    seen.add(compact);
+    terms.push(term);
+  });
+  return terms.slice(0, limit);
+}
+
+function buildBillingLookupSeed(headers = [], rows = [], intent = {}) {
+  const searchTerms = uniqueTerms(intent.searchTerms || [], 8);
+  const workSites = uniqueTerms([
+    ...getDistinctColumnValues(headers, rows, ['작업지', '현장', '상차지'], 8),
+    ...searchTerms.filter((term) => /[가-힣A-Za-z]/.test(term)),
+  ], 10);
+  const companies = uniqueTerms(getDistinctColumnValues(headers, rows, ['업체명', '운송사', '지급처', '하불처'], 8), 8);
+  const pickups = uniqueTerms(getDistinctColumnValues(headers, rows, ['픽업', '청구픽업', '청구 픽업', '하차지', '선적지', '포트', '도착지'], 10), 10);
+  const types = uniqueTerms(getDistinctColumnValues(headers, rows, ['TYPE', '타입', '규격'], 5), 5);
+  return {
+    searchTerms,
+    workSites,
+    companies,
+    pickups,
+    types,
+  };
+}
+
+function compactIncludesAny(value, terms = []) {
+  const compactValue = normalizeCompact(value);
+  return terms.some((term) => {
+    const compactTerm = normalizeCompact(term);
+    return compactTerm && compactValue.includes(compactTerm);
+  });
+}
+
+function rowMatchesAny(row = {}, fields = [], terms = []) {
+  return fields.some((field) => compactIncludesAny(row[field], terms));
+}
+
+function billingScopeScore(row = {}, target = {}) {
+  const year = Number(target.year || 0);
+  const month = Number(target.month || 0);
+  if (row.scope_mode === 'month' && Number(row.filter_year) === year && Number(row.filter_month) === month) return 36;
+  if (row.scope_mode === 'year' && Number(row.filter_year) === year) return 28;
+  if (row.scope_mode === 'all') return 24;
+  if (row.scope_mode === 'month' && Number(row.filter_year) === year) return 18;
+  return 4;
+}
+
+function monthIndex(value = '') {
+  const match = String(value || '').match(/^(20\d{2})-(\d{1,2})$/);
+  if (!match) return 0;
+  return Number(match[1]) * 12 + Number(match[2]);
+}
+
+function billingRecencyScore(row = {}, target = {}) {
+  if (!target.year || !target.month || !row.period_end) return 0;
+  const targetIndex = Number(target.year) * 12 + Number(target.month);
+  const endIndex = monthIndex(row.period_end);
+  if (!endIndex) return 0;
+  const diff = targetIndex - endIndex;
+  if (diff < 0) return 4;
+  if (diff === 0) return 18;
+  if (diff === 1) return 16;
+  if (diff === 2) return 10;
+  if (diff === 3) return 4;
+  return -12;
+}
+
+function scoreBillingRouteRow(row = {}, seed = {}, target = {}) {
+  let score = 0;
+  if (rowMatchesAny(row, ['work_site'], seed.workSites)) score += 70;
+  if (rowMatchesAny(row, ['carrier', 'pay_to'], seed.companies)) score += 54;
+  if (rowMatchesAny(row, ['pickup'], seed.pickups)) score += 34;
+  else if (rowMatchesAny(row, ['billing_pickup', 'shipment'], seed.pickups)) score += 12;
+  if (rowMatchesAny(row, ['type'], seed.types)) score += 10;
+  if (rowMatchesAny(row, ['work_site', 'carrier', 'pay_to', 'bill_to'], seed.searchTerms)) score += 10;
+  score += billingScopeScore(row, target);
+  score += billingRecencyScore(row, target);
+  score += Math.min(Number(row.row_count || 0), 120) / 10;
+  if (isMeaningfulAmount(row.revenue_amount)) score += 8;
+  if (isMeaningfulAmount(row.purchase_amount)) score += 3;
+  return score;
+}
+
+function dedupeBillingRoutes(rows = []) {
+  const result = [];
+  const seen = new Set();
+  rows.forEach((row) => {
+    const key = [
+      row.scope_mode,
+      row.filter_year,
+      row.filter_month,
+      row.revenue_amount,
+      row.purchase_amount,
+      normalizeCompact(row.work_site),
+      normalizeCompact(row.carrier || row.pay_to),
+      normalizeCompact(row.pickup),
+      normalizeCompact(row.billing_pickup),
+    ].join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(row);
+  });
+  return result;
+}
+
+function targetPeriodFromIntent(intent = {}) {
+  const scope = intent.dateScope || {};
+  if (scope.month) {
+    return {
+      year: Number(String(scope.month).slice(0, 4)),
+      month: Number(String(scope.month).slice(5, 7)),
+    };
+  }
+  if (scope.year) return { year: Number(scope.year), month: 0 };
+  return { year: 0, month: 0 };
+}
+
+function buildOrFilter(fields = [], terms = []) {
+  const parts = [];
+  fields.forEach((field) => {
+    terms.forEach((term) => {
+      const safeTerm = sanitizeLikeTerm(term);
+      if (normalizeCompact(safeTerm).length < 2) return;
+      parts.push(`${field}.ilike.%${safeTerm}%`);
+    });
+  });
+  return parts.slice(0, 24).join(',');
+}
+
+async function fetchBillingRouteRows(supabase, seed = {}, target = {}) {
+  const errors = [];
+  const attempts = [
+    {
+      fields: ['work_site'],
+      terms: uniqueTerms([...seed.workSites, ...seed.searchTerms], 8),
+      limit: 180,
+    },
+    {
+      fields: ['work_site', 'carrier', 'pay_to', 'bill_to', 'pickup', 'billing_pickup', 'shipment'],
+      terms: uniqueTerms([...seed.workSites, ...seed.companies, ...seed.pickups, ...seed.searchTerms], 10),
+      limit: 220,
+    },
+  ];
+  const rows = [];
+
+  for (const attempt of attempts) {
+    const orFilter = buildOrFilter(attempt.fields, attempt.terms);
+    if (!orFilter) continue;
+    let query = supabase
+      .from('branch_performance_monthly_route_unit_amount_cache')
+      .select(BILLING_ROUTE_SELECT)
+      .eq('branch_id', 'asan')
+      .in('scope_mode', ['month', 'year', 'all'])
+      .order('row_count', { ascending: false })
+      .limit(attempt.limit);
+    query = query.or(orFilter);
+    const { data, error } = await query;
+    if (error) {
+      errors.push(error.message || String(error));
+      continue;
+    }
+    rows.push(...(data || []));
+    if (rows.length) break;
+  }
+
+  const ranked = dedupeBillingRoutes(rows)
+    .map((row) => ({ ...row, match_score: scoreBillingRouteRow(row, seed, target) }))
+    .filter((row) => row.match_score >= 70)
+    .sort((a, b) => b.match_score - a.match_score || Number(b.row_count || 0) - Number(a.row_count || 0))
+    .slice(0, 8);
+
+  return { rows: ranked, errors };
+}
+
+function pickRowData(rowData = {}, candidates = []) {
+  for (const key of candidates) {
+    const value = cleanText(rowData?.[key]);
+    if (value) return value;
+  }
+  return '';
+}
+
+function normalizeExactBillingRow(row = {}, container = '') {
+  const rowData = row.row_data || {};
+  return {
+    container: container || pickRowData(rowData, ['C/Tn', 'CONTAINER', '컨테이너']),
+    work_site: pickRowData(rowData, ['작업지', '상차지', '현장']),
+    carrier: pickRowData(rowData, ['운송사(명의)', '지급처', '하불처', '운송사']),
+    vehicle: pickRowData(rowData, ['영업넘버', '차량번호', '차번']),
+    pickup: pickRowData(rowData, ['픽업', '청구픽업', '하차', '선적']),
+    shipment: pickRowData(rowData, ['선적', '선적지']),
+    type: pickRowData(rowData, ['TYPE', '타입', '규격']),
+    revenue_amount: parseAmount(pickRowData(rowData, ['청구', '청구금액', '청구액', '매출금액'])),
+    purchase_amount: parseAmount(pickRowData(rowData, ['하불', '하불금액', '매입금액', '지급금액'])),
+    profit_amount: parseAmount(pickRowData(rowData, ['손익', '이익', '마진'])),
+    work_date: pickRowData(rowData, ['작업일자', '작업일', '날짜']),
+    file_path: row.file_path || '',
+    sheet_name: row.sheet_name || '',
+    row_index: row.row_index,
+    year_value: row.year_value,
+    month_value: row.month_value,
+  };
+}
+
+async function fetchExactBillingRows(supabase, intent = {}) {
+  const containers = (intent.containers || []).slice(0, 6);
+  if (!containers.length) return { rows: [], errors: [] };
+  const errors = [];
+  const results = await Promise.all(containers.map(async (container) => {
+    let query = supabase
+      .from('branch_performance_rows')
+      .select('file_path,sheet_name,row_index,year_value,month_value,row_data,search_text')
+      .eq('branch_id', 'asan')
+      .eq('dataset_type', 'monthly')
+      .ilike('search_text', `%${container}%`)
+      .limit(8);
+    const target = targetPeriodFromIntent(intent);
+    if (target.year) query = query.eq('year_value', target.year);
+    const { data, error } = await query;
+    if (error) {
+      errors.push(error.message || String(error));
+      return [];
+    }
+    return (data || []).map((row) => normalizeExactBillingRow(row, container));
+  }));
+  return {
+    rows: results.flat().filter((row) => isMeaningfulAmount(row.revenue_amount) || isMeaningfulAmount(row.purchase_amount)).slice(0, 12),
+    errors,
+  };
+}
+
+export async function fetchAsanTransportHistoryBillingMatches({
+  supabase,
+  userText = '',
+  intent = {},
+  headers = [],
+  rows = [],
+} = {}) {
+  if (!supabase || !hasBillingLookupIntent(userText, intent) || !rows.length) {
+    return { exactRows: [], routeRows: [], errors: [], lookupSeed: buildBillingLookupSeed(headers, rows, intent) };
+  }
+
+  const lookupSeed = buildBillingLookupSeed(headers, rows, intent);
+  const target = targetPeriodFromIntent(intent);
+  const [exact, route] = await Promise.all([
+    fetchExactBillingRows(supabase, intent),
+    fetchBillingRouteRows(supabase, lookupSeed, target),
+  ]);
+
+  return {
+    exactRows: exact.rows,
+    routeRows: route.rows,
+    errors: [...exact.errors, ...route.errors],
+    lookupSeed,
+    target,
+  };
+}
+
+function billingRouteLabel(row = {}) {
+  return [
+    cleanText(row.work_site),
+    cleanText(row.carrier || row.pay_to),
+    cleanText(row.pickup || row.billing_pickup),
+    cleanText(row.shipment),
+    cleanText(row.type),
+  ].filter(Boolean).join(' / ');
+}
+
+function billingPeriodLabel(row = {}) {
+  if (row.scope_mode === 'month') return `${row.filter_year}-${String(row.filter_month).padStart(2, '0')}`;
+  if (row.scope_mode === 'year') return `${row.filter_year}년`;
+  return `${row.period_start || '-'}~${row.period_end || '-'}`;
+}
+
+function buildBillingCrossLookupText(matches = {}) {
+  const exactRows = matches.exactRows || [];
+  const routeRows = matches.routeRows || [];
+  const errors = matches.errors || [];
+  if (!exactRows.length && !routeRows.length && !errors.length) return '';
+
+  let text = `### 금액 교차 조회\n`;
+  text += `- 운송내역 원장 청구금액 칸이 비어 있어도, 실적관리 행과 월간 구간단가 캐시에서 같은 작업지·운송사·픽업·선적 조건을 추가 조회했다.\n`;
+  if (exactRows.length) {
+    text += `- 정확 컨테이너 매칭:\n`;
+    exactRows.slice(0, 6).forEach((row) => {
+      text += `  - ${row.container}: 청구 ${formatWon(row.revenue_amount)} / 하불 ${formatWon(row.purchase_amount)} / 작업지 ${row.work_site || '-'} / 운송사 ${row.carrier || '-'} / 차량 ${row.vehicle || '-'} / 기준 ${row.year_value || '-'}년 ${row.month_value || '-'}월 ${row.sheet_name || ''} ${row.row_index ? `행${row.row_index}` : ''}\n`;
+    });
+  }
+  if (routeRows.length) {
+    text += `- 구간단가 후보:\n`;
+    routeRows.slice(0, 6).forEach((row, idx) => {
+      text += `  - 후보${idx + 1}: ${billingRouteLabel(row) || '-'} / 청구 ${formatWon(row.revenue_amount)} / 하불 ${formatWon(row.purchase_amount)} / 손익 ${formatWon(row.unit_profit)} / ${billingPeriodLabel(row)} / 표본 ${Number(row.row_count || 0).toLocaleString('ko-KR')}건\n`;
+    });
+  }
+  if (errors.length) {
+    text += `- 일부 금액 교차 조회 오류: ${errors.slice(0, 2).join(' / ')}\n`;
+  }
+  text += `> [금액 해석 규칙] 청구금액/매출/운임 질문에서 운송내역 원장 칸이 공란이라도 위 교차 조회 금액이 있으면 "확인 불가"로 끝내지 말고, 해당 후보 금액과 기준 기간을 먼저 답하라. 단, 운송내역 원장 자체의 청구금액 칸은 공란이라는 점도 함께 말하라.\n`;
+  return text;
+}
+
 export function buildAsanTransportHistoryRagText(records = [], intent = {}, options = {}) {
   const maxRows = Math.max(1, Math.min(Number(options.maxRows || DEFAULT_MAX_ROWS), 80));
   const normalizedRecords = records.map(normalizeRecord);
@@ -316,8 +702,12 @@ export function buildAsanTransportHistoryRagText(records = [], intent = {}, opti
   const amountTotal = amountIdx >= 0
     ? amountValues.reduce((sum, value) => sum + parseAmount(value), 0)
     : 0;
+  const billingCrossText = buildBillingCrossLookupText(options.billingMatches || {});
+  const hasBillingMatches = Boolean((options.billingMatches?.exactRows || []).length || (options.billingMatches?.routeRows || []).length);
   let amountLabel = '청구금액 컬럼 미탐지';
-  if (amountIdx >= 0 && !amountValues.length) {
+  if (amountIdx >= 0 && !amountValues.length && hasBillingMatches) {
+    amountLabel = '청구금액 칸 공란 / 실적관리·구간단가 교차 조회 후보 있음';
+  } else if (amountIdx >= 0 && !amountValues.length) {
     amountLabel = '청구금액 값 없음(조건 행의 청구금액 칸 공란)';
   } else if (amountIdx >= 0 && page.total > rows.length) {
     amountLabel = `청구금액 샘플합계(${rows.length}/${page.total}건): ${formatMoney(amountTotal)}`;
@@ -334,6 +724,7 @@ export function buildAsanTransportHistoryRagText(records = [], intent = {}, opti
   text += `- 차량 상위: ${topCountText(headers, rows, ['차량번호', '차번', '차량', '영업넘버'])}\n`;
   text += `- 선사 상위: ${topCountText(headers, rows, ['선사', 'LINE', '라인'])}\n`;
   text += `> [해석 규칙] 운송내역 질문은 이 데이터베이스 행을 기준으로 답한다. NAS 원본 파일을 직접 파싱했다고 말하지 마라. 조건 행수가 0이면 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
+  if (billingCrossText) text += billingCrossText;
 
   if (rows.length) {
     text += `### 운송내역 행 샘플\n`;
@@ -411,7 +802,20 @@ export async function buildAsanTransportHistoryRagContext({
       };
     }
 
-    const rag = buildAsanTransportHistoryRagText(data || [], intent, { maxRows });
+    const preview = buildTransportHistoryRowsPage((data || []).map(normalizeRecord), {
+      limit: Math.max(maxRows, 80),
+      offset: 0,
+      search: (intent.searchTerms || []).join(','),
+      date: intent.dateScope?.mode === 'day' ? intent.dateScope.day : '',
+    });
+    const billingMatches = await fetchAsanTransportHistoryBillingMatches({
+      supabase,
+      userText,
+      intent,
+      headers: preview.headers || [],
+      rows: preview.data || [],
+    });
+    const rag = buildAsanTransportHistoryRagText(data || [], intent, { maxRows, billingMatches });
     return {
       shouldQuery: true,
       success: true,
