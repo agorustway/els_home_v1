@@ -130,7 +130,7 @@ export function buildAsanChangeEventsRagText(rows = [], intent = {}) {
     });
     if (rows.length > DEFAULT_LIMIT) text += `- 이벤트는 ${DEFAULT_LIMIT}건까지만 주입됨. 실제 조회는 ${rows.length}건이다.\n`;
   } else {
-    text += `> [조회 완료] 해당 조건의 배차변동 이벤트가 없습니다. 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+    text += `> [조회 완료] 해당 조건의 배차변동 이벤트가 없습니다. 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
   }
   return { text, hasMatches: rows.length > 0, total: rows.length };
 }

@@ -851,7 +851,7 @@ function queryBuilderForIntent(supabase, intent) {
 
 function buildNoDataText(intent, detail) {
   return `\n\n## 아산지점 배차판 (${intent.dateScope.label})\n`
-    + `> [DB 미동기화/데이터 없음] ${detail}\n`
+    + `> [데이터베이스 미동기화/데이터 없음] ${detail}\n`
     + `> 사내 데이터베이스 branch_dispatch 기준으로 조회했지만 해당 범위의 배차 데이터가 없습니다. 상세 내역은 [아산 배차판](/employees/branches/asan)에서 확인해 주세요.`;
 }
 
@@ -950,7 +950,7 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
       text += `- 상세 행은 ${matchedRows.length}건까지만 주입됨. 실제 매칭은 ${matchedSummary.rowCount}건이다.\n`;
     }
   } else if (overallSummary.rowCount > 0) {
-    text += `\n> [조회 완료] ${filterLabel} 조건에 일치하는 배차 행이나 메모가 없습니다. 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+    text += `\n> [조회 완료] ${filterLabel} 조건에 일치하는 배차 행이나 메모가 없습니다. 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
   }
 
   return {
@@ -1264,7 +1264,7 @@ export function buildAsanDispatchDetailRagText(records = [], intent, options = {
       text += `- 상세 라인은 ${maxDetailRows}건까지만 주입됨. 실제 매칭은 ${targetLines.length}건이다.\n`;
     }
   } else {
-    text += `> [조회 완료] ${filterLabel} 조건에 일치하는 상세배차 라인이 없습니다. 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+    text += `> [조회 완료] ${filterLabel} 조건에 일치하는 상세배차 라인이 없습니다. 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
   }
 
   return {
@@ -1366,7 +1366,7 @@ export async function buildAsanDispatchDetailRagContext({
     return {
       shouldQuery: true,
       success: false,
-      text: `\n\n## 아산지점 상세배차 (${intent.dateScope.label})\n> [DB 미동기화/데이터 없음] ${detail}\n> 상세배차는 branch_dispatch 원장 기반으로 생성되지만 해당 범위 데이터가 없습니다.`,
+      text: `\n\n## 아산지점 상세배차 (${intent.dateScope.label})\n> [데이터베이스 미동기화/데이터 없음] ${detail}\n> 상세배차는 branch_dispatch 원장 기반으로 생성되지만 해당 범위 데이터가 없습니다.`,
       intent,
       error,
     };

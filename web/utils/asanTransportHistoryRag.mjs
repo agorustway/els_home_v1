@@ -327,13 +327,13 @@ export function buildAsanTransportHistoryRagText(records = [], intent = {}, opti
 
   let text = `\n\n## 아산지점 운송내역\n`;
   text += `[시스템: 사내 데이터베이스 branch_transport_history / 조회 범위 ${intent.dateScope?.label || '현재연도'} / 검색 ${(intent.searchTerms || []).join(', ') || '전체'} / 조건 행수 ${page.total}건]\n`;
-  text += `- 원장: /아산지점/2026_수출리스트.xlsx 월별 시트 DB 누적본\n`;
+  text += `- 원장: /아산지점/2026_수출리스트.xlsx 월별 시트 데이터베이스 누적본\n`;
   text += `- 조회 월/시트: ${recordsSummary(normalizedRecords)}\n`;
   text += `- 조건 행수: ${Number(page.total || 0).toLocaleString('ko-KR')}건 / ${amountLabel}\n`;
   text += `- 업체/운송사 상위: ${topCountText(headers, rows, ['업체명', '운송사', '지급처', '하불처'])}\n`;
   text += `- 차량 상위: ${topCountText(headers, rows, ['차량번호', '차번', '차량', '영업넘버'])}\n`;
   text += `- 선사 상위: ${topCountText(headers, rows, ['선사', 'LINE', '라인'])}\n`;
-  text += `> [해석 규칙] 운송내역 질문은 이 DB 행을 기준으로 답한다. NAS 원본 파일을 직접 파싱했다고 말하지 마라. 조건 행수가 0이면 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+  text += `> [해석 규칙] 운송내역 질문은 이 데이터베이스 행을 기준으로 답한다. NAS 원본 파일을 직접 파싱했다고 말하지 마라. 조건 행수가 0이면 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
 
   if (rows.length) {
     text += `### 운송내역 행 샘플\n`;
@@ -346,7 +346,7 @@ export function buildAsanTransportHistoryRagText(records = [], intent = {}, opti
   } else if (normalizedRecords.length) {
     text += `> [조회 완료] 조건에 일치하는 운송내역 행이 없습니다.\n`;
   } else {
-    text += `> [DB 미동기화/데이터 없음] branch_transport_history 원장을 찾지 못했습니다.\n`;
+    text += `> [데이터베이스 미동기화/데이터 없음] branch_transport_history 원장을 찾지 못했습니다.\n`;
   }
 
   return {

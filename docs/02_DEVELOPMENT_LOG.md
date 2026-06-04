@@ -1,3 +1,56 @@
+## [2026-06-04] GLAPS 자동 계산기 원본 컬럼 헤더 매칭 전환
+
+### 원인
+- `GLAPS 업로드양식_자동_최신파일참조.xlsx`는 최신 `컨테이너배차관리___*.xlsx` 파일명은 자동으로 따라가지만, 원본 값 참조 수식은 생성 당시 열 위치에 고정되어 있었습니다.
+- 다운로드 사용자/환경에 따라 컬럼 순서가 바뀌거나 일부 컬럼이 빠지면 `K열`, `X열` 같은 고정 참조가 엉뚱한 값을 가져올 수 있었습니다.
+
+### 조치
+- 원본 참조 수식을 `INDEX(원본범위, 원본행, MATCH("헤더명", 원본 1행, 0))` 구조로 바꿔, 같은 폴더 최신 파일로 링크가 바뀌어도 헤더명 기준으로 값을 가져오게 했습니다.
+- 누락된 헤더는 `IFERROR(...,"")`로 빈칸 처리해 잘못된 값이 들어가지 않게 했습니다.
+- `work-docs/glaps/GLAPS강범수계산기/GLAPS 업로드양식_자동_최신파일참조.xlsx`를 새 수식으로 재생성하고, 기존 파일 백업본을 같은 폴더에 남겼습니다.
+
+### 검증
+- `node --check web/utils/glapsContainerFormulaTemplate.mjs`: 통과
+- `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
+- `node --test web/tests/glapsContainerUploadBuilder.test.mjs`: 9개 통과
+- 재생성 파일 Excel COM 오픈, BAT 재계산, OOXML 검사에서 헤더 MATCH 수식 포함, 절대경로 없음, 시트 XML `#NAME?` 0건을 확인했습니다.
+
+### 변경 파일
+- `web/utils/glapsContainerFormulaTemplate.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `web/scripts/build-glaps-container-formula-workbook.ps1`
+- `web/tests/glapsContainerUploadBuilder.test.mjs`
+- `work-docs/glaps/GLAPS강범수계산기/GLAPS 업로드양식_자동_최신파일참조.xlsx`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-04] Excel NAS 신뢰 위치 및 모비스 동적배열 오류 보정
+
+### 원인
+- 모비스 배차 `.xlsm`의 반복 `#NAME?`는 VBA UDF보다 시트 요약 영역의 365 동적배열 함수(`UNIQUE`, `FILTER`, `SORT`) 캐시가 깨진 문제가 직접 원인이었습니다.
+- 글로비스KD외 파일은 같은 동적배열 함수가 없어 동일 증상이 재현되지 않았습니다.
+- VBA UDF(`SumNumbersFromRange`, `SplitKakao` 등)는 별도 위험으로, Excel에 로드되기 전 재계산될 때 `#NAME?`를 만들 수 있습니다.
+- Excel 매크로 설정을 허용해도 NAS/네트워크 위치는 별도 신뢰 위치 정책에 걸릴 수 있어, PC별 신뢰 위치 등록이 필요합니다.
+
+### 조치
+- `scripts/register_excel_trusted_locations.ps1`을 추가해 Excel Office 버전별 HKCU 신뢰 위치에 `A:\` 및 현재 PC의 매핑된 네트워크 드라이브를 등록하고 `AllowNetworkLocations=1`을 설정하게 했습니다.
+- `scripts/register_excel_trusted_locations.bat`을 추가해 사용자가 더블클릭으로 PowerShell 등록 스크립트를 실행할 수 있게 했습니다.
+- NAS 모비스 복구본 `2026년_배차-일일배차(모비스AS)_동적배열호환본_20260604_102819.xlsm`을 추가했습니다. 깨진 동적배열 요약 영역은 현재 데이터 기준 값으로 고정하고, 매크로/VBA 프로젝트는 보존했습니다.
+- 계산 체인은 제거하고 통합문서 계산 설정은 자동 재계산/전체 재계산 로드로 보정했습니다.
+
+### 검증
+- PowerShell AST 파서로 `.ps1` 문법을 확인했습니다.
+- 모비스 동적배열 호환본은 NAS 파일을 Excel COM에서 매크로 실행 없이 열어 8개 시트 정상 오픈을 확인했습니다.
+- 시트 XML 기준 `#NAME?` 0건을 확인했습니다.
+
+### 변경 파일
+- `scripts/register_excel_trusted_locations.ps1`
+- `scripts/register_excel_trusted_locations.bat`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-04] 아산 운송내역 배차시간 초 단위 숨김 (v5.14.347)
 
 ### 원인
@@ -62,6 +115,36 @@
 ### 변경 파일
 - `web/app/(main)/employees/branches/asan/layout.js`
 - `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-04] AI 사용자 노출 데이터베이스 문구 정리 (v5.14.348)
+
+### 원인
+- 운영 화면에는 서비스명은 대부분 빠졌지만, AI 소개/답변/RAG 주입 문구에 `DB`, `시스템 DB`, `내부 DB`, `DB 미동기화` 같은 약어가 남아 일반 사용자에게 개발자식 표현으로 보였습니다.
+- 형 요청대로 서비스명과 약어를 빼고 `사내 데이터베이스` 또는 `데이터베이스`로 통일해야 했습니다.
+
+### 조치
+- AI 버전을 `v5.14.348`로 올렸습니다.
+- `web/app/api/chat/route.js`의 시스템 지침, 데이터 출처, 차량/웹/아산 운영 데이터 주입 문구에서 `DB` 약어를 풀어 썼습니다.
+- 아산 배차판/상세배차/운송내역/선적관리/변동내역 RAG 텍스트의 `[DB 미동기화]`, `실제 DB 조회`, `DB 행` 표현을 데이터베이스 표현으로 교체했습니다.
+- AI 메타 테스트에 소개/가이드/능력 설명에서 `Supabase`와 `DB` 약어가 노출되지 않는 회귀 체크를 추가했습니다.
+
+### 검증
+- `rg` 기준 사용자 노출 가능 AI/RAG 문구에서는 서비스명과 `DB` 약어가 제거됐고, 내부 함수명에만 기존 기술명이 남았습니다.
+- `node --test web/tests/aiAssistantMeta.test.mjs web/tests/asanTransportHistoryRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/asanDispatchRag.test.mjs`: 25개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+
+### 변경 파일
+- `web/app/api/chat/route.js`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/utils/asanDispatchRag.mjs`
+- `web/utils/asanShippingRag.mjs`
+- `web/utils/asanTransportHistoryRag.mjs`
+- `web/utils/asanOpsRag.mjs`
+- `web/tests/aiAssistantMeta.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---

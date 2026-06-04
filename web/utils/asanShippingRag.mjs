@@ -129,7 +129,7 @@ export function buildAsanShippingRagText(data = {}, intent = {}, options = {}) {
   let text = `\n\n## 아산지점 선적관리\n`;
   text += `[시스템: 사내 데이터베이스 branch_shipping_files/branch_shipping_rows / 조회 조건 ${terms} / 표시 ${rows.length}건 / 전체 ${data.total ?? rows.length}건 / 소스 ${data.source || 'unknown'}]\n`;
   text += `- 헤더: ${headers.join(', ') || '미탐지'}\n`;
-  text += `> [해석 규칙] 선적관리 질문은 이 DB 행을 기준으로 답한다. 주입되지 않은 NAS 원본 파일이나 이미지 내용을 추정하지 마라.\n`;
+  text += `> [해석 규칙] 선적관리 질문은 이 데이터베이스 행을 기준으로 답한다. 주입되지 않은 NAS 원본 파일이나 이미지 내용을 추정하지 마라.\n`;
 
   if (rows.length > 0) {
     text += `### 선적관리 행 샘플\n`;
@@ -140,7 +140,7 @@ export function buildAsanShippingRagText(data = {}, intent = {}, options = {}) {
       text += `- 행 샘플은 ${maxRows}건까지만 주입됨. 조회 결과는 ${rows.length}건이다.\n`;
     }
   } else {
-    text += `> [조회 완료] 조건에 일치하는 선적관리 행이 없습니다. 실제 DB 조회 결과 기준으로 0건이라고 답하라.\n`;
+    text += `> [조회 완료] 조건에 일치하는 선적관리 행이 없습니다. 실제 데이터베이스 조회 결과 기준으로 0건이라고 답하라.\n`;
   }
 
   return {
@@ -176,7 +176,7 @@ export async function buildAsanShippingRagContext({
         shouldQuery: true,
         success: false,
         intent,
-        text: `\n\n## 아산지점 선적관리\n> [DB 미동기화/데이터 없음] branch_shipping_files 기준 선적관리 원장을 찾지 못했습니다.`,
+        text: `\n\n## 아산지점 선적관리\n> [데이터베이스 미동기화/데이터 없음] branch_shipping_files 기준 선적관리 원장을 찾지 못했습니다.`,
       };
     }
     const rag = buildAsanShippingRagText(data, intent, { maxRows });

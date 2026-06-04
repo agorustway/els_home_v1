@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.347 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.348 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운송내역 `배차 시간` 표시를 초 단위 없이 `HH:MM` 형식으로 정리했다.
+> 최신 업데이트: AI 사용자 노출 문구에서 Supabase 및 DB 약어를 제거하고 사내 데이터베이스 표현으로 통일했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.347
+- **웹 버전**: v5.14.348
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -46,7 +46,7 @@
 - GLAPS 마스터 반영은 새 버전을 비활성으로 만든 뒤 모든 insert가 성공한 경우에만 active 전환한다. 같은 원장 행이 중복 파싱되면 insert 전에 정리하고 결과 메시지에 `원장 중복행 N건 정리`로 알린다.
 - 상세배차/배차변동내역은 `/api/branches/asan/glaps/master?mode=lookup`의 경량 자료만 사용한다.
 - 운송경로 원장에 화주명 없이 `KR10`만 있는 글로비스 행은 상세배차 화주 `글로비스/글로비스KD외/현대글로비스`와 매칭한다.
-- GLAPS 수식완성본 최종본은 `work-docs/glaps/GLAPS강범수계산기`에 보관한다. 내부 원본 시트 없이 같은 폴더 최신 `컨테이너배차관리___*.xlsx`를 상대경로 외부참조하며, 유지보수 때는 GLAPS 배포 원본 양식의 ELS 코드화/스크린샷 영역 수식과 `GLAPS정리`/`CKD고객사코드` 헤더 구조를 우선 기준으로 삼고 우리 역입력 수식을 다시 얹는다.
+- GLAPS 수식완성본 최종본은 `work-docs/glaps/GLAPS강범수계산기`에 보관한다. 내부 원본 시트 없이 같은 폴더 최신 `컨테이너배차관리___*.xlsx`를 상대경로 외부참조하고, 원본 값은 고정 열 위치가 아니라 `MATCH("헤더명", 원본 1행)`으로 가져온다. 유지보수 때는 배포 원본 양식의 ELS 코드화/스크린샷 수식과 `GLAPS정리`/`CKD고객사코드` 헤더 구조를 기준으로 우리 역입력 수식을 다시 얹는다.
 
 ## ASAN DISPATCH NOTES
 - 아산 예하페이지 우측 작업 버튼 순서는 `엑셀 -> 설정 -> 새로고침 -> NAS 동기화`로 고정한다.
@@ -73,7 +73,7 @@
 - 상세배차/배차변동 표 헤더는 목록형 다중 선택 필터를 제공한다. `전체선택`은 전체 값 선택, 전체선택 상태에서는 `전체취소`로 동작한다. 배차변동 확인완료 행도 상차지/포트/DG/RF/BKG 선택을 수정할 수 있고, 변경 이벤트는 diff가 확인된 컬럼만 노란색으로 표시한다.
 - 상세배차/배차변동 테이블 헤더는 목록형 필터와 기호형 `↑/↓/↺` 정렬을 제공한다. 상세배차는 정렬 초기화 시 원래 배차 순서로 돌아가고, 배차변동내역은 기본 `발생일시` 최신순으로 돌아간다.
 - 배차판/상세배차/배차변동 공통 테이블 스크롤 높이는 `clamp(360px, calc(100dvh - 300px), 980px)` 기준이다. 상세/변동 표 헤더·데이터행은 24px/0.76rem로 맞추고, 변경/선택 셀은 테두리 강조 없이 배경색만 쓴다.
-- 글로비스 원본 `/아산지점/A_운송실무/2026년_배차-일일배차(글로비스KD외).xlsm`의 `셀맥`은 `셀맥(KIA)오성`으로 정리했으며, 매크로 보존을 위해 OOXML 직접 패치만 사용한다.
+- 모비스 배차 `.xlsm`의 `#NAME?`는 365 동적배열 `UNIQUE/FILTER/SORT` 캐시가 구버전/호환 Excel에서 깨져 재발할 수 있다. 복구는 원본 보존 후 동적배열 요약 영역을 값고정한 호환본으로 만들고, NAS 신뢰 위치 등록은 VBA UDF 로드 문제 예방용으로 유지한다.
 
 ## SECURITY NOTES
 - Supabase `public` 신규 객체는 `postgres` 기본권한에서 anon/authenticated 자동 GRANT를 제거했다. `supabase_admin` 기본권한은 SQL 권한 부족으로 Dashboard Data API 설정에서 별도 확인한다.
@@ -83,19 +83,13 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **운영 보조**: GLAPS 자동 계산기는 원본 값을 헤더명 MATCH로 참조한다. 모비스 `.xlsm` 동적배열 `#NAME?`는 값고정 호환본으로 대응했고 신뢰 위치 스크립트는 VBA UDF 로드 예방용으로 유지한다.
+- **v5.14.348**: AI 소개·가이드·시스템 지침·아산 RAG 주입 문구에서 Supabase 및 DB 약어를 제거하고 `사내 데이터베이스/데이터베이스` 표현으로 통일했다.
 - **v5.14.347**: 아산 운송내역 `배차 시간` 컬럼을 `09:00:00` 대신 `09:00`처럼 초 단위 없이 표시하도록 셀 포맷터를 추가하고 회귀 테스트를 보강했다.
 - **v5.14.346**: 운송내역 동적 청크에서 무한스크롤 콜백이 `rows.length`를 rows 선언 전에 평가해 `Cannot access 'e0' before initialization`이 발생하던 문제를 수정했다. `headers/rows` 선언을 콜백 위로 이동하고 회귀 테스트를 추가했다.
 - **v5.14.345**: `/employees/branches/asan` 라우트에 서버 `layout.js`를 추가해 `force-dynamic`, `revalidate=0`, `force-no-store`로 고정했다. 운영에서 정적 HTML 캐시 HIT가 남아 이전 청크와 최신 청크가 섞이며 페이지 로드 오류가 나는 경로를 차단했다.
-- **v5.14.344**: 아산 운송내역 `branch_transport_history`를 AI RAG에 연결해 월/일자/컨테이너/업체/차량/청구금액 질문을 사내 데이터베이스 기준으로 답하게 했다. AI 소개·가이드·RAG 문구의 Supabase 노출 표현은 사내 데이터베이스로 바꿨다.
-- **v5.14.343**: GLAPS 수식완성본은 같은 폴더 최신 `컨테이너배차관리___*.xlsx`를 상대경로 외부참조하고 내부 원본 시트 복사를 중단했다. 최종본은 `work-docs/glaps/GLAPS강범수계산기` 기준이며, `A_GLAPS_입력계산기.bat`은 산출 후 `GLAPS 업로드양식_자동_최신파일참조.xlsx`를 연다.
-- **v5.14.342**: 아산 운송내역에 선적관리형 숨김 드래그/프리셋 방식을 적용하고, DB `rows` 일자 필터와 컨테이너 이력 조회 컬럼을 연결했다. 연도 선택은 DB 존재 연도만 표시한다.
-- **v5.14.341**: 상세배차/배차변동 테이블 헤더와 데이터 행 높이·글자 크기를 통일하고, DG/RF 선택값은 일반 굵기로 표시한다. 노란 변경/선택 셀은 box-shadow 테두리 없이 배경색만 남겼다.
 ## VERIFICATION
-- 운송내역 배차시간 표시 변경은 `node --test web/tests/asanTransportHistory.test.mjs` 19개, `npm run lint`, `npm run build`를 통과했다.
-- 운송내역 TDZ 대응은 `node --test web/tests/asanTransportHistory.test.mjs` 19개, `npm run lint`, `npm run build`를 통과했고, 새 빌드 청크에서 rows 선언이 무한스크롤 offset 참조보다 먼저 나오는 것을 확인했다.
-- 아산 라우트 캐시 대응은 `node --test web/tests/asanDashboardView.test.mjs` 42개, `npm run lint`, `npm run build`를 통과했고, 빌드 결과 `/employees/branches/asan`가 `ƒ Dynamic`으로 표시됨을 확인했다.
-- 운송내역 RAG/UX 보강은 관련 RAG·운송내역 테스트 48개, 실제 DB RAG 스모크, `npm run lint`, `.next` 정리 후 `npm run build`를 통과했다. 로컬 HTTP 스모크는 `/employees/branches/asan?debug=true`와 `mode=meta/rows` 응답 200을 확인했다.
-- Supabase Advisor/RLS/권한 검증과 운영 웹 스모크는 최근 보안 항목 기준 통과. GLAPS 특이적용건 `waypoint_els_name`, 항목매핑 검수메모 승격 운영 DB 마이그레이션 적용 완료. 남은 WARN은 Auth leaked password Dashboard 설정 1건.
+- 최근 운송내역/아산 라우트/AI 문구 변경은 관련 테스트, `npm run lint`, `npm run build`, `/employees/branches/asan?debug=true` 스모크를 통과했다. Supabase 보안 검증은 통과, 남은 WARN은 Auth leaked password Dashboard 설정 1건.
 ## IN-PROGRESS
 - 다음 단계: GLAPS 수식완성본 재계산과 목록값 미매칭 반영 여부를 확인하고, DB는 일일 배차/상세배차 1년 1개월 초과분 archive worker 검증을 이어간다.
 ## FIXED RULES
