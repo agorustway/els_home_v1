@@ -49,12 +49,12 @@ function makeSourceSignature(items = [], viewType = 'integrated') {
     return `${viewType}|${parts.join('|')}`;
 }
 
-async function loadDispatchItemsForCache(request, viewType) {
+async function loadDispatchItems(request, viewType, mode = 'full') {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
     url.search = new URLSearchParams({
         type: viewType,
-        mode: 'full',
+        mode,
         t: String(Date.now()),
     }).toString();
 
@@ -64,6 +64,14 @@ async function loadDispatchItemsForCache(request, viewType) {
         throw new Error(payload.error || '배차 원장 조회 실패');
     }
     return payload.data || [];
+}
+
+async function loadDispatchItemsForCache(request, viewType) {
+    return loadDispatchItems(request, viewType, 'full');
+}
+
+async function loadDispatchItemsForSignature(request, viewType) {
+    return loadDispatchItems(request, viewType, 'meta');
 }
 
 async function writeDashboardCache({ supabase, request, viewType }) {
@@ -112,7 +120,41 @@ export async function GET(request) {
         return NextResponse.json({ ok: false, error: error.message, setupRequired: true }, { status: 500 });
     }
     if (!data) {
-        return NextResponse.json({ ok: false, cache: null, needsRefresh: true, viewType });
+        try {
+            const refreshed = await writeDashboardCache({ supabase, request, viewType });
+            return NextResponse.json({ ok: true, cache: refreshed, viewType, refreshed: true });
+        } catch (refreshError) {
+            return NextResponse.json({
+                ok: false,
+                cache: null,
+                needsRefresh: true,
+                viewType,
+                error: refreshError.message,
+            });
+        }
+    }
+
+    try {
+        const signatureItems = await loadDispatchItemsForSignature(request, viewType);
+        const currentSignature = makeSourceSignature(signatureItems, viewType);
+        if (currentSignature && data.source_signature !== currentSignature) {
+            const refreshed = await writeDashboardCache({ supabase, request, viewType });
+            return NextResponse.json({
+                ok: true,
+                cache: refreshed,
+                viewType,
+                refreshed: true,
+                previousUpdatedAt: data.updated_at,
+            });
+        }
+    } catch (refreshError) {
+        return NextResponse.json({
+            ok: true,
+            cache: data,
+            viewType,
+            stale: true,
+            refreshError: refreshError.message,
+        });
     }
     return NextResponse.json({ ok: true, cache: data, viewType });
 }

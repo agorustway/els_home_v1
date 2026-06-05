@@ -635,6 +635,10 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(apiSource, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(apiSource, /allowedTokens\.includes\(bearer\)/);
   assert.match(apiSource, /authorization/);
+  assert.match(apiSource, /loadDispatchItemsForSignature/);
+  assert.match(apiSource, /loadDispatchItems\(request, viewType, 'meta'\)/);
+  assert.match(apiSource, /data\.source_signature !== currentSignature/);
+  assert.match(apiSource, /refreshed: true/);
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);
   assert.match(sql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_cache FROM anon, authenticated;/);
