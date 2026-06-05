@@ -631,6 +631,9 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(source, /dashboardCache=\{dashboardCachePayload\}/);
   assert.match(apiSource, /DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache'/);
   assert.match(apiSource, /hasRefreshAccess/);
+  assert.match(apiSource, /process\.env\.ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN/);
+  assert.match(apiSource, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(apiSource, /allowedTokens\.includes\(bearer\)/);
   assert.match(apiSource, /authorization/);
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);

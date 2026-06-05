@@ -1,3 +1,27 @@
+## [2026-06-05] 아산 배차 현황판 캐시 인증 복구 (v5.14.351)
+
+### 원인
+- 6/5 배차 원장 DB에는 글로비스 69대와 모비스 12대가 정상 저장되어 있었지만, `branch_dispatch_dashboard_cache`의 통합 캐시는 6/1 생성본에 머물러 6/5 일별 카드가 모비스 2대만 표시했습니다.
+- 캐시 refresh API가 `ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN`이 설정된 경우 `SUPABASE_SERVICE_ROLE_KEY`를 거절하는 구조였고, NAS Core 프리워밍 호출은 서비스키를 보내 401로 실패할 수 있었습니다.
+
+### 조치
+- 현황판 캐시 API 인증을 전용 토큰 또는 서비스키 둘 다 허용하도록 변경했습니다.
+- NAS Core/legacy 백엔드는 `ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN`이 있으면 우선 사용하고, 없으면 서비스키로 캐시 프리워밍을 호출하게 했습니다.
+- 프리워밍 실패 시 상태코드뿐 아니라 응답 일부를 로그에 남겨 다음 인증/환경 문제를 바로 볼 수 있게 했습니다.
+- 운영 캐시를 현재 원장 기준으로 즉시 재생성했습니다. 2026-06-05 기준 통합 81, 글로비스 69, 모비스 12로 확인했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs`: 80개 통과
+- Supabase 캐시 조회: `integrated.daily["2026-06-05"].total = 81`, `glovis = 69`, `mobis = 12`
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `docker/els-backend/app_core.py`, `docker/els-backend/app.py`
+- `web/tests/asanDashboardView.test.mjs`, `web/tests/asanShippingFlow.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-05] 아산 운송내역 프리셋·컨테이너 조회 상태 복원 (v5.14.350)
 
 ### 원인

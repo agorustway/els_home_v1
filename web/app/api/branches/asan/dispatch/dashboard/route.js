@@ -27,11 +27,16 @@ function getRefreshTypes(value = 'integrated') {
 }
 
 function hasRefreshAccess(request) {
-    const expected = process.env.ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!expected) return false;
+    const allowedTokens = [
+        process.env.ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ]
+        .map((token) => String(token || '').trim())
+        .filter(Boolean);
+    if (allowedTokens.length === 0) return false;
     const authHeader = request.headers.get('authorization') || '';
     const bearer = authHeader.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-    return bearer === expected;
+    return allowedTokens.includes(bearer);
 }
 
 function makeSourceSignature(items = [], viewType = 'integrated') {

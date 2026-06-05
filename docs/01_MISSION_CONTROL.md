@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.350 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.351 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운송내역 프리셋을 계정 기본값으로 자동 복원하고, 컨테이너 조회 진행 job 상태를 페이지 재진입 후에도 복구한다.
+> 최신 업데이트: 아산 배차 현황판 캐시 갱신 인증을 이중 허용으로 보강하고, 6/5 운영 캐시를 최신 원장 기준으로 재생성했다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.350
+- **웹 버전**: v5.14.351
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -22,10 +22,7 @@
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
 - 월간실적은 운영 임시 원장이다. 관리자 데이터 운영 관리의 `월간실적 리셋`은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다.
-- 월간실적 current 조회는 Supabase `.is('is_current', true)`와 `file_path/sheet_name/row_index` 정렬을 사용한다. `.eq('is_current', true)` 또는 year/month 전역 정렬은 partial index를 놓쳐 statement timeout을 만들 수 있다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
-- 구간단가 조회 범위는 `전체/연도별/월별`이며 첫 진입 기본값은 `전체`다. 제목열 클릭 정렬과 컬럼 제목열 내부 다중 선택 필터를 제공한다.
-- 구간단가 표시/집계 조건은 숨김 드롭존으로 통합한다. 제목열을 숨김 영역에 드롭하면 해당 항목은 집계 키에서 빠지고 같은 청구·하불 금액표가 다시 합쳐진다.
 
 ## GLAPS OPERATING NOTES
 - `GLAPS코드` 화면은 아산 배차판 내부 탭으로 유지한다. 상위 메뉴로 올리지 않는다.
@@ -59,11 +56,10 @@
 - 상세배차/배차변동은 `업체명` 다음에 `시간` 컬럼을 표시한다. 지역 배차칸 메모가 `13 14 15`면 단일 업체 수량에 순서 배정하고, 화면에서는 `08/13` 같은 정시값을 `08:00/13:00`으로 표시하되 엑셀 다운로드는 `0800/1300`으로 출력한다.
 - 배차 원장 API는 `mode=meta/date/full`을 지원한다. 화면은 날짜 메타와 선택일 상세를 먼저 표시하고, 전체 원장은 전체/주간/월간 선택 시 지연 조회한다. `mode=meta`는 `row_count/valid_row_count`가 있으면 data JSON 없이 행수만 읽는다.
 - 운송내역은 상위 `배차판` 옆 탭이며 `/아산지점/2026_수출리스트.xlsx` 월별 시트를 `branch_transport_history`에 `target_month` 날짜키로 누적 저장한다. 웹은 NAS 파일을 직접 읽지 않고 DB `mode=meta/date/rows`만 조회하며, 설정 모달은 `/아산지점` 기준 NAS 파일 찾기를 제공한다. `출차시간` 헤더는 `청구금액`으로 정규화하고, 동기화는 현재월 1순위 후 인접월/나머지 월 순서로 진행한다.
-- 운송내역 RAG는 청구금액 칸이 공란이어도 실적관리 월간 구간단가 캐시를 작업지·운송사·픽업·선적·기간 점수로 교차 조회해 후보 금액을 주입한다.
 - 운송내역 `전체` 카드는 월 카드 왼쪽에 고정한다. `전체`는 선택 연도 DB 누적 원장을 날짜/입력순으로 합쳐 SEQ를 다시 부여하고, 첫 호출은 100건만 가져온 뒤 `더보기`로 이어 받는다. 연도 선택은 DB에 자료가 있는 연도만 표시해 2027년은 실제 자료 발생 후 노출한다.
 - 운송내역 테이블은 선적관리처럼 원본 컬럼과 컨테이너 이력 컬럼을 하나의 컬럼 세트로 보고, 헤더 드래그 숨김/복원, P1/P2 프리셋, 날짜 컬럼+일자 필터를 제공한다. `배차 시간`은 화면에서 `HH:MM`으로 표시한다. 컨테이너 조회는 현재 검색/필터/로드 결과의 컨테이너만 대상으로 하며 저장된 이력값은 전체/월별 화면에서 같은 파일 경로와 컨테이너 번호 기준으로 재사용한다.
 - 운송내역 기본 레이아웃은 `asan_transport_history_default` 계정 prefs로 자동 저장/복원한다. 백그라운드 컨테이너 조회는 `asan_transport_history_container_lookup_session`과 NAS job 상태를 함께 확인해 페이지 재진입 후에도 `조회 중/조회 멈춤` 상태를 복구하고 중복 조회를 막는다.
-- 배차 `현황판`은 `branch_dispatch_dashboard_cache`의 집계 payload를 우선 사용한다. 캐시가 없을 때만 full 원장을 보강 조회하며, NAS 동기화 후 Core가 캐시를 비동기 프리워밍한다.
+- 배차 `현황판`은 `branch_dispatch_dashboard_cache`의 집계 payload를 우선 사용한다. 캐시가 없을 때만 full 원장을 보강 조회하며, NAS 동기화 후 Core가 캐시를 비동기 프리워밍한다. 캐시 프리워밍 인증은 `ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN`과 `SUPABASE_SERVICE_ROLE_KEY` 둘 다 허용한다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
 - 통합현황에서 통합확정이 없더라도 glovis/mobis 중 확정된 원본 구분이 있으면 해당 구분만 분리해 변동내역을 동기화하고 통합 변동탭에 노출한다.
@@ -87,17 +83,12 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.351**: 현황판 캐시 API가 전용 토큰 설정 시 서비스키를 거절하던 문제를 수정했다. NAS Core는 전용 토큰이 있으면 우선 사용하고 없으면 서비스키로 캐시 프리워밍을 호출하며, 실패 응답 일부를 로그에 남긴다. 운영 캐시도 6/5 최신 원장 기준으로 재생성했다.
 - **v5.14.350**: 운송내역 현재 컬럼 레이아웃을 계정 기본 프리셋으로 자동 저장/복원하고, 백그라운드 컨테이너 조회 세션을 복원해 페이지 이동 후에도 진행상태·중지 버튼·중복조회 차단이 유지되게 했다.
 - **운영 보조**: NAS 모비스AS 배차 원본 6.4/6.5 시트의 업체별 합계 스필이 일부 업체만 저장돼 상단 배차량과 어긋나던 문제를 Excel COM 전체 재계산으로 복구했다.
 - **운영 보조**: NAS 글로비스KD외 배차 원본 6.5 시트의 업체별 합계 스필이 일부 업체 50대까지만 저장돼 총량 62와 어긋나던 문제를 Excel COM 전체 재계산으로 복구했다.
-- **운영 보조**: GLAPS 자동 계산기는 원본 값을 헤더명 MATCH로 참조한다. 모비스 `.xlsm` 동적배열 `#NAME?`는 값고정 호환본으로 대응했고 신뢰 위치 스크립트는 VBA UDF 로드 예방용으로 유지한다.
-- **v5.14.349**: 운송내역 RAG가 청구금액 칸 공란 시 실적관리 행/월간 구간단가 캐시를 교차 조회해 KCC글라스·칸로지텍 같은 작업지/운송사 금액 후보를 답변 근거로 주입한다.
-- **v5.14.348**: AI 소개·가이드·시스템 지침·아산 RAG 주입 문구에서 Supabase 및 DB 약어를 제거하고 `사내 데이터베이스/데이터베이스` 표현으로 통일했다.
-- **v5.14.347**: 아산 운송내역 `배차 시간` 컬럼을 `09:00:00` 대신 `09:00`처럼 초 단위 없이 표시하도록 셀 포맷터를 추가하고 회귀 테스트를 보강했다.
-- **v5.14.346**: 운송내역 동적 청크에서 무한스크롤 콜백이 `rows.length`를 rows 선언 전에 평가해 `Cannot access 'e0' before initialization`이 발생하던 문제를 수정했다. `headers/rows` 선언을 콜백 위로 이동하고 회귀 테스트를 추가했다.
 ## VERIFICATION
-- 운송내역 프리셋/컨테이너 조회 상태 복원 변경은 `node --test web/tests/asanTransportHistory.test.mjs` 19개, `npm run lint`, `npm run build`를 통과했다.
-- 최근 운송내역/아산 라우트/AI 문구 변경은 관련 테스트, 실제 KCC 청구금액 RAG 프로브, `npm run lint`, `npm run build`를 통과했다. Supabase 보안 검증은 통과, 남은 WARN은 Auth leaked password Dashboard 설정 1건.
+- 현황판 캐시 인증 변경은 `node --test web/tests/asanDashboardView.test.mjs web/tests/asanShippingFlow.test.mjs` 80개를 통과했다. 운영 `branch_dispatch_dashboard_cache`는 2026-06-05 기준 통합 81, 글로비스 69, 모비스 12로 재생성 확인.
 ## IN-PROGRESS
 - 다음 단계: GLAPS 수식완성본 재계산과 목록값 미매칭 반영 여부를 확인하고, DB는 일일 배차/상세배차 1년 1개월 초과분 archive worker 검증을 이어간다.
 ## FIXED RULES

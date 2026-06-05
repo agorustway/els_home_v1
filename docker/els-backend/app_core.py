@@ -123,6 +123,7 @@ ASAN_DISPATCH_DASHBOARD_CACHE_URL = os.environ.get(
     "ASAN_DISPATCH_DASHBOARD_CACHE_URL",
     "https://elssolution.com/api/branches/asan/dispatch/dashboard",
 )
+ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN = os.environ.get("ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN") or SUPABASE_KEY
 ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS = _env_int("ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS", 180, 30)
 ASAN_SHIPPING_SYNC_POLL_SECONDS = _env_int("ASAN_SHIPPING_SYNC_POLL_SECONDS", 60, 30)
 ASAN_SHIPPING_SYNC_QUIET_SECONDS = _env_int("ASAN_SHIPPING_SYNC_QUIET_SECONDS", 8, 0)
@@ -233,7 +234,7 @@ def _dispatch_db_has_current_mtime(dtype, mtime_ts, mtime):
 
 
 def _refresh_asan_dispatch_dashboard_cache_async(reason="dispatch-sync"):
-    if not ASAN_DISPATCH_DASHBOARD_CACHE_URL or not SUPABASE_KEY:
+    if not ASAN_DISPATCH_DASHBOARD_CACHE_URL or not ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN:
         return
 
     def runner():
@@ -241,12 +242,13 @@ def _refresh_asan_dispatch_dashboard_cache_async(reason="dispatch-sync"):
             response = requests.post(
                 ASAN_DISPATCH_DASHBOARD_CACHE_URL,
                 json={"type": "all", "reason": reason},
-                headers={"Authorization": f"Bearer {SUPABASE_KEY}"},
+                headers={"Authorization": f"Bearer {ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN}"},
                 timeout=ASAN_DISPATCH_DASHBOARD_CACHE_TIMEOUT_SECONDS,
             )
             if response.status_code >= 400:
                 app.logger.warning(
-                    f"[배차현황캐시] 프리워밍 실패 status={response.status_code} reason={reason}"
+                    f"[배차현황캐시] 프리워밍 실패 status={response.status_code} reason={reason} "
+                    f"body={response.text[:300]}"
                 )
         except Exception as exc:
             app.logger.warning(f"[배차현황캐시] 프리워밍 오류 reason={reason}: {exc}")
