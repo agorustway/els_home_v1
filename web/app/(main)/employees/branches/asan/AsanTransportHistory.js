@@ -9,6 +9,8 @@ import {
     orderContainerLookupTargets,
 } from '@/utils/containerHistoryResults.mjs';
 import {
+    areArraysEqual,
+    areSetsEqual,
     mergePendingContainerLookupResults,
     normalizeDateOnly,
     reconcileShippingLayoutPrefs,
@@ -20,6 +22,7 @@ const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스
 const ALL_RECORD_KEY = '__all__';
 const ALL_PAGE_SIZE = 100;
 const PREF_PAGE_KEY = 'asan_transport_history_preset';
+const DEFAULT_PREF_PAGE_KEY = 'asan_transport_history_default';
 const DEFAULT_SORT = { key: null, direction: 'asc' };
 const TRANSPORT_LOOKUP_HEADERS = [
     '이력 수출입',
@@ -36,6 +39,8 @@ const LOOKUP_HEADERS = CONTAINER_LOOKUP_DISPLAY_COLUMNS
     .map(column => column.header);
 const CONTAINER_RESULTS_CHUNK_SIZE = 150;
 const LOOKUP_POLL_MS = 4000;
+const LOOKUP_SESSION_KEY = 'asan_transport_history_container_lookup_session';
+const LOOKUP_SESSION_STALE_MS = 30 * 60 * 1000;
 
 function recordKey(record = {}) {
     return `${record.target_month || ''}::${record.sheet_name || ''}`;
@@ -127,6 +132,10 @@ function compareCellValues(a, b, direction = 'asc') {
     return left.localeCompare(right, 'ko-KR', { numeric: true }) * sign;
 }
 
+function isSortConfigEqual(a, b) {
+    return (a?.key || null) === (b?.key || null) && (a?.direction || 'asc') === (b?.direction || 'asc');
+}
+
 function serializeColumnFilters(filters = {}) {
     return Object.fromEntries(
         Object.entries(filters).map(([key, value]) => [key, Array.from(value || [])])
@@ -189,6 +198,72 @@ function isInvalidTransportContainerValue(header, value) {
     return Boolean(normalized) && !isIso6346Valid(normalized);
 }
 
+function readContainerLookupSession() {
+    if (typeof window === 'undefined') return null;
+    try {
+        return JSON.parse(localStorage.getItem(LOOKUP_SESSION_KEY) || 'null');
+    } catch {
+        return null;
+    }
+}
+
+function writeContainerLookupSession(session) {
+    if (typeof window === 'undefined' || !session) return session;
+    const next = {
+        ...session,
+        updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(LOOKUP_SESSION_KEY, JSON.stringify(next));
+    return next;
+}
+
+function isLookupSessionStale(session) {
+    if (!session || (session.state !== 'running' && session.state !== 'stopping')) return false;
+    const timestamp = Date.parse(session.lastSignalAt || session.startedAt || '');
+    if (!Number.isFinite(timestamp)) return true;
+    return Date.now() - timestamp > LOOKUP_SESSION_STALE_MS;
+}
+
+function summarizeSavedLookupProgress(savedMap = {}, containers = [], fallback = {}) {
+    const targets = (containers || []).map(value => String(value || '').trim().toUpperCase()).filter(Boolean);
+    const startedAt = Date.parse(fallback.startedAt || '');
+    const completed = targets.filter(containerNo => {
+        const record = savedMap?.[containerNo];
+        if (!Array.isArray(record?.mainRow) || record.mainRow.length === 0) return false;
+        if (!Number.isFinite(startedAt)) return true;
+        const lookedUpAt = Date.parse(record.lookedUpAt || '');
+        return Number.isFinite(lookedUpAt) && lookedUpAt >= startedAt;
+    }).length;
+    const total = targets.length || Number(fallback.total || 0);
+    const fallbackFailed = Math.max(0, Number(fallback.failed || 0));
+    const failed = Math.min(Math.max(0, total - completed), fallbackFailed);
+    return {
+        total,
+        completed,
+        failed,
+        remaining: Math.max(0, total - completed - failed),
+    };
+}
+
+function createLookupSession({ path, containers, status }) {
+    const now = new Date().toISOString();
+    const targets = Array.from(new Set((containers || []).map(value => String(value || '').trim().toUpperCase()).filter(Boolean)));
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        path,
+        containers: targets,
+        total: targets.length,
+        completed: 0,
+        failed: 0,
+        remaining: targets.length,
+        state: 'running',
+        status,
+        startedAt: now,
+        lastSignalAt: now,
+        updatedAt: now,
+    };
+}
+
 export default function AsanTransportHistory() {
     const [metaRecords, setMetaRecords] = useState([]);
     const [activeKey, setActiveKey] = useState(ALL_RECORD_KEY);
@@ -223,10 +298,12 @@ export default function AsanTransportHistory() {
     const [containerLookupStatus, setContainerLookupStatus] = useState('');
     const [containerLookupProgress, setContainerLookupProgress] = useState(null);
     const [containerLookupErrorSummary, setContainerLookupErrorSummary] = useState(null);
+    const [activeLookupSession, setActiveLookupSession] = useState(null);
     const containerLookupResultsRef = useRef({});
     const containerLookupJobIdRef = useRef('');
-    const containerLookupStoppedRef = useRef(false);
     const autoLoadMoreRef = useRef(false);
+    const layoutPrefsLoadedRef = useRef('');
+    const [layoutPrefsReadySignature, setLayoutPrefsReadySignature] = useState('');
 
     const isAllView = activeKey === ALL_RECORD_KEY;
     const transportHistoryPath = settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH;
@@ -522,6 +599,76 @@ export default function AsanTransportHistory() {
         setColumnFilters(prev => restoreColumnFilters(serializeColumnFilters(prev), allHeaders));
     }, [allHeaders]);
 
+    useEffect(() => {
+        if (!headers.length || !allHeaders.length) return;
+        const prefsSignature = allHeaders.join('|');
+        if (layoutPrefsLoadedRef.current === prefsSignature) return;
+        layoutPrefsLoadedRef.current = prefsSignature;
+        setLayoutPrefsReadySignature('');
+
+        const applyLayoutPrefs = (nextOrder, nextHidden, nextSortConfig) => {
+            const normalizedOrder = normalizeColumnOrder(nextOrder, allHeaders);
+            setColOrder(prev => areArraysEqual(prev, normalizedOrder) ? prev : normalizedOrder);
+            setHiddenCols(prev => areSetsEqual(prev, nextHidden) ? prev : nextHidden);
+            if (nextSortConfig) {
+                setSortConfig(prev => isSortConfigEqual(prev, nextSortConfig) ? prev : nextSortConfig);
+            }
+        };
+
+        const loadDbPrefs = async () => {
+            try {
+                const response = await fetch(`/api/user/prefs?page_key=${DEFAULT_PREF_PAGE_KEY}`, { cache: 'no-store' });
+                const json = await response.json().catch(() => ({}));
+                if (!response.ok || json.error) throw new Error(json.error || '프리셋 조회 실패');
+                const prefs = json.data || {};
+                if (prefs.colOrder?.length > 0) {
+                    let finalOrder = prefs.colOrder;
+                    let finalHidden = new Set((prefs.hiddenCols || []).filter(header => allHeaders.includes(header)));
+                    if (prefs.sourceHeaders && allHeaders) {
+                        const reconciled = reconcileShippingLayoutPrefs({
+                            order: prefs.colOrder,
+                            hiddenCols: prefs.hiddenCols || [],
+                            sourceHeaders: prefs.sourceHeaders,
+                            currentHeaders: allHeaders,
+                        });
+                        finalOrder = reconciled.colOrder;
+                        finalHidden = reconciled.hiddenCols;
+                    }
+                    applyLayoutPrefs(finalOrder, finalHidden, prefs.sortConfig);
+                    return;
+                }
+            } catch (error) {
+                console.warn('운송내역 기본 프리셋 조회 실패:', error);
+            }
+            applyLayoutPrefs(allHeaders, new Set(), null);
+        };
+
+        loadDbPrefs().finally(() => {
+            setLayoutPrefsReadySignature(prefsSignature);
+        });
+    }, [allHeaders, headers.length]);
+
+    useEffect(() => {
+        const prefsSignature = allHeaders.join('|');
+        if (!headers.length || !colOrder.length || !allHeaders.length || layoutPrefsReadySignature !== prefsSignature) return undefined;
+        const timer = window.setTimeout(() => {
+            const settings = {
+                colOrder: normalizeColumnOrder(colOrder, allHeaders),
+                hiddenCols: Array.from(hiddenCols),
+                sortConfig,
+                sourceHeaders: allHeaders,
+            };
+            fetch('/api/user/prefs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ page_key: DEFAULT_PREF_PAGE_KEY, settings }),
+            }).catch(error => {
+                console.warn('운송내역 기본 프리셋 저장 실패:', error);
+            });
+        }, 1200);
+        return () => window.clearTimeout(timer);
+    }, [allHeaders, colOrder, hiddenCols, headers.length, layoutPrefsReadySignature, sortConfig]);
+
     const dateColumns = useMemo(() => (
         headers.filter(isDateHeader)
     ), [headers]);
@@ -809,27 +956,191 @@ export default function AsanTransportHistory() {
         return done;
     }, [loadSavedContainerLookupResults]);
 
-    const handleStopContainerLookup = async () => {
-        if ((!containerLookupRunning && !containerLookupJobIdRef.current) || containerLookupStopping) return;
-        containerLookupStoppedRef.current = true;
-        setContainerLookupStopping(true);
-        setContainerLookupStatus('조회 중지 요청 중');
+    const refreshContainerLookupSession = useCallback(async (options = {}) => {
+        let session = options.session || readContainerLookupSession();
+        let job = null;
         try {
-            if (containerLookupJobIdRef.current) {
+            job = await fetchContainerLookupJob(session?.jobId || '');
+        } catch (error) {
+            console.warn('운송내역 컨테이너 조회 job 상태 확인 실패:', error);
+        }
+
+        const jobIsActive = job && ['running', 'stopping'].includes(job.state);
+        if (!session && jobIsActive) {
+            session = writeContainerLookupSession({
+                id: `backend-${job.id || Date.now()}`,
+                path: job.path || transportHistoryPath,
+                jobId: job.id || '',
+                containers: [],
+                total: Number(job.total || 0),
+                completed: Number(job.completed || 0),
+                failed: Number(job.failed || 0),
+                remaining: Number(job.remaining || 0),
+                errorSummary: job.errorSummary || null,
+                state: job.state || 'running',
+                status: job.status || '백그라운드 컨테이너 조회 진행 중',
+                startedAt: job.startedAt || new Date().toISOString(),
+                lastSignalAt: job.updatedAt || new Date().toISOString(),
+            });
+        }
+        if (!session) return null;
+        if (session.state && !['running', 'stopping', 'stale'].includes(session.state) && !jobIsActive) return null;
+
+        const containers = Array.isArray(session.containers) ? session.containers : [];
+        const samePath = !session.path || session.path === transportHistoryPath;
+        let savedMap = {};
+        try {
+            if (samePath && containers.length > 0) {
+                savedMap = await fetchSavedContainerLookupResults(containers);
+                if (Object.keys(savedMap).length > 0) {
+                    setContainerLookupResults(prev => {
+                        const next = { ...prev, ...savedMap };
+                        containerLookupResultsRef.current = next;
+                        return next;
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('운송내역 컨테이너 조회 저장 결과 복원 실패:', error);
+        }
+
+        let progress = job ? {
+            total: Number(job.total || session.total || containers.length),
+            completed: Number(job.completed || 0),
+            failed: Number(job.failed || 0),
+            remaining: Math.max(0, Number(job.remaining ?? (Number(job.total || session.total || containers.length) - Number(job.completed || 0) - Number(job.failed || 0)))),
+        } : (containers.length > 0
+            ? summarizeSavedLookupProgress(savedMap, containers, session)
+            : {
+                total: Number(session.total || 0),
+                completed: Number(session.completed || 0),
+                failed: Number(session.failed || 0),
+                remaining: Math.max(0, Number(session.remaining ?? (Number(session.total || 0) - Number(session.completed || 0) - Number(session.failed || 0)))),
+            });
+        let state = job?.state || session.state || 'running';
+        let status = job?.status || session.status || '이전 컨테이너 조회 상태 확인 중';
+        let errorSummary = job?.errorSummary || session.errorSummary || null;
+        const isTerminalJob = ['completed', 'failed', 'cancelled'].includes(job?.state);
+        const isDone = isTerminalJob || (progress.total > 0 && progress.completed + progress.failed >= progress.total);
+
+        if (isDone) {
+            state = progress.failed > 0 ? 'failed' : 'completed';
+            if (job?.state === 'cancelled') state = 'cancelled';
+            status = progress.failed > 0
+                ? `백그라운드 컨테이너 조회 종료: 완료 ${progress.completed.toLocaleString('ko-KR')}건, 실패 ${progress.failed.toLocaleString('ko-KR')}건`
+                : `백그라운드 컨테이너 조회 완료: 저장 결과 ${progress.completed.toLocaleString('ko-KR')}건 확인`;
+            if (job?.status) status = job.status;
+            if (progress.failed > 0 && !errorSummary) {
+                errorSummary = {
+                    total: progress.failed,
+                    reasons: [{ reason: '이전 조회 스트림에만 있던 실패 사유', count: progress.failed }],
+                    samples: [],
+                    message: `이전 조회 스트림에만 있던 실패 사유 ${progress.failed.toLocaleString('ko-KR')}건`,
+                };
+            }
+        } else if (!job && isLookupSessionStale(session)) {
+            progress = {
+                ...progress,
+                failed: Math.max(progress.failed, Math.max(0, progress.total - progress.completed)),
+                remaining: 0,
+            };
+            state = 'stale';
+            status = `이전 컨테이너 조회 상태 확인: 완료 ${progress.completed.toLocaleString('ko-KR')}건, 미확인 ${Math.max(0, progress.total - progress.completed).toLocaleString('ko-KR')}건`;
+        } else {
+            status = job?.status || `백그라운드 컨테이너 조회 진행 중: 완료 ${progress.completed.toLocaleString('ko-KR')}건 / 대상 ${progress.total.toLocaleString('ko-KR')}건`;
+        }
+
+        const progressAdvanced = progress.completed > Number(session.completed || 0)
+            || progress.failed > Number(session.failed || 0);
+        const next = writeContainerLookupSession({
+            ...session,
+            jobId: job?.id || session.jobId || '',
+            path: session.path || job?.path || transportHistoryPath,
+            ...progress,
+            state,
+            status,
+            errorSummary,
+            lastSignalAt: progressAdvanced || job ? new Date().toISOString() : session.lastSignalAt,
+        });
+        setActiveLookupSession(next);
+        setContainerLookupProgress(progress);
+        setContainerLookupStatus(status);
+        setContainerLookupErrorSummary(errorSummary);
+        return next;
+    }, [fetchContainerLookupJob, fetchSavedContainerLookupResults, transportHistoryPath]);
+
+    const handleStopContainerLookup = async () => {
+        const session = activeLookupSession || readContainerLookupSession();
+        const canStopSession = session?.state === 'running' || session?.state === 'stopping';
+        if ((!containerLookupRunning && !canStopSession) || containerLookupStopping) return;
+
+        setContainerLookupStopping(true);
+        const progress = containerLookupProgress || (session ? {
+            total: Number(session.total || 0),
+            completed: Number(session.completed || 0),
+            failed: Number(session.failed || 0),
+            remaining: Math.max(0, Number(session.remaining ?? (Number(session.total || 0) - Number(session.completed || 0) - Number(session.failed || 0)))),
+        } : null);
+        const remaining = progress ? Math.max(0, Number(progress.remaining ?? (progress.total - progress.completed - progress.failed))) : 0;
+        const status = progress
+            ? `조회 중지 요청 중: 완료 ${progress.completed.toLocaleString('ko-KR')}건, 실패 ${progress.failed.toLocaleString('ko-KR')}건, 미조회 ${remaining.toLocaleString('ko-KR')}건`
+            : '조회 중지 요청 중';
+        setContainerLookupStatus(status);
+        if (progress) setContainerLookupProgress(progress);
+        if (session) {
+            const next = writeContainerLookupSession({
+                ...session,
+                ...(progress || {}),
+                state: 'stopping',
+                status,
+                lastSignalAt: new Date().toISOString(),
+            });
+            setActiveLookupSession(next);
+        }
+
+        try {
+            const jobId = session?.jobId || containerLookupJobIdRef.current;
+            if (jobId) {
                 const response = await fetch('/api/branches/asan/shipping/container-lookup/jobs', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: containerLookupJobIdRef.current }),
+                    body: JSON.stringify({ id: jobId }),
                 });
                 if (!response.ok) {
                     const json = await response.json().catch(() => ({}));
                     throw new Error(json.error || `중지 요청 실패 (${response.status})`);
                 }
+            } else {
+                await fetch('/api/els/stop-daemon', { method: 'POST' });
             }
-            setContainerLookupStatus('조회 중단됨. 지금까지 저장된 결과만 표시합니다.');
+            const doneStatus = progress
+                ? `조회 중단됨: 완료 ${progress.completed.toLocaleString('ko-KR')}건, 실패 ${progress.failed.toLocaleString('ko-KR')}건, 미조회 ${remaining.toLocaleString('ko-KR')}건`
+                : '조회 중단됨. 지금까지 저장된 결과만 표시합니다.';
+            if (session) {
+                const next = writeContainerLookupSession({
+                    ...session,
+                    ...(progress || {}),
+                    state: 'cancelled',
+                    status: doneStatus,
+                    lastSignalAt: new Date().toISOString(),
+                });
+                setActiveLookupSession(next);
+            }
+            setContainerLookupStatus(doneStatus);
             setContainerLookupRunning(false);
         } catch (error) {
-            setContainerLookupStatus(`조회 중지 요청 실패: ${error.message || error}`);
+            const failStatus = `조회 중지 요청 실패: ${error.message || error}`;
+            if (session) {
+                const next = writeContainerLookupSession({
+                    ...session,
+                    ...(progress || {}),
+                    state: 'failed',
+                    status: failStatus,
+                    lastSignalAt: new Date().toISOString(),
+                });
+                setActiveLookupSession(next);
+            }
+            setContainerLookupStatus(failStatus);
         } finally {
             setContainerLookupStopping(false);
         }
@@ -837,6 +1148,16 @@ export default function AsanTransportHistory() {
 
     const handleContainerLookup = async () => {
         if (containerLookupRunning) return;
+        const restoredSession = await refreshContainerLookupSession({ session: readContainerLookupSession() });
+        if (
+            restoredSession
+            && (restoredSession.state === 'running' || restoredSession.state === 'stopping')
+            && !isLookupSessionStale(restoredSession)
+        ) {
+            alert('이전 컨테이너 조회가 아직 진행 중입니다. 완료/실패 건수를 복원해서 표시했습니다.');
+            return;
+        }
+
         const tableContainers = extractUniqueContainerNos(headers, processedRows);
         const containers = orderContainerLookupTargets(tableContainers, containerLookupResultsRef.current);
         if (!containers.length) {
@@ -844,12 +1165,27 @@ export default function AsanTransportHistory() {
             return;
         }
         const missingLookupCount = containers.filter(containerNo => !containerLookupResultsRef.current?.[containerNo]?.mainRow).length;
-        containerLookupStoppedRef.current = false;
+        let lookupSession = writeContainerLookupSession(createLookupSession({
+            path: transportHistoryPath,
+            containers,
+            status: `현재 조회 결과 ${processedRows.length.toLocaleString('ko-KR')}행 중 컨테이너 ${containers.length.toLocaleString('ko-KR')}건 조회 준비 중 (미조회 ${missingLookupCount.toLocaleString('ko-KR')}건 우선)`,
+        }));
+        const updateLookupSession = (patch) => {
+            lookupSession = writeContainerLookupSession({
+                ...lookupSession,
+                ...patch,
+                lastSignalAt: new Date().toISOString(),
+            });
+            setActiveLookupSession(lookupSession);
+            return lookupSession;
+        };
+
         setContainerLookupRunning(true);
+        setActiveLookupSession(lookupSession);
         setContainerLookupStopping(false);
         setContainerLookupErrorSummary(null);
         setContainerLookupProgress({ total: containers.length, completed: 0, failed: 0, remaining: containers.length });
-        setContainerLookupStatus(`현재 조회 결과 ${processedRows.length.toLocaleString('ko-KR')}행 중 컨테이너 ${containers.length.toLocaleString('ko-KR')}건 조회 준비 중 (미조회 ${missingLookupCount.toLocaleString('ko-KR')}건 우선)`);
+        setContainerLookupStatus(lookupSession.status);
         setContainerLookupResults(prev => {
             const next = mergePendingContainerLookupResults(prev, containers);
             containerLookupResultsRef.current = next;
@@ -871,20 +1207,31 @@ export default function AsanTransportHistory() {
             }
             const job = payload.job;
             containerLookupJobIdRef.current = job.id || '';
+            const progress = {
+                total: Number(job.total || containers.length),
+                completed: Number(job.completed || 0),
+                failed: Number(job.failed || 0),
+                remaining: Math.max(0, Number(job.remaining ?? containers.length)),
+            };
+            const status = payload.already_running
+                ? '기존 백그라운드 컨테이너 조회가 아직 진행 중입니다.'
+                : (job.status || '백그라운드 컨테이너 조회가 시작되었습니다. 다른 페이지로 이동해도 계속 진행됩니다.');
+            const next = updateLookupSession({
+                jobId: job.id || '',
+                path: job.path || transportHistoryPath,
+                ...progress,
+                errorSummary: job.errorSummary || null,
+                state: job.state || 'running',
+                status,
+            });
+            setContainerLookupProgress(progress);
+            setContainerLookupErrorSummary(job.errorSummary || null);
+            setContainerLookupStatus(status);
             await applyContainerLookupJob(job, containers);
-            while (!containerLookupStoppedRef.current && containerLookupJobIdRef.current) {
-                await new Promise(resolve => window.setTimeout(resolve, LOOKUP_POLL_MS));
-                if (containerLookupStoppedRef.current) break;
-                const nextJob = await fetchContainerLookupJob(containerLookupJobIdRef.current);
-                if (!nextJob) {
-                    setContainerLookupStatus('컨테이너 조회 상태 확인이 끊겼습니다. 저장된 결과만 표시합니다.');
-                    break;
-                }
-                const done = await applyContainerLookupJob(nextJob, containers);
-                if (done) break;
-            }
+            await refreshContainerLookupSession({ session: next });
         } catch (error) {
             const progress = { total: containers.length, completed: 0, failed: containers.length, remaining: 0 };
+            const status = `오류: ${error.message || '컨테이너 조회 실패'}`;
             setContainerLookupProgress(progress);
             setContainerLookupErrorSummary({
                 total: containers.length,
@@ -892,7 +1239,18 @@ export default function AsanTransportHistory() {
                 samples: [],
                 message: `${error.message || '백그라운드 조회 시작 실패'} ${containers.length.toLocaleString('ko-KR')}건`,
             });
-            setContainerLookupStatus(`오류: ${error.message || '컨테이너 조회 실패'}`);
+            updateLookupSession({
+                ...progress,
+                errorSummary: {
+                    total: containers.length,
+                    reasons: [{ reason: error.message || '백그라운드 조회 시작 실패', count: containers.length }],
+                    samples: [],
+                    message: `${error.message || '백그라운드 조회 시작 실패'} ${containers.length.toLocaleString('ko-KR')}건`,
+                },
+                state: 'failed',
+                status,
+            });
+            setContainerLookupStatus(status);
             alert(error.message || '컨테이너 조회에 실패했습니다.');
         } finally {
             containerLookupJobIdRef.current = '';
@@ -900,6 +1258,24 @@ export default function AsanTransportHistory() {
             setContainerLookupRunning(false);
         }
     };
+
+    useEffect(() => {
+        refreshContainerLookupSession();
+    }, [refreshContainerLookupSession]);
+
+    useEffect(() => {
+        if (
+            !activeLookupSession
+            || (activeLookupSession.state !== 'running' && activeLookupSession.state !== 'stopping')
+            || isLookupSessionStale(activeLookupSession)
+        ) {
+            return undefined;
+        }
+        const timer = window.setInterval(() => {
+            refreshContainerLookupSession({ session: activeLookupSession });
+        }, LOOKUP_POLL_MS);
+        return () => window.clearInterval(timer);
+    }, [activeLookupSession, refreshContainerLookupSession]);
 
     useEffect(() => {
         if (!headers.length || !rows.length) return undefined;
@@ -933,6 +1309,10 @@ export default function AsanTransportHistory() {
     const syncButtonText = syncActionBlocked
         ? '동기화 중'
         : (syncGate.running && syncGate.quickDone ? '1순위 재동기화' : 'NAS 동기화');
+    const activeLookupRunning = Boolean(
+        (activeLookupSession?.state === 'running' || activeLookupSession?.state === 'stopping')
+        && !isLookupSessionStale(activeLookupSession)
+    );
 
     return (
         <div className={styles.container}>
@@ -983,12 +1363,12 @@ export default function AsanTransportHistory() {
                     <button
                         className={styles.lookupBtn}
                         onClick={handleContainerLookup}
-                        disabled={containerLookupRunning || loadingTable || !processedRows.length}
-                        title="현재 검색/필터 결과에 남아있는 컨테이너를 이력조회합니다."
+                        disabled={containerLookupRunning || activeLookupRunning || loadingTable || !processedRows.length}
+                        title={activeLookupRunning ? '이전 컨테이너 조회가 아직 진행 중입니다. 완료/실패 건수를 복원 중입니다.' : '현재 검색/필터 결과에 남아있는 컨테이너를 이력조회합니다.'}
                     >
-                        {containerLookupRunning ? '조회 중' : '컨테이너 조회'}
+                        {containerLookupRunning || activeLookupRunning ? '조회 중' : '컨테이너 조회'}
                     </button>
-                    {containerLookupRunning && (
+                    {(containerLookupRunning || activeLookupRunning) && (
                         <button
                             className={styles.stopLookupBtn}
                             onClick={handleStopContainerLookup}

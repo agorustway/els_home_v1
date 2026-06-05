@@ -1,3 +1,26 @@
+## [2026-06-05] 아산 운송내역 프리셋·컨테이너 조회 상태 복원 (v5.14.350)
+
+### 원인
+- 운송내역 P1/P2 프리셋 저장은 계정 prefs에 들어가지만, 현재 레이아웃을 페이지 진입 시 자동 적용하는 `default` prefs 경로가 없어 다른 페이지를 갔다 오면 기본 컬럼 상태로 돌아갔습니다.
+- 컨테이너 조회는 NAS 백엔드 job으로 계속 진행되지만, 운송내역 화면이 페이지 이탈 시 job id와 진행상태를 보존하지 않아 재진입 후 `조회 중/조회 멈춤` 상태가 복원되지 않았습니다.
+
+### 조치
+- 운송내역에 `asan_transport_history_default` 계정 기본 프리셋을 추가해 컬럼 순서, 숨김, 정렬을 자동 저장/복원하게 했습니다.
+- 백그라운드 컨테이너 조회 시작 시 `asan_transport_history_container_lookup_session`을 저장하고, 재진입 시 NAS job 상태를 다시 조회해 진행상태·완료/실패/미조회 건수를 복구하게 했습니다.
+- 조회 중인 job이 있으면 `컨테이너 조회` 버튼을 비활성화하고 `조회 멈춤` 버튼을 노출해 중복 조회를 막도록 했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 19개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-04] NAS 모비스AS 배차 원본 6.4/6.5 업체별 합계 재계산
 
 ### 원인
