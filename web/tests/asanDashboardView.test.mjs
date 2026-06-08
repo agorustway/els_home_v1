@@ -623,7 +623,11 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(dashboardSource, /cachePayload: dashboardCache/);
   assert.match(source, /const \[dashboardCacheState, setDashboardCacheState\] = useState/);
   assert.match(source, /fetchDashboardCache/);
-  assert.match(source, /\/api\/branches\/asan\/dispatch\/dashboard\?type=/);
+  assert.match(source, /\/api\/branches\/asan\/dispatch\/dashboard\?\$\{params\.toString\(\)\}/);
+  assert.match(source, /scope = 'initial'/);
+  assert.match(source, /scope: 'initial'/);
+  assert.match(source, /scope: 'full', background: true/);
+  assert.match(source, /background && !nextPayload/);
   assert.match(source, /const dashboardCachePayload = dashboardCacheState\.viewType === viewType \? dashboardCacheState\.payload : null;/);
   assert.match(source, /const dashboardNeedsFullData = useMemo\(\(\) => \(/);
   assert.match(source, /mainView === 'dashboard'[\s\S]*dashboardCacheChecked[\s\S]*!dashboardCachePayload[\s\S]*item\?\.meta_only && hasValidOrderRows\(item, viewType\)/);
@@ -639,6 +643,10 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(apiSource, /loadDispatchItems\(request, viewType, 'meta'\)/);
   assert.match(apiSource, /data\.source_signature !== currentSignature/);
   assert.match(apiSource, /refreshed: true/);
+  assert.match(apiSource, /scope = searchParams\.get\('scope'\) === 'initial' \? 'initial' : 'full'/);
+  assert.match(apiSource, /makeInitialDashboardPayload/);
+  assert.match(apiSource, /payloadScope: 'initial'/);
+  assert.match(apiSource, /prepareDashboardCacheForResponse/);
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);
   assert.match(sql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_cache FROM anon, authenticated;/);

@@ -49,6 +49,75 @@ function makeSourceSignature(items = [], viewType = 'integrated') {
     return `${viewType}|${parts.join('|')}`;
 }
 
+function pickPreviousKey(options = [], key = '') {
+    const index = options.findIndex((option) => option.key === key);
+    return index > 0 ? options[index - 1].key : key;
+}
+
+function pickDashboardInitialKeys(options = {}, activeDate = '') {
+    const dates = options.dates || [];
+    const weeks = options.weeks || [];
+    const months = options.months || [];
+    const latestDate = dates[dates.length - 1]?.key || '';
+    const dayKey = dates.some((option) => option.key === activeDate) ? activeDate : latestDate;
+    const dayIndex = dates.findIndex((option) => option.key === dayKey);
+    const currentWeek = weeks.find((option) => dayKey >= option.start && dayKey <= option.end) || weeks[weeks.length - 1] || null;
+    const weekKey = pickPreviousKey(weeks, currentWeek?.key || '');
+    const currentMonthKey = dayKey ? dayKey.slice(0, 7) : months[months.length - 1]?.key || '';
+    const currentMonth = months.find((option) => option.key === currentMonthKey) || months[months.length - 1] || null;
+    const monthKey = pickPreviousKey(months, currentMonth?.key || '');
+
+    return {
+        dayKeys: [dayKey, dayIndex > 0 ? dates[dayIndex - 1]?.key : ''].filter(Boolean),
+        weekKeys: [weekKey, pickPreviousKey(weeks, weekKey)].filter(Boolean),
+        monthKeys: [monthKey, pickPreviousKey(months, monthKey)].filter(Boolean),
+    };
+}
+
+function pickObjectKeys(source = {}, keys = []) {
+    return keys.reduce((acc, key) => {
+        if (key && source[key]) acc[key] = source[key];
+        return acc;
+    }, {});
+}
+
+function makeInitialDashboardPayload(payload = {}, activeDate = '') {
+    if (!payload || payload.version !== 1) return payload;
+    const keys = pickDashboardInitialKeys(payload.options || {}, activeDate);
+    const trimMode = (modeCache = {}) => ({
+        daily: pickObjectKeys(modeCache.daily, keys.dayKeys),
+        weekly: pickObjectKeys(modeCache.weekly, keys.weekKeys),
+        monthly: pickObjectKeys(modeCache.monthly, keys.monthKeys),
+        total: modeCache.total,
+        timeline: modeCache.timeline || [],
+        weekday: {
+            weeks: pickObjectKeys(modeCache.weekday?.weeks, keys.weekKeys),
+            months: pickObjectKeys(modeCache.weekday?.months, keys.monthKeys),
+        },
+    });
+
+    return {
+        ...payload,
+        payloadScope: 'initial',
+        modes: Object.fromEntries(
+            Object.entries(payload.modes || {}).map(([mode, modeCache]) => [mode, trimMode(modeCache)])
+        ),
+        basisDiff: {
+            daily: pickObjectKeys(payload.basisDiff?.daily, keys.dayKeys),
+            weekly: pickObjectKeys(payload.basisDiff?.weekly, keys.weekKeys),
+            monthly: pickObjectKeys(payload.basisDiff?.monthly, keys.monthKeys),
+        },
+    };
+}
+
+function prepareDashboardCacheForResponse(cache = null, scope = 'full', activeDate = '') {
+    if (!cache || scope !== 'initial') return cache;
+    return {
+        ...cache,
+        payload: makeInitialDashboardPayload(cache.payload, activeDate),
+    };
+}
+
 async function loadDispatchItems(request, viewType, mode = 'full') {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
@@ -109,6 +178,8 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const viewType = normalizeViewType(searchParams.get('type'));
+    const scope = searchParams.get('scope') === 'initial' ? 'initial' : 'full';
+    const activeDate = String(searchParams.get('activeDate') || '').trim();
     const { data, error } = await supabase
         .from(DASHBOARD_CACHE_TABLE)
         .select('view_type,payload,source_signature,source_synced_at,updated_at')
@@ -122,7 +193,13 @@ export async function GET(request) {
     if (!data) {
         try {
             const refreshed = await writeDashboardCache({ supabase, request, viewType });
-            return NextResponse.json({ ok: true, cache: refreshed, viewType, refreshed: true });
+            return NextResponse.json({
+                ok: true,
+                cache: prepareDashboardCacheForResponse(refreshed, scope, activeDate),
+                viewType,
+                refreshed: true,
+                scope,
+            });
         } catch (refreshError) {
             return NextResponse.json({
                 ok: false,
@@ -141,22 +218,29 @@ export async function GET(request) {
             const refreshed = await writeDashboardCache({ supabase, request, viewType });
             return NextResponse.json({
                 ok: true,
-                cache: refreshed,
+                cache: prepareDashboardCacheForResponse(refreshed, scope, activeDate),
                 viewType,
                 refreshed: true,
+                scope,
                 previousUpdatedAt: data.updated_at,
             });
         }
     } catch (refreshError) {
         return NextResponse.json({
             ok: true,
-            cache: data,
+            cache: prepareDashboardCacheForResponse(data, scope, activeDate),
             viewType,
             stale: true,
+            scope,
             refreshError: refreshError.message,
         });
     }
-    return NextResponse.json({ ok: true, cache: data, viewType });
+    return NextResponse.json({
+        ok: true,
+        cache: prepareDashboardCacheForResponse(data, scope, activeDate),
+        viewType,
+        scope,
+    });
 }
 
 export async function POST(request) {

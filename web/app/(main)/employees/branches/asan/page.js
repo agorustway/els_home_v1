@@ -1654,24 +1654,48 @@ function AsanDispatchContent() {
         if (!r.ok || j.ok === false) throw new Error(j.error || j.message || '배차판 조회 실패');
         return j.data || [];
     }, []);
-    const fetchDashboardCache = useCallback(async (type) => {
+    const fetchDashboardCache = useCallback(async (type, options = {}) => {
+        const { scope = 'initial', activeDate = '', background = false } = options;
         const loadSeq = dashboardCacheLoadSeqRef.current + 1;
         dashboardCacheLoadSeqRef.current = loadSeq;
-        setDashboardCacheState({ viewType: type, payload: null, checked: false, loading: true });
+        if (!background) {
+            setDashboardCacheState({ viewType: type, payload: null, checked: false, loading: true, scope });
+        } else {
+            setDashboardCacheState(prev => (
+                prev.viewType === type
+                    ? { ...prev, loading: true }
+                    : { viewType: type, payload: null, checked: false, loading: true, scope }
+            ));
+        }
         try {
-            const r = await fetch(`/api/branches/asan/dispatch/dashboard?type=${encodeURIComponent(type)}&t=${Date.now()}`, { cache: 'no-store' });
-            const j = await r.json().catch(() => ({}));
-            if (dashboardCacheLoadSeqRef.current !== loadSeq) return;
-            setDashboardCacheState({
-                viewType: type,
-                payload: r.ok && j.ok ? j.cache?.payload || null : null,
-                checked: true,
-                loading: false,
+            const params = new URLSearchParams({
+                type,
+                scope,
+                t: String(Date.now()),
             });
+            if (activeDate) params.set('activeDate', activeDate);
+            const r = await fetch(`/api/branches/asan/dispatch/dashboard?${params.toString()}`, { cache: 'no-store' });
+            const j = await r.json().catch(() => ({}));
+            if (dashboardCacheLoadSeqRef.current !== loadSeq) return false;
+            const nextPayload = r.ok && j.ok ? j.cache?.payload || null : null;
+            setDashboardCacheState(prev => {
+                if (background && !nextPayload && prev.viewType === type) {
+                    return { ...prev, checked: true, loading: false };
+                }
+                return {
+                    viewType: type,
+                    payload: nextPayload,
+                    checked: true,
+                    loading: false,
+                    scope: j.scope || scope,
+                };
+            });
+            return Boolean(nextPayload);
         } catch {
             if (dashboardCacheLoadSeqRef.current === loadSeq) {
-                setDashboardCacheState({ viewType: type, payload: null, checked: true, loading: false });
+                setDashboardCacheState({ viewType: type, payload: null, checked: true, loading: false, scope });
             }
+            return false;
         }
     }, []);
     const ensureDispatchDateLoaded = useCallback(async (dateStr) => {
@@ -1901,7 +1925,24 @@ function AsanDispatchContent() {
     useEffect(() => scheduleIdlePrefetch(() => fetchSettings(), 3200), [fetchSettings]);
     useEffect(() => {
         if (mainView !== 'dashboard') return undefined;
-        return scheduleIdlePrefetch(() => fetchDashboardCache(viewType), 150, { force: true });
+        let cancelFullPrefetch = null;
+        const cancelInitial = scheduleIdlePrefetch(() => {
+            const currentItems = dataRef.current || [];
+            const currentIndex = activeTabRef.current;
+            const activeDate = currentItems[currentIndex]?.target_date || getTodayKey();
+            fetchDashboardCache(viewType, { scope: 'initial', activeDate }).then((ok) => {
+                if (!ok) return;
+                cancelFullPrefetch = scheduleIdlePrefetch(
+                    () => fetchDashboardCache(viewType, { scope: 'full', background: true }),
+                    1800,
+                    { force: true }
+                );
+            });
+        }, 120, { force: true });
+        return () => {
+            cancelInitial();
+            if (cancelFullPrefetch) cancelFullPrefetch();
+        };
     }, [fetchDashboardCache, mainView, viewType]);
     useEffect(() => {
         let cancelled = false;
