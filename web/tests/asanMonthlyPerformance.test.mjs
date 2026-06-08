@@ -452,6 +452,7 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /downloadPerformanceTableExcel/);
   assert.match(component, /tableLoading/);
   assert.match(component, /조회중 \(빅데이터 검색 느림\)/);
+  assert.match(component, /rows\.length === 0 && !tableLoading && !exporting/);
   assert.match(component, /엑셀 생성중/);
   assert.match(component, /title: '아산 월간실적 테이블'/);
   assert.match(dbReader, /function isPerformanceExportRequest/);

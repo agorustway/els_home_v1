@@ -2147,7 +2147,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                                         })}
                                     </tr>
                                 ))}
-                                {rows.length === 0 && (
+                                {rows.length === 0 && !tableLoading && !exporting && (
                                     <tr>
                                         <td className={styles.tableMessageCell} colSpan={Math.max(1, visibleColumns.length)}>
                                             조건에 맞는 자료가 없습니다.
