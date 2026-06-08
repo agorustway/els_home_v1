@@ -2927,6 +2927,9 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const sortDir = searchParams.get('sort_dir') || 'asc';
     const monthlyFileSlots = buildMonthlyPerformanceFileSlots(baseYear, { extraMonths });
     const periodSet = new Set(buildMonthlyPerformancePeriods(baseYear, extraMonths).map(item => item.period));
+    const requestedPeriods = normalizeMonthKeys(searchParams.get('period') || searchParams.get('periods') || '')
+        .filter(period => periodSet.has(period));
+    const requestedPeriodSet = new Set(requestedPeriods);
 
     const { data: allMetas, error: metaError } = await supabase
         .from('branch_performance_files')
@@ -2938,6 +2941,9 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const metas = (allMetas || [])
         .filter(meta => periodSet.has(metaSourcePeriod(meta)))
         .sort((a, b) => metaSourcePeriod(a).localeCompare(metaSourcePeriod(b)) || String(a.file_path).localeCompare(String(b.file_path), 'ko-KR'));
+    const rowMetas = requestedPeriodSet.size
+        ? metas.filter(meta => requestedPeriodSet.has(metaSourcePeriod(meta)))
+        : metas;
     const headers = buildMonthlyHeaders(metas);
     const summary = mergeMonthlySummaries(metas, monthlyFileSlots);
 
@@ -2963,7 +2969,7 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const usesDiffCurrent = metas.some(meta => (
         meta.summary?.importMode === 'diff-current' || meta.summary?.currentSelectionMode === 'is_current'
     ));
-    const fallbackTotal = metas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
+    const fallbackTotal = rowMetas.reduce((sum, meta) => sum + (Number(meta.current_row_count || meta.row_count || 0) || 0), 0);
     const buildRowsQuery = () => {
         let rowsQuery = supabase
             .from('branch_performance_rows')
@@ -2976,6 +2982,17 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
             rowsQuery = rowsQuery.in('snapshot_id', snapshotIds);
         } else {
             rowsQuery = rowsQuery.is('is_current', true).in('file_path', metas.map(meta => meta.file_path));
+        }
+        if (requestedPeriods.length === 1) {
+            const [yearText, monthText] = requestedPeriods[0].split('-');
+            rowsQuery = rowsQuery
+                .eq('year_value', Number(yearText))
+                .eq('month_value', Number(monthText));
+        } else if (requestedPeriods.length > 1) {
+            rowsQuery = rowsQuery.or(requestedPeriods.map((period) => {
+                const [yearText, monthText] = period.split('-');
+                return `and(year_value.eq.${Number(yearText)},month_value.eq.${Number(monthText)})`;
+            }).join(','));
         }
         return rowsQuery;
     };
@@ -3018,5 +3035,7 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         base_year: baseYear,
         extra_months: extraMonths,
         monthlyFileSlots,
+        period: requestedPeriods[0] || '',
+        periods: requestedPeriods,
     };
 }

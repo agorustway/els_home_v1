@@ -259,6 +259,12 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /params\.set\('dashboard', '1'\)/);
   assert.match(component, /activeTab === 'table' \|\| append \|\| Boolean\(options\.search\) \|\| Boolean\(options\.sortKey\)/);
   assert.match(component, /const searchEffectReadyRef = useRef\(false\)/);
+  assert.match(component, /resolveMonthlyTablePeriod/);
+  assert.match(component, /params\.set\('period', tablePeriod\)/);
+  assert.match(dbReader, /const requestedPeriods = normalizeMonthKeys\(searchParams\.get\('period'\)/);
+  assert.match(dbReader, /\.eq\('year_value', Number\(yearText\)\)/);
+  assert.match(dbReader, /\.eq\('month_value', Number\(monthText\)\)/);
+  assert.match(dbReader, /period: requestedPeriods\[0\] \|\| ''/);
   assert.match(component, /\[baseYear, extraMonths, activeTab\]\); \/\/ eslint-disable-line react-hooks\/exhaustive-deps/);
   assert.doesNotMatch(component, /\[fetchData\]\);/);
   assert.match(component, /setShowSettings\(true\)}>설정<\/button>/);

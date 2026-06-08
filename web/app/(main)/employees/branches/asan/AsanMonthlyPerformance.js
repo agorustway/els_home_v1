@@ -399,6 +399,17 @@ function formatReportTitle(period) {
     return `${formatReportPeriod(period)} 아산매출보고서`;
 }
 
+function normalizeMonthlyPeriodValue(value) {
+    const match = String(value || '').trim().match(/^(20\d{2})-(0[1-9]|1[0-2])$/);
+    return match ? `${match[1]}-${match[2]}` : '';
+}
+
+function resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod }) {
+    if (analysisScope !== ANALYSIS_SCOPE_ALL) return normalizeMonthlyPeriodValue(selectedAnalysisMonth);
+    if (selectedReportPeriod && selectedReportPeriod !== REPORT_ALL_KEY) return normalizeMonthlyPeriodValue(selectedReportPeriod);
+    return '';
+}
+
 function roundMoney(value) {
     return Math.round((Number(value) || 0) * 100) / 100;
 }
@@ -1075,6 +1086,10 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
             });
             const tableMode = activeTab === 'table' || append || Boolean(options.search) || Boolean(options.sortKey);
             const effectiveSearch = tableMode ? (options.search ?? searchTerm) : '';
+            const tablePeriod = tableMode
+                ? normalizeMonthlyPeriodValue(options.period || resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod }))
+                : '';
+            if (tablePeriod) params.set('period', tablePeriod);
             if (effectiveSearch) {
                 params.set('search', effectiveSearch);
                 params.set('search_mode', options.searchMode || searchMode || 'or');
@@ -1101,7 +1116,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
             setLoadingMore(false);
             if (tableRequest) setTableLoading(false);
         }
-    }, [activeTab, applyPayload, baseYear, extraMonths, searchMode, searchTerm, sortConfig]);
+    }, [activeTab, analysisScope, applyPayload, baseYear, extraMonths, searchMode, searchTerm, selectedAnalysisMonth, selectedReportPeriod, sortConfig]);
 
     useEffect(() => {
         fetchData();
@@ -1525,6 +1540,8 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                 year: String(baseYear),
                 extra_months: String(extraMonths),
             });
+            const tablePeriod = resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod });
+            if (tablePeriod) params.set('period', tablePeriod);
             if (searchTerm) {
                 params.set('search', searchTerm);
                 params.set('search_mode', searchMode || 'or');

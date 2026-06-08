@@ -1,3 +1,24 @@
+## [2026-06-08] 아산 월간실적 테이블 검색 마감월 범위 적용 (v5.14.356)
+
+### 원인
+- 월간실적 분석 화면에서 5월 등 특정 마감월을 보고 있어도 테이블 검색 API에는 월 범위가 전달되지 않아 전체 hot 원장을 스캔했습니다.
+
+### 조치
+- 화면은 월/주차/일 또는 매출보고서 선택 마감월이 있으면 `period=YYYY-MM`을 월간실적 테이블 API와 엑셀 다운로드에 전달합니다.
+- 서버는 `period`를 `year_value/month_value` 조건으로 적용해 검색/정렬/페이징 전에 월 범위를 먼저 제한합니다.
+
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 9개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 현황판 월별/전체 active scope 보정 (v5.14.355)
 
 ### 원인
