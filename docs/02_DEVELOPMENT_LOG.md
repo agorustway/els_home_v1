@@ -1,3 +1,50 @@
+## [2026-06-08] 아산 현황판 초기 캐시 경량화 (v5.14.354)
+
+### 원인
+- 현황판 캐시 스냅샷은 원장 full 조회를 피한다는 점에서는 맞지만, `daily/weekly/monthly` 전체 집계와 고객사/실행사 모드를 모두 담아 payload가 약 2MB까지 커졌습니다.
+- 운영 측정 기준으로 현황판 캐시 GET은 약 1.4MB 응답에 6초가 걸렸고, 반면 배차판 `mode=meta`, 선택일 `mode=date` API는 약 0.16초였습니다.
+
+### 조치
+- 현황판 캐시 GET에 `scope=initial`을 추가해 선택일, 기본 주간, 기본 월간, 타임라인, 요일별 기본 비교에 필요한 키만 잘라 응답하게 했습니다.
+- 아산 배차판 화면은 현황판 진입 시 `scope=initial`을 먼저 받아 즉시 렌더하고, 1.8초 뒤 `scope=full` 캐시를 백그라운드로 받아 전체 선택 자료를 교체하도록 변경했습니다.
+- 백그라운드 full 캐시 호출이 실패해도 이미 그린 initial 화면을 지우지 않도록 방어했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 42개 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-08] 아산 운송내역 전체 원장 기준 필터 적용 (v5.14.353)
+
+### 원인
+- 운송내역 `전체` 보기에서 화면에는 100건 단위로만 로드되는데, 컬럼 필터값도 현재 로드된 행에서만 계산해 전체 원장에 있는 `LINE/업체명/작업지` 값을 확인할 수 없었습니다.
+- 필터 드롭다운이 열린 상태에서 화면 다른 곳을 클릭해도 닫히지 않아 테이블 조작 흐름을 방해했습니다.
+
+### 조치
+- 운송내역 API에 `mode=filter-values`를 추가해 선택 연도 전체 원장 기준으로 특정 컬럼의 distinct 값을 계산하게 했습니다.
+- `rows` 조회에도 `filters` JSON 조건을 전달해 필터 선택 후 서버가 전체 원장 기준으로 먼저 걸러낸 뒤 100건 단위로 페이징하게 했습니다.
+- 운송내역 화면은 전체 보기 원본 컬럼 필터를 열 때 서버 필터값을 불러오고, 컴포넌트 바깥 클릭 시 드롭다운을 닫도록 변경했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 21개 통과
+- `npm run lint`: 통과
+- `npm run build`: 통과
+
+### 변경 파일
+- `web/utils/asanTransportHistory.mjs`
+- `web/app/api/branches/asan/transport-history/route.js`
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 배차 RAG 운송사 자체 집계 보강 (v5.14.352)
 
 ### 원인

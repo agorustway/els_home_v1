@@ -280,6 +280,8 @@ export default function AsanTransportHistory() {
     const [columnFilters, setColumnFilters] = useState({});
     const [dateFilter, setDateFilter] = useState({ col: '', mode: 'all', day: '', from: '', to: '' });
     const [filterDropdown, setFilterDropdown] = useState(null);
+    const [serverFilterOptions, setServerFilterOptions] = useState({});
+    const [serverFilterLoading, setServerFilterLoading] = useState('');
     const [hiddenCols, setHiddenCols] = useState(new Set());
     const [colOrder, setColOrder] = useState([]);
     const [draggedCol, setDraggedCol] = useState(null);
@@ -374,6 +376,13 @@ export default function AsanTransportHistory() {
                 params.set('sort', sortConfig.key);
                 params.set('direction', sortConfig.direction || 'asc');
             }
+            const serverFilters = Object.fromEntries(
+                Object.entries(serializeColumnFilters(columnFilters))
+                    .filter(([column, values]) => !isContainerLookupColumn(column) && values.length > 0)
+            );
+            if (Object.keys(serverFilters).length > 0) {
+                params.set('filters', JSON.stringify(serverFilters));
+            }
             const response = await fetch(`/api/branches/asan/transport-history?${params.toString()}`, { cache: 'no-store' });
             const json = await response.json();
             if (!response.ok || json.error) throw new Error(json.error || '전체 운송내역 조회 실패');
@@ -400,7 +409,7 @@ export default function AsanTransportHistory() {
             if (reset) setLoadingTable(false);
             else setLoadingMore(false);
         }
-    }, [activeKey, dateFilter, search, selectedYear, sortConfig.direction, sortConfig.key]);
+    }, [activeKey, columnFilters, dateFilter, search, selectedYear, sortConfig.direction, sortConfig.key]);
 
     const loadMeta = useCallback(async ({ keepActive = true } = {}) => {
         setLoadingMeta(true);
@@ -715,6 +724,7 @@ export default function AsanTransportHistory() {
         }
         Object.entries(columnFilters).forEach(([column, selectedSet]) => {
             if (!selectedSet?.size) return;
+            if (isAllView && !isContainerLookupColumn(column)) return;
             nextRows = nextRows.filter(row => selectedSet.has(normalizeFilterValue(getCellValue(row, column))));
         });
         if (sortConfig.key && (!isAllView || isContainerLookupColumn(sortConfig.key))) {
@@ -794,7 +804,7 @@ export default function AsanTransportHistory() {
         setColOrder(prev => normalizeColumnOrder([...prev, column], allHeaders));
     };
 
-    const getUniqueValues = (column) => {
+    const getLoadedUniqueValues = (column) => {
         let sourceRows = [...rows];
         Object.entries(columnFilters).forEach(([filterColumn, selectedSet]) => {
             if (filterColumn === column || !selectedSet?.size) return;
@@ -802,6 +812,62 @@ export default function AsanTransportHistory() {
         });
         return Array.from(new Set(sourceRows.map(row => normalizeFilterValue(getCellValue(row, column)))))
             .sort((a, b) => compareCellValues(a, b, 'asc'));
+    };
+
+    const getServerColumnFilters = useCallback((excludeColumn = '') => (
+        Object.fromEntries(
+            Object.entries(serializeColumnFilters(columnFilters))
+                .filter(([column, values]) => (
+                    column !== excludeColumn
+                    && !isContainerLookupColumn(column)
+                    && values.length > 0
+                ))
+        )
+    ), [columnFilters]);
+
+    const loadServerFilterValues = useCallback(async (column) => {
+        if (!isAllView || isContainerLookupColumn(column) || !column) return;
+        setServerFilterLoading(column);
+        try {
+            const params = new URLSearchParams({
+                mode: 'filter-values',
+                year: selectedYear,
+                column,
+                t: String(Date.now()),
+            });
+            if (search.trim()) params.set('search', search.trim());
+            if (dateFilter.col) params.set('date_col', dateFilter.col);
+            if (dateFilter.mode === 'day' && dateFilter.day) {
+                params.set('date', dateFilter.day);
+            }
+            if (dateFilter.mode === 'range') {
+                const { from, to } = getDateFilterBounds(dateFilter);
+                if (from) params.set('date_from', from);
+                if (to) params.set('date_to', to);
+            }
+            const serverFilters = getServerColumnFilters(column);
+            if (Object.keys(serverFilters).length > 0) {
+                params.set('filters', JSON.stringify(serverFilters));
+            }
+            const response = await fetch(`/api/branches/asan/transport-history?${params.toString()}`, { cache: 'no-store' });
+            const json = await response.json();
+            if (!response.ok || json.error) throw new Error(json.error || '필터값 조회 실패');
+            setServerFilterOptions(prev => ({
+                ...prev,
+                [column]: json.data?.values || [],
+            }));
+        } catch (error) {
+            setSyncStatus({ message: error.message || '필터값 조회 실패', isError: true });
+        } finally {
+            setServerFilterLoading(prev => (prev === column ? '' : prev));
+        }
+    }, [dateFilter, getServerColumnFilters, isAllView, search, selectedYear]);
+
+    const getUniqueValues = (column) => {
+        if (isAllView && !isContainerLookupColumn(column)) {
+            return serverFilterOptions[column] || getLoadedUniqueValues(column);
+        }
+        return getLoadedUniqueValues(column);
     };
 
     const toggleFilterValue = (column, value) => {
@@ -1315,7 +1381,7 @@ export default function AsanTransportHistory() {
     );
 
     return (
-        <div className={styles.container}>
+        <div className={styles.container} onClick={() => setFilterDropdown(null)}>
             <div className={styles.compactHeader}>
                 <div className={styles.headerTitleArea}>
                     <h2 className={styles.pageTitle}>운송내역</h2>
@@ -1593,7 +1659,9 @@ export default function AsanTransportHistory() {
                                                 className={styles.filterIcon}
                                                 onClick={(event) => {
                                                     event.stopPropagation();
-                                                    setFilterDropdown(filterDropdown === header ? null : header);
+                                                    const nextColumn = filterDropdown === header ? null : header;
+                                                    setFilterDropdown(nextColumn);
+                                                    if (nextColumn) loadServerFilterValues(nextColumn);
                                                 }}
                                             >
                                                 ▼
@@ -1604,6 +1672,9 @@ export default function AsanTransportHistory() {
                                                         <button className={styles.resetBtn} onClick={() => selectAllFilter(header, getUniqueValues(header))}>전체 선택</button>
                                                         <button className={styles.resetBtn} onClick={() => clearFilter(header)}>초기화</button>
                                                     </div>
+                                                    {serverFilterLoading === header && (
+                                                        <div className={styles.dropdownItem}>전체 필터 불러오는 중...</div>
+                                                    )}
                                                     <div style={{ overflowY: 'auto', maxHeight: 240 }}>
                                                         {getUniqueValues(header).map(value => (
                                                             <label key={value} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', color: '#334155' }}>

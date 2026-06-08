@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import {
+    buildTransportHistoryFilterValues,
     buildTransportHistoryRowsPage,
     getTransportHistoryQueryMode,
     makeTransportHistoryMetaItem,
@@ -15,6 +16,17 @@ export const revalidate = 0;
 
 const TRANSPORT_HISTORY_META_SELECT = 'id,branch_id,target_month,sheet_name,headers,source_headers,file_modified_at,updated_at,row_count,valid_row_count,metadata';
 const TRANSPORT_HISTORY_META_FALLBACK_SELECT = 'id,branch_id,target_month,sheet_name,headers,source_headers,data,file_modified_at,updated_at,metadata';
+
+function parseTransportHistoryColumnFilters(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return {};
+    try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
 
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -64,6 +76,8 @@ export async function GET(request) {
     const search = String(searchParams.get('search') || '').trim();
     const sortKey = String(searchParams.get('sort') || '').trim();
     const sortDirection = String(searchParams.get('direction') || '').trim().toLowerCase();
+    const column = String(searchParams.get('column') || '').trim();
+    const columnFilters = parseTransportHistoryColumnFilters(searchParams.get('filters'));
 
     if (mode === 'date' && !month) {
         return NextResponse.json({ error: 'month required' }, { status: 400 });
@@ -114,6 +128,7 @@ export async function GET(request) {
             dateFrom,
             dateTo,
             dateColumn,
+            columnFilters,
         });
         return NextResponse.json({
             data: [{
@@ -140,6 +155,19 @@ export async function GET(request) {
             }],
             mode,
         });
+    }
+
+    if (mode === 'filter-values') {
+        const result = buildTransportHistoryFilterValues(records, {
+            column,
+            search,
+            date: day,
+            dateFrom,
+            dateTo,
+            dateColumn,
+            columnFilters,
+        });
+        return NextResponse.json({ data: result, mode });
     }
 
     return NextResponse.json({ data: records, mode });

@@ -1,5 +1,5 @@
 export const TRANSPORT_HISTORY_TABLE = 'branch_transport_history';
-export const TRANSPORT_HISTORY_QUERY_MODES = new Set(['full', 'meta', 'date', 'rows']);
+export const TRANSPORT_HISTORY_QUERY_MODES = new Set(['full', 'meta', 'date', 'rows', 'filter-values']);
 
 const HEADER_ALIAS_MAP = new Map([
   ['출차시간', '청구금액'],
@@ -91,6 +91,24 @@ function normalizeCellValue(value) {
   return String(value ?? '').trim();
 }
 
+export function normalizeTransportHistoryFilterValue(value) {
+  const text = normalizeCellValue(value);
+  return text || '(빈 값)';
+}
+
+export function normalizeTransportHistoryColumnFilters(filters = {}) {
+  if (!filters || typeof filters !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(filters)
+      .map(([column, values]) => [
+        String(column || '').trim(),
+        Array.from(new Set((Array.isArray(values) ? values : [])
+          .map(normalizeTransportHistoryFilterValue))),
+      ])
+      .filter(([column, values]) => column && values.length > 0)
+  );
+}
+
 function parseTransportHistoryDate(value) {
   const raw = normalizeCellValue(value);
   if (!raw) return '';
@@ -120,39 +138,19 @@ function getHeaderIndex(headers, candidates) {
     .find(index => index >= 0) ?? -1;
 }
 
-export function buildTransportHistoryRowsPage(records = [], options = {}) {
-  const limit = Math.max(1, Math.min(Number(options.limit || 100), 500));
-  const offset = Math.max(0, Number(options.offset || 0));
-  const searchTerms = String(options.search || '')
-    .split(',')
-    .map(term => term.trim().toLowerCase())
-    .filter(Boolean);
-  const sortKey = String(options.sortKey || '').trim();
-  const sortDirection = options.sortDirection === 'desc' ? 'desc' : 'asc';
-  const defaultDateDirection = options.defaultDateDirection === 'asc' ? 'asc' : 'desc';
-  const dateFilter = normalizeTransportHistoryDay(options.date || options.day);
-  const dateFrom = normalizeTransportHistoryDay(options.dateFrom || options.date_from);
-  const dateTo = normalizeTransportHistoryDay(options.dateTo || options.date_to);
-  const rangeStart = dateFrom && dateTo && dateFrom > dateTo ? dateTo : dateFrom;
-  const rangeEnd = dateFrom && dateTo && dateFrom > dateTo ? dateFrom : dateTo;
-  const dateColumn = String(options.dateColumn || '').trim();
-
+function collectTransportHistoryHeaders(records = []) {
   const headers = [];
   const addHeader = (header) => {
     if (header && !headers.includes(header)) headers.push(header);
   };
-
   records.forEach(record => {
     (record.headers || []).forEach(addHeader);
   });
+  return headers;
+}
 
-  const seqIndex = getHeaderIndex(headers, ['SEQ', 'Seq', 'seq']);
-  const dateIndex = dateColumn && headers.includes(dateColumn)
-    ? headers.indexOf(dateColumn)
-    : getHeaderIndex(headers, ['작업일자', '작업일', '날짜', '일자']);
-  const sortIndex = sortKey ? headers.indexOf(sortKey) : -1;
+function flattenTransportHistoryRows(records = [], headers = []) {
   const flattened = [];
-
   records.forEach(record => {
     const sourceHeaders = record.headers || [];
     const sourceRows = Array.isArray(record.data) ? record.data : [];
@@ -167,10 +165,32 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
       });
     });
   });
+  return flattened;
+}
 
-  let rows = flattened;
+function getTransportHistoryDateIndex(headers = [], dateColumn = '') {
+  return dateColumn && headers.includes(dateColumn)
+    ? headers.indexOf(dateColumn)
+    : getHeaderIndex(headers, ['작업일자', '작업일', '날짜', '일자']);
+}
+
+function filterTransportHistoryRows(rows = [], headers = [], options = {}) {
+  const searchTerms = String(options.search || '')
+    .split(',')
+    .map(term => term.trim().toLowerCase())
+    .filter(Boolean);
+  const dateFilter = normalizeTransportHistoryDay(options.date || options.day);
+  const dateFrom = normalizeTransportHistoryDay(options.dateFrom || options.date_from);
+  const dateTo = normalizeTransportHistoryDay(options.dateTo || options.date_to);
+  const rangeStart = dateFrom && dateTo && dateFrom > dateTo ? dateTo : dateFrom;
+  const rangeEnd = dateFrom && dateTo && dateFrom > dateTo ? dateFrom : dateTo;
+  const dateColumn = String(options.dateColumn || '').trim();
+  const dateIndex = getTransportHistoryDateIndex(headers, dateColumn);
+  const columnFilters = normalizeTransportHistoryColumnFilters(options.columnFilters || options.filters || {});
+
+  let nextRows = rows;
   if ((dateFilter || rangeStart || rangeEnd) && dateIndex >= 0) {
-    rows = rows.filter(item => {
+    nextRows = nextRows.filter(item => {
       const rowDate = parseTransportHistoryDate(item.values[dateIndex]);
       if (!rowDate) return false;
       if (dateFilter) return rowDate === dateFilter;
@@ -180,11 +200,34 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
     });
   }
   if (searchTerms.length) {
-    rows = rows.filter(item => {
+    nextRows = nextRows.filter(item => {
       const haystack = item.values.map(value => normalizeCellValue(value).toLowerCase()).join(' ');
       return searchTerms.some(term => haystack.includes(term));
     });
   }
+  Object.entries(columnFilters).forEach(([column, selectedValues]) => {
+    const columnIndex = headers.indexOf(column);
+    if (columnIndex < 0 || !selectedValues.length) return;
+    const selectedSet = new Set(selectedValues);
+    nextRows = nextRows.filter(item => selectedSet.has(normalizeTransportHistoryFilterValue(item.values[columnIndex])));
+  });
+
+  return { rows: nextRows, dateIndex };
+}
+
+export function buildTransportHistoryRowsPage(records = [], options = {}) {
+  const limit = Math.max(1, Math.min(Number(options.limit || 100), 500));
+  const offset = Math.max(0, Number(options.offset || 0));
+  const sortKey = String(options.sortKey || '').trim();
+  const sortDirection = options.sortDirection === 'desc' ? 'desc' : 'asc';
+  const defaultDateDirection = options.defaultDateDirection === 'asc' ? 'asc' : 'desc';
+  const headers = collectTransportHistoryHeaders(records);
+  const seqIndex = getHeaderIndex(headers, ['SEQ', 'Seq', 'seq']);
+  const sortIndex = sortKey ? headers.indexOf(sortKey) : -1;
+  const flattened = flattenTransportHistoryRows(records, headers);
+  const filtered = filterTransportHistoryRows(flattened, headers, options);
+  const rows = filtered.rows;
+  const dateIndex = filtered.dateIndex;
 
   rows.sort((a, b) => {
     if (sortIndex >= 0) {
@@ -217,5 +260,29 @@ export function buildTransportHistoryRowsPage(records = [], options = {}) {
     limit,
     offset,
     has_more: offset + data.length < total,
+  };
+}
+
+export function buildTransportHistoryFilterValues(records = [], options = {}) {
+  const column = String(options.column || '').trim();
+  const headers = collectTransportHistoryHeaders(records);
+  const columnIndex = headers.indexOf(column);
+  if (!column || columnIndex < 0) {
+    return { column, values: [], total: 0 };
+  }
+
+  const columnFilters = normalizeTransportHistoryColumnFilters(options.columnFilters || options.filters || {});
+  delete columnFilters[column];
+  const flattened = flattenTransportHistoryRows(records, headers);
+  const { rows } = filterTransportHistoryRows(flattened, headers, {
+    ...options,
+    columnFilters,
+  });
+  const values = Array.from(new Set(rows.map(item => normalizeTransportHistoryFilterValue(item.values[columnIndex]))))
+    .sort((a, b) => compareTransportHistoryValues(a, b, 'asc'));
+  return {
+    column,
+    values,
+    total: rows.length,
   };
 }
