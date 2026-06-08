@@ -1,3 +1,24 @@
+## [2026-06-08] 아산 월간실적 표시명 운영 용어 정리 (v5.14.358)
+
+### 조치
+- 월간실적 화면의 `청구이월` 표시명을 `전월이월`로 변경했습니다.
+- `건당 청구` KPI는 평균 단가 의미가 드러나도록 `평균청구(VAN)`으로 변경했습니다.
+- 백필 SQL과 월간 summary 기본 라벨도 `전월이월 반영분`으로 맞춰 이후 재집계 시 이전 명칭이 다시 노출되지 않게 했습니다.
+
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 9개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "utils/asanPerformanceView.mjs" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/lib/asan-branch-db.js`
+- `web/utils/asanPerformanceView.mjs`
+- `web/supabase_sql/20260526_asan_monthly_carryover_cycle_backfill.sql`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 월간실적 테이블 검색 마감월 범위 적용 (v5.14.356)
 
 ### 원인

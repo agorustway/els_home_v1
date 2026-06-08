@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.357 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.358 / APK v5.11.29)
 
-> 최신 업데이트: 아산 현황판 영업일 판정이 현충일 토요일을 월요일 대체휴일로 잘못 제외하던 문제를 수정한다.
+> 최신 업데이트: 아산 월간실적 이월/평균 청구 KPI 표시명을 운영 용어로 맞춘다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.357
+- **웹 버전**: v5.14.358
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -21,7 +21,7 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
-- 월간실적은 운영 임시 원장이다. 리셋은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다. 테이블 검색은 선택 마감월이 있으면 해당 `year_value/month_value` 안에서만 수행한다.
+- 월간실적은 운영 임시 원장이다. 리셋은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다. 테이블 검색은 선택 마감월이 있으면 해당 `year_value/month_value` 안에서만 수행하며, 전월 반영분은 화면에서 `전월이월`로 표시한다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 
 ## GLAPS OPERATING NOTES
@@ -80,16 +80,16 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.358**: 월간실적 화면의 `청구이월` 표시명을 `전월이월`, `건당 청구`를 `평균청구(VAN)`으로 바꾸고 백필/summary 기본 라벨도 같은 용어로 맞췄다.
 - **v5.14.357**: 공휴일 계산이 모든 주말 공휴일에 대체휴일을 붙여 2026-06-08을 제외하던 문제를 수정했다. 현충일은 토요일이어도 월요일 대체휴일로 보지 않아 6/8 데이터가 추세에 포함된다.
 - **v5.14.356**: 월간실적 테이블 검색과 엑셀 다운로드에 선택 마감월 `period`를 전달하고, 서버 rows 조회는 `year_value/month_value`로 먼저 제한해 5월 화면 검색이 전체 월 원장을 스캔하지 않게 했다.
 - **v5.14.355**: 현황판 하단 기간 선택이 월별/전체여도 캐시 모델의 activeScope가 일별로 고정되던 문제를 수정하고, initial 스냅샷에 현재 주/현재 월 키도 포함해 full 캐시 전에도 선택 범위가 비지 않게 했다.
 - **v5.14.354**: 현황판 캐시 payload가 2MB 수준까지 커져 첫 로딩이 길어지던 문제를 줄이기 위해 `scope=initial` 응답을 추가하고, 화면은 initial 렌더 후 full 캐시를 백그라운드로 받아 교체한다.
-- **v5.14.353**: 운송내역 전체 보기 필터값을 서버 `filter-values` 모드로 전체 원장 기준 조회하고, 선택 필터를 rows API에 전달해 페이지에 로드된 일부 데이터가 아니라 전체 DB 결과를 기준으로 페이징한다. 필터 드롭다운은 바깥 클릭 시 닫히게 했다.
 ## VERIFICATION
+- 월간실적 표시명 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
 - 현황판 영업일 판정은 `node --test web/tests/asanDashboardView.test.mjs`로 2026-06-08 포함을 검증한다.
 - 월간실적 테이블 마감월 검색 범위 수정은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
 - 현황판 초기 캐시 최적화는 `node --test web/tests/asanDashboardView.test.mjs` 42개를 통과했다. 변경 전 운영 캐시 GET은 약 1.4MB/6초, meta/date API는 약 0.16초였다.
-- 운송내역 전체 필터 변경은 `node --test web/tests/asanTransportHistory.test.mjs` 21개, `npm run lint`, `npm run build`를 통과했다.
 ## IN-PROGRESS
 - 다음 단계: GLAPS 수식완성본 재계산과 목록값 미매칭 반영 여부를 확인하고, DB는 일일 배차/상세배차 1년 1개월 초과분 archive worker 검증을 이어간다.
 ## FIXED RULES
