@@ -140,25 +140,23 @@ function getHolidays(year) {
         2029: ['2029-02-12', '2029-02-13', '2029-02-14', '2029-05-20', '2029-09-21', '2029-09-22', '2029-09-23'],
         2030: ['2030-02-02', '2030-02-03', '2030-02-04', '2030-05-09', '2030-09-11', '2030-09-12', '2030-09-13']
     };
-    (lunarMap[year] || []).forEach(d => holidays.add(d));
+    const lunarHolidays = lunarMap[year] || [];
+    const lunarHolidaySet = new Set(lunarHolidays);
+    lunarHolidays.forEach(d => holidays.add(d));
 
     // 3. 대체공휴일 처리 logic
-    // 국경일(3.1, 8.15, 10.3, 10.9)이 토/일인 경우, 설/추석이 일요일인 경우, 어린이날/부처님오신날이 토/일인 경우 발생
+    // 국경일(3.1, 8.15, 10.3, 10.9), 어린이날, 설/추석/부처님오신날이 주말인 경우 발생
+    const substituteStaticDays = new Set(['03-01', '05-05', '08-15', '10-03', '10-09']);
     const checkAlt = (dateStr) => {
         const d = new Date(dateStr + 'T00:00:00');
-        const day = d.getDay();
-        if (day === 0) return true; // 일요일
-        if (day === 6) {
-            // 토요일 대체공휴일은 어린이날, 부처님오신날, 국경일 4종에만 적용됨
-            const mmdd = dateStr.slice(5);
-            return ['05-05', '05-24', '03-01', '08-15', '10-03', '10-09'].includes(mmdd);
-        }
-        return false;
+        if (d.getDay() !== 0 && d.getDay() !== 6) return false;
+        return substituteStaticDays.has(dateStr.slice(5)) || lunarHolidaySet.has(dateStr);
     };
 
-    // 대체공휴일 계산 (단순화된 규칙: 공휴일이 주말과 겹치면 다음 첫 번째 평일을 공휴일로 지정)
+    // 대체공휴일 계산
     const currentHolidays = Array.from(holidays);
     currentHolidays.forEach(h => {
+        if (!checkAlt(h)) return;
         const d = new Date(h + 'T00:00:00');
         if (d.getDay() === 0 || d.getDay() === 6) {
             let next = new Date(d);

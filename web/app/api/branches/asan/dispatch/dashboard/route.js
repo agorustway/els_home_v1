@@ -7,6 +7,7 @@ export const revalidate = 0;
 
 const DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache';
 const DISPATCH_DASHBOARD_VIEW_TYPES = ['integrated', 'glovis', 'mobis'];
+const DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608';
 
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,7 +47,7 @@ function makeSourceSignature(items = [], viewType = 'integrated') {
         item.updated_at || '',
         item.valid_row_count ?? item.row_count ?? item.data?.length ?? 0,
     ].join(':'));
-    return `${viewType}|${parts.join('|')}`;
+    return `${viewType}|${DASHBOARD_CACHE_POLICY_VERSION}|${parts.join('|')}`;
 }
 
 function pickPreviousKey(options = [], key = '') {

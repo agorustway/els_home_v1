@@ -453,6 +453,34 @@ test('아산 현황판 일자별 추세는 주말과 공휴일을 제외한다',
   assert.equal(timeline[1].delta, 5);
 });
 
+test('아산 현황판 일자별 추세는 현충일 토요일을 월요일 대체휴일로 보지 않는다', () => {
+  const timeline = buildAsanDashboardTimeline({
+    sourceItems: [
+      {
+        target_date: '2026-06-05',
+        headers,
+        data: [
+          ['수출', '글로비스', '평일작업지', '고객A', 'HMM', '40HC', '85', '85', '이지 85', ''],
+        ],
+      },
+      {
+        target_date: '2026-06-08',
+        headers,
+        data: [
+          ['수출', '글로비스', '월요일작업지', '고객A', 'HMM', '40HC', '87', '87', '이지 87', ''],
+        ],
+      },
+    ],
+    viewType: 'integrated',
+    viewMode: 'customer',
+    todayKey: '2026-06-08',
+  });
+
+  assert.deepEqual(timeline.map((item) => item.date), ['2026-06-05', '2026-06-08']);
+  assert.equal(timeline.at(-1).total, 87);
+  assert.equal(timeline.at(-1).delta, 2);
+});
+
 test('아산 현황판 일자별 추세는 오늘 이후 사전기입 데이터를 제외한다', () => {
   const timeline = buildAsanDashboardTimeline({
     sourceItems,
@@ -659,6 +687,8 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(source, /if \(dashboardNeedsFullData\) \{[\s\S]*ensureDispatchFullLoaded\(\);[\s\S]*return;[\s\S]*\}/);
   assert.match(source, /dashboardCache=\{dashboardCachePayload\}/);
   assert.match(apiSource, /DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache'/);
+  assert.match(apiSource, /DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608'/);
+  assert.match(apiSource, /\$\{viewType\}\|\$\{DASHBOARD_CACHE_POLICY_VERSION\}\|/);
   assert.match(apiSource, /hasRefreshAccess/);
   assert.match(apiSource, /process\.env\.ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN/);
   assert.match(apiSource, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);

@@ -283,9 +283,13 @@ function getKoreaTodayKey(now = new Date()) {
 
 function getDashboardHolidays(year) {
   const holidays = new Set(['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'].map((day) => `${year}-${day}`));
-  (LUNAR_HOLIDAYS[year] || []).forEach((day) => holidays.add(day));
+  const lunarHolidays = LUNAR_HOLIDAYS[year] || [];
+  const lunarHolidaySet = new Set(lunarHolidays);
+  const substituteStaticDays = new Set(['03-01', '05-05', '08-15', '10-03', '10-09']);
+  lunarHolidays.forEach((day) => holidays.add(day));
 
   Array.from(holidays).forEach((holiday) => {
+    if (!substituteStaticDays.has(holiday.slice(5)) && !lunarHolidaySet.has(holiday)) return;
     const date = new Date(`${holiday}T00:00:00`);
     if (date.getDay() !== 0 && date.getDay() !== 6) return;
 

@@ -19,6 +19,31 @@
 
 ---
 
+## [2026-06-08] 아산 현황판 현충일 대체휴일 오판 수정 (v5.14.357)
+
+### 원인
+- 현황판 추세 그래프는 `buildAsanDashboardTimeline()`에서 주말/공휴일을 제외합니다.
+- 공휴일 계산이 모든 주말 공휴일에 다음 평일 대체휴일을 붙여, 대체휴일 대상이 아닌 현충일(2026-06-06 토요일)까지 2026-06-08 월요일을 휴일로 만들었습니다.
+- 그래서 6/8 원장 데이터와 캐시 날짜 목록은 있었지만, 타임라인 생성 단계에서 6/8이 제외되어 그래프가 6/5에서 멈췄습니다.
+
+### 조치
+- 현황판 공휴일 계산은 대체휴일 대상 고정 공휴일(3.1, 어린이날, 광복절, 개천절, 한글날)과 음력 공휴일만 주말 대체를 적용하도록 수정했습니다.
+- 배차판 상단 날짜 배지에서 쓰는 공휴일 계산도 같은 규칙으로 맞췄습니다.
+- 2026-06-08 데이터가 추세에 포함되는 회귀 테스트를 추가했습니다.
+- 캐시 서명에 `holiday-policy-20260608` 정책 버전을 포함해 기존 현황판 캐시가 배포 후 자동 재생성되게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`
+
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 현황판 월별/전체 active scope 보정 (v5.14.355)
 
 ### 원인
