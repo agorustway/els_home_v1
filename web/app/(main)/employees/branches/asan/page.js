@@ -4125,6 +4125,8 @@ function AsanDispatchContent() {
                     viewType={viewType}
                     sourceItems={data}
                     activeDate={isAllTab ? '' : activeItem?.target_date || ''}
+                    activePeriodMode={periodMode}
+                    selectedWeek={isAllTab ? allTabWeek?.key || '' : ''}
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
                     dashboardCache={dashboardCachePayload}
                     dateControlsSlot={dateControls}

@@ -467,6 +467,10 @@ function resolveOptionKey(options = [], requested = '', fallback = '') {
   return monthMatch[monthMatch.length - 1]?.key || fallback;
 }
 
+function normalizeDashboardPeriodKey(value = 'daily') {
+  return ['daily', 'weekly', 'monthly', 'total'].includes(value) ? value : 'daily';
+}
+
 function findWeekOptionForDate(weeks = [], dateKey = '') {
   return weeks.find((week) => dateKey >= week.start && dateKey <= week.end) || null;
 }
@@ -982,6 +986,7 @@ export function buildAsanDashboardDataFromCache({
   selectedDay = '',
   selectedWeek = '',
   selectedMonth = '',
+  activePeriod = 'daily',
 } = {}) {
   if (!cachePayload || cachePayload.version !== 1) return null;
   const options = cachePayload.options || {};
@@ -1014,9 +1019,7 @@ export function buildAsanDashboardDataFromCache({
   const basisWeekly = cachePayload.basisDiff?.weekly?.[weekKey] || null;
   const basisMonthly = cachePayload.basisDiff?.monthly?.[monthKey] || null;
 
-  return {
-    activeScope: dailyScope,
-    periods: [
+  const periods = [
       {
         key: 'daily',
         label: '일별',
@@ -1053,7 +1056,12 @@ export function buildAsanDashboardDataFromCache({
         scope: totalScope,
         previousScope: null,
       },
-    ],
+  ];
+  const activePeriodKey = normalizeDashboardPeriodKey(activePeriod);
+
+  return {
+    activeScope: periods.find((period) => period.key === activePeriodKey)?.scope || dailyScope,
+    periods,
     periodOptions: options,
     timeline: modeCache.timeline || [],
     weekdayComparison: {

@@ -1,3 +1,28 @@
+## [2026-06-08] 아산 현황판 월별/전체 active scope 보정 (v5.14.355)
+
+### 원인
+- 현황판 하단 기간 선택을 `월별` 또는 `전체`로 바꿔도 도넛/비중차트/구분표가 선택 범위가 아니라 일별 active scope를 계속 사용했습니다.
+- `buildAsanDashboardDataFromCache()`가 기간 카드용 weekly/monthly/total scope는 만들었지만, 화면 본문용 `activeScope`는 항상 daily scope로 반환했습니다.
+- `scope=initial` 응답은 기본 전월/전주만 담아 현재월을 바로 선택하면 full 캐시 전까지 값이 비거나 fallback될 수 있었습니다.
+
+### 조치
+- `activePeriod`를 캐시 view model에 전달해 일/주/月/전체 active scope를 분기했습니다.
+- 페이지의 `periodMode`와 선택 주차를 `AsanDashboard`에 전달해 하단 기간 선택과 현황판 본문 범위를 일치시켰습니다.
+- initial 스냅샷에는 현재 주/현재 월 키도 함께 포함했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`에 월별/전체 active scope 회귀 테스트와 정적 연결 검증을 추가했습니다.
+
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 현황판 초기 캐시 경량화 (v5.14.354)
 
 ### 원인

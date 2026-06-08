@@ -54,6 +54,10 @@ function pickPreviousKey(options = [], key = '') {
     return index > 0 ? options[index - 1].key : key;
 }
 
+function compactKeys(keys = []) {
+    return [...new Set(keys.filter(Boolean))];
+}
+
 function pickDashboardInitialKeys(options = {}, activeDate = '') {
     const dates = options.dates || [];
     const weeks = options.weeks || [];
@@ -62,15 +66,16 @@ function pickDashboardInitialKeys(options = {}, activeDate = '') {
     const dayKey = dates.some((option) => option.key === activeDate) ? activeDate : latestDate;
     const dayIndex = dates.findIndex((option) => option.key === dayKey);
     const currentWeek = weeks.find((option) => dayKey >= option.start && dayKey <= option.end) || weeks[weeks.length - 1] || null;
-    const weekKey = pickPreviousKey(weeks, currentWeek?.key || '');
+    const currentWeekKey = currentWeek?.key || '';
+    const defaultWeekKey = pickPreviousKey(weeks, currentWeekKey);
     const currentMonthKey = dayKey ? dayKey.slice(0, 7) : months[months.length - 1]?.key || '';
     const currentMonth = months.find((option) => option.key === currentMonthKey) || months[months.length - 1] || null;
-    const monthKey = pickPreviousKey(months, currentMonth?.key || '');
+    const defaultMonthKey = pickPreviousKey(months, currentMonth?.key || '');
 
     return {
-        dayKeys: [dayKey, dayIndex > 0 ? dates[dayIndex - 1]?.key : ''].filter(Boolean),
-        weekKeys: [weekKey, pickPreviousKey(weeks, weekKey)].filter(Boolean),
-        monthKeys: [monthKey, pickPreviousKey(months, monthKey)].filter(Boolean),
+        dayKeys: compactKeys([dayKey, dayIndex > 0 ? dates[dayIndex - 1]?.key : '']),
+        weekKeys: compactKeys([currentWeekKey, defaultWeekKey, pickPreviousKey(weeks, defaultWeekKey)]),
+        monthKeys: compactKeys([currentMonth?.key || '', defaultMonthKey, pickPreviousKey(months, defaultMonthKey)]),
     };
 }
 
