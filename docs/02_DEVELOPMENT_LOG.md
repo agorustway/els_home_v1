@@ -1,3 +1,27 @@
+## [2026-06-08] 아산 배차 RAG 운송사 자체 집계 보강 (v5.14.352)
+
+### 원인
+- `대신 운송사 자체의 상차지별 배차수량`처럼 특정 운송사 자체 수량을 묻는 질문에서 RAG가 `대신`이 포함된 행 전체를 매칭한 뒤 같은 행의 다른 운송사 수량까지 함께 합산할 수 있었습니다.
+- `자체의`, `만`, `관련`, `없어?` 같은 표현이 일반 검색어로 남으면 실제 행에는 없는 키워드라 0건으로 떨어지는 경우도 있었습니다.
+
+### 조치
+- 아산 배차 RAG 의도 파서에 `carrierFilters`, `regionFilters`를 추가해 운송사/상차지 키워드를 일반 행 검색어와 분리했습니다.
+- 질문 조건 매칭 시 행 전체가 아니라 지역/상차지 셀의 `업체+수량` 항목 단위로 필터링한 뒤 집계하도록 변경했습니다.
+- AI 버전을 `v5.14.352`로 올리고 가이드 예시에 `대신 운송사 자체의 상차지별 배차수량만 알려줘`를 추가했습니다.
+
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/aiAssistantMeta.test.mjs`: 21개 통과
+- `npm run lint`: 통과
+
+### 변경 파일
+- `web/utils/asanDispatchRag.mjs`
+- `web/tests/asanDispatchRag.test.mjs`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-05] 아산 배차 현황판 캐시 인증 복구 (v5.14.351)
 
 ### 원인

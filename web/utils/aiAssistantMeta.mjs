@@ -1,4 +1,4 @@
-export const AI_ASSISTANT_VERSION = 'v5.14.349';
+export const AI_ASSISTANT_VERSION = 'v5.14.352';
 export const AI_ASSISTANT_NAME = 'ELS AI 엘스';
 
 export function getAiAssistantVersion() {
@@ -39,6 +39,7 @@ export function getAiAssistantGuideSections() {
       examples: [
         '오늘 아산 배차 총 몇 대야?',
         '내일 13시 부산 배차 어느 업체 몇 대야?',
+        '대신 운송사 자체의 상차지별 배차수량만 알려줘',
         '모비스 아산 상차지별 배차 수량 알려줘',
         '내일 GLAPS 경로확인 안되는 작업지 어디야?',
         '내일 상세배차 GLAPS 코드 누락 뭐야?',

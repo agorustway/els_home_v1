@@ -84,6 +84,15 @@ const IGNORE_TERMS = new Set([
   '운송경로코드', '최종코드', '부킹', 'bkg',
   '경로', '운송경로', '경로확인', '안되는', '안됨', '안돼', '안되',
   '누락', '미도출', '미확인', '조정필요',
+  '관련', '관해', '대해', '자체', '자체의', '정확히', '순수', '오직', '해당',
+  '의', '만', '만알려줘', '알려줘봐', '말해줘', '말할수', '말할수없어',
+  '없어', '없냐', '없나', '있어', '있나', '올',
+]);
+
+const INTENT_MODIFIER_TERMS = new Set([
+  '관련', '관해', '대해', '자체', '자체의', '정확히', '순수', '오직', '해당',
+  '의', '만', '만알려줘', '말해줘', '말할수', '말할수없어',
+  '없어', '없냐', '없나', '있어', '있나', '올',
 ]);
 
 const WEEKDAYS = [
@@ -312,6 +321,40 @@ function detectGroupBy(text) {
   return groups;
 }
 
+function detectCarrierFilters(text) {
+  const compact = normalizeCompact(text);
+  const filters = [];
+  const seen = new Set();
+  for (const word of CARRIER_HINT_WORDS) {
+    const normalized = normalizeCompact(word);
+    if (!normalized || !compact.includes(normalized) || seen.has(normalized)) continue;
+    seen.add(normalized);
+    filters.push(word);
+  }
+  return filters;
+}
+
+function detectRegionFilters(text) {
+  const raw = String(text || '');
+  const compact = normalizeCompact(raw);
+  const hasGroupingAxis = /(상차지|상차지역|픽업지역|지역)\s*별/.test(raw);
+  const filters = [];
+  const seen = new Set();
+
+  for (const word of REGION_WORDS) {
+    const normalized = normalizeCompact(word);
+    if (!normalized || !compact.includes(normalized) || seen.has(normalized)) continue;
+    if (normalized === '아산' && (hasGroupingAxis || !/아산\s*(칸|상차|지역)|아산칸/.test(raw))) {
+      continue;
+    }
+    if (hasGroupingAxis) continue;
+    seen.add(normalized);
+    filters.push(word);
+  }
+
+  return filters;
+}
+
 function detectDetailIssueFilters(text) {
   const compact = normalizeCompact(text);
   const hasMissingIntent = /(안되|안돼|안됨|안잡|안나|누락|미도출|미확인|조정필요|없는|없음|안되는)/.test(compact);
@@ -346,6 +389,18 @@ function isAggregationTerm(compact) {
     || /(별)(수량|배차|현황)?$/.test(compact) && /(상차|지역|업체|운송사|실행사|작업지|시간대|선사|라인)/.test(compact);
 }
 
+function isCarrierMetricCompoundTerm(compact, hints = []) {
+  if (!compact) return false;
+  return hints.some((hint) => {
+    const normalized = normalizeCompact(hint);
+    if (!normalized || !compact.includes(normalized)) return false;
+    const rest = compact
+      .replaceAll(normalized, '')
+      .replace(/(배차|수량|대수|현황|상차지|상차지역|픽업지역|지역|운송사|업체|실행사|별|만|자체|관련|정확히|순수|오직|올|의)/g, '');
+    return rest.length === 0;
+  });
+}
+
 function isPureOperationalNumber(term) {
   const compact = normalizeCompact(term);
   if (!/^\d+$/.test(compact)) return false;
@@ -373,9 +428,11 @@ function buildSpecificKeywords(text, inputTerms = []) {
     const compact = normalizeCompact(stripped);
     if (!compact || compact.length < 2) continue;
     if (IGNORE_TERMS.has(compact)) continue;
+    if (INTENT_MODIFIER_TERMS.has(compact)) continue;
     if (isAggregationTerm(compact)) continue;
     if (isTypeTerm(compact)) continue;
     if (isDispatchCompoundTerm(compact, hints)) continue;
+    if (isCarrierMetricCompoundTerm(compact, CARRIER_HINT_WORDS)) continue;
     if (compact.startsWith('작업지') || compact.startsWith('배차')) continue;
     if (compact === '아산' && !keepAsanRegion) continue;
     if (isDateLikeTerm(compact) || isPureOperationalNumber(compact)) continue;
@@ -408,6 +465,8 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
   const typeFilters = detectTypeFilters(text);
   const quantityMetric = detectQuantityMetric(text);
   const groupBy = detectGroupBy(text);
+  const carrierFilters = detectCarrierFilters(text);
+  const regionFilters = detectRegionFilters(text);
   const detailIssueFilters = detectDetailIssueFilters(text);
   const specificKeywords = buildSpecificKeywords(text, options.searchTerms || []);
   const hasDispatchTrigger = hasAnyWord(compact, DISPATCH_TRIGGER_WORDS);
@@ -429,6 +488,8 @@ export function parseAsanDispatchIntent(userText = '', options = {}) {
     typeFilters,
     quantityMetric,
     groupBy,
+    carrierFilters,
+    regionFilters,
     detailIssueFilters,
     specificKeywords,
     hasDispatchTrigger,
@@ -678,6 +739,44 @@ function addMapCount(map, key, value) {
   map[key] = (map[key] || 0) + value;
 }
 
+function matchesNormalizedFilter(value, filters = []) {
+  if (!filters?.length) return true;
+  const normalizedValue = normalizeCompact(value);
+  if (!normalizedValue) return false;
+  return filters.some((filter) => {
+    const normalizedFilter = normalizeCompact(filter);
+    return normalizedFilter
+      && (normalizedValue === normalizedFilter
+        || normalizedValue.includes(normalizedFilter)
+        || normalizedFilter.includes(normalizedValue));
+  });
+}
+
+function hasItemFilters(intent = {}) {
+  return Boolean(intent.carrierFilters?.length) || Boolean(intent.regionFilters?.length);
+}
+
+function filterCarrierItemsForIntent(rowInfo, intent = {}) {
+  const items = rowInfo.carrierItems || [];
+  if (!hasItemFilters(intent)) return items;
+  return items.filter((item) => (
+    matchesNormalizedFilter(item.carrier, intent.carrierFilters)
+    && matchesNormalizedFilter(item.region, intent.regionFilters)
+  ));
+}
+
+function applyItemFiltersToRowInfo(rowInfo, intent = {}) {
+  if (!hasItemFilters(intent)) return rowInfo;
+  const carrierItems = filterCarrierItemsForIntent(rowInfo, intent);
+  const dispatchCount = carrierItems.reduce((sum, item) => sum + item.count, 0);
+  return {
+    ...rowInfo,
+    orderCount: dispatchCount,
+    dispatchCount,
+    carrierItems,
+  };
+}
+
 function ensureDateSummary(summary, date) {
   if (!summary.byDate[date]) {
     summary.byDate[date] = {
@@ -790,12 +889,16 @@ function rowMatchesIntent(rowInfo, intent) {
     || intent.specificKeywords.every((kwd) => lowerText.includes(String(kwd).toLowerCase()));
   const hourMatch = !intent.filterHour
     || rowInfo.memoTexts.some((text) => hasHour(text, intent.filterHour));
-  return typeMatch && keywordMatch && hourMatch;
+  const itemMatch = !hasItemFilters(intent)
+    || filterCarrierItemsForIntent(rowInfo, intent).length > 0;
+  return typeMatch && keywordMatch && hourMatch && itemMatch;
 }
 
 function hasActiveIntentFilters(intent = {}) {
   return Boolean(intent.filterHour)
     || Boolean(intent.typeFilters?.length)
+    || Boolean(intent.carrierFilters?.length)
+    || Boolean(intent.regionFilters?.length)
     || Boolean(intent.specificKeywords?.length)
     || Boolean(intent.detailIssueFilters?.length);
 }
@@ -816,6 +919,15 @@ function buildAnswerSummaryText(summary, intent = {}, scopeLabel = '조회 범�
   }
 
   text += `- 지시: "총 몇 대 배차" 또는 "배차 몇 대" 질문은 실제 배차 ${dispatch}대를 첫 문장으로 답하라. 오더와 배차를 더하거나 섞지 마라.\n`;
+
+  if (hasItemFilters(intent)) {
+    const itemFilters = [
+      intent.carrierFilters?.length ? `운송사=${intent.carrierFilters.join('/')}` : '',
+      intent.regionFilters?.length ? `상차지=${intent.regionFilters.join('/')}` : '',
+    ].filter(Boolean).join(', ');
+    text += `- 필터 기준: ${itemFilters}. 지역/상차지 셀의 업체+수량 항목 중 이 조건에 맞는 항목만 합산했다.\n`;
+    text += `- 지시: 같은 행에 있는 다른 운송사 수량을 "관련 배차"로 더하지 마라. 운송사 자체/정확/만 질문은 필터된 업체 항목만 답하라.\n`;
+  }
 
   if (intent.groupBy?.includes('region')) {
     text += `- 상차지별 답변 자료: ${topMapText(summary.byRegion)}\n`;
@@ -870,9 +982,10 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
       if (!rowInfo) continue;
       addRowToSummary(overallSummary, rowInfo);
       if (rowMatchesIntent(rowInfo, intent)) {
-        addRowToSummary(matchedSummary, rowInfo);
+        const matchedRowInfo = applyItemFiltersToRowInfo(rowInfo, intent);
+        addRowToSummary(matchedSummary, matchedRowInfo);
         if (matchedRows.length < maxDetailRows) {
-          matchedRows.push(rowInfo);
+          matchedRows.push(matchedRowInfo);
         }
       }
     }
@@ -882,6 +995,8 @@ export function buildAsanDispatchRagText(records = [], intent, options = {}) {
   const filterLabel = [
     ...(intent.typeFilters || []).map((type) => (type === 'mobis' ? '모비스' : (type === 'glovis' ? '글로비스' : type))),
     intent.filterHour ? `${intent.filterHour}시` : '',
+    ...(intent.carrierFilters || []),
+    ...(intent.regionFilters || []),
     ...intent.specificKeywords,
   ].filter(Boolean).join(', ') || '전체';
   const hasActiveFilters = hasActiveIntentFilters(intent);
