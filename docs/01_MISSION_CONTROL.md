@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.359 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.360 / APK v5.11.29)
 
-> 최신 업데이트: 아산 배차 현황판 첫 화면을 뷰어 전용 스냅샷으로 먼저 렌더한다.
+> 최신 업데이트: 아산 배차 현황판에 최신 구간단가 기준 예측 손익을 표시한다.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.359
+- **웹 버전**: v5.14.360
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -12,7 +12,7 @@
 ## ACTIVE SYSTEMS
 | 영역 | 상태 | 메모 |
 |---|---|---|
-| Next.js 웹 | 정상 | 배차판/운송내역 표는 경량 meta/date/rows 조회, 현황판은 뷰어 스냅샷/집계 캐시 우선 조회 |
+| Next.js 웹 | 정상 | 배차판/운송내역 표는 경량 meta/date/rows 조회, 현황판은 뷰어 스냅샷/집계 캐시/예측 손익 우선 조회 |
 | Supabase 인증/DB | 정상 | public RLS/GRANT 보강 완료. 배차/운송내역 row_count 메타 조회 적용 |
 | NAS 백엔드 | 정상 | Core는 배차판/운송내역 NAS 엑셀을 파일 안정화 후 DB에 반영 |
 | ELS Bot | 정상 | Selenium 워커 2개, 대량 안정 모드/자동 로그인 3회 하드캡 |
@@ -57,7 +57,7 @@
 - 운송내역은 상위 `배차판` 옆 탭이며 `/아산지점/2026_수출리스트.xlsx` 월별 시트를 `branch_transport_history`에 `target_month` 날짜키로 누적 저장한다. 웹은 NAS 파일을 직접 읽지 않고 DB `mode=meta/date/rows`만 조회하며, 설정 모달은 `/아산지점` 기준 NAS 파일 찾기를 제공한다. `출차시간` 헤더는 `청구금액`으로 정규화하고, 동기화는 현재월 1순위 후 인접월/나머지 월 순서로 진행한다.
 - 운송내역 `전체` 카드는 월 카드 왼쪽에 고정한다. `전체`는 선택 연도 DB 누적 원장을 날짜/입력순으로 합쳐 SEQ를 다시 부여하고, 첫 호출은 100건만 가져온 뒤 `더보기`로 이어 받는다. 연도 선택은 DB에 자료가 있는 연도만 표시해 2027년은 실제 자료 발생 후 노출한다.
 - 운송내역 `전체` 보기의 원본 컬럼 필터는 `mode=filter-values`로 선택 연도 전체 원장의 distinct 값을 서버에서 조회한다. 필터 선택 후 rows 조회도 같은 `filters` 조건으로 서버 페이징하며, 드롭다운은 컴포넌트 바깥 클릭 시 닫는다.
-- 배차 `현황판`은 첫 화면에서 `branch_dispatch_dashboard_view_cache` 뷰어 payload를 먼저 보고, 없거나 날짜가 다르면 `branch_dispatch_dashboard_cache` initial/full 경로로 fallback한다. 뷰어 payload는 선택일/기본 주월 렌더 모델만 담고, 원본 원장과 full cache는 그대로 유지한다.
+- 배차 `현황판`은 첫 화면에서 뷰어 payload를 먼저 보고, 없거나 날짜가 다르면 기존 cache로 fallback한다. full cache 생성 시 최신 월간 `구간단가`와 상세배차 행을 매칭해 일/주/月 예측 매출·매입·이익률을 만든다. 상차지 미확인은 부곡(의왕) 후보로 보정하고, 그래도 안 잡히면 TYPE/구분 평균단가 또는 점검 건수로 표시한다.
 - 배차 RAG는 `대신/이지/CSS` 같은 운송사 필터와 `부산/중부` 같은 상차지 필터를 지역 셀의 업체 항목 단위로 적용한다. 특정 운송사 자체/만 질문은 같은 행의 다른 업체 수량을 더하지 않는다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
@@ -80,13 +80,13 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.360**: 현황판에 상세배차와 최신 구간단가 기반 예측 손익 카드를 추가했다. 일/주/月 매출·매입·이익률과 부곡(의왕)/평균단가 보정 점검 건수를 함께 표시한다.
 - **v5.14.359**: 현황판 첫 화면용 `branch_dispatch_dashboard_view_cache` 모델과 API 우선 조회를 추가했다. 선택일이 맞는 뷰어 스냅샷은 즉시 렌더하고, 없으면 기존 initial/full cache로 안전하게 fallback한다.
 - **v5.14.358**: 월간실적 화면의 `청구이월` 표시명을 `전월이월`, `건당 청구`를 `평균청구(VAN)`으로 바꾸고 백필/summary 기본 라벨도 같은 용어로 맞췄다.
 - **v5.14.357**: 공휴일 계산이 모든 주말 공휴일에 대체휴일을 붙여 2026-06-08을 제외하던 문제를 수정했다. 현충일은 토요일이어도 월요일 대체휴일로 보지 않아 6/8 데이터가 추세에 포함된다.
 - **v5.14.356**: 월간실적 테이블 검색과 엑셀 다운로드에 선택 마감월 `period`를 전달하고, 서버 rows 조회는 `year_value/month_value`로 먼저 제한해 5월 화면 검색이 전체 월 원장을 스캔하지 않게 했다.
-- **v5.14.355**: 현황판 하단 기간 선택이 월별/전체여도 캐시 모델의 activeScope가 일별로 고정되던 문제를 수정하고, initial 스냅샷에 현재 주/현재 월 키도 포함해 full 캐시 전에도 선택 범위가 비지 않게 했다.
 ## VERIFICATION
-- 현황판 뷰어 스냅샷 경로는 `node --test web/tests/asanDashboardView.test.mjs` 44개를 통과했다.
+- 현황판 예측 손익/뷰어 스냅샷 경로는 `node --test web/tests/asanDashboardView.test.mjs` 45개와 `npm.cmd run lint`를 통과했다.
 - 월간실적 표시명 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
 - 현황판 영업일 판정은 `node --test web/tests/asanDashboardView.test.mjs`로 2026-06-08 포함을 검증한다.
 - 월간실적 테이블 마감월 검색 범위 수정은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.

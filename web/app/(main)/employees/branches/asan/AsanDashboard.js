@@ -29,6 +29,23 @@ function formatDecimal(value) {
     });
 }
 
+function formatMoneyShort(value) {
+    const num = Math.round(Number(value) || 0);
+    const abs = Math.abs(num);
+    if (abs >= 100000000) {
+        return `${(num / 100000000).toLocaleString(undefined, { maximumFractionDigits: 1 })}억`;
+    }
+    if (abs >= 10000) {
+        return `${Math.round(num / 10000).toLocaleString()}만`;
+    }
+    return num.toLocaleString();
+}
+
+function formatProfitRate(value) {
+    const num = Number(value) || 0;
+    return `${num.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+}
+
 function getTodayKey() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -245,6 +262,8 @@ export default function AsanDashboard({
                 ))}
             </div>
 
+            <FinancialForecastPanel forecast={dashboardData.financialForecast} />
+
             <div className={styles.analysisRow}>
                 <TrendPanel
                     items={dashboardData.timeline}
@@ -357,6 +376,64 @@ export default function AsanDashboard({
                         ))}
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function FinancialForecastPanel({ forecast }) {
+    const periods = (forecast?.periods || []).filter((period) => ['daily', 'weekly', 'monthly'].includes(period.key));
+    const sourcePeriod = forecast?.sourcePeriod || '최신 구간단가';
+    if (!forecast || periods.length === 0) {
+        return (
+            <div className={styles.forecastPanel}>
+                <div className={styles.forecastHead}>
+                    <div>
+                        <strong>예측 손익</strong>
+                        <span>상세배차와 최신 구간단가 기준</span>
+                    </div>
+                    <em>단가 캐시 대기</em>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className={styles.forecastPanel}>
+            <div className={styles.forecastHead}>
+                <div>
+                    <strong>예측 손익</strong>
+                    <span>상세배차 × {sourcePeriod} 단가 · 실제 정산 전 데일리 추정</span>
+                </div>
+                <em>{forecast.available ? '최신대비' : '단가 점검'}</em>
+            </div>
+            <div className={styles.forecastGrid}>
+                {periods.map((period) => (
+                    <FinancialForecastCard key={period.key} period={period} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function FinancialForecastCard({ period }) {
+    const issueQty = Number(period?.fallbackPickupQty || 0) + Number(period?.averageFallbackQty || 0) + Number(period?.unmatchedQty || 0);
+    const hasIssue = issueQty > 0.001 || Number(period?.issueCount || 0) > 0;
+    return (
+        <div className={`${styles.forecastCard} ${hasIssue ? styles.forecastCardWarn : ''}`} title={(period?.topIssues || []).map((issue) => `${issue.label}: ${issue.reason} ${formatQty(issue.qty)}건`).join('\n')}>
+            <div className={styles.forecastCardTop}>
+                <span>{period.label}</span>
+                <b>{period.title}</b>
+            </div>
+            <div className={styles.forecastMain}>
+                <strong>{formatMoneyShort(period.revenue)}</strong>
+                <em className={period.profit >= 0 ? styles.forecastProfitUp : styles.forecastProfitDown}>
+                    {formatMoneyShort(period.profit)} · {formatProfitRate(period.profitRate)}
+                </em>
+            </div>
+            <div className={styles.forecastRows}>
+                <span><b>매입</b>{formatMoneyShort(period.purchase)}</span>
+                <span><b>적용</b>{formatQty(period.matchedQty)}/{formatQty(period.qty)}</span>
+                <span><b>점검</b>{hasIssue ? `${formatQty(issueQty)}건` : '없음'}</span>
             </div>
         </div>
     );

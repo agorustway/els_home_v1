@@ -1,3 +1,30 @@
+## [2026-06-09] 아산 현황판 예측 손익 카드 추가 (v5.14.360)
+
+### 원인
+- 실적관리는 실제 정산용이지만, 배차판 운영 중에는 당일/주간/月 단위의 대략적인 매출·매입·이익률을 바로 보고 싶다는 요구가 있었습니다.
+- 상세배차에는 작업지/상차지/운송사/TYPE/구분이 있고, 실적관리 구간단가에는 최신 월간 단가가 있어 완전 정산은 아니어도 운영 예측치는 만들 수 있습니다.
+
+### 조치
+- 현황판 full cache 생성 시 최신 `구간단가` 월간 금액표를 함께 조회해 일/주/月/전체 예측 손익을 계산합니다.
+- 매칭은 TYPE, 구분, 작업지, 상차지, 선적, 운송사, 화주/청구처를 점수화하되 작업지·상차지가 명확히 다르면 잘못된 단가로 매칭하지 않습니다.
+- 상차지가 비어 있거나 미확인인 행은 부곡(의왕) 후보 요율로 보정하고, 그래도 잡히지 않는 행은 동일 TYPE/구분 평균단가로 보정하거나 점검 건수로 남깁니다.
+- 현황판 기간 카드 아래에 `예측 손익` 패널을 추가해 일별/주별/월별 매출·매입·이익률과 적용/점검 수량을 표시합니다.
+- cache policy를 `financial-forecast-20260609`, viewer policy를 `viewer-snapshot-financial-20260609`로 올려 기존 현황판 cache가 재생성되게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 45개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 현황판 첫 화면 뷰어 스냅샷 추가 (v5.14.359)
 
 ### 원인

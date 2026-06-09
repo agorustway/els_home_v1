@@ -7,6 +7,7 @@ import {
   buildAsanDashboardBasisDiffSummary,
   buildAsanDashboardCachePayload,
   buildAsanDashboardDataFromCache,
+  buildAsanDashboardFinancialForecast,
   buildAsanDashboardPeriods,
   buildAsanDashboardScope,
   buildAsanDashboardTimeline,
@@ -62,6 +63,77 @@ const sourceItems = [
   },
 ];
 
+const routeUnitPrice = {
+  scope: { month: '2026-05' },
+  summary: { periodEnd: '2026-05' },
+  groups: [
+    {
+      salesItem: '글로비스',
+      category: '수출',
+      workSite: '글로비스1공장',
+      pickup: '부산',
+      billingPickup: '부산',
+      shipment: '',
+      type: '40HC',
+      billTo: '고객A',
+      payTo: '신승',
+      carrier: '신승',
+      revenueAmount: 100000,
+      purchaseAmount: 80000,
+      unitRevenue: 100000,
+      unitPurchase: 80000,
+    },
+    {
+      salesItem: '글로비스',
+      category: '수출',
+      workSite: '글로비스1공장',
+      pickup: '아산',
+      billingPickup: '아산',
+      shipment: '',
+      type: '40HC',
+      billTo: '고객A',
+      payTo: '이지',
+      carrier: '이지',
+      revenueAmount: 100000,
+      purchaseAmount: 80000,
+      unitRevenue: 100000,
+      unitPurchase: 80000,
+    },
+    {
+      salesItem: '모비스',
+      category: '수입',
+      workSite: '모비스천안',
+      pickup: '의왕ICD',
+      billingPickup: '의왕ICD',
+      shipment: '',
+      type: '20FT',
+      billTo: '고객B',
+      payTo: '대신',
+      carrier: '대신',
+      revenueAmount: 50000,
+      purchaseAmount: 42000,
+      unitRevenue: 50000,
+      unitPurchase: 42000,
+    },
+    {
+      salesItem: '현대제철',
+      category: '수입',
+      workSite: 'KCC글라스',
+      pickup: '아산',
+      billingPickup: '아산',
+      shipment: '',
+      type: '20FT',
+      billTo: '고객C',
+      payTo: '동원',
+      carrier: '동원',
+      revenueAmount: 60000,
+      purchaseAmount: 52000,
+      unitRevenue: 60000,
+      unitPurchase: 52000,
+    },
+  ],
+};
+
 test('아산 현황판 기간 스냅샷은 선택일, 주간, 월별, 전체 총량을 나눠 계산한다', () => {
   const periods = buildAsanDashboardPeriods({
     sourceItems,
@@ -114,6 +186,44 @@ test('아산 현황판 캐시는 원장 없이 기간 집계를 복원한다', (
 
   assert.equal(monthlyDashboardData.activeScope.total, 25);
   assert.equal(totalDashboardData.activeScope.total, 25);
+});
+
+test('아산 현황판 예측 손익은 최신 구간단가와 부곡 의왕 fallback을 적용한다', () => {
+  const forecast = buildAsanDashboardFinancialForecast({
+    sourceItems,
+    viewType: 'integrated',
+    routeUnitPrice,
+    selectedDay: '2026-05-18',
+    activePeriod: 'daily',
+  });
+
+  const daily = forecast.periods.find((period) => period.key === 'daily');
+  const weekly = forecast.periods.find((period) => period.key === 'weekly');
+  const monthly = forecast.periods.find((period) => period.key === 'monthly');
+  assert.equal(daily.qty, 13);
+  assert.equal(daily.revenue, 1_165_000);
+  assert.equal(daily.purchase, 941_000);
+  assert.equal(daily.profit, 224_000);
+  assert.equal(daily.averageFallbackQty, 3);
+  assert.equal(weekly.revenue, 1_865_000);
+  assert.equal(monthly.revenue, 2_165_000);
+  assert.equal(forecast.sourcePeriod, '2026-05');
+
+  const missingPickupForecast = buildAsanDashboardFinancialForecast({
+    sourceItems: [{
+      target_date: '2026-05-18',
+      headers,
+      data: [['수입', '모비스', '모비스천안', '고객B', 'ONE', '20FT', '3', '3', '', '']],
+    }],
+    viewType: 'integrated',
+    routeUnitPrice,
+    selectedDay: '2026-05-18',
+    activePeriod: 'daily',
+  });
+  const missingPickupDaily = missingPickupForecast.periods.find((period) => period.key === 'daily');
+  assert.equal(missingPickupDaily.revenue, 150_000);
+  assert.equal(missingPickupDaily.purchase, 126_000);
+  assert.equal(missingPickupDaily.fallbackPickupQty, 3);
 });
 
 test('아산 현황판 뷰어 스냅샷은 첫 화면용 완성 모델만 담는다', () => {
@@ -722,8 +832,11 @@ test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만
   assert.match(source, /dashboardViewer=\{dashboardViewerPayload\}/);
   assert.match(apiSource, /DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache'/);
   assert.match(apiSource, /DASHBOARD_VIEW_CACHE_TABLE = 'branch_dispatch_dashboard_view_cache'/);
-  assert.match(apiSource, /DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608'/);
-  assert.match(apiSource, /DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-20260609'/);
+  assert.match(apiSource, /DASHBOARD_CACHE_POLICY_VERSION = 'financial-forecast-20260609'/);
+  assert.match(apiSource, /DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-financial-20260609'/);
+  assert.match(apiSource, /queryAsanAnnualRouteUnitPriceFromSupabase/);
+  assert.match(apiSource, /loadLatestRouteUnitPrice/);
+  assert.match(apiSource, /financial: payload\.financial/);
   assert.match(apiSource, /\$\{viewType\}\|\$\{DASHBOARD_CACHE_POLICY_VERSION\}\|/);
   assert.match(apiSource, /readDashboardViewerCache/);
   assert.match(apiSource, /prepareDashboardViewerForResponse/);

@@ -462,6 +462,536 @@ export function buildAsanDashboardPeriods({
   ];
 }
 
+const FORECAST_FALLBACK_PICKUPS = ['부곡', '부곡(의왕)', '의왕', '의왕ICD', '의왕아이씨디'];
+
+function normalizeForecastText(value = '') {
+  let text = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[()[\]{}·_\-./\\,]/g, '');
+  const aliases = [
+    ['부곡의왕', '의왕'],
+    ['부곡', '의왕'],
+    ['의왕icd', '의왕'],
+    ['의왕아이씨디', '의왕'],
+    ['군포복합물류', '의왕'],
+    ['부산신항', '신항'],
+    ['부산항', '부산'],
+    ['글로비스kd센터', '글로비스kd'],
+    ['글로비스kd', '글로비스'],
+    ['글로비스as', '글로비스'],
+    ['모비스as', '모비스'],
+    ['현대글로비스', '글로비스'],
+  ];
+  aliases.forEach(([from, to]) => {
+    text = text.replaceAll(from, to);
+  });
+  return text;
+}
+
+function normalizeForecastType(value = '') {
+  const text = String(value || '').toUpperCase().replace(/\s+/g, '');
+  if (text.includes('20')) return '20';
+  if (text.includes('40') || text.includes('4O')) return '40';
+  if (text.includes('45')) return '45';
+  return normalizeForecastText(value);
+}
+
+function forecastFieldMatches(left = '', right = '') {
+  const a = normalizeForecastText(left);
+  const b = normalizeForecastText(right);
+  if (!a || !b || a === '-' || b === '-') return false;
+  if (a === b) return true;
+  return (a.length >= 2 && b.includes(a)) || (b.length >= 2 && a.includes(b));
+}
+
+function forecastAnyMatch(leftValues = [], rightValues = []) {
+  return leftValues.some((left) => rightValues.some((right) => forecastFieldMatches(left, right)));
+}
+
+function amountNumber(value) {
+  const num = Number(String(value ?? '').replace(/,/g, '').replace(/[^\d.-]/g, ''));
+  return Number.isFinite(num) ? num : 0;
+}
+
+function getForecastCols(headers = []) {
+  return {
+    ...getCols(headers),
+    shipment: findDashboardCol(headers, '선적', '포트(DIST)', '포트(도착항)', '포트', '도착항'),
+    billingPickup: findDashboardCol(headers, '상차지(청구)', '청구상차지', '청구 픽업'),
+  };
+}
+
+function forecastRowValue(row = [], idx = -1) {
+  return idx >= 0 ? normalizeLabel(row[idx], '') : '';
+}
+
+function routeUnitGroups(routeUnitPrice = null) {
+  if (Array.isArray(routeUnitPrice?.groups)) return routeUnitPrice.groups;
+  if (Array.isArray(routeUnitPrice?.routeUnitPrice?.groups)) return routeUnitPrice.routeUnitPrice.groups;
+  return [];
+}
+
+function routeUnitSourceLabel(routeUnitPrice = null) {
+  const price = routeUnitPrice?.routeUnitPrice || routeUnitPrice || {};
+  const summary = price.summary || {};
+  const scope = price.scope || {};
+  return summary.periodEnd || scope.month || scope.label || price.datasetBasis || '최신 구간단가';
+}
+
+function buildRouteUnitMatchData(routeUnitPrice = null) {
+  const groups = routeUnitGroups(routeUnitPrice)
+    .map((group) => {
+      const unitRevenue = amountNumber(group.unitRevenue ?? group.revenueAmount);
+      const unitPurchase = amountNumber(group.unitPurchase ?? group.purchaseAmount);
+      return {
+        ...group,
+        unitRevenue,
+        unitPurchase,
+        unitProfit: unitRevenue - unitPurchase,
+        match: {
+          type: normalizeForecastType(group.type),
+          category: normalizeForecastText(group.category || group.salesItem),
+          workSite: normalizeForecastText(group.workSite),
+          pickup: normalizeForecastText(group.pickup),
+          billingPickup: normalizeForecastText(group.billingPickup),
+          shipment: normalizeForecastText(group.shipment),
+          carrier: normalizeForecastText(group.carrier),
+          billTo: normalizeForecastText(group.billTo || group.salesItem),
+          payTo: normalizeForecastText(group.payTo || group.carrier),
+          salesItem: normalizeForecastText(group.salesItem),
+          region: normalizeForecastText(group.region),
+        },
+      };
+    })
+    .filter((group) => group.unitRevenue || group.unitPurchase);
+  const averages = new Map();
+  groups.forEach((group) => {
+    const keys = [
+      `${group.match.type}|${group.match.category}`,
+      `${group.match.type}|`,
+      `|${group.match.category}`,
+      '|',
+    ];
+    keys.forEach((key) => {
+      if (!averages.has(key)) averages.set(key, { revenue: 0, purchase: 0, count: 0 });
+      const bucket = averages.get(key);
+      bucket.revenue += group.unitRevenue;
+      bucket.purchase += group.unitPurchase;
+      bucket.count += 1;
+    });
+  });
+  return { groups, averages };
+}
+
+function averageRouteUnit(matchData, segment = {}) {
+  const keys = [
+    `${normalizeForecastType(segment.type)}|${normalizeForecastText(segment.direction)}`,
+    `${normalizeForecastType(segment.type)}|`,
+    `|${normalizeForecastText(segment.direction)}`,
+    '|',
+  ];
+  for (const key of keys) {
+    const bucket = matchData.averages.get(key);
+    if (bucket?.count > 0) {
+      return {
+        unitRevenue: bucket.revenue / bucket.count,
+        unitPurchase: bucket.purchase / bucket.count,
+        unitBasis: 'average',
+      };
+    }
+  }
+  return null;
+}
+
+function segmentCandidates(segment = {}, fallbackPickup = false) {
+  const pickupValues = fallbackPickup
+    ? [...FORECAST_FALLBACK_PICKUPS, segment.pickup, segment.billingPickup]
+    : [segment.pickup, segment.billingPickup];
+  return {
+    type: [segment.type],
+    category: [segment.direction, segment.salesItem],
+    workSite: [segment.workSite],
+    pickup: pickupValues,
+    shipment: [segment.shipment, segment.port],
+    carrier: [segment.carrier, segment.payTo],
+    billTo: [segment.billTo, segment.customer, segment.shipper],
+    payTo: [segment.payTo, segment.carrier],
+    salesItem: [segment.salesItem, segment.shipper],
+  };
+}
+
+function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false) {
+  const values = segmentCandidates(segment, fallbackPickup);
+  let score = 0;
+  let strong = 0;
+  const typeKey = normalizeForecastType(values.type[0]);
+  if (typeKey && group.match.type) {
+    if (typeKey === group.match.type) score += 20;
+    else return -1;
+  }
+  if (forecastAnyMatch(values.category, [group.category, group.salesItem])) {
+    score += 12;
+    strong += 1;
+  } else if (group.match.category && normalizeForecastText(segment.direction)) {
+    score -= 5;
+  }
+  if (forecastAnyMatch(values.workSite, [group.workSite])) {
+    score += 16;
+    strong += 1;
+  } else if (normalizeForecastText(segment.workSite) && group.match.workSite) {
+    return -1;
+  }
+  const segmentHasPickup = normalizeForecastText(segment.pickup || segment.billingPickup);
+  const groupHasPickup = group.match.pickup || group.match.billingPickup || group.match.region;
+  if (forecastAnyMatch(values.pickup, [group.pickup, group.billingPickup, group.region])) {
+    score += fallbackPickup ? 9 : 17;
+    strong += 1;
+  } else if (segmentHasPickup && groupHasPickup && !fallbackPickup) {
+    return -1;
+  }
+  if (forecastAnyMatch(values.shipment, [group.shipment])) {
+    score += 9;
+    strong += 1;
+  }
+  if (forecastAnyMatch(values.carrier, [group.carrier, group.payTo])) score += 6;
+  if (forecastAnyMatch(values.billTo, [group.billTo, group.salesItem])) score += 5;
+  if (forecastAnyMatch(values.salesItem, [group.salesItem, group.billTo])) score += 5;
+  if (strong === 0) return -1;
+  return score;
+}
+
+function findRouteUnitMatch(matchData, segment = {}) {
+  const pickBest = (fallbackPickup = false) => {
+    let best = null;
+    for (const group of matchData.groups) {
+      const score = scoreRouteUnitGroup(segment, group, fallbackPickup);
+      if (score < 0) continue;
+      if (!best || score > best.score) best = { group, score, fallbackPickup };
+    }
+    return best && best.score >= (fallbackPickup ? 24 : 30) ? best : null;
+  };
+  const exact = pickBest(false);
+  if (exact) return exact;
+  const hasPickup = normalizeForecastText(segment.pickup || segment.billingPickup);
+  return segment.pickupFallback || !hasPickup ? pickBest(true) : null;
+}
+
+function buildFinancialSegments(row = [], headers = [], item = {}, viewType = 'integrated') {
+  const cols = getForecastCols(headers);
+  const orderQty = getCustomerWeight(row, cols, viewType);
+  if (orderQty <= 0) return [];
+  const meta = getRowMeta(row, cols, viewType);
+  const base = {
+    date: item.target_date || '',
+    direction: meta.direction,
+    salesItem: meta.shipper,
+    shipper: meta.shipper,
+    workSite: meta.workplace,
+    customer: meta.customer,
+    billTo: meta.customer,
+    line: meta.line,
+    type: meta.container,
+    shipment: forecastRowValue(row, cols.shipment),
+    port: forecastRowValue(row, cols.shipment),
+    billingPickup: forecastRowValue(row, cols.billingPickup),
+  };
+  const records = parseDispatchRecords(row, headers);
+  const assignedQty = records.reduce((sum, record) => sum + record.count, 0);
+  const segments = records.map((record) => ({
+    ...base,
+    qty: record.count,
+    pickup: record.region,
+    carrier: record.company,
+    payTo: record.company,
+    pickupFallback: false,
+  }));
+  const remainder = Math.max(orderQty - assignedQty, 0);
+  if (!segments.length || remainder > 0.001) {
+    segments.push({
+      ...base,
+      qty: segments.length ? remainder : orderQty,
+      pickup: base.billingPickup || '',
+      carrier: '',
+      payTo: '',
+      pickupFallback: true,
+    });
+  }
+  return segments.filter((segment) => segment.qty > 0);
+}
+
+function createFinancialEmptyPeriod(key, label, title, sourcePeriod = '') {
+  return {
+    key,
+    label,
+    title,
+    sourcePeriod,
+    qty: 0,
+    revenue: 0,
+    purchase: 0,
+    profit: 0,
+    profitRate: 0,
+    matchedQty: 0,
+    fallbackPickupQty: 0,
+    averageFallbackQty: 0,
+    unmatchedQty: 0,
+    issueCount: 0,
+    topIssues: [],
+    available: false,
+  };
+}
+
+function finalizeFinancialPeriod(period) {
+  const revenue = Math.round(period.revenue);
+  const purchase = Math.round(period.purchase);
+  const profit = revenue - purchase;
+  return {
+    ...period,
+    revenue,
+    purchase,
+    profit,
+    profitRate: revenue ? Math.round((profit / revenue) * 10000) / 100 : 0,
+    matchedQty: Math.round(period.matchedQty * 10) / 10,
+    fallbackPickupQty: Math.round(period.fallbackPickupQty * 10) / 10,
+    averageFallbackQty: Math.round(period.averageFallbackQty * 10) / 10,
+    unmatchedQty: Math.round(period.unmatchedQty * 10) / 10,
+    qty: Math.round(period.qty * 10) / 10,
+    issueCount: period.topIssues.length,
+    topIssues: period.topIssues.slice(0, 5),
+    available: period.qty > 0,
+  };
+}
+
+function addFinancialSegment(period, segment, matchData) {
+  const match = findRouteUnitMatch(matchData, segment);
+  const average = match ? null : averageRouteUnit(matchData, segment);
+  const unit = match?.group || average;
+  period.qty += segment.qty;
+  if (!unit) {
+    period.unmatchedQty += segment.qty;
+    period.topIssues.push({
+      type: 'unmatched',
+      label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
+      reason: '구간단가 후보 없음',
+      qty: segment.qty,
+    });
+    return;
+  }
+  period.revenue += unit.unitRevenue * segment.qty;
+  period.purchase += unit.unitPurchase * segment.qty;
+  if (match) {
+    period.matchedQty += segment.qty;
+    if (match.fallbackPickup || segment.pickupFallback) {
+      period.fallbackPickupQty += segment.qty;
+      period.topIssues.push({
+        type: 'fallback-pickup',
+        label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
+        reason: '부곡(의왕) 요율 보정',
+        qty: segment.qty,
+      });
+    }
+    return;
+  }
+  period.averageFallbackQty += segment.qty;
+  period.topIssues.push({
+    type: 'average',
+    label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
+    reason: '동일 TYPE/구분 평균단가',
+    qty: segment.qty,
+  });
+}
+
+function computeFinancialPeriod({ key, label, title, items = [], viewType, matchData, sourcePeriod }) {
+  const period = createFinancialEmptyPeriod(key, label, title, sourcePeriod);
+  items.forEach((item) => {
+    (item.data || []).forEach((row) => {
+      buildFinancialSegments(row, item.headers || [], item, viewType).forEach((segment) => {
+        addFinancialSegment(period, segment, matchData);
+      });
+    });
+  });
+  return finalizeFinancialPeriod(period);
+}
+
+export function buildAsanDashboardFinancialForecast({
+  sourceItems = [],
+  fallbackRows = [],
+  fallbackHeaders = [],
+  viewType = 'integrated',
+  routeUnitPrice = null,
+  selectedDay = '',
+  selectedWeek = '',
+  selectedMonth = '',
+  activePeriod = 'daily',
+} = {}) {
+  const matchData = buildRouteUnitMatchData(routeUnitPrice);
+  const sourcePeriod = routeUnitSourceLabel(routeUnitPrice);
+  if (!matchData.groups.length) {
+    return {
+      available: false,
+      sourcePeriod,
+      activeKey: normalizeDashboardPeriodKey(activePeriod),
+      active: null,
+      periods: ['daily', 'weekly', 'monthly'].map((key) => createFinancialEmptyPeriod(key, key, '구간단가 없음', sourcePeriod)),
+      reason: '구간단가 자료 없음',
+    };
+  }
+
+  const items = normalizeSourceItems(sourceItems);
+  const workingItems = items.length
+    ? items
+    : [{ target_date: selectedDay || '', headers: fallbackHeaders, data: fallbackRows }];
+  const options = buildAsanDashboardPeriodOptions(workingItems);
+  const latestDate = options.dates[options.dates.length - 1]?.key || selectedDay || '';
+  const dayKey = resolveOptionKey(options.dates, selectedDay, latestDate);
+  const dayItem = workingItems.find((item) => item.target_date === dayKey) || null;
+  const currentWeekKey = findWeekOptionForDate(options.weeks, dayKey)?.key || options.weeks[options.weeks.length - 1]?.key || '';
+  const weekKey = resolveOptionKey(options.weeks, selectedWeek, currentWeekKey);
+  const weekOption = options.weeks.find((option) => option.key === weekKey);
+  const currentMonthKey = dayKey ? dayKey.slice(0, 7) : options.months[options.months.length - 1]?.key || '';
+  const monthKey = resolveOptionKey(options.months, selectedMonth, currentMonthKey);
+  const monthOption = options.months.find((option) => option.key === monthKey);
+  const weekItems = weekOption
+    ? workingItems.filter((item) => item.target_date >= weekOption.start && item.target_date <= weekOption.end)
+    : [];
+  const monthItems = monthKey
+    ? workingItems.filter((item) => item.target_date.startsWith(monthKey))
+    : [];
+  const periods = [
+    computeFinancialPeriod({
+      key: 'daily',
+      label: '일별',
+      title: options.dates.find((option) => option.key === dayKey)?.label || '선택일',
+      items: dayItem ? [dayItem] : [],
+      viewType,
+      matchData,
+      sourcePeriod,
+    }),
+    computeFinancialPeriod({
+      key: 'weekly',
+      label: '주별',
+      title: weekOption?.label || '해당주',
+      items: weekItems,
+      viewType,
+      matchData,
+      sourcePeriod,
+    }),
+    computeFinancialPeriod({
+      key: 'monthly',
+      label: '월별',
+      title: monthOption?.label || formatMonthLabel(monthKey),
+      items: monthItems,
+      viewType,
+      matchData,
+      sourcePeriod,
+    }),
+    computeFinancialPeriod({
+      key: 'total',
+      label: '전체',
+      title: `${workingItems.length}일`,
+      items: workingItems,
+      viewType,
+      matchData,
+      sourcePeriod,
+    }),
+  ];
+  const activeKey = normalizeDashboardPeriodKey(activePeriod);
+  return {
+    available: periods.some((period) => period.available),
+    sourcePeriod,
+    activeKey,
+    active: periods.find((period) => period.key === activeKey) || periods[0] || null,
+    periods,
+  };
+}
+
+function buildFinancialDashboardCache(items = [], options = {}, viewType = 'integrated', routeUnitPrice = null) {
+  const matchData = buildRouteUnitMatchData(routeUnitPrice);
+  const sourcePeriod = routeUnitSourceLabel(routeUnitPrice);
+  const empty = {
+    available: false,
+    sourcePeriod,
+    daily: {},
+    weekly: {},
+    monthly: {},
+    total: createFinancialEmptyPeriod('total', '전체', `${items.length}일`, sourcePeriod),
+  };
+  if (!matchData.groups.length) return empty;
+
+  const daily = {};
+  const weekly = {};
+  const monthly = {};
+  (options.dates || []).forEach((option) => {
+    daily[option.key] = computeFinancialPeriod({
+      key: 'daily',
+      label: '일별',
+      title: option.label || formatDateLabel(option.key),
+      items: items.filter((item) => item.target_date === option.key),
+      viewType,
+      matchData,
+      sourcePeriod,
+    });
+  });
+  (options.weeks || []).forEach((option) => {
+    weekly[option.key] = computeFinancialPeriod({
+      key: 'weekly',
+      label: '주별',
+      title: option.label || option.fullLabel || '해당주',
+      items: items.filter((item) => item.target_date >= option.start && item.target_date <= option.end),
+      viewType,
+      matchData,
+      sourcePeriod,
+    });
+  });
+  (options.months || []).forEach((option) => {
+    monthly[option.key] = computeFinancialPeriod({
+      key: 'monthly',
+      label: '월별',
+      title: option.label || formatMonthLabel(option.key),
+      items: items.filter((item) => item.target_date.startsWith(option.key)),
+      viewType,
+      matchData,
+      sourcePeriod,
+    });
+  });
+  const total = computeFinancialPeriod({
+    key: 'total',
+    label: '전체',
+    title: `${items.length}일`,
+    items,
+    viewType,
+    matchData,
+    sourcePeriod,
+  });
+  return {
+    available: [total, ...Object.values(daily), ...Object.values(weekly), ...Object.values(monthly)].some((period) => period.available),
+    sourcePeriod,
+    daily,
+    weekly,
+    monthly,
+    total,
+  };
+}
+
+function selectFinancialForecastFromCache(financial = null, { dayKey = '', weekKey = '', monthKey = '', activePeriodKey = 'daily' } = {}) {
+  if (!financial) return null;
+  const sourcePeriod = financial.sourcePeriod || '최신 구간단가';
+  const periods = [
+    financial.daily?.[dayKey] || createFinancialEmptyPeriod('daily', '일별', '선택일', sourcePeriod),
+    financial.weekly?.[weekKey] || createFinancialEmptyPeriod('weekly', '주별', '해당주', sourcePeriod),
+    financial.monthly?.[monthKey] || createFinancialEmptyPeriod('monthly', '월별', '해당월', sourcePeriod),
+    financial.total || createFinancialEmptyPeriod('total', '전체', '전체', sourcePeriod),
+  ];
+  return {
+    available: periods.some((period) => period.available),
+    sourcePeriod,
+    activeKey: activePeriodKey,
+    active: periods.find((period) => period.key === activePeriodKey) || periods[0] || null,
+    periods,
+  };
+}
+
 function resolveOptionKey(options = [], requested = '', fallback = '') {
   if (!requested) return fallback;
   if (options.some((option) => option.key === requested)) return requested;
@@ -962,6 +1492,7 @@ function buildBasisDiffCache(items = [], options = {}, viewType = 'integrated', 
 export function buildAsanDashboardCachePayload({
   sourceItems = [],
   viewType = 'integrated',
+  routeUnitPrice = null,
 } = {}) {
   const items = normalizeSourceItems(sourceItems);
   const options = buildAsanDashboardPeriodOptions(items);
@@ -976,6 +1507,7 @@ export function buildAsanDashboardCachePayload({
     generatedAt: new Date().toISOString(),
     options,
     modes,
+    financial: buildFinancialDashboardCache(items, options, viewType, routeUnitPrice),
     basisDiff: buildBasisDiffCache(items, options, viewType, modes),
   };
 }
@@ -991,6 +1523,7 @@ export function buildAsanDashboardDataFromCache({
   selectedWeek = '',
   selectedMonth = '',
   activePeriod = 'daily',
+  routeUnitPrice = null,
 } = {}) {
   if (!cachePayload || cachePayload.version !== 1) return null;
   const options = cachePayload.options || {};
@@ -1062,11 +1595,25 @@ export function buildAsanDashboardDataFromCache({
       },
   ];
   const activePeriodKey = normalizeDashboardPeriodKey(activePeriod);
+  const financialForecast = selectFinancialForecastFromCache(
+    cachePayload.financial,
+    { dayKey, weekKey, monthKey, activePeriodKey },
+  ) || buildAsanDashboardFinancialForecast({
+    fallbackRows,
+    fallbackHeaders,
+    viewType,
+    routeUnitPrice,
+    selectedDay: dayKey,
+    selectedWeek: weekKey,
+    selectedMonth: monthKey,
+    activePeriod: activePeriodKey,
+  });
 
   return {
     activeScope: periods.find((period) => period.key === activePeriodKey)?.scope || dailyScope,
     periods,
     periodOptions: options,
+    financialForecast,
     timeline: modeCache.timeline || [],
     weekdayComparison: {
       week: modeCache.weekday?.weeks?.[weekKey] || getEmptyWeekdayComparison(weekKey, monthKey).week,

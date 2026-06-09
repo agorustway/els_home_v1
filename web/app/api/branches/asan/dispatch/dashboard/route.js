@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { buildAsanDashboardCachePayload, buildAsanDashboardViewerPayload } from '@/utils/asanDashboardView.mjs';
+import { queryAsanAnnualRouteUnitPriceFromSupabase } from '@/lib/asan-branch-db';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -8,8 +9,8 @@ export const revalidate = 0;
 const DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache';
 const DASHBOARD_VIEW_CACHE_TABLE = 'branch_dispatch_dashboard_view_cache';
 const DISPATCH_DASHBOARD_VIEW_TYPES = ['integrated', 'glovis', 'mobis'];
-const DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608';
-const DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-20260609';
+const DASHBOARD_CACHE_POLICY_VERSION = 'financial-forecast-20260609';
+const DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-financial-20260609';
 const DASHBOARD_VIEWER_SNAPSHOT_KEY = 'default';
 
 function getSupabaseAdminClient() {
@@ -116,6 +117,12 @@ function makeInitialDashboardPayload(payload = {}, activeDate = '') {
             weekly: pickObjectKeys(payload.basisDiff?.weekly, keys.weekKeys),
             monthly: pickObjectKeys(payload.basisDiff?.monthly, keys.monthKeys),
         },
+        financial: payload.financial ? {
+            ...payload.financial,
+            daily: pickObjectKeys(payload.financial.daily, keys.dayKeys),
+            weekly: pickObjectKeys(payload.financial.weekly, keys.weekKeys),
+            monthly: pickObjectKeys(payload.financial.monthly, keys.monthKeys),
+        } : payload.financial,
     };
 }
 
@@ -170,6 +177,19 @@ async function loadDispatchItemsForSignature(request, viewType) {
     return loadDispatchItems(request, viewType, 'meta');
 }
 
+async function loadLatestRouteUnitPrice() {
+    try {
+        const params = new URLSearchParams({
+            analysis: 'route-unit-price',
+            unit_scope: 'month',
+        });
+        const data = await queryAsanAnnualRouteUnitPriceFromSupabase(params);
+        return data?.routeUnitPrice || null;
+    } catch {
+        return null;
+    }
+}
+
 async function readDashboardViewerCache({ supabase, viewType }) {
     const { data, error } = await supabase
         .from(DASHBOARD_VIEW_CACHE_TABLE)
@@ -217,7 +237,8 @@ async function writeDashboardViewerCache({ supabase, viewType, cachePayload, sou
 
 async function writeDashboardCache({ supabase, request, viewType }) {
     const sourceItems = await loadDispatchItemsForCache(request, viewType);
-    const dashboardPayload = buildAsanDashboardCachePayload({ sourceItems, viewType });
+    const routeUnitPrice = await loadLatestRouteUnitPrice();
+    const dashboardPayload = buildAsanDashboardCachePayload({ sourceItems, viewType, routeUnitPrice });
     const now = new Date().toISOString();
     const sourceSignature = makeSourceSignature(sourceItems, viewType);
     const sourceSyncedAt = sourceItems.reduce((latest, item) => {
