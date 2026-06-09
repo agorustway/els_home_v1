@@ -874,8 +874,11 @@ test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.match(forecastApiSource, /queryAsanAnnualRouteUnitPriceFromSupabase/);
   assert.match(forecastApiSource, /buildAsanDashboardFinancialForecast/);
+  assert.match(forecastApiSource, /buildAsanDashboardPeriodOptions/);
   assert.match(forecastApiSource, /\/api\/branches\/asan\/dispatch/);
-  assert.match(forecastApiSource, /mode: 'full'/);
+  assert.match(forecastApiSource, /mode: 'meta'/);
+  assert.match(forecastApiSource, /mode: 'date'/);
+  assert.doesNotMatch(forecastApiSource, /mode: 'full'/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);
   assert.match(sql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_cache FROM anon, authenticated;/);
   assert.match(viewerSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_view_cache/);

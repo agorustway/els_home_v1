@@ -1,3 +1,25 @@
+## [2026-06-09] 아산 현황판 예측 손익 API 경량화 (v5.14.362)
+
+### 원인
+- 메인 현황판 cache는 복구됐지만, 별도 예측 손익 API가 `mode=full`로 전체 배차 원장 130일 이상을 다시 읽어 운영에서 타임아웃이 발생했습니다.
+- 타임아웃/빈 원장 상태에서는 예측 손익 카드가 `선택일/해당주/해당월` 0값으로 구성되어 실제 데이터가 붙지 않은 것처럼 보였습니다.
+
+### 조치
+- `/api/branches/asan/dispatch/forecast`는 먼저 `mode=meta`로 날짜 목록만 읽고, 선택일/해당주/해당월에 필요한 날짜만 `mode=date`로 병렬 조회합니다.
+- 예측 손익 계산에는 이 제한된 날짜 원장만 넘겨 첫 화면 보강 API가 전체 원장 로딩에 묶이지 않게 했습니다.
+- 응답에 `sourceDateCount/metaDateCount`를 붙여 운영 점검 시 손익 계산에 몇 개 날짜가 사용됐는지 빠르게 확인할 수 있게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 45개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 현황판 캐시 성능 회귀 복구 (v5.14.361)
 
 ### 원인

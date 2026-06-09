@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { queryAsanAnnualRouteUnitPriceFromSupabase } from '@/lib/asan-branch-db';
-import { buildAsanDashboardFinancialForecast } from '@/utils/asanDashboardView.mjs';
+import {
+    buildAsanDashboardFinancialForecast,
+    buildAsanDashboardPeriodOptions,
+} from '@/utils/asanDashboardView.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,14 +21,28 @@ function normalizePeriod(value = 'daily') {
     return DISPATCH_FORECAST_PERIODS.includes(period) ? period : 'daily';
 }
 
-async function loadDispatchItems(request, viewType) {
+function resolveOptionKey(options = [], requested = '', fallback = '') {
+    if (!requested) return fallback;
+    if (options.some((option) => option.key === requested)) return requested;
+    const monthLike = String(requested).padStart(2, '0');
+    const monthMatch = options.filter((option) => option.key.endsWith(`-${monthLike}`));
+    return monthMatch[monthMatch.length - 1]?.key || fallback;
+}
+
+function findWeekOptionForDate(weeks = [], dateKey = '') {
+    return weeks.find((week) => dateKey >= week.start && dateKey <= week.end) || null;
+}
+
+async function loadDispatchItems(request, viewType, { mode = 'date', date = '' } = {}) {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
-    url.search = new URLSearchParams({
+    const params = new URLSearchParams({
         type: viewType,
-        mode: 'full',
+        mode,
         t: String(Date.now()),
-    }).toString();
+    });
+    if (date) params.set('date', date);
+    url.search = params.toString();
 
     const response = await fetch(url, { cache: 'no-store' });
     const payload = await response.json().catch(() => ({}));
@@ -33,6 +50,36 @@ async function loadDispatchItems(request, viewType) {
         throw new Error(payload.error || '배차 원장 조회 실패');
     }
     return payload.data || [];
+}
+
+async function loadForecastSourceItems(request, viewType, { selectedDay = '', selectedWeek = '', selectedMonth = '' } = {}) {
+    const metaItems = await loadDispatchItems(request, viewType, { mode: 'meta' });
+    const options = buildAsanDashboardPeriodOptions(metaItems);
+    const latestDate = options.dates[options.dates.length - 1]?.key || selectedDay || '';
+    const dayKey = resolveOptionKey(options.dates, selectedDay, latestDate);
+    const currentWeekKey = findWeekOptionForDate(options.weeks, dayKey)?.key || options.weeks[options.weeks.length - 1]?.key || '';
+    const weekKey = resolveOptionKey(options.weeks, selectedWeek, currentWeekKey);
+    const weekOption = options.weeks.find((option) => option.key === weekKey) || null;
+    const currentMonthKey = dayKey ? dayKey.slice(0, 7) : options.months[options.months.length - 1]?.key || '';
+    const monthKey = resolveOptionKey(options.months, selectedMonth, currentMonthKey);
+    const dateKeys = new Set();
+    if (dayKey) dateKeys.add(dayKey);
+    (options.dates || []).forEach((option) => {
+        if (weekOption && option.key >= weekOption.start && option.key <= weekOption.end) dateKeys.add(option.key);
+        if (monthKey && option.key.startsWith(monthKey)) dateKeys.add(option.key);
+    });
+
+    const dateItems = await Promise.all(
+        [...dateKeys].map((date) => loadDispatchItems(request, viewType, { mode: 'date', date }))
+    );
+    return {
+        sourceItems: dateItems.flat().filter((item) => item?.target_date),
+        selectedDay: dayKey,
+        selectedWeek: weekKey,
+        selectedMonth: monthKey,
+        sourceDateCount: dateKeys.size,
+        metaDateCount: options.dates.length,
+    };
 }
 
 async function loadLatestRouteUnitPrice() {
@@ -52,23 +99,25 @@ export async function GET(request) {
         const selectedDay = String(searchParams.get('activeDate') || '').trim();
         const selectedWeek = String(searchParams.get('selectedWeek') || '').trim();
         const selectedMonth = String(searchParams.get('selectedMonth') || '').trim();
-        const [sourceItems, routeUnitPrice] = await Promise.all([
-            loadDispatchItems(request, viewType),
+        const [sourceState, routeUnitPrice] = await Promise.all([
+            loadForecastSourceItems(request, viewType, { selectedDay, selectedWeek, selectedMonth }),
             loadLatestRouteUnitPrice(),
         ]);
         const forecast = buildAsanDashboardFinancialForecast({
-            sourceItems,
+            sourceItems: sourceState.sourceItems,
             viewType,
             routeUnitPrice,
-            selectedDay,
-            selectedWeek,
-            selectedMonth,
+            selectedDay: sourceState.selectedDay,
+            selectedWeek: sourceState.selectedWeek,
+            selectedMonth: sourceState.selectedMonth,
             activePeriod,
         });
         return NextResponse.json({
             ok: true,
             viewType,
             forecast,
+            sourceDateCount: sourceState.sourceDateCount,
+            metaDateCount: sourceState.metaDateCount,
         });
     } catch (error) {
         return NextResponse.json({
