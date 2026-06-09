@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { queryAsanAnnualRouteUnitPriceFromSupabase } from '@/lib/asan-branch-db';
+import { createClient } from '@supabase/supabase-js';
 import {
     buildAsanDashboardFinancialForecast,
     buildAsanDashboardPeriodOptions,
@@ -10,6 +10,23 @@ export const revalidate = 0;
 
 const DISPATCH_FORECAST_VIEW_TYPES = ['integrated', 'glovis', 'mobis'];
 const DISPATCH_FORECAST_PERIODS = ['daily', 'weekly', 'monthly', 'total'];
+const ROUTE_UNIT_CACHE_TABLE = 'branch_performance_monthly_route_unit_amount_cache';
+
+let adminClient;
+
+function getSupabaseAdminClient() {
+    if (adminClient) return adminClient;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) return null;
+    adminClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        },
+    });
+    return adminClient;
+}
 
 function normalizeViewType(value = 'integrated') {
     const type = String(value || 'integrated').trim().toLowerCase();
@@ -33,6 +50,18 @@ function findWeekOptionForDate(weeks = [], dateKey = '') {
     return weeks.find((week) => dateKey >= week.start && dateKey <= week.end) || null;
 }
 
+function numberValue(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const normalized = String(value ?? '').replace(/,/g, '').trim();
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeRouteText(value) {
+    const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+    return text || '';
+}
+
 async function loadDispatchItems(request, viewType, { mode = 'date', date = '' } = {}) {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
@@ -50,6 +79,83 @@ async function loadDispatchItems(request, viewType, { mode = 'date', date = '' }
         throw new Error(payload.error || '배차 원장 조회 실패');
     }
     return payload.data || [];
+}
+
+async function findLatestRouteUnitMonth(supabase) {
+    const { data, error } = await supabase
+        .from(ROUTE_UNIT_CACHE_TABLE)
+        .select('filter_year,filter_month,period_end')
+        .eq('branch_id', 'asan')
+        .eq('scope_mode', 'month')
+        .order('filter_year', { ascending: false })
+        .order('filter_month', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) return null;
+    const year = Number(data?.filter_year || 0);
+    const month = Number(data?.filter_month || 0);
+    if (!year || !month) return null;
+    return {
+        year,
+        month,
+        key: `${year}-${String(month).padStart(2, '0')}`,
+        label: data?.period_end || `${year}-${String(month).padStart(2, '0')} 마감월`,
+    };
+}
+
+function routeUnitCacheRowsToPrice(payload = {}, scope = {}) {
+    const rows = Array.isArray(payload.groups) ? payload.groups : [];
+    const groups = rows.map((row) => {
+        const revenueAmount = numberValue(row.revenue_amount);
+        const purchaseAmount = numberValue(row.purchase_amount);
+        const periods = Array.isArray(row.periods) ? row.periods.filter(Boolean).sort() : [];
+        return {
+            key: row.key || [revenueAmount, purchaseAmount, row.sales_item, row.region, row.work_site, row.carrier, row.category, row.pickup, row.billing_pickup, row.shipment, row.type, row.bill_to, row.pay_to].join('||'),
+            revenueAmount,
+            purchaseAmount,
+            unitRevenue: revenueAmount,
+            unitPurchase: purchaseAmount,
+            unitProfit: revenueAmount - purchaseAmount,
+            salesItem: normalizeRouteText(row.sales_item),
+            region: normalizeRouteText(row.region),
+            workSite: normalizeRouteText(row.work_site),
+            carrier: normalizeRouteText(row.carrier),
+            category: normalizeRouteText(row.category),
+            pickup: normalizeRouteText(row.pickup),
+            billingPickup: normalizeRouteText(row.billing_pickup),
+            shipment: normalizeRouteText(row.shipment),
+            type: normalizeRouteText(row.type),
+            billTo: normalizeRouteText(row.bill_to),
+            payTo: normalizeRouteText(row.pay_to),
+            rowCount: numberValue(row.row_count),
+            revenue: numberValue(row.revenue),
+            purchase: numberValue(row.purchase),
+            profit: numberValue(row.profit),
+            periods,
+            periodLabel: periods.length ? (periods.length === 1 ? periods[0] : `${periods[0]} ~ ${periods[periods.length - 1]}`) : '-',
+            unitBasis: 'monthly-amount-cache',
+        };
+    });
+    return {
+        scope,
+        basis: '월간 금액표',
+        datasetBasis: '월간 마감자료 current 원장',
+        engine: 'supabase-rpc-monthly-amount-cache',
+        groups,
+        totals: {
+            revenue: numberValue(payload.total_revenue),
+            purchase: numberValue(payload.total_purchase),
+            profit: numberValue(payload.total_profit),
+            rowCount: numberValue(payload.total_row_count),
+        },
+        summary: {
+            periodStart: rows[0]?.period_start || '',
+            periodEnd: rows[0]?.period_end || scope.month || '',
+            groupCount: numberValue(payload.total_group_count || groups.length),
+            returnedGroupCount: groups.length,
+            truncated: numberValue(payload.total_group_count) > groups.length,
+        },
+    };
 }
 
 async function loadForecastSourceItems(request, viewType, { selectedDay = '', selectedWeek = '', selectedMonth = '' } = {}) {
@@ -83,12 +189,24 @@ async function loadForecastSourceItems(request, viewType, { selectedDay = '', se
 }
 
 async function loadLatestRouteUnitPrice() {
-    const params = new URLSearchParams({
-        analysis: 'route-unit-price',
-        unit_scope: 'month',
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) return null;
+    const latest = await findLatestRouteUnitMonth(supabase);
+    const scope = latest
+        ? { mode: 'month', year: String(latest.year), month: latest.key, label: latest.label }
+        : { mode: 'all', year: '', month: '', label: '전체 기간' };
+    const request = supabase.rpc('asan_monthly_route_unit_amount_payload', {
+        p_scope: latest ? 'month' : 'all',
+        p_year: latest?.year || null,
+        p_month: latest?.month || null,
+        p_limit: 10000,
     });
-    const data = await queryAsanAnnualRouteUnitPriceFromSupabase(params);
-    return data?.routeUnitPrice || null;
+    const executable = typeof request.abortSignal === 'function' && typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? request.abortSignal(AbortSignal.timeout(8000))
+        : request;
+    const { data, error } = await executable;
+    if (error) return null;
+    return routeUnitCacheRowsToPrice(data, scope);
 }
 
 export async function GET(request) {

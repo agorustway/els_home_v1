@@ -1,3 +1,25 @@
+## [2026-06-09] 아산 예측 손익 단가 조회 캐시 RPC 전환 (v5.14.363)
+
+### 원인
+- 예측 손익 API에서 전체 배차 원장 조회를 줄인 뒤에도 운영 호출이 25초 이상 걸렸습니다.
+- 남은 병목은 최신 구간단가를 `queryAsanAnnualRouteUnitPriceFromSupabase()` live 빌더로 다시 계산하는 경로였습니다.
+
+### 조치
+- forecast API에서 live 단가 빌더 import를 제거했습니다.
+- 최신 월간 구간단가 기준월은 `branch_performance_monthly_route_unit_amount_cache`에서 빠르게 찾고, 실제 단가 그룹은 `asan_monthly_route_unit_amount_payload` RPC로 읽어 forecast용 `routeUnitPrice.groups`만 구성합니다.
+- RPC에는 8초 timeout을 걸어 단가 캐시가 비정상일 때도 API가 무한 대기하지 않게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 45개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 현황판 예측 손익 API 경량화 (v5.14.362)
 
 ### 원인
