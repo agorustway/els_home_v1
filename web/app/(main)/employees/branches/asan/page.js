@@ -1498,6 +1498,7 @@ function AsanDispatchContent() {
     const [dashboardCacheState, setDashboardCacheState] = useState({
         viewType: '',
         payload: null,
+        viewer: null,
         checked: false,
         loading: false,
     });
@@ -1657,12 +1658,12 @@ function AsanDispatchContent() {
         const loadSeq = dashboardCacheLoadSeqRef.current + 1;
         dashboardCacheLoadSeqRef.current = loadSeq;
         if (!background) {
-            setDashboardCacheState({ viewType: type, payload: null, checked: false, loading: true, scope });
+            setDashboardCacheState({ viewType: type, payload: null, viewer: null, checked: false, loading: true, scope });
         } else {
             setDashboardCacheState(prev => (
                 prev.viewType === type
                     ? { ...prev, loading: true }
-                    : { viewType: type, payload: null, checked: false, loading: true, scope }
+                    : { viewType: type, payload: null, viewer: null, checked: false, loading: true, scope }
             ));
         }
         try {
@@ -1676,22 +1677,24 @@ function AsanDispatchContent() {
             const j = await r.json().catch(() => ({}));
             if (dashboardCacheLoadSeqRef.current !== loadSeq) return false;
             const nextPayload = r.ok && j.ok ? j.cache?.payload || null : null;
+            const nextViewer = r.ok && j.ok ? j.viewer?.payload || null : null;
             setDashboardCacheState(prev => {
-                if (background && !nextPayload && prev.viewType === type) {
+                if (background && !nextPayload && !nextViewer && prev.viewType === type) {
                     return { ...prev, checked: true, loading: false };
                 }
                 return {
                     viewType: type,
                     payload: nextPayload,
+                    viewer: nextViewer || (background && prev.viewType === type ? prev.viewer : null),
                     checked: true,
                     loading: false,
                     scope: j.scope || scope,
                 };
             });
-            return Boolean(nextPayload);
+            return Boolean(nextPayload || nextViewer);
         } catch {
             if (dashboardCacheLoadSeqRef.current === loadSeq) {
-                setDashboardCacheState({ viewType: type, payload: null, checked: true, loading: false, scope });
+                setDashboardCacheState({ viewType: type, payload: null, viewer: null, checked: true, loading: false, scope });
             }
             return false;
         }
@@ -2140,13 +2143,15 @@ function AsanDispatchContent() {
         return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
     const dashboardCachePayload = dashboardCacheState.viewType === viewType ? dashboardCacheState.payload : null;
+    const dashboardViewerPayload = dashboardCacheState.viewType === viewType ? dashboardCacheState.viewer : null;
     const dashboardCacheChecked = dashboardCacheState.viewType === viewType && dashboardCacheState.checked;
     const dashboardNeedsFullData = useMemo(() => (
         mainView === 'dashboard'
         && dashboardCacheChecked
         && !dashboardCachePayload
+        && !dashboardViewerPayload
         && (data || []).some(item => item?.meta_only && hasValidOrderRows(item, viewType))
-    ), [dashboardCacheChecked, dashboardCachePayload, data, mainView, viewType]);
+    ), [dashboardCacheChecked, dashboardCachePayload, dashboardViewerPayload, data, mainView, viewType]);
     useEffect(() => {
         if (dashboardNeedsFullData) {
             ensureDispatchFullLoaded();
@@ -4127,6 +4132,7 @@ function AsanDispatchContent() {
                     selectedWeek={isAllTab ? allTabWeek?.key || '' : ''}
                     selectedMonth={isAllTab ? allTabMonth || '' : ''}
                     dashboardCache={dashboardCachePayload}
+                    dashboardViewer={dashboardViewerPayload}
                     dateControlsSlot={dateControls}
                     onOpenDailyGrid={handleOpenDailyGrid}
                     onViewTypeChange={setViewType}

@@ -1,3 +1,30 @@
+## [2026-06-09] 아산 현황판 첫 화면 뷰어 스냅샷 추가 (v5.14.359)
+
+### 원인
+- 기존 `scope=initial`은 브라우저 payload를 줄였지만 서버는 여전히 full dashboard cache JSON과 최신성 검사를 거쳐 첫 응답이 5초 안팎으로 느렸습니다.
+- 현황판 첫 화면은 매번 원본 재계산이 필요한 화면이 아니라, NAS/DB 동기화 이후 확정된 집계 결과를 읽는 뷰어 성격이 강합니다.
+
+### 조치
+- `branch_dispatch_dashboard_view_cache` SQL을 추가해 첫 화면 전용 완성 payload를 별도 보관할 수 있게 했습니다.
+- `/dispatch/dashboard?scope=initial`은 선택일이 일치하는 viewer snapshot을 먼저 반환하고, 없거나 날짜가 다르면 기존 `branch_dispatch_dashboard_cache` initial/full 경로로 fallback합니다.
+- full dashboard cache 갱신 시 customer/dispatcher 기준의 작은 viewer payload도 함께 만들도록 구성했습니다.
+- 화면은 viewer snapshot이 있으면 원장/전체 캐시 보강 전에 첫 화면을 바로 렌더하고, full cache는 기존처럼 백그라운드에서 교체합니다.
+- Supabase MCP migration 적용은 현재 계정 권한 부족으로 거부되었습니다. 운영 DB에는 `web/supabase_sql/20260609_asan_dispatch_dashboard_view_cache.sql` 적용이 필요하며, 테이블이 없으면 기능은 기존 경로로 안전하게 동작합니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 44개 통과
+
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/supabase_sql/20260609_asan_dispatch_dashboard_view_cache.sql`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-08] 아산 월간실적 표시명 운영 용어 정리 (v5.14.358)
 
 ### 조치

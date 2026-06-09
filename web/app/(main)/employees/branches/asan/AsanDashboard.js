@@ -54,6 +54,23 @@ function normalizeActivePeriodMode(value = 'daily') {
     return ['daily', 'weekly', 'monthly', 'total'].includes(value) ? value : 'daily';
 }
 
+function getViewerDashboardData({
+    dashboardViewer,
+    viewMode,
+    activePeriodKey,
+    selectedDay,
+    selectedWeek,
+    selectedMonth,
+}) {
+    if (!dashboardViewer || dashboardViewer.version !== 1 || dashboardViewer.payloadKind !== 'dashboard-viewer') return null;
+    const selection = dashboardViewer.selection || {};
+    if (selection.activePeriod !== activePeriodKey) return null;
+    if (selectedDay && selection.day !== selectedDay) return null;
+    if (activePeriodKey === 'weekly' && selectedWeek && selection.week !== selectedWeek) return null;
+    if (activePeriodKey === 'monthly' && selectedMonth && selection.month !== selectedMonth) return null;
+    return dashboardViewer.modes?.[viewMode] || null;
+}
+
 export default function AsanDashboard({
     data,
     headers,
@@ -64,6 +81,7 @@ export default function AsanDashboard({
     selectedWeek = '',
     selectedMonth = '',
     dashboardCache = null,
+    dashboardViewer = null,
     dateControlsSlot = null,
     onOpenDailyGrid = null,
     onViewTypeChange = null,
@@ -98,6 +116,19 @@ export default function AsanDashboard({
 
     const dashboardData = useMemo(() => {
         const activePeriodKey = normalizeActivePeriodMode(activePeriodMode);
+        const selectedDay = periodSelection.day || activeDate;
+        const selectedWeekKey = periodSelection.week || selectedWeek;
+        const selectedMonthKey = periodSelection.month || selectedMonth;
+        const viewerData = getViewerDashboardData({
+            dashboardViewer,
+            viewMode,
+            activePeriodKey,
+            selectedDay,
+            selectedWeek: selectedWeekKey,
+            selectedMonth: selectedMonthKey,
+        });
+        if (viewerData) return viewerData;
+
         const cached = buildAsanDashboardDataFromCache({
             cachePayload: dashboardCache,
             fallbackRows: data,
@@ -106,9 +137,9 @@ export default function AsanDashboard({
             viewMode,
             activePeriod: activePeriodKey,
             activeDate,
-            selectedDay: periodSelection.day || activeDate,
-            selectedWeek: periodSelection.week || selectedWeek,
-            selectedMonth: periodSelection.month || selectedMonth,
+            selectedDay,
+            selectedWeek: selectedWeekKey,
+            selectedMonth: selectedMonthKey,
         });
         if (cached) return cached;
 
@@ -124,9 +155,9 @@ export default function AsanDashboard({
             fallbackHeaders: headers,
             viewType,
             viewMode,
-            selectedDay: periodSelection.day || activeDate,
-            selectedWeek: periodSelection.week || selectedWeek,
-            selectedMonth: periodSelection.month || selectedMonth,
+            selectedDay,
+            selectedWeek: selectedWeekKey,
+            selectedMonth: selectedMonthKey,
         });
         const activeScope = selectablePeriods.periods.find((period) => period.key === activePeriodKey)?.scope || fallbackScope;
         const timeline = buildAsanDashboardTimeline({ sourceItems, viewType, viewMode });
@@ -143,9 +174,9 @@ export default function AsanDashboard({
             fallbackRows: data,
             fallbackHeaders: headers,
             viewType,
-            selectedDay: periodSelection.day || activeDate,
-            selectedWeek: periodSelection.week || selectedWeek,
-            selectedMonth: periodSelection.month || selectedMonth,
+            selectedDay,
+            selectedWeek: selectedWeekKey,
+            selectedMonth: selectedMonthKey,
         });
         return {
             activeScope,
@@ -155,7 +186,7 @@ export default function AsanDashboard({
             weekdayComparison,
             basisDiff,
         };
-    }, [dashboardCache, data, headers, viewType, viewMode, sourceItems, activeDate, activePeriodMode, selectedWeek, selectedMonth, periodSelection]);
+    }, [dashboardCache, dashboardViewer, data, headers, viewType, viewMode, sourceItems, activeDate, activePeriodMode, selectedWeek, selectedMonth, periodSelection]);
 
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);

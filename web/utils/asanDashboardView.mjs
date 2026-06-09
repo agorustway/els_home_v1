@@ -1088,6 +1088,71 @@ export function buildAsanDashboardDataFromCache({
   };
 }
 
+function compactViewerDashboardData(dashboardData = {}) {
+  const compactPeriods = (dashboardData.periods || []).map((period) => ({
+    ...period,
+    options: (period.options || []).filter((option) => option.key === period.selectedKey),
+  }));
+  const compactOptions = {
+    dates: compactPeriods.find((period) => period.key === 'daily')?.options || [],
+    weeks: compactPeriods.find((period) => period.key === 'weekly')?.options || [],
+    months: compactPeriods.find((period) => period.key === 'monthly')?.options || [],
+  };
+
+  return {
+    ...dashboardData,
+    periods: compactPeriods,
+    periodOptions: compactOptions,
+  };
+}
+
+export function buildAsanDashboardViewerPayload({
+  cachePayload = null,
+  viewType = 'integrated',
+  activeDate = '',
+  viewerPolicyVersion = '',
+} = {}) {
+  if (!cachePayload || cachePayload.version !== 1) return null;
+  const options = cachePayload.options || {};
+  const dates = options.dates || [];
+  const todayKey = getKoreaTodayKey();
+  const latestDate = dates[dates.length - 1]?.key || '';
+  const todayOrNext = dates.find((option) => option.key >= todayKey)?.key || '';
+  const selectedDay = resolveOptionKey(dates, activeDate, activeDate || todayOrNext || latestDate);
+  const modes = {};
+
+  ['customer', 'dispatcher'].forEach((viewMode) => {
+    const dashboardData = buildAsanDashboardDataFromCache({
+      cachePayload,
+      viewType,
+      viewMode,
+      activeDate: selectedDay,
+      selectedDay,
+      activePeriod: 'daily',
+    });
+    if (dashboardData) modes[viewMode] = compactViewerDashboardData(dashboardData);
+  });
+
+  if (!modes.customer && !modes.dispatcher) return null;
+  const periods = modes.customer?.periods || modes.dispatcher?.periods || [];
+
+  return {
+    version: 1,
+    payloadKind: 'dashboard-viewer',
+    viewerPolicyVersion,
+    viewType,
+    generatedAt: new Date().toISOString(),
+    sourceGeneratedAt: cachePayload.generatedAt || '',
+    selection: {
+      activePeriod: 'daily',
+      day: selectedDay,
+      week: periods.find((period) => period.key === 'weekly')?.selectedKey || '',
+      month: periods.find((period) => period.key === 'monthly')?.selectedKey || '',
+    },
+    modes,
+  };
+}
+
 export function toSortedChartEntries(chartAgg = {}, limit = 0) {
   const entries = Object.entries(chartAgg || {})
     .map(([name, item]) => ({

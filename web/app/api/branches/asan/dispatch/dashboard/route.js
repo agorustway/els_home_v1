@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { buildAsanDashboardCachePayload } from '@/utils/asanDashboardView.mjs';
+import { buildAsanDashboardCachePayload, buildAsanDashboardViewerPayload } from '@/utils/asanDashboardView.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache';
+const DASHBOARD_VIEW_CACHE_TABLE = 'branch_dispatch_dashboard_view_cache';
 const DISPATCH_DASHBOARD_VIEW_TYPES = ['integrated', 'glovis', 'mobis'];
 const DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608';
+const DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-20260609';
+const DASHBOARD_VIEWER_SNAPSHOT_KEY = 'default';
 
 function getSupabaseAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -124,6 +127,24 @@ function prepareDashboardCacheForResponse(cache = null, scope = 'full', activeDa
     };
 }
 
+function isMissingTableError(error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '');
+    return code === '42P01' || message.includes('does not exist');
+}
+
+function prepareDashboardViewerForResponse(viewer = null) {
+    if (!viewer?.payload || viewer.payload.viewerPolicyVersion !== DASHBOARD_VIEWER_POLICY_VERSION) return null;
+    return {
+        view_type: viewer.view_type,
+        snapshot_key: viewer.snapshot_key || DASHBOARD_VIEWER_SNAPSHOT_KEY,
+        payload: viewer.payload,
+        source_signature: viewer.source_signature,
+        source_synced_at: viewer.source_synced_at,
+        updated_at: viewer.updated_at,
+    };
+}
+
 async function loadDispatchItems(request, viewType, mode = 'full') {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
@@ -147,6 +168,51 @@ async function loadDispatchItemsForCache(request, viewType) {
 
 async function loadDispatchItemsForSignature(request, viewType) {
     return loadDispatchItems(request, viewType, 'meta');
+}
+
+async function readDashboardViewerCache({ supabase, viewType }) {
+    const { data, error } = await supabase
+        .from(DASHBOARD_VIEW_CACHE_TABLE)
+        .select('view_type,snapshot_key,payload,source_signature,source_synced_at,updated_at')
+        .eq('branch_id', 'asan')
+        .eq('view_type', viewType)
+        .eq('snapshot_key', DASHBOARD_VIEWER_SNAPSHOT_KEY)
+        .maybeSingle();
+
+    if (error) {
+        if (isMissingTableError(error)) return { data: null, error };
+        throw new Error(error.message);
+    }
+    return { data, error: null };
+}
+
+async function writeDashboardViewerCache({ supabase, viewType, cachePayload, sourceSignature, sourceSyncedAt, now }) {
+    const viewerPayload = buildAsanDashboardViewerPayload({
+        cachePayload,
+        viewType,
+        viewerPolicyVersion: DASHBOARD_VIEWER_POLICY_VERSION,
+    });
+    if (!viewerPayload) return null;
+
+    const { data, error } = await supabase
+        .from(DASHBOARD_VIEW_CACHE_TABLE)
+        .upsert({
+            branch_id: 'asan',
+            view_type: viewType,
+            snapshot_key: DASHBOARD_VIEWER_SNAPSHOT_KEY,
+            payload: viewerPayload,
+            source_signature: sourceSignature,
+            source_synced_at: sourceSyncedAt || now,
+            updated_at: now,
+        }, { onConflict: 'branch_id,view_type,snapshot_key' })
+        .select('view_type,snapshot_key,payload,source_signature,source_synced_at,updated_at')
+        .single();
+
+    if (error) {
+        if (isMissingTableError(error)) return null;
+        throw new Error(error.message);
+    }
+    return data;
 }
 
 async function writeDashboardCache({ supabase, request, viewType }) {
@@ -173,7 +239,15 @@ async function writeDashboardCache({ supabase, request, viewType }) {
         .single();
 
     if (error) throw new Error(error.message);
-    return data;
+    const viewer = await writeDashboardViewerCache({
+        supabase,
+        viewType,
+        cachePayload: dashboardPayload,
+        sourceSignature,
+        sourceSyncedAt: sourceSyncedAt || now,
+        now,
+    });
+    return { cache: data, viewer };
 }
 
 export async function GET(request) {
@@ -186,6 +260,26 @@ export async function GET(request) {
     const viewType = normalizeViewType(searchParams.get('type'));
     const scope = searchParams.get('scope') === 'initial' ? 'initial' : 'full';
     const activeDate = String(searchParams.get('activeDate') || '').trim();
+
+    if (scope === 'initial') {
+        try {
+            const viewerResult = await readDashboardViewerCache({ supabase, viewType });
+            const viewer = prepareDashboardViewerForResponse(viewerResult.data);
+            const viewerDay = String(viewer?.payload?.selection?.day || '').trim();
+            if (viewer && (!activeDate || viewerDay === activeDate)) {
+                return NextResponse.json({
+                    ok: true,
+                    viewer,
+                    viewType,
+                    scope,
+                    viewerHit: true,
+                });
+            }
+        } catch {
+            // viewer cache는 첫 화면 최적화용이다. 실패 시 기존 cache 경로로 안전하게 fallback한다.
+        }
+    }
+
     const { data, error } = await supabase
         .from(DASHBOARD_CACHE_TABLE)
         .select('view_type,payload,source_signature,source_synced_at,updated_at')
@@ -201,7 +295,8 @@ export async function GET(request) {
             const refreshed = await writeDashboardCache({ supabase, request, viewType });
             return NextResponse.json({
                 ok: true,
-                cache: prepareDashboardCacheForResponse(refreshed, scope, activeDate),
+                cache: prepareDashboardCacheForResponse(refreshed.cache, scope, activeDate),
+                viewer: prepareDashboardViewerForResponse(refreshed.viewer),
                 viewType,
                 refreshed: true,
                 scope,
@@ -224,7 +319,8 @@ export async function GET(request) {
             const refreshed = await writeDashboardCache({ supabase, request, viewType });
             return NextResponse.json({
                 ok: true,
-                cache: prepareDashboardCacheForResponse(refreshed, scope, activeDate),
+                cache: prepareDashboardCacheForResponse(refreshed.cache, scope, activeDate),
+                viewer: prepareDashboardViewerForResponse(refreshed.viewer),
                 viewType,
                 refreshed: true,
                 scope,
@@ -265,11 +361,12 @@ export async function POST(request) {
 
     try {
         for (const viewType of getRefreshTypes(requestedType)) {
-            const cache = await writeDashboardCache({ supabase, request, viewType });
+            const { cache, viewer } = await writeDashboardCache({ supabase, request, viewType });
             refreshed.push({
                 viewType,
                 updated_at: cache.updated_at,
                 source_synced_at: cache.source_synced_at,
+                viewer_updated_at: viewer?.updated_at || null,
             });
         }
         return NextResponse.json({ ok: true, refreshed });

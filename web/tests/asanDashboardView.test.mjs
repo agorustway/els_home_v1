@@ -10,6 +10,7 @@ import {
   buildAsanDashboardPeriods,
   buildAsanDashboardScope,
   buildAsanDashboardTimeline,
+  buildAsanDashboardViewerPayload,
   buildAsanDashboardWeekdayComparison,
   buildSelectableAsanDashboardPeriods,
   getActualDispatchQty,
@@ -113,6 +114,28 @@ test('아산 현황판 캐시는 원장 없이 기간 집계를 복원한다', (
 
   assert.equal(monthlyDashboardData.activeScope.total, 25);
   assert.equal(totalDashboardData.activeScope.total, 25);
+});
+
+test('아산 현황판 뷰어 스냅샷은 첫 화면용 완성 모델만 담는다', () => {
+  const cachePayload = buildAsanDashboardCachePayload({
+    sourceItems,
+    viewType: 'integrated',
+  });
+  const viewerPayload = buildAsanDashboardViewerPayload({
+    cachePayload,
+    viewType: 'integrated',
+    activeDate: '2026-05-18',
+    viewerPolicyVersion: 'test-viewer-policy',
+  });
+
+  assert.equal(viewerPayload.payloadKind, 'dashboard-viewer');
+  assert.equal(viewerPayload.viewerPolicyVersion, 'test-viewer-policy');
+  assert.equal(viewerPayload.selection.day, '2026-05-18');
+  assert.equal(viewerPayload.selection.activePeriod, 'daily');
+  assert.equal(viewerPayload.modes.customer.activeScope.total, 13);
+  assert.equal(viewerPayload.modes.dispatcher.activeScope.total, 13);
+  assert.equal(viewerPayload.modes.customer.periods.find((period) => period.key === 'daily').options.length, 1);
+  assert.equal(viewerPayload.modes.customer.timeline.length, 2);
 });
 
 test('아산 현황판 고객사별 비중 집계를 제공한다', () => {
@@ -649,7 +672,7 @@ test('아산 전체 탭 기간 선택지는 유효 오더 없는 날짜만 제�
   assert.match(css, /@media \(max-width: 768px\)[\s\S]*\.periodSelectWrap\s*{[\s\S]*flex: 0 0 auto;[\s\S]*min-height: 0;/);
 });
 
-test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체 원장을 보강 조회한다', () => {
+test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만 전체 원장을 보강 조회한다', () => {
   const source = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/page.js'),
     'utf8',
@@ -666,9 +689,17 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
     path.join(webRoot, 'supabase_sql/20260602_asan_dispatch_dashboard_cache.sql'),
     'utf8',
   );
+  const viewerSql = fs.readFileSync(
+    path.join(webRoot, 'supabase_sql/20260609_asan_dispatch_dashboard_view_cache.sql'),
+    'utf8',
+  );
 
   assert.match(dashboardSource, /buildAsanDashboardDataFromCache/);
   assert.match(dashboardSource, /dashboardCache = null/);
+  assert.match(dashboardSource, /dashboardViewer = null/);
+  assert.match(dashboardSource, /function getViewerDashboardData/);
+  assert.match(dashboardSource, /payloadKind !== 'dashboard-viewer'/);
+  assert.match(dashboardSource, /if \(viewerData\) return viewerData;/);
   assert.match(dashboardSource, /activePeriodMode = 'daily'/);
   assert.match(dashboardSource, /selectedWeek = ''/);
   assert.match(dashboardSource, /activePeriod: activePeriodKey/);
@@ -680,15 +711,25 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(source, /scope = 'initial'/);
   assert.match(source, /scope: 'initial'/);
   assert.match(source, /scope: 'full', background: true/);
-  assert.match(source, /background && !nextPayload/);
+  assert.match(source, /const nextViewer = r\.ok && j\.ok \? j\.viewer\?\.payload \|\| null : null;/);
+  assert.match(source, /background && !nextPayload && !nextViewer/);
   assert.match(source, /const dashboardCachePayload = dashboardCacheState\.viewType === viewType \? dashboardCacheState\.payload : null;/);
+  assert.match(source, /const dashboardViewerPayload = dashboardCacheState\.viewType === viewType \? dashboardCacheState\.viewer : null;/);
   assert.match(source, /const dashboardNeedsFullData = useMemo\(\(\) => \(/);
-  assert.match(source, /mainView === 'dashboard'[\s\S]*dashboardCacheChecked[\s\S]*!dashboardCachePayload[\s\S]*item\?\.meta_only && hasValidOrderRows\(item, viewType\)/);
+  assert.match(source, /mainView === 'dashboard'[\s\S]*dashboardCacheChecked[\s\S]*!dashboardCachePayload[\s\S]*!dashboardViewerPayload[\s\S]*item\?\.meta_only && hasValidOrderRows\(item, viewType\)/);
   assert.match(source, /if \(dashboardNeedsFullData\) \{[\s\S]*ensureDispatchFullLoaded\(\);[\s\S]*return;[\s\S]*\}/);
   assert.match(source, /dashboardCache=\{dashboardCachePayload\}/);
+  assert.match(source, /dashboardViewer=\{dashboardViewerPayload\}/);
   assert.match(apiSource, /DASHBOARD_CACHE_TABLE = 'branch_dispatch_dashboard_cache'/);
+  assert.match(apiSource, /DASHBOARD_VIEW_CACHE_TABLE = 'branch_dispatch_dashboard_view_cache'/);
   assert.match(apiSource, /DASHBOARD_CACHE_POLICY_VERSION = 'holiday-policy-20260608'/);
+  assert.match(apiSource, /DASHBOARD_VIEWER_POLICY_VERSION = 'viewer-snapshot-20260609'/);
   assert.match(apiSource, /\$\{viewType\}\|\$\{DASHBOARD_CACHE_POLICY_VERSION\}\|/);
+  assert.match(apiSource, /readDashboardViewerCache/);
+  assert.match(apiSource, /prepareDashboardViewerForResponse/);
+  assert.match(apiSource, /viewerHit: true/);
+  assert.match(apiSource, /writeDashboardViewerCache/);
+  assert.match(apiSource, /buildAsanDashboardViewerPayload/);
   assert.match(apiSource, /hasRefreshAccess/);
   assert.match(apiSource, /process\.env\.ASAN_DISPATCH_DASHBOARD_CACHE_TOKEN/);
   assert.match(apiSource, /process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
@@ -707,6 +748,10 @@ test('아산 현황판은 캐시를 먼저 쓰고 캐시가 없을 때만 전체
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);
   assert.match(sql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_cache FROM anon, authenticated;/);
+  assert.match(viewerSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_view_cache/);
+  assert.match(viewerSql, /CONSTRAINT branch_dispatch_dashboard_view_cache_unique UNIQUE \(branch_id, view_type, snapshot_key\)/);
+  assert.match(viewerSql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_view_cache FROM anon, authenticated;/);
+  assert.match(viewerSql, /GRANT SELECT, INSERT, UPDATE ON TABLE public\.branch_dispatch_dashboard_view_cache TO service_role;/);
 });
 
 test('아산 현황판 추세 돋보기는 포인트 위치에 따라 위아래 배치를 바꾼다', () => {
