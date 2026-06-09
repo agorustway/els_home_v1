@@ -1,3 +1,25 @@
+## [2026-06-09] 아산 예측 손익 계산 루프 최적화 (v5.14.367)
+
+### 원인
+- 운영 timing 응답에서 `dispatchMetaMs`, `dispatchRangeMs`, `routeUnitRowsMs`는 모두 1초 미만이었지만 `computeMs`가 17초 이상으로 확인되었습니다.
+- 상세배차 segment마다 665개 단가 그룹 전체를 반복 채점하고, 같은 segment 조합을 일/주/月/전체 기간에서 중복 계산했습니다.
+
+### 조치
+- 구간단가 그룹을 TYPE별로 인덱싱하고, segment 작업지와 맞는 후보만 먼저 골라 채점하도록 줄였습니다.
+- 같은 TYPE/구분/작업지/픽업/운송사/청구처 조합은 `unitCache`로 매칭 결과를 재사용하게 했습니다.
+- 단가 비교는 이미 정규화된 match 값을 사용하도록 바꿔 반복 문자열 정규화를 줄였습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 47개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 예측 손익 운영 timing 응답 추가 (v5.14.366)
 
 ### 원인

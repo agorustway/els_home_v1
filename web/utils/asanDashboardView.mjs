@@ -501,6 +501,10 @@ function normalizeForecastType(value = '') {
 function forecastFieldMatches(left = '', right = '') {
   const a = normalizeForecastText(left);
   const b = normalizeForecastText(right);
+  return forecastFieldMatchesNormalized(a, b);
+}
+
+function forecastFieldMatchesNormalized(a = '', b = '') {
   if (!a || !b || a === '-' || b === '-') return false;
   if (a === b) return true;
   return (a.length >= 2 && b.includes(a)) || (b.length >= 2 && a.includes(b));
@@ -508,6 +512,10 @@ function forecastFieldMatches(left = '', right = '') {
 
 function forecastAnyMatch(leftValues = [], rightValues = []) {
   return leftValues.some((left) => rightValues.some((right) => forecastFieldMatches(left, right)));
+}
+
+function forecastAnyNormalizedMatch(leftValues = [], rightValues = []) {
+  return leftValues.some((left) => rightValues.some((right) => forecastFieldMatchesNormalized(left, right)));
 }
 
 function amountNumber(value) {
@@ -582,7 +590,13 @@ function buildRouteUnitMatchData(routeUnitPrice = null) {
       bucket.count += 1;
     });
   });
-  return { groups, averages };
+  const groupsByType = new Map();
+  groups.forEach((group) => {
+    const typeKey = group.match.type || '';
+    if (!groupsByType.has(typeKey)) groupsByType.set(typeKey, []);
+    groupsByType.get(typeKey).push(group);
+  });
+  return { groups, averages, groupsByType, unitCache: new Map() };
 }
 
 function averageRouteUnit(matchData, segment = {}) {
@@ -622,42 +636,75 @@ function segmentCandidates(segment = {}, fallbackPickup = false) {
   };
 }
 
-function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false) {
+function normalizeForecastValues(values = []) {
+  return values.map(normalizeForecastText).filter(Boolean);
+}
+
+function prepareSegmentMatch(segment = {}, fallbackPickup = false) {
   const values = segmentCandidates(segment, fallbackPickup);
+  return {
+    typeKey: normalizeForecastType(values.type[0]),
+    category: normalizeForecastValues(values.category),
+    workSite: normalizeForecastValues(values.workSite),
+    pickup: normalizeForecastValues(values.pickup),
+    shipment: normalizeForecastValues(values.shipment),
+    carrier: normalizeForecastValues(values.carrier),
+    billTo: normalizeForecastValues(values.billTo),
+    payTo: normalizeForecastValues(values.payTo),
+    salesItem: normalizeForecastValues(values.salesItem),
+    directionKey: normalizeForecastText(segment.direction),
+    hasPickup: normalizeForecastText(segment.pickup || segment.billingPickup),
+  };
+}
+
+function routeUnitCandidateGroups(matchData, prepared = {}) {
+  let groups = matchData.groups || [];
+  const typedGroups = prepared.typeKey ? matchData.groupsByType?.get(prepared.typeKey) || [] : [];
+  const genericGroups = matchData.groupsByType?.get('') || [];
+  if (typedGroups.length) {
+    groups = genericGroups.length ? [...typedGroups, ...genericGroups] : typedGroups;
+  }
+  if (prepared.workSite?.[0]) {
+    groups = groups.filter((group) => !group.match.workSite || forecastAnyNormalizedMatch(prepared.workSite, [group.match.workSite]));
+  }
+  return groups;
+}
+
+function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false, prepared = null) {
+  const values = prepared || prepareSegmentMatch(segment, fallbackPickup);
   let score = 0;
   let strong = 0;
-  const typeKey = normalizeForecastType(values.type[0]);
+  const typeKey = values.typeKey;
   if (typeKey && group.match.type) {
     if (typeKey === group.match.type) score += 20;
     else return -1;
   }
-  if (forecastAnyMatch(values.category, [group.category, group.salesItem])) {
+  if (forecastAnyNormalizedMatch(values.category, [group.match.category, group.match.salesItem])) {
     score += 12;
     strong += 1;
-  } else if (group.match.category && normalizeForecastText(segment.direction)) {
+  } else if (group.match.category && values.directionKey) {
     score -= 5;
   }
-  if (forecastAnyMatch(values.workSite, [group.workSite])) {
+  if (forecastAnyNormalizedMatch(values.workSite, [group.match.workSite])) {
     score += 16;
     strong += 1;
-  } else if (normalizeForecastText(segment.workSite) && group.match.workSite) {
+  } else if (values.workSite.length && group.match.workSite) {
     return -1;
   }
-  const segmentHasPickup = normalizeForecastText(segment.pickup || segment.billingPickup);
   const groupHasPickup = group.match.pickup || group.match.billingPickup || group.match.region;
-  if (forecastAnyMatch(values.pickup, [group.pickup, group.billingPickup, group.region])) {
+  if (forecastAnyNormalizedMatch(values.pickup, [group.match.pickup, group.match.billingPickup, group.match.region])) {
     score += fallbackPickup ? 9 : 17;
     strong += 1;
-  } else if (segmentHasPickup && groupHasPickup && !fallbackPickup) {
+  } else if (values.hasPickup && groupHasPickup && !fallbackPickup) {
     return -1;
   }
-  if (forecastAnyMatch(values.shipment, [group.shipment])) {
+  if (forecastAnyNormalizedMatch(values.shipment, [group.match.shipment])) {
     score += 9;
     strong += 1;
   }
-  if (forecastAnyMatch(values.carrier, [group.carrier, group.payTo])) score += 6;
-  if (forecastAnyMatch(values.billTo, [group.billTo, group.salesItem])) score += 5;
-  if (forecastAnyMatch(values.salesItem, [group.salesItem, group.billTo])) score += 5;
+  if (forecastAnyNormalizedMatch(values.carrier, [group.match.carrier, group.match.payTo])) score += 6;
+  if (forecastAnyNormalizedMatch(values.billTo, [group.match.billTo, group.match.salesItem])) score += 5;
+  if (forecastAnyNormalizedMatch(values.salesItem, [group.match.salesItem, group.match.billTo])) score += 5;
   if (strong === 0) return -1;
   return score;
 }
@@ -665,8 +712,9 @@ function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false) {
 function findRouteUnitMatch(matchData, segment = {}) {
   const pickBest = (fallbackPickup = false) => {
     let best = null;
-    for (const group of matchData.groups) {
-      const score = scoreRouteUnitGroup(segment, group, fallbackPickup);
+    const prepared = prepareSegmentMatch(segment, fallbackPickup);
+    for (const group of routeUnitCandidateGroups(matchData, prepared)) {
+      const score = scoreRouteUnitGroup(segment, group, fallbackPickup, prepared);
       if (score < 0) continue;
       if (!best || score > best.score) best = { group, score, fallbackPickup };
     }
@@ -675,6 +723,31 @@ function findRouteUnitMatch(matchData, segment = {}) {
   const exact = pickBest(false);
   if (exact) return exact;
   return pickBest(true);
+}
+
+function financialUnitCacheKey(segment = {}) {
+  return [
+    normalizeForecastType(segment.type),
+    normalizeForecastText(segment.direction),
+    normalizeForecastText(segment.salesItem),
+    normalizeForecastText(segment.workSite),
+    normalizeForecastText(segment.pickup),
+    normalizeForecastText(segment.billingPickup),
+    normalizeForecastText(segment.shipment || segment.port),
+    normalizeForecastText(segment.carrier || segment.payTo),
+    normalizeForecastText(segment.billTo || segment.customer || segment.shipper),
+    normalizeForecastText(segment.payTo || segment.carrier),
+  ].join('|');
+}
+
+function resolveFinancialUnit(matchData, segment = {}) {
+  const key = financialUnitCacheKey(segment);
+  if (matchData.unitCache?.has(key)) return matchData.unitCache.get(key);
+  const match = findRouteUnitMatch(matchData, segment);
+  const average = match ? null : averageRouteUnit(matchData, segment);
+  const result = { match, average, unit: match?.group || average || null };
+  matchData.unitCache?.set(key, result);
+  return result;
 }
 
 function buildFinancialSegments(row = [], headers = [], item = {}, viewType = 'integrated') {
@@ -763,9 +836,7 @@ function finalizeFinancialPeriod(period) {
 }
 
 function addFinancialSegment(period, segment, matchData) {
-  const match = findRouteUnitMatch(matchData, segment);
-  const average = match ? null : averageRouteUnit(matchData, segment);
-  const unit = match?.group || average;
+  const { match, average, unit } = resolveFinancialUnit(matchData, segment);
   period.qty += segment.qty;
   if (!unit) {
     period.unmatchedQty += segment.qty;

@@ -252,6 +252,23 @@ test('아산 현황판 예측 손익 점검은 보정 사유를 카드에서 펼
   assert.match(css, /\.forecastIssueItem\s*{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
 });
 
+test('아산 현황판 예측 손익 매칭은 단가 후보 인덱스와 조합 캐시를 사용한다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'utils/asanDashboardView.mjs'),
+    'utf8',
+  );
+
+  assert.match(source, /const groupsByType = new Map\(\)/);
+  assert.match(source, /return \{ groups, averages, groupsByType, unitCache: new Map\(\) \}/);
+  assert.match(source, /function routeUnitCandidateGroups/);
+  assert.match(source, /matchData\.groupsByType\?\.get\(prepared\.typeKey\)/);
+  assert.match(source, /forecastAnyNormalizedMatch\(prepared\.workSite/);
+  assert.match(source, /function financialUnitCacheKey/);
+  assert.match(source, /function resolveFinancialUnit/);
+  assert.match(source, /matchData\.unitCache\?\.has\(key\)/);
+  assert.match(source, /resolveFinancialUnit\(matchData, segment\)/);
+});
+
 test('아산 현황판 뷰어 스냅샷은 첫 화면용 완성 모델만 담는다', () => {
   const cachePayload = buildAsanDashboardCachePayload({
     sourceItems,
