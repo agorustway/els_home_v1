@@ -11,6 +11,35 @@ export const revalidate = 0;
 const DISPATCH_FORECAST_VIEW_TYPES = ['integrated', 'glovis', 'mobis'];
 const DISPATCH_FORECAST_PERIODS = ['daily', 'weekly', 'monthly', 'total'];
 const ROUTE_UNIT_CACHE_TABLE = 'branch_performance_monthly_route_unit_amount_cache';
+const ROUTE_UNIT_CACHE_SELECT = [
+    'key',
+    'revenue_amount',
+    'purchase_amount',
+    'unit_profit',
+    'sales_item',
+    'region',
+    'work_site',
+    'carrier',
+    'category',
+    'pickup',
+    'billing_pickup',
+    'shipment',
+    'type',
+    'bill_to',
+    'pay_to',
+    'row_count',
+    'revenue',
+    'purchase',
+    'profit',
+    'period_start',
+    'period_end',
+    'periods',
+    'total_group_count',
+    'total_row_count',
+    'total_revenue',
+    'total_purchase',
+    'total_profit',
+].join(',');
 
 let adminClient;
 
@@ -106,7 +135,8 @@ async function findLatestRouteUnitMonth(supabase) {
 }
 
 function routeUnitCacheRowsToPrice(payload = {}, scope = {}) {
-    const rows = Array.isArray(payload.groups) ? payload.groups : [];
+    const rows = Array.isArray(payload) ? payload : (Array.isArray(payload.groups) ? payload.groups : []);
+    const totalsSource = Array.isArray(payload) ? rows[0] || {} : payload;
     const groups = rows.map((row) => {
         const revenueAmount = numberValue(row.revenue_amount);
         const purchaseAmount = numberValue(row.purchase_amount);
@@ -142,20 +172,20 @@ function routeUnitCacheRowsToPrice(payload = {}, scope = {}) {
         scope,
         basis: '월간 금액표',
         datasetBasis: '월간 마감자료 current 원장',
-        engine: 'supabase-rpc-monthly-amount-cache',
+        engine: 'supabase-direct-monthly-amount-cache',
         groups,
         totals: {
-            revenue: numberValue(payload.total_revenue),
-            purchase: numberValue(payload.total_purchase),
-            profit: numberValue(payload.total_profit),
-            rowCount: numberValue(payload.total_row_count),
+            revenue: numberValue(totalsSource.total_revenue),
+            purchase: numberValue(totalsSource.total_purchase),
+            profit: numberValue(totalsSource.total_profit),
+            rowCount: numberValue(totalsSource.total_row_count),
         },
         summary: {
             periodStart: rows[0]?.period_start || '',
             periodEnd: rows[0]?.period_end || scope.month || '',
-            groupCount: numberValue(payload.total_group_count || groups.length),
+            groupCount: numberValue(totalsSource.total_group_count || groups.length),
             returnedGroupCount: groups.length,
-            truncated: numberValue(payload.total_group_count) > groups.length,
+            truncated: numberValue(totalsSource.total_group_count) > groups.length,
         },
     };
 }
@@ -202,14 +232,17 @@ async function loadLatestRouteUnitPrice() {
     const scope = latest
         ? { mode: 'month', year: String(latest.year), month: latest.key, label: latest.label }
         : { mode: 'all', year: '', month: '', label: '전체 기간' };
-    const request = supabase.rpc('asan_monthly_route_unit_amount_payload', {
-        p_scope: latest ? 'month' : 'all',
-        p_year: latest?.year || null,
-        p_month: latest?.month || null,
-        p_limit: 10000,
-    });
+    const request = supabase
+        .from(ROUTE_UNIT_CACHE_TABLE)
+        .select(ROUTE_UNIT_CACHE_SELECT)
+        .eq('branch_id', 'asan')
+        .eq('scope_mode', latest ? 'month' : 'all')
+        .eq('filter_year', latest?.year || 0)
+        .eq('filter_month', latest?.month || 0)
+        .order('rank_order', { ascending: true })
+        .limit(10000);
     const executable = typeof request.abortSignal === 'function' && typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-        ? request.abortSignal(AbortSignal.timeout(8000))
+        ? request.abortSignal(AbortSignal.timeout(4000))
         : request;
     const { data, error } = await executable;
     if (error) return null;

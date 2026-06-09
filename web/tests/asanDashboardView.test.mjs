@@ -904,8 +904,11 @@ test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만
   assert.match(apiSource, /buildAsanDashboardCachePayload/);
   assert.doesNotMatch(forecastApiSource, /queryAsanAnnualRouteUnitPriceFromSupabase/);
   assert.match(forecastApiSource, /createClient/);
-  assert.match(forecastApiSource, /asan_monthly_route_unit_amount_payload/);
   assert.match(forecastApiSource, /ROUTE_UNIT_CACHE_TABLE = 'branch_performance_monthly_route_unit_amount_cache'/);
+  assert.match(forecastApiSource, /ROUTE_UNIT_CACHE_SELECT/);
+  assert.match(forecastApiSource, /\.from\(ROUTE_UNIT_CACHE_TABLE\)/);
+  assert.match(forecastApiSource, /engine: 'supabase-direct-monthly-amount-cache'/);
+  assert.doesNotMatch(forecastApiSource, /\.rpc\('asan_monthly_route_unit_amount_payload'/);
   assert.match(forecastApiSource, /buildAsanDashboardFinancialForecast/);
   assert.match(forecastApiSource, /buildAsanDashboardPeriodOptions/);
   assert.match(forecastApiSource, /\/api\/branches\/asan\/dispatch/);

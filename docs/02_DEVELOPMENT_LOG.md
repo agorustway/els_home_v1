@@ -1,3 +1,25 @@
+## [2026-06-09] 아산 예측 손익 단가 캐시 직접 조회 전환 (v5.14.365)
+
+### 원인
+- 예측 손익 원장 조회를 `meta + range`로 줄인 뒤 운영 API를 재측정하니, 배차 원장은 0.5초 미만인데 예측 API 전체는 18초 안팎이었습니다.
+- 남은 병목은 `asan_monthly_route_unit_amount_payload` RPC가 월간 구간단가 캐시를 다시 payload 형태로 포장하는 구간이었습니다.
+
+### 조치
+- forecast API에서 `branch_performance_monthly_route_unit_amount_cache`를 직접 select해 단가 그룹을 구성하도록 바꿨습니다.
+- 단가 조회 timeout을 4초로 낮춰 캐시 이상 시 현황판 전체가 오래 붙잡히지 않게 했습니다.
+- forecast 응답 engine을 `supabase-direct-monthly-amount-cache`로 남겨 운영 점검 시 direct cache 경로를 확인할 수 있게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 46개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 예측 손익 range 조회와 점검 상세화 (v5.14.364)
 
 ### 원인
