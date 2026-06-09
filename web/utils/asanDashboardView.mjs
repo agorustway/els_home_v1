@@ -674,8 +674,7 @@ function findRouteUnitMatch(matchData, segment = {}) {
   };
   const exact = pickBest(false);
   if (exact) return exact;
-  const hasPickup = normalizeForecastText(segment.pickup || segment.billingPickup);
-  return segment.pickupFallback || !hasPickup ? pickBest(true) : null;
+  return pickBest(true);
 }
 
 function buildFinancialSegments(row = [], headers = [], item = {}, viewType = 'integrated') {
@@ -758,7 +757,7 @@ function finalizeFinancialPeriod(period) {
     unmatchedQty: Math.round(period.unmatchedQty * 10) / 10,
     qty: Math.round(period.qty * 10) / 10,
     issueCount: period.topIssues.length,
-    topIssues: period.topIssues.slice(0, 5),
+    topIssues: period.topIssues.slice(0, 12),
     available: period.qty > 0,
   };
 }
@@ -772,8 +771,8 @@ function addFinancialSegment(period, segment, matchData) {
     period.unmatchedQty += segment.qty;
     period.topIssues.push({
       type: 'unmatched',
-      label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
-      reason: '구간단가 후보 없음',
+      label: `${segment.date || '-'} · ${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'} · ${segment.carrier || segment.payTo || '운송사 미확인'}`,
+      reason: '의왕상차/평균단가 후보 없음',
       qty: segment.qty,
     });
     return;
@@ -786,8 +785,8 @@ function addFinancialSegment(period, segment, matchData) {
       period.fallbackPickupQty += segment.qty;
       period.topIssues.push({
         type: 'fallback-pickup',
-        label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
-        reason: '부곡(의왕) 요율 보정',
+        label: `${segment.date || '-'} · ${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'} · ${segment.carrier || segment.payTo || '운송사 미확인'}`,
+        reason: '실제 픽업지 단가 없음: 의왕상차 청구/하불금액 적용',
         qty: segment.qty,
       });
     }
@@ -796,8 +795,8 @@ function addFinancialSegment(period, segment, matchData) {
   period.averageFallbackQty += segment.qty;
   period.topIssues.push({
     type: 'average',
-    label: `${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'}`,
-    reason: '동일 TYPE/구분 평균단가',
+    label: `${segment.date || '-'} · ${segment.workSite || '작업지 미분류'} · ${segment.type || '-'} · ${segment.pickup || '상차지 미확인'} · ${segment.carrier || segment.payTo || '운송사 미확인'}`,
+    reason: '의왕상차 후보 없음: 동일 TYPE/구분 평균단가',
     qty: segment.qty,
   });
 }

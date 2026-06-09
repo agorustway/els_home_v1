@@ -62,7 +62,7 @@ function normalizeRouteText(value) {
     return text || '';
 }
 
-async function loadDispatchItems(request, viewType, { mode = 'date', date = '' } = {}) {
+async function loadDispatchItems(request, viewType, { mode = 'date', date = '', from = '', to = '' } = {}) {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
     const params = new URLSearchParams({
@@ -71,6 +71,8 @@ async function loadDispatchItems(request, viewType, { mode = 'date', date = '' }
         t: String(Date.now()),
     });
     if (date) params.set('date', date);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
     url.search = params.toString();
 
     const response = await fetch(url, { cache: 'no-store' });
@@ -175,11 +177,16 @@ async function loadForecastSourceItems(request, viewType, { selectedDay = '', se
         if (monthKey && option.key.startsWith(monthKey)) dateKeys.add(option.key);
     });
 
-    const dateItems = await Promise.all(
-        [...dateKeys].map((date) => loadDispatchItems(request, viewType, { mode: 'date', date }))
-    );
+    const sortedDateKeys = [...dateKeys].sort();
+    const rangeItems = sortedDateKeys.length
+        ? await loadDispatchItems(request, viewType, {
+            mode: 'range',
+            from: sortedDateKeys[0],
+            to: sortedDateKeys[sortedDateKeys.length - 1],
+        })
+        : [];
     return {
-        sourceItems: dateItems.flat().filter((item) => item?.target_date),
+        sourceItems: rangeItems.filter((item) => item?.target_date),
         selectedDay: dayKey,
         selectedWeek: weekKey,
         selectedMonth: monthKey,

@@ -13,7 +13,7 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // [v5.10.22] 데이터 부정합 문제로 캐시 완전 비활성화 (정확성 우선)
 
-const DISPATCH_QUERY_MODES = new Set(['full', 'meta', 'date']);
+const DISPATCH_QUERY_MODES = new Set(['full', 'meta', 'date', 'range']);
 const DISPATCH_META_SELECT = 'id,branch_id,type,target_date,headers,file_modified_at,updated_at,row_count,valid_row_count';
 const DISPATCH_META_FALLBACK_SELECT = 'id,branch_id,type,target_date,headers,data,file_modified_at,updated_at';
 
@@ -72,9 +72,14 @@ export async function GET(request) {
     const type = searchParams.get('type') || 'glovis';
     const mode = getDispatchQueryMode(searchParams.get('mode'));
     const targetDate = String(searchParams.get('date') || '').trim();
+    const rangeFrom = String(searchParams.get('from') || '').trim();
+    const rangeTo = String(searchParams.get('to') || '').trim();
 
     if (mode === 'date' && !targetDate) {
         return NextResponse.json({ error: 'date required' }, { status: 400 });
+    }
+    if (mode === 'range' && (!rangeFrom || !rangeTo)) {
+        return NextResponse.json({ error: 'from/to required' }, { status: 400 });
     }
 
     const buildQuery = (selectColumns) => {
@@ -89,6 +94,9 @@ export async function GET(request) {
         }
         if (mode === 'date') {
             query = query.eq('target_date', targetDate);
+        }
+        if (mode === 'range') {
+            query = query.gte('target_date', rangeFrom).lte('target_date', rangeTo);
         }
         return query;
     };

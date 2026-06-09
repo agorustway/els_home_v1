@@ -201,12 +201,14 @@ test('아산 현황판 예측 손익은 최신 구간단가와 부곡 의왕 fal
   const weekly = forecast.periods.find((period) => period.key === 'weekly');
   const monthly = forecast.periods.find((period) => period.key === 'monthly');
   assert.equal(daily.qty, 13);
-  assert.equal(daily.revenue, 1_165_000);
-  assert.equal(daily.purchase, 941_000);
+  assert.equal(daily.revenue, 1_150_000);
+  assert.equal(daily.purchase, 926_000);
   assert.equal(daily.profit, 224_000);
-  assert.equal(daily.averageFallbackQty, 3);
-  assert.equal(weekly.revenue, 1_865_000);
-  assert.equal(monthly.revenue, 2_165_000);
+  assert.equal(daily.fallbackPickupQty, 3);
+  assert.equal(daily.averageFallbackQty, 0);
+  assert.match(daily.topIssues[0].reason, /의왕상차 청구\/하불금액 적용/);
+  assert.equal(weekly.revenue, 1_850_000);
+  assert.equal(monthly.revenue, 2_150_000);
   assert.equal(forecast.sourcePeriod, '2026-05');
 
   const missingPickupForecast = buildAsanDashboardFinancialForecast({
@@ -224,6 +226,30 @@ test('아산 현황판 예측 손익은 최신 구간단가와 부곡 의왕 fal
   assert.equal(missingPickupDaily.revenue, 150_000);
   assert.equal(missingPickupDaily.purchase, 126_000);
   assert.equal(missingPickupDaily.fallbackPickupQty, 3);
+});
+
+test('아산 현황판 예측 손익 점검은 보정 사유를 카드에서 펼쳐 보여준다', () => {
+  const source = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/AsanDashboard.js'),
+    'utf8',
+  );
+  const css = fs.readFileSync(
+    path.join(webRoot, 'app/(main)/employees/branches/asan/dashboard.module.css'),
+    'utf8',
+  );
+
+  assert.match(source, /function buildForecastIssueSummary/);
+  assert.match(source, /의왕 \$\{formatQty\(fallback\)\}/);
+  assert.match(source, /평균 \$\{formatQty\(average\)\}/);
+  assert.match(source, /미매칭 \$\{formatQty\(unmatched\)\}/);
+  assert.match(source, /function getForecastIssueToneLabel/);
+  assert.match(source, /의왕보정/);
+  assert.match(source, /<summary>점검 보기<\/summary>/);
+  assert.match(source, /className=\{styles\.forecastIssueDetails\}/);
+  assert.match(source, /\{issue\.reason\} · \{formatQty\(issue\.qty\)\}건/);
+  assert.match(css, /\.forecastIssueDetails\s*{[\s\S]*border-top: 1px solid #e2e8f0;/);
+  assert.match(css, /\.forecastIssueList\s*{[\s\S]*max-height: 138px;/);
+  assert.match(css, /\.forecastIssueItem\s*{[\s\S]*grid-template-columns: 64px minmax\(0, 1fr\);/);
 });
 
 test('아산 현황판 뷰어 스냅샷은 첫 화면용 완성 모델만 담는다', () => {
@@ -800,6 +826,10 @@ test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만
     path.join(webRoot, 'app/api/branches/asan/dispatch/forecast/route.js'),
     'utf8',
   );
+  const dispatchApiSource = fs.readFileSync(
+    path.join(webRoot, 'app/api/branches/asan/dispatch/route.js'),
+    'utf8',
+  );
   const sql = fs.readFileSync(
     path.join(webRoot, 'supabase_sql/20260602_asan_dispatch_dashboard_cache.sql'),
     'utf8',
@@ -880,8 +910,13 @@ test('아산 현황판은 첫 화면 viewer cache를 우선 쓰고 없을 때만
   assert.match(forecastApiSource, /buildAsanDashboardPeriodOptions/);
   assert.match(forecastApiSource, /\/api\/branches\/asan\/dispatch/);
   assert.match(forecastApiSource, /mode: 'meta'/);
-  assert.match(forecastApiSource, /mode: 'date'/);
+  assert.match(forecastApiSource, /mode: 'range'/);
+  assert.match(forecastApiSource, /from: sortedDateKeys\[0\]/);
+  assert.match(forecastApiSource, /to: sortedDateKeys\[sortedDateKeys\.length - 1\]/);
   assert.doesNotMatch(forecastApiSource, /mode: 'full'/);
+  assert.match(dispatchApiSource, /DISPATCH_QUERY_MODES = new Set\(\['full', 'meta', 'date', 'range'\]\)/);
+  assert.match(dispatchApiSource, /mode === 'range' && \(!rangeFrom \|\| !rangeTo\)/);
+  assert.match(dispatchApiSource, /query\.gte\('target_date', rangeFrom\)\.lte\('target_date', rangeTo\)/);
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_cache/);
   assert.match(sql, /REVOKE ALL ON TABLE public\.branch_dispatch_dashboard_cache FROM anon, authenticated;/);
   assert.match(viewerSql, /CREATE TABLE IF NOT EXISTS public\.branch_dispatch_dashboard_view_cache/);

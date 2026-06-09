@@ -423,9 +423,29 @@ function FinancialForecastPanel({ forecast, loading = false }) {
     );
 }
 
+function buildForecastIssueSummary(period = {}) {
+    const fallback = Number(period.fallbackPickupQty || 0);
+    const average = Number(period.averageFallbackQty || 0);
+    const unmatched = Number(period.unmatchedQty || 0);
+    const parts = [];
+    if (fallback > 0.001) parts.push(`의왕 ${formatQty(fallback)}`);
+    if (average > 0.001) parts.push(`평균 ${formatQty(average)}`);
+    if (unmatched > 0.001) parts.push(`미매칭 ${formatQty(unmatched)}`);
+    return parts.join(' · ') || '없음';
+}
+
+function getForecastIssueToneLabel(issue = {}) {
+    if (issue.type === 'fallback-pickup') return '의왕보정';
+    if (issue.type === 'average') return '평균단가';
+    if (issue.type === 'unmatched') return '미매칭';
+    return '점검';
+}
+
 function FinancialForecastCard({ period }) {
     const issueQty = Number(period?.fallbackPickupQty || 0) + Number(period?.averageFallbackQty || 0) + Number(period?.unmatchedQty || 0);
     const hasIssue = issueQty > 0.001 || Number(period?.issueCount || 0) > 0;
+    const issueSummary = buildForecastIssueSummary(period);
+    const issues = period?.topIssues || [];
     return (
         <div className={`${styles.forecastCard} ${hasIssue ? styles.forecastCardWarn : ''}`} title={(period?.topIssues || []).map((issue) => `${issue.label}: ${issue.reason} ${formatQty(issue.qty)}건`).join('\n')}>
             <div className={styles.forecastCardTop}>
@@ -441,8 +461,27 @@ function FinancialForecastCard({ period }) {
             <div className={styles.forecastRows}>
                 <span><b>매입</b>{formatMoneyShort(period.purchase)}</span>
                 <span><b>적용</b>{formatQty(period.matchedQty)}/{formatQty(period.qty)}</span>
-                <span><b>점검</b>{hasIssue ? `${formatQty(issueQty)}건` : '없음'}</span>
+                <span><b>점검</b>{issueSummary}</span>
             </div>
+            {hasIssue && (
+                <details className={styles.forecastIssueDetails}>
+                    <summary>점검 보기</summary>
+                    <div className={styles.forecastIssueList}>
+                        {issues.map((issue, index) => (
+                            <div className={styles.forecastIssueItem} key={`${issue.type || 'issue'}-${index}`}>
+                                <b>{getForecastIssueToneLabel(issue)}</b>
+                                <span>{issue.label}</span>
+                                <em>{issue.reason} · {formatQty(issue.qty)}건</em>
+                            </div>
+                        ))}
+                        {Number(period?.issueCount || 0) > issues.length && (
+                            <div className={styles.forecastIssueMore}>
+                                외 {formatQty(Number(period.issueCount || 0) - issues.length)}건
+                            </div>
+                        )}
+                    </div>
+                </details>
+            )}
         </div>
     );
 }

@@ -1,3 +1,30 @@
+## [2026-06-09] 아산 예측 손익 range 조회와 점검 상세화 (v5.14.364)
+
+### 원인
+- 예측 손익 API가 `meta` 조회 후 필요한 날짜를 개별 `date` 호출로 다시 읽어, 선택일/주간/月 범위가 커질수록 값 표시가 늦어졌습니다.
+- 점검 수량은 보였지만 의왕보정/평균단가/미매칭 중 무엇을 확인해야 하는지 화면에서 바로 알기 어려웠습니다.
+- 실제 픽업지 기준 단가가 없을 때도 의왕상차 단가 후보를 쓰지 못하고 평균단가로 넘어가는 케이스가 있었습니다.
+
+### 조치
+- 배차 원장 API에 `mode=range&from&to`를 추가하고, forecast API는 선택일/주/月에 필요한 날짜 범위를 한 번에 읽도록 변경했습니다.
+- 실제 픽업지 단가가 없으면 의왕상차 청구/하불금액 후보를 적용하고, 의왕 후보도 없을 때만 TYPE/구분 평균단가로 보정하게 했습니다.
+- 예측 손익 카드의 점검 영역에 `의왕/평균/미매칭` 요약과 펼침형 상세 목록을 추가해 일자·작업지·TYPE·픽업지·운송사·사유를 확인할 수 있게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 46개 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/route.js`
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 예측 손익 단가 조회 캐시 RPC 전환 (v5.14.363)
 
 ### 원인

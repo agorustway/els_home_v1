@@ -2158,7 +2158,7 @@ function AsanDispatchContent() {
                 selectedMonth,
                 activePeriod: periodMode,
             }),
-            900,
+            120,
             { force: true },
         );
     }, [activeTab, allTabMonth, allTabWeek?.key, data, fetchDashboardForecast, isAllTab, mainView, periodMode, viewType]);

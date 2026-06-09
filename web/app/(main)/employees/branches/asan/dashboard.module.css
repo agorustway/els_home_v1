@@ -407,6 +407,78 @@
     font-weight: 900;
 }
 
+.forecastIssueDetails {
+    border-top: 1px solid #e2e8f0;
+    margin-top: 1px;
+    padding-top: 7px;
+}
+
+.forecastIssueDetails summary {
+    cursor: pointer;
+    list-style: none;
+    width: fit-content;
+    border-radius: 999px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    padding: 2px 7px;
+    font-size: 0.64rem;
+    font-weight: 950;
+}
+
+.forecastIssueDetails summary::-webkit-details-marker {
+    display: none;
+}
+
+.forecastIssueList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 7px;
+    max-height: 138px;
+    overflow: auto;
+}
+
+.forecastIssueItem {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 4px 7px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #f8fafc;
+    padding: 6px 7px;
+}
+
+.forecastIssueItem b {
+    color: #0f172a;
+    font-size: 0.65rem;
+    font-weight: 950;
+}
+
+.forecastIssueItem span {
+    min-width: 0;
+    color: #334155;
+    font-size: 0.67rem;
+    font-weight: 850;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.forecastIssueItem em {
+    grid-column: 2;
+    color: #64748b;
+    font-size: 0.63rem;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.forecastIssueMore {
+    color: #64748b;
+    font-size: 0.64rem;
+    font-weight: 900;
+}
+
 .period_daily {
     border-top: 3px solid #2563eb;
 }
