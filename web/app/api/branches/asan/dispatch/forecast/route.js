@@ -91,6 +91,15 @@ function normalizeRouteText(value) {
     return text || '';
 }
 
+async function withTiming(timings, key, task) {
+    const startedAt = Date.now();
+    try {
+        return await task();
+    } finally {
+        if (timings && key) timings[key] = Date.now() - startedAt;
+    }
+}
+
 async function loadDispatchItems(request, viewType, { mode = 'date', date = '', from = '', to = '' } = {}) {
     const url = new URL(request.url);
     url.pathname = '/api/branches/asan/dispatch';
@@ -190,8 +199,8 @@ function routeUnitCacheRowsToPrice(payload = {}, scope = {}) {
     };
 }
 
-async function loadForecastSourceItems(request, viewType, { selectedDay = '', selectedWeek = '', selectedMonth = '' } = {}) {
-    const metaItems = await loadDispatchItems(request, viewType, { mode: 'meta' });
+async function loadForecastSourceItems(request, viewType, { selectedDay = '', selectedWeek = '', selectedMonth = '', timings = null } = {}) {
+    const metaItems = await withTiming(timings, 'dispatchMetaMs', () => loadDispatchItems(request, viewType, { mode: 'meta' }));
     const options = buildAsanDashboardPeriodOptions(metaItems);
     const latestDate = options.dates[options.dates.length - 1]?.key || selectedDay || '';
     const dayKey = resolveOptionKey(options.dates, selectedDay, latestDate);
@@ -209,11 +218,11 @@ async function loadForecastSourceItems(request, viewType, { selectedDay = '', se
 
     const sortedDateKeys = [...dateKeys].sort();
     const rangeItems = sortedDateKeys.length
-        ? await loadDispatchItems(request, viewType, {
+        ? await withTiming(timings, 'dispatchRangeMs', () => loadDispatchItems(request, viewType, {
             mode: 'range',
             from: sortedDateKeys[0],
             to: sortedDateKeys[sortedDateKeys.length - 1],
-        })
+        }))
         : [];
     return {
         sourceItems: rangeItems.filter((item) => item?.target_date),
@@ -225,10 +234,10 @@ async function loadForecastSourceItems(request, viewType, { selectedDay = '', se
     };
 }
 
-async function loadLatestRouteUnitPrice() {
+async function loadLatestRouteUnitPrice(timings = null) {
     const supabase = getSupabaseAdminClient();
     if (!supabase) return null;
-    const latest = await findLatestRouteUnitMonth(supabase);
+    const latest = await withTiming(timings, 'routeUnitLatestMs', () => findLatestRouteUnitMonth(supabase));
     const scope = latest
         ? { mode: 'month', year: String(latest.year), month: latest.key, label: latest.label }
         : { mode: 'all', year: '', month: '', label: '전체 기간' };
@@ -244,24 +253,30 @@ async function loadLatestRouteUnitPrice() {
     const executable = typeof request.abortSignal === 'function' && typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
         ? request.abortSignal(AbortSignal.timeout(4000))
         : request;
-    const { data, error } = await executable;
-    if (error) return null;
-    return routeUnitCacheRowsToPrice(data, scope);
+    const rows = await withTiming(timings, 'routeUnitRowsMs', async () => {
+        const { data, error } = await executable;
+        if (error) return null;
+        return data || [];
+    });
+    if (!rows) return null;
+    return routeUnitCacheRowsToPrice(rows, scope);
 }
 
 export async function GET(request) {
     try {
+        const startedAt = Date.now();
         const { searchParams } = new URL(request.url);
+        const timings = {};
         const viewType = normalizeViewType(searchParams.get('type'));
         const activePeriod = normalizePeriod(searchParams.get('activePeriod'));
         const selectedDay = String(searchParams.get('activeDate') || '').trim();
         const selectedWeek = String(searchParams.get('selectedWeek') || '').trim();
         const selectedMonth = String(searchParams.get('selectedMonth') || '').trim();
         const [sourceState, routeUnitPrice] = await Promise.all([
-            loadForecastSourceItems(request, viewType, { selectedDay, selectedWeek, selectedMonth }),
-            loadLatestRouteUnitPrice(),
+            loadForecastSourceItems(request, viewType, { selectedDay, selectedWeek, selectedMonth, timings }),
+            loadLatestRouteUnitPrice(timings),
         ]);
-        const forecast = buildAsanDashboardFinancialForecast({
+        const forecast = await withTiming(timings, 'computeMs', async () => buildAsanDashboardFinancialForecast({
             sourceItems: sourceState.sourceItems,
             viewType,
             routeUnitPrice,
@@ -269,13 +284,17 @@ export async function GET(request) {
             selectedWeek: sourceState.selectedWeek,
             selectedMonth: sourceState.selectedMonth,
             activePeriod,
-        });
+        }));
+        timings.totalMs = Date.now() - startedAt;
         return NextResponse.json({
             ok: true,
             viewType,
             forecast,
+            routeUnitEngine: routeUnitPrice?.engine || '',
+            routeUnitGroupCount: routeUnitPrice?.summary?.returnedGroupCount || 0,
             sourceDateCount: sourceState.sourceDateCount,
             metaDateCount: sourceState.metaDateCount,
+            timings,
         });
     } catch (error) {
         return NextResponse.json({

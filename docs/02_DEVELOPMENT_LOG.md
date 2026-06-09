@@ -1,3 +1,23 @@
+## [2026-06-09] 아산 예측 손익 운영 timing 응답 추가 (v5.14.366)
+
+### 원인
+- 운영 API 재측정에서 forecast 응답이 여전히 느리게 보였고, 배포 반영 여부와 실제 병목 구간을 응답만으로 분리하기 어려웠습니다.
+
+### 조치
+- forecast API 응답에 `timings.dispatchMetaMs`, `dispatchRangeMs`, `routeUnitLatestMs`, `routeUnitRowsMs`, `computeMs`, `totalMs`를 추가했습니다.
+- 응답에 `routeUnitEngine`, `routeUnitGroupCount`도 함께 내려 운영에서 direct cache 경로와 단가 그룹 수를 확인할 수 있게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 46개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 예측 손익 단가 캐시 직접 조회 전환 (v5.14.365)
 
 ### 원인
