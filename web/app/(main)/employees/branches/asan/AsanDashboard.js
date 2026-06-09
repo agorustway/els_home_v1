@@ -99,6 +99,8 @@ export default function AsanDashboard({
     selectedMonth = '',
     dashboardCache = null,
     dashboardViewer = null,
+    dashboardForecast = null,
+    dashboardForecastLoading = false,
     dateControlsSlot = null,
     onOpenDailyGrid = null,
     onViewTypeChange = null,
@@ -144,7 +146,12 @@ export default function AsanDashboard({
             selectedWeek: selectedWeekKey,
             selectedMonth: selectedMonthKey,
         });
-        if (viewerData) return viewerData;
+        const mergeForecast = (dashboard) => (
+            dashboard
+                ? { ...dashboard, financialForecast: dashboardForecast || dashboard.financialForecast }
+                : dashboard
+        );
+        if (viewerData) return mergeForecast(viewerData);
 
         const cached = buildAsanDashboardDataFromCache({
             cachePayload: dashboardCache,
@@ -158,7 +165,7 @@ export default function AsanDashboard({
             selectedWeek: selectedWeekKey,
             selectedMonth: selectedMonthKey,
         });
-        if (cached) return cached;
+        if (cached) return mergeForecast(cached);
 
         const fallbackScope = buildAsanDashboardScope({
             rows: data,
@@ -202,8 +209,9 @@ export default function AsanDashboard({
             timeline,
             weekdayComparison,
             basisDiff,
+            financialForecast: dashboardForecast,
         };
-    }, [dashboardCache, dashboardViewer, data, headers, viewType, viewMode, sourceItems, activeDate, activePeriodMode, selectedWeek, selectedMonth, periodSelection]);
+    }, [dashboardCache, dashboardViewer, dashboardForecast, data, headers, viewType, viewMode, sourceItems, activeDate, activePeriodMode, selectedWeek, selectedMonth, periodSelection]);
 
     const displayChartData = useMemo(() => {
         return toSortedChartEntries(dashboardData.activeScope.chartAggs[activeChartMode]);
@@ -262,7 +270,7 @@ export default function AsanDashboard({
                 ))}
             </div>
 
-            <FinancialForecastPanel forecast={dashboardData.financialForecast} />
+            <FinancialForecastPanel forecast={dashboardData.financialForecast} loading={dashboardForecastLoading} />
 
             <div className={styles.analysisRow}>
                 <TrendPanel
@@ -381,7 +389,7 @@ export default function AsanDashboard({
     );
 }
 
-function FinancialForecastPanel({ forecast }) {
+function FinancialForecastPanel({ forecast, loading = false }) {
     const periods = (forecast?.periods || []).filter((period) => ['daily', 'weekly', 'monthly'].includes(period.key));
     const sourcePeriod = forecast?.sourcePeriod || '최신 구간단가';
     if (!forecast || periods.length === 0) {
@@ -392,7 +400,7 @@ function FinancialForecastPanel({ forecast }) {
                         <strong>예측 손익</strong>
                         <span>상세배차와 최신 구간단가 기준</span>
                     </div>
-                    <em>단가 캐시 대기</em>
+                    <em>{loading ? '단가 조회 중' : '단가 캐시 대기'}</em>
                 </div>
             </div>
         );

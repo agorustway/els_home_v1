@@ -1,3 +1,28 @@
+## [2026-06-09] 아산 현황판 캐시 성능 회귀 복구 (v5.14.361)
+
+### 원인
+- 예측 손익 계산을 현황판 full cache 생성 경로에 직접 묶으면서 cache policy가 변경되었고, 운영에서 단가 조회/계산 경로가 지연되거나 실패하면 첫 화면 최적화 cache가 재생성되지 못했습니다.
+- 그 결과 선택일 일별 자료는 보이지만 주별/월별/요일별 자료가 0으로 떨어지는 회귀가 발생했습니다.
+
+### 조치
+- 현황판 메인 cache/viewer policy를 직전 정상값(`holiday-policy-20260608`, `viewer-snapshot-20260609`)으로 되돌려 기존 최적화 cache를 즉시 재사용하게 했습니다.
+- 예측 손익은 `/api/branches/asan/dispatch/forecast` 별도 API로 분리해 화면 뒤에서 비동기로 붙입니다.
+- 예측 손익 API가 늦거나 실패해도 일별/주별/월별/요일별 현황판 데이터는 기존 viewer/cache 경로로 정상 노출되도록 합성 로직을 분리했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 45개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/api/branches/asan/dispatch/dashboard/route.js`
+- `web/app/api/branches/asan/dispatch/forecast/route.js`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanDashboard.js`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 현황판 예측 손익 카드 추가 (v5.14.360)
 
 ### 원인

@@ -1483,6 +1483,10 @@ function consumeAsanDispatchReloadState() {
     }
 }
 
+function makeDashboardForecastKey({ viewType, activePeriod, activeDate, selectedWeek, selectedMonth }) {
+    return [viewType || 'integrated', activePeriod || 'daily', activeDate || '', selectedWeek || '', selectedMonth || ''].join('|');
+}
+
 function AsanDispatchContent() {
     const supabase = useMemo(() => createBrowserSupabaseClient(), []);
     const reloadRestoreRef = useRef(undefined);
@@ -1499,6 +1503,12 @@ function AsanDispatchContent() {
         viewType: '',
         payload: null,
         viewer: null,
+        checked: false,
+        loading: false,
+    });
+    const [dashboardForecastState, setDashboardForecastState] = useState({
+        key: '',
+        payload: null,
         checked: false,
         loading: false,
     });
@@ -1572,6 +1582,7 @@ function AsanDispatchContent() {
     const dispatchFullLoadingRef = useRef(false);
     const settingsLoadedRef = useRef(false);
     const dashboardCacheLoadSeqRef = useRef(0);
+    const dashboardForecastLoadSeqRef = useRef(0);
     const todayKey = useMemo(() => getTodayKey(), []);
     const syncCooldownUntilMs = syncGate.cooldownUntil ? new Date(syncGate.cooldownUntil).getTime() : 0;
     const syncCooldownActive = Boolean(syncCooldownUntilMs && syncCooldownUntilMs > syncGateNowMs);
@@ -1695,6 +1706,53 @@ function AsanDispatchContent() {
         } catch {
             if (dashboardCacheLoadSeqRef.current === loadSeq) {
                 setDashboardCacheState({ viewType: type, payload: null, viewer: null, checked: true, loading: false, scope });
+            }
+            return false;
+        }
+    }, []);
+    const fetchDashboardForecast = useCallback(async (type, options = {}) => {
+        const {
+            activeDate = '',
+            selectedWeek = '',
+            selectedMonth = '',
+            activePeriod = 'daily',
+        } = options;
+        const key = options.key || makeDashboardForecastKey({
+            viewType: type,
+            activePeriod,
+            activeDate,
+            selectedWeek,
+            selectedMonth,
+        });
+        const loadSeq = dashboardForecastLoadSeqRef.current + 1;
+        dashboardForecastLoadSeqRef.current = loadSeq;
+        setDashboardForecastState(prev => (
+            prev.key === key
+                ? { ...prev, loading: true }
+                : { key, payload: null, checked: false, loading: true }
+        ));
+        try {
+            const params = new URLSearchParams({
+                type,
+                activePeriod,
+                t: String(Date.now()),
+            });
+            if (activeDate) params.set('activeDate', activeDate);
+            if (selectedWeek) params.set('selectedWeek', selectedWeek);
+            if (selectedMonth) params.set('selectedMonth', selectedMonth);
+            const r = await fetch(`/api/branches/asan/dispatch/forecast?${params.toString()}`, { cache: 'no-store' });
+            const j = await r.json().catch(() => ({}));
+            if (dashboardForecastLoadSeqRef.current !== loadSeq) return false;
+            setDashboardForecastState({
+                key,
+                payload: r.ok && j.ok ? j.forecast || null : null,
+                checked: true,
+                loading: false,
+            });
+            return Boolean(r.ok && j.ok && j.forecast);
+        } catch {
+            if (dashboardForecastLoadSeqRef.current === loadSeq) {
+                setDashboardForecastState({ key, payload: null, checked: true, loading: false });
             }
             return false;
         }
@@ -2081,6 +2139,31 @@ function AsanDispatchContent() {
     const periodMode = !isAllTab ? 'daily' : (allTabWeek ? 'weekly' : (allTabMonth ? 'monthly' : 'total'));
 
     useEffect(() => {
+        if (mainView !== 'dashboard' || data.length === 0) return undefined;
+        const activeDate = isAllTab ? '' : (data[activeTab]?.target_date || getTodayKey());
+        const selectedWeek = isAllTab ? allTabWeek?.key || '' : '';
+        const selectedMonth = isAllTab ? allTabMonth || '' : '';
+        const key = makeDashboardForecastKey({
+            viewType,
+            activePeriod: periodMode,
+            activeDate,
+            selectedWeek,
+            selectedMonth,
+        });
+        return scheduleIdlePrefetch(
+            () => fetchDashboardForecast(viewType, {
+                key,
+                activeDate,
+                selectedWeek,
+                selectedMonth,
+                activePeriod: periodMode,
+            }),
+            900,
+            { force: true },
+        );
+    }, [activeTab, allTabMonth, allTabWeek?.key, data, fetchDashboardForecast, isAllTab, mainView, periodMode, viewType]);
+
+    useEffect(() => {
         if (!tabsRef.current) return;
         const selector = activeTab >= 0 && activeTab < data.length
             ? `[data-tab-index="${activeTab}"]`
@@ -2142,8 +2225,20 @@ function AsanDispatchContent() {
         if (isAllTab) return mergedView;
         return activeItem ? { headers: activeItem.headers, data: activeItem.data, comments: activeItem.comments || {}, webCellRows: activeItem.webCellRows || [] } : null;
     }, [activeItem, isAllTab, mergedView]);
+    const dashboardActiveDate = isAllTab ? '' : activeItem?.target_date || '';
+    const dashboardSelectedWeek = isAllTab ? allTabWeek?.key || '' : '';
+    const dashboardSelectedMonth = isAllTab ? allTabMonth || '' : '';
+    const dashboardForecastKey = makeDashboardForecastKey({
+        viewType,
+        activePeriod: periodMode,
+        activeDate: dashboardActiveDate,
+        selectedWeek: dashboardSelectedWeek,
+        selectedMonth: dashboardSelectedMonth,
+    });
     const dashboardCachePayload = dashboardCacheState.viewType === viewType ? dashboardCacheState.payload : null;
     const dashboardViewerPayload = dashboardCacheState.viewType === viewType ? dashboardCacheState.viewer : null;
+    const dashboardForecastPayload = dashboardForecastState.key === dashboardForecastKey ? dashboardForecastState.payload : null;
+    const dashboardForecastLoading = dashboardForecastState.key === dashboardForecastKey && dashboardForecastState.loading;
     const dashboardCacheChecked = dashboardCacheState.viewType === viewType && dashboardCacheState.checked;
     const dashboardNeedsFullData = useMemo(() => (
         mainView === 'dashboard'
@@ -4127,12 +4222,14 @@ function AsanDispatchContent() {
                     headers={headers}
                     viewType={viewType}
                     sourceItems={data}
-                    activeDate={isAllTab ? '' : activeItem?.target_date || ''}
+                    activeDate={dashboardActiveDate}
                     activePeriodMode={periodMode}
-                    selectedWeek={isAllTab ? allTabWeek?.key || '' : ''}
-                    selectedMonth={isAllTab ? allTabMonth || '' : ''}
+                    selectedWeek={dashboardSelectedWeek}
+                    selectedMonth={dashboardSelectedMonth}
                     dashboardCache={dashboardCachePayload}
                     dashboardViewer={dashboardViewerPayload}
+                    dashboardForecast={dashboardForecastPayload}
+                    dashboardForecastLoading={dashboardForecastLoading}
                     dateControlsSlot={dateControls}
                     onOpenDailyGrid={handleOpenDailyGrid}
                     onViewTypeChange={setViewType}
