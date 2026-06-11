@@ -1,3 +1,102 @@
+## [2026-06-11] 구간단가 검색 입력 지연과 화면 스냅샷 캐시 보강 (v5.14.378)
+
+### 원인
+- 구간단가 화면 검색은 서버 조회보다 화면 내부의 `groups -> 필터 -> 압축 -> 정렬 -> 렌더링` 계산이 입력마다 즉시 반복되어, 글자를 치는 동안 화면이 오래 멈추는 체감이 있었습니다.
+- 구간단가 화면은 배차판 예측 손익과 같은 월간 단가 원천을 참조하지만, 화면 스냅샷 캐시를 붙일 때 예측 손익 파이프라인과 경계를 분리해 두지 않으면 운영자가 화면 캐시와 예측 손익 원천을 혼동할 수 있었습니다.
+
+### 조치
+- 구간단가 검색 입력값(`unitFilterInput`)과 실제 적용 필터(`unitFilter`)를 분리하고, 입력 후 650ms가 지나야 무거운 필터 계산이 실행되도록 했습니다.
+- 같은 데이터/검색어/컬럼필터/묶음항목/정렬 조건에서는 필터·압축·정렬 결과를 `routeUnitFilterSnapshotRef`로 재사용해 반복 계산을 줄였습니다.
+- `annual-route-unit-price` 조회는 기존 dashboard snapshot 테이블을 사용하게 바꾸고, `갱신` 버튼의 `refresh_snapshot=1`은 강제 재계산을 유지했습니다.
+- 화면 스냅샷 signature에 `branch_performance_monthly_route_unit_amount_cache`의 대표 scope별 `refreshed_at`, 총 그룹수, 총 행수, 총 금액을 포함해 월간 단가 캐시 재생성 시 화면 캐시도 자동 무효화되도록 했습니다.
+- 배차판 예측 손익은 기존대로 `dispatch/forecast`에서 `branch_performance_monthly_route_unit_amount_cache`를 직접 조회하며, annual route-unit 화면 캐시를 참조하지 않는 경계를 테스트로 확인했습니다.
+
+### 검증
+- `node --test web/tests/asanAnnualPerformance.test.mjs`: 12개 통과
+- `node --test --test-name-pattern "예측 손익|routeUnit|구간단가|monthly route" web/tests/asanDashboardView.test.mjs`: 6개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanAnnualPerformance.js" "lib/asan-branch-db.js" "tests/asanAnnualPerformance.test.mjs" "tests/asanDashboardView.test.mjs"`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanAnnualPerformance.js`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanAnnualPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-11] 아산 배차 RAG 작업지 축약명 매칭 보강 (v5.14.377)
+
+### 원인
+- 실제 `branch_dispatch`에는 2026-06-12 글로비스 원장과 `글로비스KD센터1/2/3포장장` 행이 존재했지만, 질문의 `글로비스포장장`은 exact keyword로 처리되어 변형 작업지명과 매칭되지 않았습니다.
+- `몇개야`도 필터 키워드로 남아 모든 행이 탈락하면서 “오더 0개” 답변으로 이어졌습니다.
+
+### 조치
+- 배차 rowText에 작업지 검색별칭을 추가해 `글로비스KD센터2포장장 -> 글로비스포장장` 형태로도 검색되게 했습니다.
+- `몇개/몇개야/몇개냐/몇개지`는 집계 의도 표현으로 보고 specific keyword에서 제외했습니다.
+- `글로비스포장장 오더 몇개야` 회귀 테스트를 추가하고 AI 메타 버전을 `v5.14.377`로 갱신했습니다.
+
+### 검증
+- `node --test web/tests/asanDispatchRag.test.mjs`: 18개 통과
+- 실제 DB 재현: `내일 글로비스포장장 오더 몇개야?` → 매칭 21행 / 오더 46대 / 실제 배차 46대
+- 아산 RAG 연결 묶음 `node --test ...`: 74개 통과
+- 라이브 테이블 점검: branch_dispatch, 운송내역, 선적관리, 변동내역, GLAPS, 실적관리 스냅샷/단가 캐시 조회 가능 확인
+
+### 변경 파일
+- `web/utils/asanDispatchRag.mjs`
+- `web/tests/asanDispatchRag.test.mjs`
+- `web/utils/aiAssistantMeta.mjs`, `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-11] AI 채팅 Gemini 429 배차 RAG fallback (v5.14.376)
+
+### 원인
+- 아산 배차판 RAG가 사내 통합 데이터베이스에서 오더/실제 배차 집계까지 계산해도 마지막 Gemini 스트리밍 호출이 429를 반환하면 `/api/chat`가 오류 JSON을 그대로 내려보냈습니다.
+- 프론트는 429가 포함된 오류를 "AI가 잠깐 쉬는 중"으로 치환해, 실제로는 배차 데이터가 준비되어 있어도 사용자는 한도 초과 메시지만 보게 되었습니다.
+
+### 조치
+- `web/utils/chatFallbacks.mjs`를 추가해 배차 RAG 컨텍스트의 전체/매칭 집계로 사용자 응답과 SSE payload를 만들도록 분리했습니다.
+- `/api/chat`는 아산 배차 RAG 컨텍스트를 보존하고, Gemini 429 시 `X-ELS-AI-Fallback: asan-dispatch-rag-429` 헤더와 함께 서버 계산 결과를 200 SSE로 반환합니다.
+- AI 어시스턴트 메타 버전을 `v5.14.376`으로 갱신했습니다.
+
+### 검증
+- `node --test web/tests/chatFallbacks.test.mjs web/tests/aiAssistantMeta.test.mjs`: 7개 통과
+- `node --test web/tests/asanDispatchRag.test.mjs web/tests/asanOpsRag.test.mjs web/tests/chatFallbacks.test.mjs`: 23개 통과
+- `cd web; npm run lint`: 통과
+
+### 변경 파일
+- `web/app/api/chat/route.js`
+- `web/utils/chatFallbacks.mjs`
+- `web/utils/aiAssistantMeta.mjs`
+- `web/tests/chatFallbacks.test.mjs`, `web/tests/aiAssistantMeta.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-11] 아산 예측 손익 작업지 핵심어 매칭과 카드 압축 (v5.14.374)
+
+### 원인
+- 배차판 작업지는 `모원리공장`처럼 짧게 들어오고, 구간단가/정산 기준 작업지는 `서영모원리(기아자동차)`처럼 회사명과 설명이 붙어 있어 기존 단순 포함 매칭으로는 같은 작업지를 놓칠 수 있었습니다.
+- 예측 손익 점검 리스트가 열리면 카드 높이가 커져 하단 현황 자료를 밀어내는 느낌이 있었습니다.
+
+### 조치
+- 예측 손익 매칭에 `공장`, `센터`, `포장장`, `물류센터`, `자동차`, 법인 접미어를 제외한 핵심어 비교를 추가했습니다.
+- `모원리공장`과 `서영모원리(기아자동차)`처럼 핵심어가 같은 작업지는 평균단가 fallback 전에 실제 단가 후보로 평가되도록 테스트를 추가했습니다.
+- 예측 손익 카드 padding/gap, 금액 폰트, 점검 리스트 최대 높이와 행 여백을 줄여 전체 카드 높이를 압축했습니다.
+
+### 검증
+- `node --test --test-name-pattern "예측 손익|상차지별|모바일 날짜" web/tests/asanDashboardView.test.mjs`: 8개 통과
+- `cd web; npm.cmd run lint`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/dashboard.module.css`
+- `web/utils/asanDashboardView.mjs`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-11] 아산 운송내역 전체 탭 깜빡임 루프 차단 (v5.14.375)
 
 ### 원인
@@ -19,6 +118,31 @@
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
 
 ---
+
+## [2026-06-11] 안전운임 추가지침 폴더명 및 로컬 산출물 정리 (v5.14.373)
+
+### 원인
+- 2026년 안전운임 1차 추가 운영지침 폴더명이 `잔전운임_2026_01차-1추가지침`으로 잘못 남아 있었고, 사용자가 `안전운임_2026_01차-1추가지침`으로 정정했습니다.
+- `work-docs/localworks` 및 임시 산출물이 향후 web 중심 커밋/푸시에 섞일 수 있어 Git 상태 정리가 필요했습니다.
+
+### 조치
+- `web/public/data/safe-freight-docs.json`의 `versionDir`를 `안전운임_2026_01차-1추가지침`으로 정정했습니다.
+- `.gitignore`에서 `work-docs/localworks/` 적용을 확인하고, `tmp_vba/`, `80` 임시 산출물을 추가로 제외했습니다.
+- 기존에 추적되던 `work-docs/glaps` 파일 12건은 로컬 작업 폴더 이동 영향으로 삭제 상태가 web 커밋에 섞이지 않도록 `skip-worktree` 처리했습니다.
+
+### 검증
+- `rg -n "잔전운임_2026_01차-1추가지침|잔전운임" web work-docs scripts`: 활성 적용 경로 0건
+- `rg -n "안전운임_2026_01차-1추가지침" web work-docs scripts`: `web/public/data/safe-freight-docs.json` 1건
+- `git status --ignored --short work-docs/localworks tmp_vba 80`: 3개 경로 모두 ignore 확인
+- `git ls-files -v "work-docs/glaps"`: 12개 경로 `S` skip-worktree 확인
+
+### 변경 파일
+- `.gitignore`
+- `web/public/data/safe-freight-docs.json`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-11] 아산 현황판 예측 손익 위치와 상차지 유사명 정리 (v5.14.372)
 
 ### 원인

@@ -1623,10 +1623,12 @@ async function routeUnitPriceSourceState() {
             || String(a.sheet_name).localeCompare(String(b.sheet_name), 'ko-KR')
         ));
     const periods = Array.from(new Set(metas.flatMap(routeUnitMetaPeriods).filter(Boolean))).sort();
+    const routeUnitAmountCacheState = await routeUnitAmountCacheSignatureState(supabase);
     const signature = hashSnapshotSource({
         version: DASHBOARD_SNAPSHOT_VERSION,
         dataset: 'route-unit-price',
         basis: 'monthly-current-amount-table',
+        routeUnitAmountCacheState,
         metas: metas.map(meta => {
             const summary = summaryOf(meta);
             return {
@@ -1647,6 +1649,32 @@ async function routeUnitPriceSourceState() {
         signature,
         sourceSyncedAt: maxTimestamp(metas.map(meta => meta.synced_at || meta.file_modified_at)),
     };
+}
+
+async function routeUnitAmountCacheSignatureState(supabase) {
+    const { data, error } = await supabase
+        .from('branch_performance_monthly_route_unit_amount_cache')
+        .select('scope_mode,filter_year,filter_month,total_group_count,total_row_count,total_revenue,total_purchase,total_profit,refreshed_at')
+        .eq('branch_id', 'asan')
+        .eq('rank_order', 1)
+        .order('scope_mode', { ascending: true })
+        .order('filter_year', { ascending: true })
+        .order('filter_month', { ascending: true });
+    if (error) {
+        if (isDashboardSnapshotUnavailable(error) || isStatementTimeoutError(error)) return { unavailable: true };
+        throw new Error(error.message);
+    }
+    return (data || []).map(row => ({
+        scope_mode: row.scope_mode || '',
+        filter_year: numberValue(row.filter_year),
+        filter_month: numberValue(row.filter_month),
+        total_group_count: numberValue(row.total_group_count),
+        total_row_count: numberValue(row.total_row_count),
+        total_revenue: numberValue(row.total_revenue),
+        total_purchase: numberValue(row.total_purchase),
+        total_profit: numberValue(row.total_profit),
+        refreshed_at: row.refreshed_at || '',
+    }));
 }
 
 async function buildAnnualRouteUnitPricePayload({ metas = [], scope, sourceSignature }) {
@@ -2184,23 +2212,18 @@ export async function queryAsanAnnualRouteUnitPriceFromSupabase(searchParams) {
     const periods = state.periods;
     const scope = normalizeRouteUnitScope(searchParams, periods);
     const scopeKey = `route-unit-price:v4-monthly-amount:${scope.mode}:${scope.year || ''}:${scope.month || ''}`;
-    const built = await buildAnnualRouteUnitPricePayload({
-        metas: state.metas,
-        scope,
+    return withDashboardSnapshot({
+        dashboardType: 'annual-route-unit-price',
+        scopeKey,
         sourceSignature: state.signature,
+        sourceSyncedAt: state.sourceSyncedAt,
+        refresh: dashboardRefreshRequested(searchParams),
+        buildPayload: () => buildAnnualRouteUnitPricePayload({
+            metas: state.metas,
+            scope,
+            sourceSignature: state.signature,
+        }),
     });
-    return {
-        ...normalizeSnapshotPayload(built, 'supabase-live-route-unit-price'),
-        dashboard_snapshot: {
-            hit: false,
-            skipped: true,
-            reason: 'monthly-live-amount-table',
-            dashboard_type: 'annual-route-unit-price',
-            scope_key: scopeKey,
-            computed_at: new Date().toISOString(),
-            source_synced_at: state.sourceSyncedAt || '',
-        },
-    };
 }
 
 async function queryAsanAnnualPerformanceAggregateFromSupabase(searchParams) {

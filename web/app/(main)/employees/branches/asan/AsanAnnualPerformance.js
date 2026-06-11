@@ -17,6 +17,7 @@ import styles from './annualPerformance.module.css';
 const PREFS_KEY = 'asan_annual_performance_prefs';
 const PAGE_SIZE = 300;
 const SEARCH_DEBOUNCE_MS = 700;
+const ROUTE_UNIT_FILTER_DEBOUNCE_MS = 650;
 const DIMENSION_PRIORITY = ['청구처', '작업지', '운송사', '노선', '구분', '지급처', '포트', '하차', '계약', '픽업', '지역'];
 const EMPTY_LIST = Object.freeze([]);
 const ANALYSIS_VIEWS = [
@@ -309,6 +310,16 @@ function routeUnitMatchesFilter(item = {}, filter = '', columnFilters = {}, matc
         if (!values.length) return true;
         return values.some(value => routeUnitTermMatches([item[column.key]], value));
     });
+}
+
+function routeUnitColumnFiltersKey(columnFilters = {}) {
+    return ROUTE_UNIT_COLUMN_KEYS
+        .map((key) => {
+            const values = normalizeRouteUnitColumnFilterValues(columnFilters[key]).sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true }));
+            return values.length ? `${key}:${values.join('|')}` : '';
+        })
+        .filter(Boolean)
+        .join('::');
 }
 
 function routeUnitAggregationKey(item = {}, groupKeys = []) {
@@ -1151,6 +1162,7 @@ function RouteUnitPricePanel({
     setMonth,
     onRefresh,
 }) {
+    const [unitFilterInput, setUnitFilterInput] = useState('');
     const [unitFilter, setUnitFilter] = useState('');
     const [unitFilterMode, setUnitFilterMode] = useState('any');
     const [columnFilters, setColumnFilters] = useState({});
@@ -1162,6 +1174,12 @@ function RouteUnitPricePanel({
     const [dragRouteUnitColumn, setDragRouteUnitColumn] = useState('');
     const [hiddenDropActive, setHiddenDropActive] = useState(false);
     const [routeUnitPresetMessage, setRouteUnitPresetMessage] = useState('');
+    const routeUnitFilterSnapshotRef = useRef({
+        key: '',
+        filteredGroups: EMPTY_LIST,
+        compressedGroups: EMPTY_LIST,
+        visibleGroups: EMPTY_LIST,
+    });
     const groups = useMemo(() => (
         Array.isArray(data?.groups)
             ? data.groups.map((item) => {
@@ -1207,14 +1225,42 @@ function RouteUnitPricePanel({
         });
         return result;
     }, [activeRouteUnitFilterColumns, groups]);
-    const filteredGroups = useMemo(() => groups
-        .filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters, unitFilterMode)),
-    [columnFilters, groups, unitFilter, unitFilterMode]);
-    const compressedGroups = useMemo(() => aggregateRouteUnitGroups(filteredGroups, includedGroupFields), [filteredGroups, includedGroupFields]);
-    const visibleGroups = useMemo(() => compressedGroups
-        .slice()
-        .sort((a, b) => compareRouteUnitItems(a, b, unitSort) || String(a.routeLabel || '').localeCompare(String(b.routeLabel || ''), 'ko-KR')),
-    [compressedGroups, unitSort]);
+    const routeUnitDataSnapshotKey = useMemo(() => [
+        data?.sourceSignature || '',
+        data?.scope?.mode || '',
+        data?.scope?.label || '',
+        data?.scope?.year || '',
+        data?.scope?.month || '',
+        safeNumber(data?.rowCount),
+        safeNumber(data?.summary?.returnedGroupCount),
+        groups.length,
+    ].join('|'), [data?.rowCount, data?.scope?.label, data?.scope?.mode, data?.scope?.month, data?.scope?.year, data?.sourceSignature, data?.summary?.returnedGroupCount, groups.length]);
+    const routeUnitFilterSnapshot = useMemo(() => {
+        const key = JSON.stringify({
+            data: routeUnitDataSnapshotKey,
+            filter: unitFilter,
+            mode: unitFilterMode,
+            columns: routeUnitColumnFiltersKey(columnFilters),
+            groupFields: includedGroupFields.join('|'),
+            sort: unitSort,
+        });
+        if (routeUnitFilterSnapshotRef.current.key === key) return routeUnitFilterSnapshotRef.current;
+        const nextFilteredGroups = groups.filter(item => routeUnitMatchesFilter(item, unitFilter, columnFilters, unitFilterMode));
+        const nextCompressedGroups = aggregateRouteUnitGroups(nextFilteredGroups, includedGroupFields);
+        const nextVisibleGroups = nextCompressedGroups
+            .slice()
+            .sort((a, b) => compareRouteUnitItems(a, b, unitSort) || String(a.routeLabel || '').localeCompare(String(b.routeLabel || ''), 'ko-KR'));
+        routeUnitFilterSnapshotRef.current = {
+            key,
+            filteredGroups: nextFilteredGroups,
+            compressedGroups: nextCompressedGroups,
+            visibleGroups: nextVisibleGroups,
+        };
+        return routeUnitFilterSnapshotRef.current;
+    }, [columnFilters, groups, includedGroupFields, routeUnitDataSnapshotKey, unitFilter, unitFilterMode, unitSort]);
+    const filteredGroups = routeUnitFilterSnapshot.filteredGroups;
+    const compressedGroups = routeUnitFilterSnapshot.compressedGroups;
+    const visibleGroups = routeUnitFilterSnapshot.visibleGroups;
     const revenueAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.revenueAmount))).size, [groups]);
     const purchaseAmountTypes = useMemo(() => new Set(groups.map(item => safeNumber(item.purchaseAmount))).size, [groups]);
     const scopeButtons = [
@@ -1231,6 +1277,16 @@ function RouteUnitPricePanel({
     const unitFilterModeHelp = unitFilterMode === 'all'
         ? '쉼표로 나눈 조건을 모두 만족하는 금액표만 표시합니다.'
         : '쉼표로 나눈 조건 중 하나라도 맞으면 표시합니다.';
+    const routeUnitFilterPending = unitFilterInput.trim() !== unitFilter;
+    const routeUnitSearchHelp = routeUnitFilterPending
+        ? `${ROUTE_UNIT_FILTER_DEBOUNCE_MS / 1000}초 후 필터 적용`
+        : unitFilterModeHelp;
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setUnitFilter(unitFilterInput.trim());
+        }, ROUTE_UNIT_FILTER_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [unitFilterInput]);
     useEffect(() => {
         if (!openFilterColumn || typeof document === 'undefined') return undefined;
         const closeOpenFilter = (event) => {
@@ -1393,6 +1449,7 @@ function RouteUnitPricePanel({
         setRouteUnitPresetMessage('정렬 초기화');
     };
     const resetFilters = () => {
+        setUnitFilterInput('');
         setUnitFilter('');
         setUnitFilterMode('any');
         setColumnFilters({});
@@ -1510,8 +1567,8 @@ function RouteUnitPricePanel({
                         <input
                             id="route-unit-filter-input"
                             type="search"
-                            value={unitFilter}
-                            onChange={event => setUnitFilter(event.target.value)}
+                            value={unitFilterInput}
+                            onChange={event => setUnitFilterInput(event.target.value)}
                             placeholder="금액, TYPE, 작업지, 운송사, 청구처 (, ; 조건)"
                         />
                         <div className={styles.routeUnitSearchMode} role="group" aria-label="필터 조건 방식">
@@ -1532,7 +1589,7 @@ function RouteUnitPricePanel({
                                 모두 포함
                             </button>
                         </div>
-                        <em className={styles.routeUnitSearchHelp}>{unitFilterModeHelp}</em>
+                        <em className={styles.routeUnitSearchHelp}>{routeUnitSearchHelp}</em>
                     </div>
                     <div className={styles.routeUnitToolButtons}>
                         <button type="button" onClick={() => saveRouteUnitPreset('p1')}>P1 저장</button>
@@ -1541,7 +1598,7 @@ function RouteUnitPricePanel({
                         <button type="button" onClick={() => loadRouteUnitPreset('p2')}>P2 로드</button>
                         <button type="button" onClick={exportVisibleRouteUnitRows} disabled={!visibleGroups.length}>엑셀</button>
                         <button type="button" onClick={resetRouteUnitLayout}>정렬초기화</button>
-                        <button type="button" onClick={resetFilters} disabled={!unitFilter && !hasColumnFilters}>
+                        <button type="button" onClick={resetFilters} disabled={!unitFilterInput && !unitFilter && !hasColumnFilters}>
                             필터초기화
                         </button>
                         <button type="button" onClick={() => onRefresh({ refresh: true })} disabled={loading}>
@@ -1549,7 +1606,10 @@ function RouteUnitPricePanel({
                         </button>
                         {routeUnitPresetMessage && <span className={styles.routeUnitPresetMessage}>{routeUnitPresetMessage}</span>}
                     </div>
-                    <em className={styles.routeUnitCount}>{visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개</em>
+                    <em className={styles.routeUnitCount}>
+                        {routeUnitFilterPending ? '필터 적용 대기 · ' : ''}
+                        {visibleGroups.length.toLocaleString('ko-KR')} / {compressedGroups.length.toLocaleString('ko-KR')}개
+                    </em>
                 </div>
                 {loading && !groups.length ? (
                     <div className={styles.emptyPanel}>월간 금액표를 집계하는 중입니다...</div>
