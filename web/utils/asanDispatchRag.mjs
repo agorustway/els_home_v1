@@ -69,7 +69,7 @@ const NON_CARRIER_WORDS = [
 const IGNORE_TERMS = new Set([
   '아산지점', '아산배차', '배차', '배차판', '매차', '도착', '도착시간',
   '시간', '몇시', '몇대', '대수', '총대수', '주차별', '오더', '개수',
-  '건수', '알려줘', '알려줘요', '어디야', '어디지', '어디냐', '정보',
+  '몇개', '몇개야', '몇개냐', '몇개지', '건수', '알려줘', '알려줘요', '어디야', '어디지', '어디냐', '정보',
   '어디', '어느', '좀', '부탁', '부탁해', '확인해줘', '확인해',
   '총', '합계', '전체', '수량', '현황', '몇', '내역', '확인', '조회',
   '오늘', '내일', '모레', '내일모레', '글피', '그글피', '어제', '그제', '이번주', '다음주', '지난주', '금주',
@@ -114,6 +114,30 @@ function normalizeCompact(value) {
 
 function normalizeHeader(value) {
   return normalizeCompact(value).replace(/[()]/g, '');
+}
+
+function buildWorksiteSearchAliases(value) {
+  const compact = normalizeCompact(value);
+  if (!compact || compact.length < 4) return [];
+
+  const aliases = new Set();
+  const withoutCenterNo = compact.replace(/센터\d+/g, '');
+  const withoutKd = compact.replace(/kd/g, '');
+  const withoutKdCenterNo = withoutKd.replace(/센터\d+/g, '');
+
+  [withoutCenterNo, withoutKd, withoutKdCenterNo]
+    .filter((alias) => alias && alias !== compact && alias.length >= 3)
+    .forEach((alias) => aliases.add(alias));
+
+  return [...aliases];
+}
+
+function buildRowSearchAliases(meta = {}) {
+  const aliases = new Set();
+  for (const value of [meta.worksite, meta.customer, meta.port]) {
+    buildWorksiteSearchAliases(value).forEach((alias) => aliases.add(alias));
+  }
+  return [...aliases];
 }
 
 function toKstDate(now = new Date()) {
@@ -714,6 +738,7 @@ function buildRowInfo(record, row, rowIndex, schema) {
     ...schema.memoIdxs.map((idx) => rowCell(row, idx)).filter(Boolean),
     ...comments,
   ];
+  const searchAliases = buildRowSearchAliases(meta);
 
   return {
     targetDate: record.target_date,
@@ -728,6 +753,7 @@ function buildRowInfo(record, row, rowIndex, schema) {
       record.target_date,
       record.type,
       ...nonEmptyCells,
+      ...searchAliases.map((alias) => `[검색별칭] ${alias}`),
       ...carrierItems.map((item) => `${item.region} ${item.carrier} ${formatCount(item.count)}대`),
       ...comments.map((comment) => `메모 ${comment}`),
     ].join(' | '),

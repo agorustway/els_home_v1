@@ -1,4 +1,4 @@
-export const AI_ASSISTANT_VERSION = 'v5.14.376';
+export const AI_ASSISTANT_VERSION = 'v5.14.377';
 export const AI_ASSISTANT_NAME = 'ELS AI 엘스';
 
 export function getAiAssistantVersion() {

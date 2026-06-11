@@ -244,6 +244,45 @@ test('운송사와 상차지 동시 질문은 해당 지역 셀의 해당 업체
   assert.doesNotMatch(result.text, /부산 이지 1대/);
 });
 
+test('글로비스포장장 오더 질문은 KD센터 포장장 변형 작업지를 합산한다', () => {
+  const intent = parseAsanDispatchIntent('내일 글로비스포장장 오더 몇개야?', {
+    now,
+    searchTerms: ['내일', '글로비스포장장', '오더', '몇개야'],
+  });
+  const result = buildAsanDispatchRagText([
+    {
+      target_date: '2026-05-20',
+      type: 'glovis',
+      headers: ['구분', '화주', '작업지', '오더', '배차정보', '부산', '부곡'],
+      data: [
+        ['수출', '글로비스', '글로비스KD센터2포장장', '4', '08 09 15 18', '대신4', ''],
+        ['수출', '글로비스', '글로비스KD센터1포장장', '3', '10 11 12', '', 'CSS3'],
+        ['수출', '글로비스', 'KCC글라스', '2', '13 14', '칸2', ''],
+      ],
+      comments: {},
+    },
+    {
+      target_date: '2026-05-20',
+      type: 'mobis',
+      headers: ['구분', '화주', '작업지', '오더', '배차정보', '부산'],
+      data: [
+        ['수출', '모비스AS', '모비스아산수출물류센터', '5', '08', '이지5'],
+      ],
+      comments: {},
+    },
+  ], intent);
+
+  assert.equal(intent.quantityMetric, 'order');
+  assert.deepEqual(intent.typeFilters, ['glovis']);
+  assert.deepEqual(intent.specificKeywords, ['글로비스포장장']);
+  assert.match(result.text, /정답 후보: 오더 7대 \(실제 배차 7대\)/);
+  assert.match(result.text, /매칭 행: 2건 \/ 오더 7대 \/ 실제 배차 7대/);
+  assert.match(result.text, /글로비스KD센터2포장장/);
+  assert.match(result.text, /글로비스KD센터1포장장/);
+  assert.doesNotMatch(result.text, /KCC글라스: 부산 칸 2대/);
+  assert.doesNotMatch(result.text, /모비스아산수출물류센터/);
+});
+
 test('총 배차 질문의 즉답 기준은 오더가 아니라 실제 배차 수량이다', () => {
   const intent = parseAsanDispatchIntent('내일 총 몇대 배차야?', { now });
   const result = buildAsanDispatchRagText([
