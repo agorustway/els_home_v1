@@ -514,6 +514,18 @@ export function buildAsanDashboardPeriods({
 }
 
 const FORECAST_FALLBACK_PICKUPS = ['부곡', '부곡(의왕)', '의왕', '의왕ICD', '의왕아이씨디'];
+const FORECAST_CORE_DROP_TERMS = [
+  '수출입물류센터',
+  '수출물류센터',
+  '물류센터',
+  '포장장',
+  '공장',
+  '센터',
+  '자동차',
+  '주식회사',
+  '유한회사',
+  '㈜',
+];
 
 function normalizeForecastText(value = '') {
   let text = String(value ?? '')
@@ -568,7 +580,20 @@ function forecastFieldMatches(left = '', right = '') {
 function forecastFieldMatchesNormalized(a = '', b = '') {
   if (!a || !b || a === '-' || b === '-') return false;
   if (a === b) return true;
-  return (a.length >= 2 && b.includes(a)) || (b.length >= 2 && a.includes(b));
+  if ((a.length >= 2 && b.includes(a)) || (b.length >= 2 && a.includes(b))) return true;
+  const coreA = forecastMatchCoreText(a);
+  const coreB = forecastMatchCoreText(b);
+  if (!coreA || !coreB) return false;
+  if (coreA === coreB) return true;
+  return (coreA.length >= 2 && coreB.includes(coreA)) || (coreB.length >= 2 && coreA.includes(coreB));
+}
+
+function forecastMatchCoreText(value = '') {
+  let text = String(value || '');
+  FORECAST_CORE_DROP_TERMS.forEach((term) => {
+    text = text.replaceAll(term, '');
+  });
+  return text;
 }
 
 function forecastAnyMatch(leftValues = [], rightValues = []) {
