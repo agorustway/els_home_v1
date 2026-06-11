@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.371 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.372 / APK v5.11.29)
 
-> 최신 업데이트: 아산 월간실적 일간 선택지는 실제 작업일 월/일로 표시하고, 테이블 검색/정렬/엑셀 조회는 선택 단위(전체/월/주차/일) 범위 안에서만 수행하도록 조정함.
+> 최신 업데이트: 아산 배차 현황판 예측 손익 위치를 하단 날짜 선택 흐름 뒤로 옮기고, 예측 단가 매칭/상차지 집계를 부산·인천·기타 계열 유사명 기준으로 정규화함.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.371
+- **웹 버전**: v5.14.372
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -57,7 +57,7 @@
 - 운송내역은 상위 `배차판` 옆 탭이며 `/아산지점/2026_수출리스트.xlsx` 월별 시트를 `branch_transport_history`에 `target_month` 날짜키로 누적 저장한다. 웹은 NAS 파일을 직접 읽지 않고 DB `mode=meta/date/rows`만 조회하며, 설정 모달은 `/아산지점` 기준 NAS 파일 찾기를 제공한다. `출차시간` 헤더는 `청구금액`으로 정규화하고, 동기화는 현재월 1순위 후 인접월/나머지 월 순서로 진행한다.
 - 운송내역 `전체` 카드는 월 카드 왼쪽에 고정한다. `전체`는 메타 준비 후 선택 연도 DB 누적 원장을 날짜/입력순으로 합쳐 SEQ를 다시 부여하고, 첫 호출은 100건만 가져온 뒤 스크롤 하단에서 자동 추가 조회한다. 연도 선택은 DB에 자료가 있는 연도만 표시해 2027년은 실제 자료 발생 후 노출한다.
 - 운송내역 `전체` 보기의 원본 컬럼 필터는 `mode=filter-values`로 선택 연도 전체 원장의 distinct 값을 서버에서 조회한다. 필터 선택 후 rows 조회도 같은 `filters` 조건으로 서버 페이징하며, 검색 입력은 1초 디바운스 후 적용하고 드롭다운은 컴포넌트 바깥 클릭 시 닫는다.
-- 배차 `현황판`은 첫 화면에서 뷰어 payload를 먼저 보고, 없거나 날짜가 다르면 기존 cache로 fallback한다. 예측 손익은 별도 `/dispatch/forecast` 조회에서 meta로 기간을 잡고 선택일/주/月 범위를 `range` 한 번으로 읽으며, 단가는 `branch_performance_monthly_route_unit_amount_cache`를 직접 조회한다. 단가 매칭은 TYPE/작업지 후보 인덱스와 조합 캐시를 사용한다. 실제 픽업지 단가가 없으면 의왕상차 청구/하불금액으로 보정하고, 점검 카드는 의왕보정/평균단가/미매칭 사유를 펼쳐 보여준다. forecast 응답은 `timings`로 원장/단가/계산 시간을 노출한다.
+- 배차 `현황판`은 첫 화면에서 뷰어 payload를 먼저 보고, 없거나 날짜가 다르면 기존 cache로 fallback한다. 예측 손익은 별도 `/dispatch/forecast` 조회에서 meta로 기간을 잡고 선택일/주/月 범위를 `range` 한 번으로 읽으며, 단가는 `branch_performance_monthly_route_unit_amount_cache`를 직접 조회한다. 단가 매칭은 TYPE/작업지 후보 인덱스와 조합 캐시를 사용하되 화주/포트 유사성도 실제 단가 후보로 평가한다. 부산북항/부산신항/신항은 부산, 인천여객/인천신항/인천북항/인천국제는 인천, 기타/철송은 기타로 현황 집계한다. 실제 픽업지 단가가 없으면 의왕상차 청구/하불금액으로 보정하고, 점검 카드는 의왕보정/평균단가/미매칭 사유를 펼쳐 보여준다. forecast 응답은 `timings`로 원장/단가/계산 시간을 노출한다.
 - 배차 RAG는 `대신/이지/CSS` 같은 운송사 필터와 `부산/중부` 같은 상차지 필터를 지역 셀의 업체 항목 단위로 적용한다. 특정 운송사 자체/만 질문은 같은 행의 다른 업체 수량을 더하지 않는다.
 - 선적관리 기본 레이아웃은 사용자 `asan_shipping_default`가 없을 때만 최병훈 `asan_shipping_preset_1`을 fallback으로 적용한다. 기존 사용자 default/P1/P2는 덮어쓰지 않는다.
 - 배차변동내역은 지역 배차칸 수량 변화와 행 추가/삭제만 추가·삭제로 기록한다. Nomi/특이사항, BKG1~3/TARGET VESSEL/비고, GLAPS 파생코드 변화는 변동 행을 만들지 않는다.
@@ -80,16 +80,16 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.372**: 예측 손익 카드를 날짜 선택 블록 다음으로 이동하고, 단가 매칭은 화주/포트 유사성을 평균 fallback 전에 반영하며, 상차지별 비율은 부산·인천·기타 계열 세부명을 대표명으로 합산했다.
 - **v5.14.371**: 월간실적 일간 선택 라벨을 작업일 월/일로 바꾸고, 테이블 검색·정렬·엑셀 조회를 선택 월/주차/일 작업일자 범위로 제한했다.
 - **v5.14.370**: 운송내역 `전체` 보기를 메타 준비 후 rows 조회로 고정하고, 운송내역/배차판/GLAPS 큰 테이블 검색을 디바운스 적용해 입력 중 렉과 과도한 재조회 부담을 줄였다.
 - **v5.14.369**: GLAPS 업로드양식 자동생성 시 운송사(C열)를 "ELS솔루션"으로 강제 표기하고, 실출하지(G열)는 대괄호 코드([GA] 등)를 추출해 GLAPS정리 시트의 BU-BV열을 VLOOKUP 매칭하도록 로컬 수식으로 수정. 포장장 오동작 방지를 위해 derivedWorkplaceCode를 이름 매칭(BS열)로 환원함.
 - **v5.14.368**: GLAPS 수식완성본 자동생성 시 포장장/국가(도착항)가 기존 GLAPS정리 대신 CKD고객사코드 시트의 새 레이아웃을 참조하도록 스크립트 갱신.
 - **v5.14.367**: 예측 손익 계산 루프를 TYPE/작업지 후보 인덱스와 segment 조합 캐시로 최적화해 `computeMs` 병목을 줄였다.
-- **v5.14.366**: 예측 손익 API 응답에 `timings`와 단가 엔진/그룹 수를 추가해 운영에서 지연 구간을 바로 확인하게 했다.
 ## VERIFICATION
-- 현황판 예측 손익/뷰어 스냅샷 경로는 `node --test web/tests/asanDashboardView.test.mjs`와 `npm.cmd run lint`를 통과한다.
+- 현황판 예측 손익/상차지/모바일 날짜 경로는 `node --test --test-name-pattern "예측 손익|상차지별|모바일 날짜" web/tests/asanDashboardView.test.mjs`와 `npm.cmd run lint`를 통과한다.
 - 월간실적 표시명/선택 단위 테이블 범위 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
-- 현황판 영업일 판정은 `node --test web/tests/asanDashboardView.test.mjs`로 2026-06-08 포함을 검증한다.
+- 현황판 영업일 판정은 asanDashboardView 테스트 항목에 유지하며, GLAPS 마스터 정적 기대값 1건은 별도 이슈로 추적한다.
 ## IN-PROGRESS
 - 다음 단계: GLAPS 수식완성본 재계산과 목록값 미매칭 반영 여부를 확인하고, DB는 일일 배차/상세배차 1년 1개월 초과분 archive worker 검증을 이어간다.
 ## FIXED RULES

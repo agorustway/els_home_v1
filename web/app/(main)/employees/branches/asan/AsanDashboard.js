@@ -270,8 +270,6 @@ export default function AsanDashboard({
                 ))}
             </div>
 
-            <FinancialForecastPanel forecast={dashboardData.financialForecast} loading={dashboardForecastLoading} />
-
             <div className={styles.analysisRow}>
                 <TrendPanel
                     items={dashboardData.timeline}
@@ -336,6 +334,8 @@ export default function AsanDashboard({
                     {dateControlsSlot}
                 </div>
             )}
+
+            <FinancialForecastPanel forecast={dashboardData.financialForecast} loading={dashboardForecastLoading} />
 
             <div className={styles.mixModules}>
                 <ShareDonut data={dashboardData.activeScope.pieAggs.shipper} title="화주 점유율" />

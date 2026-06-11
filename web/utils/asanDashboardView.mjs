@@ -4,7 +4,44 @@ export const ASAN_DASHBOARD_CHART_MODES = {
 };
 
 const PLANNED_DISPATCH_REGION = '배차예정';
-const DISPATCH_REGIONS = [PLANNED_DISPATCH_REGION, '기타/철송', '기타', '아산', '부산', '신항', '광양', '평택', '중부', '부곡', '인천'];
+const DISPATCH_REGIONS = [
+  PLANNED_DISPATCH_REGION,
+  '기타/철송',
+  '기타',
+  '아산',
+  '부산',
+  '부산북항',
+  '부산신항',
+  '북항',
+  '신항',
+  '이지B',
+  '광양',
+  '평택',
+  '중부',
+  '부곡',
+  '인천',
+  '인천여객',
+  '인천신항',
+  '인천북항',
+  '인천국제',
+  '인천항',
+];
+const DISPATCH_REGION_LABEL_ALIASES = new Map([
+  ['부산북항', '부산'],
+  ['부산신항', '부산'],
+  ['부산항', '부산'],
+  ['북항', '부산'],
+  ['신항', '부산'],
+  ['이지B', '부산'],
+  ['인천여객', '인천'],
+  ['인천신항', '인천'],
+  ['인천북항', '인천'],
+  ['인천국제', '인천'],
+  ['인천항', '인천'],
+  ['기타/철송', '기타'],
+  ['기타철송', '기타'],
+  ['철송', '기타'],
+]);
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const LUNAR_HOLIDAYS = {
   2025: ['2025-01-28', '2025-01-29', '2025-01-30', '2025-05-05', '2025-10-05', '2025-10-06', '2025-10-07'],
@@ -37,6 +74,15 @@ export function findDashboardCol(headers = [], ...names) {
 function normalizeLabel(value, fallback = '미분류') {
   const text = String(value ?? '').replace(/\s+/g, ' ').trim();
   return text || fallback;
+}
+
+function normalizeDispatchRegionLabel(value = '') {
+  const label = normalizeLabel(value, '');
+  const compact = label.replace(/\s+/g, '');
+  return DISPATCH_REGION_LABEL_ALIASES.get(label)
+    || DISPATCH_REGION_LABEL_ALIASES.get(compact)
+    || label
+    || '기타';
 }
 
 function createScope() {
@@ -192,7 +238,12 @@ export function parseDispatchRecords(row = [], headers = [], { includePlanned = 
     if (!text) return;
 
     parseDispatchCell(text).forEach((record) => {
-      records.push({ ...record, region: region.name, row });
+      records.push({
+        ...record,
+        region: normalizeDispatchRegionLabel(region.name),
+        sourceRegion: region.name,
+        row,
+      });
     });
   });
   return records;
@@ -476,8 +527,18 @@ function normalizeForecastText(value = '') {
     ['의왕icd', '의왕'],
     ['의왕아이씨디', '의왕'],
     ['군포복합물류', '의왕'],
-    ['부산신항', '신항'],
+    ['부산북항', '부산'],
+    ['부산신항', '부산'],
     ['부산항', '부산'],
+    ['북항', '부산'],
+    ['신항', '부산'],
+    ['이지b', '부산'],
+    ['인천여객', '인천'],
+    ['인천신항', '인천'],
+    ['인천북항', '인천'],
+    ['인천국제', '인천'],
+    ['인천항', '인천'],
+    ['기타철송', '기타'],
     ['글로비스kd센터', '글로비스kd'],
     ['글로비스kd', '글로비스'],
     ['글로비스as', '글로비스'],
@@ -665,7 +726,8 @@ function routeUnitCandidateGroups(matchData, prepared = {}) {
     groups = genericGroups.length ? [...typedGroups, ...genericGroups] : typedGroups;
   }
   if (prepared.workSite?.[0]) {
-    groups = groups.filter((group) => !group.match.workSite || forecastAnyNormalizedMatch(prepared.workSite, [group.match.workSite]));
+    const workSiteMatched = groups.filter((group) => !group.match.workSite || forecastAnyNormalizedMatch(prepared.workSite, [group.match.workSite]));
+    if (workSiteMatched.length) return workSiteMatched;
   }
   return groups;
 }
@@ -674,6 +736,7 @@ function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false, p
   const values = prepared || prepareSegmentMatch(segment, fallbackPickup);
   let score = 0;
   let strong = 0;
+  let workSiteMismatch = false;
   const typeKey = values.typeKey;
   if (typeKey && group.match.type) {
     if (typeKey === group.match.type) score += 20;
@@ -689,7 +752,8 @@ function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false, p
     score += 16;
     strong += 1;
   } else if (values.workSite.length && group.match.workSite) {
-    return -1;
+    score -= 10;
+    workSiteMismatch = true;
   }
   const groupHasPickup = group.match.pickup || group.match.billingPickup || group.match.region;
   if (forecastAnyNormalizedMatch(values.pickup, [group.match.pickup, group.match.billingPickup, group.match.region])) {
@@ -703,8 +767,15 @@ function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false, p
     strong += 1;
   }
   if (forecastAnyNormalizedMatch(values.carrier, [group.match.carrier, group.match.payTo])) score += 6;
-  if (forecastAnyNormalizedMatch(values.billTo, [group.match.billTo, group.match.salesItem])) score += 5;
-  if (forecastAnyNormalizedMatch(values.salesItem, [group.match.salesItem, group.match.billTo])) score += 5;
+  if (forecastAnyNormalizedMatch(values.billTo, [group.match.billTo, group.match.salesItem])) {
+    score += 5;
+    strong += 1;
+  }
+  if (forecastAnyNormalizedMatch(values.salesItem, [group.match.salesItem, group.match.billTo])) {
+    score += 5;
+    strong += 1;
+  }
+  if (workSiteMismatch && strong < 2) return -1;
   if (strong === 0) return -1;
   return score;
 }

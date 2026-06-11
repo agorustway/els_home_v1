@@ -228,6 +228,63 @@ test('아산 현황판 예측 손익은 최신 구간단가와 부곡 의왕 fal
   assert.equal(missingPickupDaily.fallbackPickupQty, 3);
 });
 
+test('아산 현황판 예측 손익은 화주와 포트 유사성이 있으면 평균 대신 실제 단가를 적용한다', () => {
+  const fuzzyHeaders = ['구분', '화주', '작업지', '고객사(국가)', '선적', '라인(선사명)', 'TYPE', '오더(계)', '배차', '부산북항'];
+  const forecast = buildAsanDashboardFinancialForecast({
+    sourceItems: [{
+      target_date: '2026-06-11',
+      headers: fuzzyHeaders,
+      data: [
+        ['수출', '서영', '서영', '서영', '인천신항', 'HMM', '40HC', '2', '2', '이지2'],
+      ],
+    }],
+    viewType: 'integrated',
+    routeUnitPrice: {
+      scope: { month: '2026-06' },
+      summary: { periodEnd: '2026-06' },
+      groups: [
+        {
+          salesItem: '울산 서영',
+          category: '수출',
+          workSite: '울산 서영',
+          pickup: '부산신항',
+          billingPickup: '부산북항',
+          shipment: '인천국제',
+          type: '40HC',
+          billTo: '서영',
+          payTo: '이지',
+          carrier: '이지',
+          unitRevenue: 210000,
+          unitPurchase: 160000,
+        },
+        {
+          salesItem: '글로비스',
+          category: '수출',
+          workSite: '다른작업지',
+          pickup: '광양',
+          billingPickup: '광양',
+          shipment: '상하이',
+          type: '40HC',
+          billTo: '다른화주',
+          payTo: '이지',
+          carrier: '이지',
+          unitRevenue: 900000,
+          unitPurchase: 700000,
+        },
+      ],
+    },
+    selectedDay: '2026-06-11',
+    activePeriod: 'daily',
+  });
+  const daily = forecast.periods.find((period) => period.key === 'daily');
+
+  assert.equal(daily.qty, 2);
+  assert.equal(daily.revenue, 420_000);
+  assert.equal(daily.purchase, 320_000);
+  assert.equal(daily.matchedQty, 2);
+  assert.equal(daily.averageFallbackQty, 0);
+});
+
 test('아산 현황판 예측 손익 점검은 보정 사유를 카드에서 펼쳐 보여준다', () => {
   const source = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/AsanDashboard.js'),
@@ -392,6 +449,40 @@ test('아산 현황판 상차지별 비율은 지역 배차 칸을 집계한다'
   });
 
   assert.deepEqual(scope.pieAggs.region, { 아산: 21, 부산: 4 });
+});
+
+test('아산 현황판 상차지별 비율은 부산, 인천, 기타 계열 지역명을 묶어서 집계한다', () => {
+  const regionHeaders = [
+    '구분',
+    '화주',
+    '작업지',
+    '고객사(국가)',
+    '라인(선사명)',
+    'TYPE',
+    '오더(계)',
+    '배차',
+    '부산북항',
+    '부산신항',
+    '신항',
+    '인천여객',
+    '인천신항',
+    '인천북항',
+    '기타/철송',
+    '기타',
+  ];
+  const scope = buildAsanDashboardScope({
+    rows: [
+      ['수출', '글로비스', '테스트작업지', '고객A', 'HMM', '40HC', '36', '36', '자차1', '대신2', '이지3', '서틀4', 'CSS5', '보송6', '철송7', '기타8'],
+    ],
+    headers: regionHeaders,
+    viewType: 'integrated',
+    viewMode: 'customer',
+  });
+
+  assert.deepEqual(scope.pieAggs.region, { 부산: 6, 인천: 15, 기타: 15 });
+  assert.equal(scope.pieAggs.region['부산북항'], undefined);
+  assert.equal(scope.pieAggs.region['인천신항'], undefined);
+  assert.equal(scope.pieAggs.region['기타/철송'], undefined);
 });
 
 test('아산 현황판 실행사 파싱은 업체명과 수량이 붙은 지역칸도 읽는다', () => {
@@ -759,6 +850,10 @@ test('아산 현황판 모바일 날짜 시작점은 기준 전환과 배차판 
   assert.match(dashboardSource, /고객사 기준/);
   assert.match(dashboardSource, /실행사 기준/);
   assert.match(dashboardSource, /배차판 검색/);
+  assert.ok(
+    dashboardSource.indexOf('<FinancialForecastPanel') > dashboardSource.indexOf('className={styles.dateBridge}'),
+    '예측 손익은 날짜 선택 블록 다음에 렌더되어야 한다.',
+  );
   assert.match(dashboardSource, /title="고객사\(화주\) 기준"/);
   assert.match(dashboardSource, /title="실행사\(협력업체\) 기준"/);
   assert.match(dashboardSource, /handleViewModeChange\('customer'\)/);
