@@ -211,6 +211,20 @@ function specialRuleValue(row = {}) {
     return row.shipper_code || row.shipperCode || '';
 }
 
+function specialRuleConditionShipper(row = {}) {
+    const type = specialRuleType(row);
+    if (type === 'shipper_code') return '(기존값 무관)';
+    return row.shipper_code || row.shipperCode || '(전체 화주사)';
+}
+
+function specialRuleConditionGlapsWaypoint(row = {}) {
+    return row.waypoint_name || row.waypointName || '(전체 경유지)';
+}
+
+function specialRuleConditionElsWaypoint(row = {}) {
+    return row.waypoint_els_name || row.waypointElsName || '(전체 경유지)';
+}
+
 function routeToEditorValues(row = {}) {
     return {
         shipperCode: getGlapsRouteShipperCode(row),
@@ -667,15 +681,15 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                     ),
                 },
                 { key: 'status', label: '상태', value: row => statusLabel(row.review_status), render: row => <span className={`${styles.statusPill} ${styles[row.review_status] || ''}`}>{statusLabel(row.review_status)}</span> },
-                { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'shipper_code', label: '화주사코드', value: row => getGlapsRouteShipperCode(row), className: styles.routeCodeCell },
                 { key: 'start_location_name', label: '상차지', value: row => row.start_location_name, className: styles.routeCodeCell },
-                { key: 'billing_start_location_name', label: '상차지(청구)', value: row => getGlapsRouteBillingStartLocation(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'billing_start_location_name', label: '상차지(청구)', value: row => getGlapsRouteBillingStartLocation(row), className: styles.routeCodeCell },
                 { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || row.waypoint_name, className: styles.routeTextCell },
-                { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'waypoint_code', label: '경유지코드', value: row => getGlapsRouteWaypointCode(row), className: styles.routeCodeCell },
                 { key: 'destination_name', label: '하차지', value: row => row.destination_name, className: styles.routeCodeCell },
-                { key: 'route_key', label: '연결키', value: routeMatchKey, className: styles.routeKeyCell },
-                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: `${styles.protectedCell} ${styles.routeNameCell}` },
-                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: `${styles.keyCell} ${styles.routeCodeCell}` },
+                { key: 'route_key', label: '연결키', value: routeMatchKey, className: `${styles.protectedCell} ${styles.routeKeyCell}` },
+                { key: 'route_name', label: '운송경로명', value: row => row.route_name, className: styles.routeNameCell },
+                { key: 'route_code', label: '운송경로코드', value: row => row.route_code, className: styles.routeCodeCell },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
@@ -716,8 +730,8 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                 { key: 'alias_type', label: '매핑항목(용도)', value: row => formatGlapsAliasType(row.alias_type) },
                 { key: 'source_name', label: 'ELS 매치코드', value: row => row.source_name },
                 { key: 'els_name', label: 'ELS 디스크립션(설명)', value: row => row.els_name },
-                { key: 'glaps_name', label: 'GLAPS 디스크립션(설명)', value: row => row.glaps_name, className: styles.protectedCell },
-                { key: 'glaps_code', label: '최종코드(BP)', value: row => row.glaps_code, className: styles.keyCell },
+                { key: 'glaps_name', label: 'GLAPS 디스크립션(설명)', value: row => row.glaps_name },
+                { key: 'glaps_code', label: '최종코드(BP)', value: row => row.glaps_code },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
                 {
@@ -737,10 +751,10 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
         if (activeTable === 'specialRules') {
             return [
                 { key: 'rule_type', label: '적용항목', value: specialRuleTypeLabel },
-                { key: 'shipper_code', label: '화주사코드', value: row => row.shipper_code, className: styles.keyCell },
-                { key: 'waypoint_name', label: '경유지(GLAPS)', value: row => row.waypoint_name || '(해당 화주사 기본)' },
-                { key: 'waypoint_els_name', label: '경유지(ELS)', value: row => row.waypoint_els_name || '' },
-                { key: 'special_value', label: '적용값', value: specialRuleValue, className: styles.keyCell },
+                { key: 'condition_shipper', label: '조건: 화주사', value: specialRuleConditionShipper, className: row => (specialRuleType(row) === 'shipper_code' ? styles.protectedCell : '') },
+                { key: 'waypoint_name', label: '조건: 경유지(GLAPS)', value: specialRuleConditionGlapsWaypoint },
+                { key: 'waypoint_els_name', label: '조건: 경유지(ELS)', value: specialRuleConditionElsWaypoint },
+                { key: 'special_value', label: '적용값(To)', value: specialRuleValue },
                 { key: 'priority', label: '우선순위', value: row => row.priority ?? 100 },
                 { key: 'review_note', label: '검수메모(참고)', value: row => row.review_note },
                 { key: 'source', label: '수정출처', value: row => sourceLabel(row.updated_by), render: row => <span className={`${styles.sourceBadge} ${sourceClass(row.updated_by)}`}>{sourceLabel(row.updated_by)}</span> },
@@ -759,10 +773,10 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             ];
         }
         return [
-            { key: 'sheet_name', label: '시트', value: row => row.sheet_name },
-            { key: 'row_number', label: '행', value: row => row.row_number },
-            { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : '') },
-            { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {} },
+            { key: 'sheet_name', label: '시트', value: row => row.sheet_name, className: styles.protectedCell },
+            { key: 'row_number', label: '행', value: row => row.row_number, className: styles.protectedCell },
+            { key: 'header_row', label: '헤더', value: row => (row.header_row ? '헤더' : ''), className: styles.protectedCell },
+            { key: 'payload', label: '원본값', value: row => row.row_payload || row.row_values || {}, className: styles.protectedCell },
         ];
     }, [activeTable, beginEditRow, deleteRow, saving, selectedRowIdSet, toggleRowSelection]);
 
@@ -925,9 +939,11 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
             })[columnKey] || '';
         }
         if (editor?.mode === 'specialRules') {
+            if (columnKey === 'condition_shipper') {
+                return editor.values.ruleType === 'shipper_code' ? '' : 'shipperCode';
+            }
             return ({
                 rule_type: 'ruleType',
-                shipper_code: 'shipperCode',
                 waypoint_name: 'waypointName',
                 waypoint_els_name: 'waypointElsName',
                 consignee_code: 'consigneeCode',
@@ -1041,14 +1057,16 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     const renderInlineEditorRow = (key) => {
         if (!editor || editor.mode !== activeTable) return null;
         let didAutoFocus = false;
+        const editorRow = editor.mode === 'specialRules' ? { rule_type: editor.values.ruleType } : {};
         return (
             <tr key={key} className={styles.inlineEditRow}>
                 {tableColumns.map((column) => {
                     const field = inlineEditorFieldForColumn(column.key);
                     const shouldAutoFocus = !didAutoFocus && Boolean(field);
                     if (shouldAutoFocus) didAutoFocus = true;
+                    const className = typeof column.className === 'function' ? column.className(editorRow) : (column.className || '');
                     return (
-                        <td key={column.key} className={`${column.className || ''} ${field ? styles.inlineEditCell : ''}`}>
+                        <td key={column.key} className={`${className} ${field ? styles.inlineEditCell : ''}`}>
                             {renderInlineEditorCell(column, { autoFocus: shouldAutoFocus })}
                         </td>
                     );
@@ -1296,7 +1314,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                                     const sorted = activeSort.key === column.key;
                                     const sortLabel = sorted ? (activeSort.direction === 'desc' ? '↓' : '↑') : '↕';
                                     return (
-                                        <th key={column.key} className={column.className || ''}>
+                                        <th key={column.key} className={typeof column.className === 'function' ? '' : (column.className || '')}>
                                             {column.sortable === false ? (
                                                 <span>{column.label}</span>
                                             ) : (
@@ -1348,7 +1366,7 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
                                             title={duplicateMessages.join(' / ') || undefined}
                                         >
                                             {tableColumns.map(column => (
-                                                <td key={column.key} className={column.className || ''}>
+                                                <td key={column.key} className={typeof column.className === 'function' ? column.className(row) : (column.className || '')}>
                                                     {column.render ? column.render(row) : tableText(column.value?.(row))}
                                                 </td>
                                             ))}

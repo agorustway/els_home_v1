@@ -1,3 +1,27 @@
+## [2026-06-11] GLAPS 코드 테이블 톤 정리와 특이적용건 From/To 분리 (v5.14.379)
+
+### 원인
+- GLAPS 코드 화면의 운송경로/항목매핑/특이적용건/원본시트가 초록 코드칸, 회색 보호칸, 일반칸을 섞어 보여 실제 수정 가능 여부보다 색상이 먼저 보여 혼란이 있었습니다.
+- 특이적용건은 `화주사코드`가 조건인 경우와 적용값인 경우를 같은 칸처럼 보여, 예외가 어떤 조건에서 어떤 값으로 바뀌는지 읽기 어려웠습니다.
+
+### 조치
+- GLAPS 코드 4개 탭의 데이터 셀은 일반 배경/일반 굵기로 맞추고, 상태/수정출처 배지만 색상을 유지했습니다.
+- 편집 불가한 `연결키`와 원본시트 값만 회색 보호 셀로 표시하고, `운송경로코드`, `최종코드(BP)`, 경유지코드 같은 수정 가능한 코드값은 일반 셀로 정리했습니다.
+- 특이적용건 컬럼을 `조건: 화주사`, `조건: 경유지(GLAPS)`, `조건: 경유지(ELS)`, `적용값(To)`로 나눠 From/To를 명확히 보이게 했습니다.
+
+### 검증
+- `node --test web/tests/asanDashboardView.test.mjs`: 51개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanGlapsMaster.js" "tests/asanDashboardView.test.mjs"`: 통과
+- `git diff --check`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/(main)/employees/branches/asan/glapsMaster.module.css`
+- `web/tests/asanDashboardView.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-11] 구간단가 검색 입력 지연과 화면 스냅샷 캐시 보강 (v5.14.378)
 
 ### 원인
