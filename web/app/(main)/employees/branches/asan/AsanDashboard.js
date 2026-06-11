@@ -1067,11 +1067,46 @@ function WeekdayOrderPanel({ data, periods = [], onSelect }) {
     );
 }
 
-function ShareDonut({ data, title }) {
-    const sorted = toSortedMapEntries(data);
+function normalizeShareDonutName(name, title) {
+    const text = String(name ?? '')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (title !== '상차지별 비율') return text || '기타';
+
+    const compact = text.replace(/\s+/g, '');
+    if (!compact) return '기타';
+    if (compact.includes('부산') || compact === '북항' || compact === '신항' || compact.toLowerCase() === '이지b') return '부산';
+    if (compact.includes('인천')) return '인천';
+    if (compact.startsWith('기타') || compact.includes('철송')) return '기타';
+    return text;
+}
+
+function pushShareDonutEntry(entries, name, value) {
+    if (!name || value <= 0) return;
+    const found = entries.findIndex(([entryName]) => entryName === name);
+    if (found >= 0) {
+        entries[found] = [name, entries[found][1] + value];
+        return;
+    }
+    entries.push([name, value]);
+}
+
+function buildShareDonutEntries(data, title) {
+    const merged = [];
+    toSortedMapEntries(data).forEach(([name, value]) => {
+        pushShareDonutEntry(merged, normalizeShareDonutName(name, title), value);
+    });
+
+    const sorted = merged.sort((a, b) => b[1] - a[1]);
     const top = sorted.slice(0, 5);
     const otherTotal = sorted.slice(5).reduce((sum, [, value]) => sum + value, 0);
-    if (otherTotal > 0) top.push(['기타', otherTotal]);
+    if (otherTotal > 0) pushShareDonutEntry(top, '기타', otherTotal);
+    return top.sort((a, b) => b[1] - a[1]);
+}
+
+function ShareDonut({ data, title }) {
+    const top = buildShareDonutEntries(data, title);
 
     const total = top.reduce((sum, [, value]) => sum + value, 0);
     if (total === 0) return null;
