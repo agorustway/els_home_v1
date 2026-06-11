@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.370 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.371 / APK v5.11.29)
 
-> 최신 업데이트: 아산 운송내역 `전체` 보기는 메타 준비 후 rows를 조회하도록 보강하고, 운송내역/배차판/GLAPS 등 큰 테이블 검색은 입력 후 지연 적용해 렉과 과도한 재조회 부담을 줄임.
+> 최신 업데이트: 아산 월간실적 일간 선택지는 실제 작업일 월/일로 표시하고, 테이블 검색/정렬/엑셀 조회는 선택 단위(전체/월/주차/일) 범위 안에서만 수행하도록 조정함.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.370
+- **웹 버전**: v5.14.371
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -21,7 +21,7 @@
 ## ASAN PERFORMANCE NOTES
 - 연간실적 기본 파일: `/아산지점/B_총무/C_마감/합계연간실적/합계연간실적.xlsx`, 시트 `합계`.
 - 연간실적은 2015~2025 기존 원장과 2026년 이후 사람이 정리한 확정 Excel source를 합산 조회하는 구조다. 월간자료는 연간으로 자동 이월하지 않는다.
-- 월간실적은 운영 임시 원장이다. 리셋은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다. 테이블 검색은 선택 마감월이 있으면 해당 `year_value/month_value` 안에서만 수행하며, 전월 반영분은 화면에서 `전월이월`로 표시한다.
+- 월간실적은 운영 임시 원장이다. 리셋은 monthly rows/files, 월간 구간단가 캐시, 관련 dashboard snapshot만 삭제하고 annual 데이터는 건드리지 않는다. 테이블 검색/정렬/엑셀은 선택 단위가 월/주차/일이면 해당 `year_value/month_value`와 작업일자 범위 안에서만 수행하며, 전월 반영분은 화면에서 `전월이월`로 표시한다.
 - `구간단가`는 월간 마감자료 current 원장을 import 후 `branch_performance_monthly_route_unit_amount_cache`로 집계해 조회한다. 화면 요청 때 원본 JSONB를 다시 파싱하지 않는다.
 
 ## GLAPS OPERATING NOTES
@@ -80,19 +80,16 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.371**: 월간실적 일간 선택 라벨을 작업일 월/일로 바꾸고, 테이블 검색·정렬·엑셀 조회를 선택 월/주차/일 작업일자 범위로 제한했다.
 - **v5.14.370**: 운송내역 `전체` 보기를 메타 준비 후 rows 조회로 고정하고, 운송내역/배차판/GLAPS 큰 테이블 검색을 디바운스 적용해 입력 중 렉과 과도한 재조회 부담을 줄였다.
+- **v5.14.369**: GLAPS 업로드양식 자동생성 시 운송사(C열)를 "ELS솔루션"으로 강제 표기하고, 실출하지(G열)는 대괄호 코드([GA] 등)를 추출해 GLAPS정리 시트의 BU-BV열을 VLOOKUP 매칭하도록 로컬 수식으로 수정. 포장장 오동작 방지를 위해 derivedWorkplaceCode를 이름 매칭(BS열)로 환원함.
+- **v5.14.368**: GLAPS 수식완성본 자동생성 시 포장장/국가(도착항)가 기존 GLAPS정리 대신 CKD고객사코드 시트의 새 레이아웃을 참조하도록 스크립트 갱신.
 - **v5.14.367**: 예측 손익 계산 루프를 TYPE/작업지 후보 인덱스와 segment 조합 캐시로 최적화해 `computeMs` 병목을 줄였다.
 - **v5.14.366**: 예측 손익 API 응답에 `timings`와 단가 엔진/그룹 수를 추가해 운영에서 지연 구간을 바로 확인하게 했다.
-- **v5.14.365**: 예측 손익 단가 조회의 `asan_monthly_route_unit_amount_payload` RPC 호출을 제거하고 월간 구간단가 캐시 테이블 직접 select로 전환했다.
-- **v5.14.364**: 예측 손익 원장 조회를 meta+range로 줄이고, 실제 픽업지 미매칭 시 의왕상차 단가 적용과 점검 상세 UI를 추가했다.
-- **v5.14.363**: 예측 손익 단가 조회를 annual live 빌더에서 월간 구간단가 캐시 RPC로 바꿔 API 타임아웃 가능성을 줄였다.
-- **v5.14.362**: 예측 손익 API가 전체 원장 full 조회로 타임아웃 나던 문제를 고쳐 meta 조회 후 선택일/해당주/해당월 날짜만 date 조회하도록 경량화했다.
-- **v5.14.361**: 현황판 메인 cache/viewer policy를 직전 정상값으로 복구하고 예측 손익을 별도 비동기 API로 분리해 주/月/요일 자료가 0으로 떨어지는 회귀를 막았다.
 ## VERIFICATION
 - 현황판 예측 손익/뷰어 스냅샷 경로는 `node --test web/tests/asanDashboardView.test.mjs`와 `npm.cmd run lint`를 통과한다.
-- 월간실적 표시명 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
+- 월간실적 표시명/선택 단위 테이블 범위 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
 - 현황판 영업일 판정은 `node --test web/tests/asanDashboardView.test.mjs`로 2026-06-08 포함을 검증한다.
-- 월간실적 테이블 마감월 검색 범위 수정은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.
 ## IN-PROGRESS
 - 다음 단계: GLAPS 수식완성본 재계산과 목록값 미매칭 반영 여부를 확인하고, DB는 일일 배차/상세배차 1년 1개월 초과분 archive worker 검증을 이어간다.
 ## FIXED RULES

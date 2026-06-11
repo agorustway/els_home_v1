@@ -252,7 +252,11 @@ function findScopedMetric(item = {}, scope, selectedMonth, selectedDay, selected
             const date = String(metric.date || '').trim();
             if (!date) return false;
             const period = String(metric.period || selectedWeek?.period || '').trim();
-            return weekDates?.has(`${period}::${date}`) || (!metric.period && weekDateOnly?.has(date));
+            const dateKey = normalizeDailyDateKey(date, period || selectedWeek?.period || '');
+            const scopedPeriod = period || selectedWeek?.period || '마감월미지정';
+            return weekDates?.has(`${scopedPeriod}::${dateKey || date}`)
+                || weekDateOnly?.has(dateKey || date)
+                || weekDateOnly?.has(date);
         });
         if (dailyMetrics.length) {
             return {
@@ -265,10 +269,13 @@ function findScopedMetric(item = {}, scope, selectedMonth, selectedDay, selected
         return null;
     }
     if (scope === ANALYSIS_SCOPE_DAY) {
-        const selectedDate = typeof selectedDay === 'object' ? selectedDay?.date : selectedDay;
+        const selectedRawDate = typeof selectedDay === 'object' ? (selectedDay?.rawDate || selectedDay?.date) : selectedDay;
         const selectedPeriod = typeof selectedDay === 'object' ? selectedDay?.period : String(selectedDay || '').slice(0, 7);
+        const selectedDate = typeof selectedDay === 'object'
+            ? (selectedDay?.dateKey || normalizeDailyDateKey(selectedRawDate, selectedPeriod))
+            : normalizeDailyDateKey(selectedDay, selectedPeriod);
         const dailyMetric = metricSeries(item, 'daily').find(metric => (
-            metric.date === selectedDate
+            (normalizeDailyDateKey(metric.date, metric.period || selectedPeriod) === selectedDate || metric.date === selectedRawDate)
             && (!metric.period || !selectedPeriod || metric.period === selectedPeriod)
         ));
         if (dailyMetric) return dailyMetric;
@@ -404,10 +411,92 @@ function normalizeMonthlyPeriodValue(value) {
     return match ? `${match[1]}-${match[2]}` : '';
 }
 
-function resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod }) {
-    if (analysisScope !== ANALYSIS_SCOPE_ALL) return normalizeMonthlyPeriodValue(selectedAnalysisMonth);
-    if (selectedReportPeriod && selectedReportPeriod !== REPORT_ALL_KEY) return normalizeMonthlyPeriodValue(selectedReportPeriod);
-    return '';
+function normalizeDailyDateKey(dateText = '', period = '') {
+    const text = String(dateText || '').trim();
+    if (!text) return '';
+    let match = text.match(/^(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+    match = text.match(/^(20\d{2})(\d{2})(\d{2})$/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    match = text.match(/^(\d{1,2})(?:\s*일)?$/);
+    const periodKey = normalizeMonthlyPeriodValue(period);
+    if (match && periodKey) return `${periodKey}-${String(Number(match[1])).padStart(2, '0')}`;
+    return text;
+}
+
+function dailyDateSortKey(item = {}) {
+    return item.dateKey || normalizeDailyDateKey(item.date || item.rawDate, item.period) || String(item.date || item.rawDate || '');
+}
+
+function compactDailyDateLabel(dateText = '', period = '') {
+    const key = normalizeDailyDateKey(dateText, period);
+    const match = String(key || '').match(/^(20\d{2})-(\d{2})-(\d{2})$/);
+    if (!match) return shortDateLabel(dateText);
+    return `${Number(match[2])}/${Number(match[3])}`;
+}
+
+function normalizeDailyMetricOptions(summary = {}) {
+    return safeObjectList(summary?.daily)
+        .filter(isMetricActive)
+        .map(normalizeDailyOption)
+        .sort((a, b) => String(a.period || '').localeCompare(String(b.period || '')) || dailyDateSortKey(a).localeCompare(dailyDateSortKey(b)));
+}
+
+function resolveMonthlyTableScope({
+    summary = {},
+    analysisScope,
+    selectedAnalysisMonth,
+    selectedAnalysisWeek,
+    selectedAnalysisDay,
+    selectedReportPeriod,
+}) {
+    if (analysisScope === ANALYSIS_SCOPE_ALL) {
+        const reportPeriod = normalizeMonthlyPeriodValue(selectedReportPeriod);
+        return {
+            scope: reportPeriod ? ANALYSIS_SCOPE_MONTH : ANALYSIS_SCOPE_ALL,
+            period: reportPeriod,
+            workDates: [],
+        };
+    }
+
+    const dailyOptions = normalizeDailyMetricOptions(summary);
+    const monthlyOptions = safeObjectList(summary?.monthly).filter(isMetricActive);
+    const fallbackMonth = monthlyOptions[monthlyOptions.length - 1]?.period || dailyOptions[dailyOptions.length - 1]?.period || '';
+    const period = normalizeMonthlyPeriodValue(selectedAnalysisMonth) || fallbackMonth;
+
+    if (analysisScope === ANALYSIS_SCOPE_WEEK) {
+        const weekOptions = buildWeekBuckets(dailyOptions).filter(item => item.period === period);
+        const week = weekOptions.find(item => item.key === selectedAnalysisWeek) || weekOptions[weekOptions.length - 1] || null;
+        return {
+            scope: ANALYSIS_SCOPE_WEEK,
+            period: normalizeMonthlyPeriodValue(week?.period) || period,
+            workDates: (week?.days || []).map(item => item.dateKey || item.date).filter(Boolean),
+        };
+    }
+
+    if (analysisScope === ANALYSIS_SCOPE_DAY) {
+        const dayOptions = dailyOptions.filter(item => item.period === period);
+        const day = dayOptions.find(item => item.scopeKey === selectedAnalysisDay) || dayOptions[dayOptions.length - 1] || null;
+        return {
+            scope: ANALYSIS_SCOPE_DAY,
+            period: normalizeMonthlyPeriodValue(day?.period) || period,
+            workDates: (day?.dateKey || day?.date) ? [day.dateKey || day.date] : [],
+        };
+    }
+
+    return {
+        scope: ANALYSIS_SCOPE_MONTH,
+        period,
+        workDates: [],
+    };
+}
+
+function setMonthlyTableScopeParams(params, scope = {}) {
+    if (scope.period) params.set('period', scope.period);
+    if (scope.scope) params.set('table_scope', scope.scope);
+    if (Array.isArray(scope.workDates) && scope.workDates.length) {
+        params.set('work_dates', Array.from(new Set(scope.workDates)).join(','));
+    }
 }
 
 function roundMoney(value) {
@@ -619,12 +708,16 @@ function mergeDimensionSections(baseSections = [], reportSections = [], carryove
 }
 
 function normalizeDailyOption(item = {}, index = 0) {
-    const date = String(item.date || '').trim();
+    const rawDate = String(item.date || '').trim();
     const period = String(item.period || '').trim();
+    const dateKey = normalizeDailyDateKey(rawDate, period);
+    const date = dateKey || rawDate;
     const scopeKey = `${period || '마감월미지정'}::${date || index}`;
     return {
         ...item,
+        rawDate,
         date,
+        dateKey,
         period,
         scopeKey,
         label: period && date ? `${period} · ${date}` : (date || period || `일자 ${index + 1}`),
@@ -657,8 +750,7 @@ function shortWeekOptionLabel(item = {}) {
 }
 
 function shortDayOptionLabel(item = {}) {
-    const day = shortDateLabel(item.date);
-    return item.label && item.label !== item.date ? `${day}` : day;
+    return compactDailyDateLabel(item.dateKey || item.date || item.rawDate, item.period);
 }
 
 function buildWeekBuckets(daily = []) {
@@ -673,7 +765,7 @@ function buildWeekBuckets(daily = []) {
     Array.from(byPeriod.entries())
         .sort(([left], [right]) => left.localeCompare(right))
         .forEach(([period, days]) => {
-            const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+            const sortedDays = [...days].sort((a, b) => dailyDateSortKey(a).localeCompare(dailyDateSortKey(b)));
             sortedDays.forEach((day, index) => {
                 const weekIndex = Math.floor(index / 7) + 1;
                 const key = `${period}-W${String(weekIndex).padStart(2, '0')}`;
@@ -696,7 +788,8 @@ function buildWeekBuckets(daily = []) {
                 }
                 bucket.days.push(day);
                 bucket.dateSet.add(day.scopeKey);
-                bucket.dateOnlySet.add(day.date);
+                bucket.dateOnlySet.add(day.dateKey || day.date);
+                if (day.rawDate) bucket.dateOnlySet.add(day.rawDate);
                 bucket.revenue += safeNumber(day.revenue);
                 bucket.purchase += safeNumber(day.purchase);
                 bucket.profit += safeNumber(day.profit);
@@ -1086,10 +1179,20 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
             });
             const tableMode = activeTab === 'table' || append || Boolean(options.search) || Boolean(options.sortKey);
             const effectiveSearch = tableMode ? (options.search ?? searchTerm) : '';
-            const tablePeriod = tableMode
-                ? normalizeMonthlyPeriodValue(options.period || resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod }))
-                : '';
-            if (tablePeriod) params.set('period', tablePeriod);
+            const tableScope = tableMode
+                ? resolveMonthlyTableScope({
+                    summary: payload?.summary,
+                    analysisScope,
+                    selectedAnalysisMonth,
+                    selectedAnalysisWeek,
+                    selectedAnalysisDay,
+                    selectedReportPeriod,
+                })
+                : null;
+            if (tableMode) {
+                if (options.period) tableScope.period = normalizeMonthlyPeriodValue(options.period) || tableScope.period;
+                setMonthlyTableScopeParams(params, tableScope);
+            }
             if (effectiveSearch) {
                 params.set('search', effectiveSearch);
                 params.set('search_mode', options.searchMode || searchMode || 'or');
@@ -1116,7 +1219,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
             setLoadingMore(false);
             if (tableRequest) setTableLoading(false);
         }
-    }, [activeTab, analysisScope, applyPayload, baseYear, extraMonths, searchMode, searchTerm, selectedAnalysisMonth, selectedReportPeriod, sortConfig]);
+    }, [activeTab, analysisScope, applyPayload, baseYear, extraMonths, payload?.summary, searchMode, searchTerm, selectedAnalysisDay, selectedAnalysisMonth, selectedAnalysisWeek, selectedReportPeriod, sortConfig]);
 
     useEffect(() => {
         fetchData();
@@ -1205,10 +1308,7 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
     }, [colOrder, headers, hiddenCols]);
     const availableMonths = useMemo(() => monthly.filter(isMetricActive), [monthly]);
     const monthlyByPeriod = useMemo(() => new Map(monthly.map(item => [item.period, item])), [monthly]);
-    const availableDays = useMemo(() => daily
-        .filter(isMetricActive)
-        .map(normalizeDailyOption)
-        .sort((a, b) => String(a.period || '').localeCompare(String(b.period || '')) || String(a.date || '').localeCompare(String(b.date || ''))), [daily]);
+    const availableDays = useMemo(() => normalizeDailyMetricOptions({ daily }), [daily]);
     const availableWeeks = useMemo(() => buildWeekBuckets(availableDays), [availableDays]);
     const fallbackAnalysisMonthValue = availableMonths[availableMonths.length - 1]?.period || '';
     const activeAnalysisMonthValue = availableMonths.some(item => item.period === selectedAnalysisMonth)
@@ -1540,8 +1640,14 @@ export default function AsanMonthlyPerformance({ searchHandoff = null }) {
                 year: String(baseYear),
                 extra_months: String(extraMonths),
             });
-            const tablePeriod = resolveMonthlyTablePeriod({ analysisScope, selectedAnalysisMonth, selectedReportPeriod });
-            if (tablePeriod) params.set('period', tablePeriod);
+            setMonthlyTableScopeParams(params, resolveMonthlyTableScope({
+                summary: payload?.summary,
+                analysisScope,
+                selectedAnalysisMonth,
+                selectedAnalysisWeek,
+                selectedAnalysisDay,
+                selectedReportPeriod,
+            }));
             if (searchTerm) {
                 params.set('search', searchTerm);
                 params.set('search_mode', searchMode || 'or');

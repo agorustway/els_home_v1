@@ -1,3 +1,28 @@
+## [2026-06-11] 아산 월간실적 선택 단위별 테이블 조회 범위 정리 (v5.14.371)
+
+### 원인
+- 6월 마감자료처럼 실제 작업일이 전월 말부터 당월 초까지 걸친 경우, 일간 선택지가 `일`만 표시되어 `18일...31일, 1일...9일`처럼 순서가 뒤섞인 것처럼 보였습니다.
+- 월간실적 테이블 검색/정렬/엑셀 조회가 분석 선택 단위(월/주차/일)와 완전히 묶이지 않아, 일간 선택 상태에서도 마감월 전체 또는 전체 원장 검색처럼 동작해 느리거나 조건에 맞는 자료가 안 보일 수 있었습니다.
+
+### 조치
+- 일간 선택 내부 키를 실제 작업일 `YYYY-MM-DD`로 정규화하고, 화면 선택지는 `5/18`, `6/9`처럼 월/일이 보이도록 바꿨습니다.
+- 테이블 API 요청에 `table_scope`, `period`, `work_dates`를 함께 보내도록 바꿔 월은 해당 마감월, 주차는 해당 주차 작업일 묶음, 일은 해당 작업일 1개만 조회 범위로 사용하게 했습니다.
+- 서버 월간실적 조회는 `작업일자` 계열 컬럼을 자동 탐색하고, 검색/정렬/페이지 계산 전에 선택 작업일 필터를 먼저 적용하도록 보강했습니다.
+- 엑셀 직렬 날짜, `YYYY-MM-DD`, `YYYY.MM.DD`, `9일` 같은 날짜 표현을 같은 작업일 키로 정규화해 원장 포맷 흔들림에 대비했습니다.
+
+### 검증
+- `node --test web/tests/asanMonthlyPerformance.test.mjs`: 9개 통과
+- `cd web; npm.cmd run lint -- "app/(main)/employees/branches/asan/AsanMonthlyPerformance.js" "lib/asan-branch-db.js" "tests/asanMonthlyPerformance.test.mjs"`: 통과
+- 인앱 브라우저 로컬 확인은 `localhost:3000` 및 `127.0.0.1:3000` 모두 `net::ERR_BLOCKED_BY_CLIENT`로 차단되어 수행하지 못했습니다.
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanMonthlyPerformance.js`
+- `web/lib/asan-branch-db.js`
+- `web/tests/asanMonthlyPerformance.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-11] 아산 운송내역 전체 보기 로딩 및 검색 디바운스 보강 (v5.14.370)
 
 ### 원인
@@ -23,6 +48,36 @@
 - `web/app/api/branches/asan/transport-history/route.js`
 - `web/tests/asanTransportHistory.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-10] GLAPS 자동계산 수식 운송사 고정 및 실출하지 매칭 개선 (v5.14.369)
+
+### 원인
+- 이전 변경에서 `derivedWorkplaceCode`를 대괄호 코드(`GA` 등) 매칭 우선으로 수정하자, 동일한 `[KC]` 대괄호를 쓰는 여러 포장장(KCC 글라스, 경림, 셀맥 등)이 GLAPS정리 BU열의 첫 행인 `KCC 글라스`로 전부 오매칭되는 회귀가 발생했습니다.
+- 원본 시트에 `운송사` 컬럼이 누락되거나 비어 있을 때, 운송사(C열) 수식이 공란으로 남는 현상이 있어 항상 `"ELS솔루션"`으로 계산되도록 요구되었습니다.
+
+### 조치
+- `derivedWorkplaceCode`를 대괄호 코드가 아닌 고유한 ` strippedWorkplaceName` 기반 이름 매칭(`GLAPS정리!$BS$3:$BS$264`)으로 롤백해 포장장(F열) 매칭이 꼬이는 문제를 완벽하게 해결했습니다.
+- 운송사(C열) 수식은 원본 데이터에 영향 받지 않고 row 번호가 활성 상태이면 항상 `"ELS솔루션"`으로 채워지도록 `=IF($B2="","","ELS솔루션")` 수식으로 고정했습니다.
+- 실출하지(G열) 수식은 로컬 영역에서 `bracketCode`를 단독 추출한 뒤 `GLAPS정리!$BU$3:$BV$264`에서 직접 VLOOKUP을 타게 하여, 타 컬럼 계산에 영향을 주지 않으면서 대괄호 코드에 맞는 실출하지 코드가 정상 출력되도록 조치했습니다.
+
+### 검증
+- 수식 적용 빌더 동작 후 `glaps-input-calculator.ps1`을 통한 Excel COM 계산 재구축 완료.
+- 아산 `ELS` 및 `GLAPS자동계산` 시트 직접 조회 검증:
+  - `[GA]아산 1포장장 (공성실업)` -> 실출하지 `EAS` 정상 출력.
+  - `[GB]아산 2포장장 (오토쎌)` -> 실출하지 `EAS` 정상 출력.
+  - `[GB]아산 2포장장` -> 실출하지 `EAS` 정상 출력.
+  - `[GC]아산 3포장장 (아산YSP)` -> 실출하지 `EAS1` 정상 출력.
+  - `[KC]KCC 글라스` -> 실출하지 `KAC` 정상 출력.
+  - non-CKD `모비스 AS천안수출물류센터` -> 실출하지 `""` (공란) 정상 출력.
+  - 모든 활성 행의 운송사(C열) -> `"ELS솔루션"` 정상 고정 출력.
+  - 포장장(F열) 오매칭(KCC 글라스로 쏠림) 현상 없이 정상 출력 복구 완료.
+
+### 변경 파일
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `docs/01_MISSION_CONTROL.md`
+- `docs/02_DEVELOPMENT_LOG.md`
 
 ---
 
@@ -9861,3 +9916,30 @@
 - `web/tests/asanAnnualPerformance.test.mjs`
 - `web/tests/asanDashboardView.test.mjs`
 - `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
+## [2026-06-09] GLAPS 수식완성본 자동생성 포장장/국가 시트 참조 변경 (v5.14.368)
+
+### 원인
+- `GLAPS 업로드양식_자동_최신파일참조.xlsx` 생성 시 F열(포장장)과 L열(목적국) 수식이 구버전 레이아웃인 `GLAPS정리` 시트를 바라보아 이전 형식(예: `아산 1포장장 (공성실업)`)이 출력됨.
+
+### 조치
+- `web/scripts/build-glaps-container-formula-workbook.mjs`에서 포장장 및 국가(도착항)가 `CKD고객사코드` 시트의 새로운 열 구조(포장장: G/H열, 국가: V/W열)를 참조하도록 변경.
+
+### 검증
+- `node --check web/scripts/build-glaps-container-formula-workbook.mjs`: 통과
+
+### 변경 파일
+- `web/scripts/build-glaps-container-formula-workbook.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+
+## [2026-06-10] GLAPS 로직 수정 (운송사, 실출하지)
+- 운송사는 빈칸이 아닐 시 ELS솔루션으로 기입되도록 수정함.
+- MATCH 함수에 와일드카드를 적용하여 아산 1포장장(공성실업) 등 괄호가 있는 이름과 매칭되게 수정함.
+
+
+## [2026-06-10] GLAPS 실출하지 매칭 로직 추가 보완 (대괄호 CKD시스템 코드 추출)
+- 작업지명 앞에 붙어있는 대괄호 코드(예: [GA])를 우선적으로 추출하여 GLAPS정리의 CKD시스템 코드(BU열)와 정확히 매칭되게 엑셀 수식을 개선함.
+- 대괄호 코드가 없을 경우에만 기존처럼 텍스트 이름 기반의 부분 일치 검색으로 Fallback 처리되도록 수정하여 매칭 정확도를 극대화함.

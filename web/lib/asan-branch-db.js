@@ -373,6 +373,7 @@ async function scanPerformanceSearchRows({
     sortDesc = false,
     maxScanRows = PERFORMANCE_SEARCH_SCAN_MAX_ROWS,
     batchSize = PERFORMANCE_SEARCH_SCAN_BATCH_SIZE,
+    rowFilter = null,
 }) {
     const shouldSort = sortIdx >= 0;
     const pageRows = [];
@@ -393,6 +394,7 @@ async function scanPerformanceSearchRows({
 
         for (const raw of rows) {
             const mapped = mapRow(raw);
+            if (typeof rowFilter === 'function' && !rowFilter(mapped, raw)) continue;
             if (!rowMatchesPerformanceSearch(mapped, search, searchMode)) continue;
             if (shouldSort) {
                 sortableRows.push(mapped);
@@ -2660,7 +2662,51 @@ function monthlyRowToValues(row, headers) {
     });
 }
 
-async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or' }) {
+function normalizeMonthlyWorkDateKey(value = '', fallbackPeriod = '') {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    let match = text.match(/^(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (match) return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+    match = text.match(/^(20\d{2})(\d{2})(\d{2})$/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const serial = Number(text);
+    if (Number.isFinite(serial) && serial >= 30000 && serial <= 80000) {
+        const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+        return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+    }
+    match = text.match(/^(\d{1,2})(?:\s*일)?$/);
+    const period = normalizeMonthKeys(fallbackPeriod)[0] || '';
+    if (match && period) return `${period}-${String(Number(match[1])).padStart(2, '0')}`;
+    return text;
+}
+
+function normalizeMonthlyWorkDateKeys(values = '', fallbackPeriod = '') {
+    const seen = new Set();
+    const keys = [];
+    String(values || '').split(',').forEach((value) => {
+        const key = normalizeMonthlyWorkDateKey(value, fallbackPeriod);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        keys.push(key);
+    });
+    return keys;
+}
+
+function monthlyRowWorkDateKey(row = {}, headers = [], dateColumn = '', fallbackPeriod = '') {
+    const rowData = row.row_data && typeof row.row_data === 'object' ? row.row_data : {};
+    const period = fallbackPeriod || monthlyPeriodKey(row.year_value, row.month_value);
+    if (dateColumn) {
+        const direct = normalizeMonthlyWorkDateKey(rowData[dateColumn], period);
+        if (direct) return direct;
+        const idx = headers.indexOf(dateColumn);
+        if (idx >= 0 && Array.isArray(row.mapped_values)) return normalizeMonthlyWorkDateKey(row.mapped_values[idx], period);
+    }
+    const workDateIdx = findWorkDateColumnIndex(headers);
+    if (workDateIdx >= 0) return normalizeMonthlyWorkDateKey(rowData[headers[workDateIdx]], period);
+    return '';
+}
+
+async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize, sortKey, sortDir, maxSortRows, fallbackTotal = 0, search = '', searchMode = 'or', rowFilter = null }) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
     const sortIdx = headers.indexOf(sortKey);
@@ -2671,7 +2717,7 @@ async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize,
         .order('row_index', { ascending: true });
     const baseOrdered = orderQuery(query);
     const buildBaseOrdered = buildQuery ? () => orderQuery(buildQuery()) : null;
-    const shouldFilter = searchTerms(search).length > 0;
+    const shouldFilter = searchTerms(search).length > 0 || typeof rowFilter === 'function';
 
     if (shouldFilter) {
         const scanned = await scanPerformanceSearchRows({
@@ -2684,6 +2730,8 @@ async function getMonthlyPagedRows({ query, buildQuery, headers, page, pageSize,
             end,
             sortIdx,
             sortDesc,
+            maxScanRows: Math.max(Number(maxSortRows) || 0, end + 1, PERFORMANCE_SEARCH_SCAN_MAX_ROWS),
+            rowFilter,
         });
         return {
             rows: scanned.rows,
@@ -2930,6 +2978,12 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
     const requestedPeriods = normalizeMonthKeys(searchParams.get('period') || searchParams.get('periods') || '')
         .filter(period => periodSet.has(period));
     const requestedPeriodSet = new Set(requestedPeriods);
+    const tableScope = (searchParams.get('table_scope') || '').trim();
+    const requestedWorkDates = normalizeMonthlyWorkDateKeys(
+        searchParams.get('work_dates') || searchParams.get('work_date') || '',
+        requestedPeriods[0] || '',
+    );
+    const requestedWorkDateSet = new Set(requestedWorkDates);
 
     const { data: allMetas, error: metaError } = await supabase
         .from('branch_performance_files')
@@ -2946,6 +3000,17 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         : metas;
     const headers = buildMonthlyHeaders(metas);
     const summary = mergeMonthlySummaries(metas, monthlyFileSlots);
+    const requestedWorkDateColumn = requestedWorkDateSet.size
+        ? resolveShippingDateColumn(headers, searchParams.get('work_date_col') || '작업일자')
+        : '';
+    const rowFilter = requestedWorkDateSet.size && requestedWorkDateColumn
+        ? row => requestedWorkDateSet.has(monthlyRowWorkDateKey(
+            row,
+            headers,
+            requestedWorkDateColumn,
+            requestedPeriods[0] || monthlyPeriodKey(row.year_value, row.month_value),
+        ))
+        : null;
 
     if (!metas.length) {
         return {
@@ -3009,6 +3074,7 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         fallbackTotal,
         search,
         searchMode,
+        rowFilter,
     });
 
     return {
@@ -3037,5 +3103,8 @@ export async function queryAsanMonthlyPerformanceFromSupabase(searchParams) {
         monthlyFileSlots,
         period: requestedPeriods[0] || '',
         periods: requestedPeriods,
+        table_scope: tableScope,
+        work_dates: requestedWorkDates,
+        work_date_column: requestedWorkDateColumn,
     };
 }

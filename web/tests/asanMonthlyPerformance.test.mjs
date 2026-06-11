@@ -259,9 +259,15 @@ test('아산 월간실적 화면은 파일 설정 저장 후 자동 동기화와
   assert.match(component, /params\.set\('dashboard', '1'\)/);
   assert.match(component, /activeTab === 'table' \|\| append \|\| Boolean\(options\.search\) \|\| Boolean\(options\.sortKey\)/);
   assert.match(component, /const searchEffectReadyRef = useRef\(false\)/);
-  assert.match(component, /resolveMonthlyTablePeriod/);
-  assert.match(component, /params\.set\('period', tablePeriod\)/);
+  assert.match(component, /resolveMonthlyTableScope/);
+  assert.match(component, /setMonthlyTableScopeParams\(params, tableScope\)/);
+  assert.match(component, /params\.set\('work_dates'/);
+  assert.match(component, /normalizeDailyDateKey/);
+  assert.match(component, /compactDailyDateLabel/);
   assert.match(dbReader, /const requestedPeriods = normalizeMonthKeys\(searchParams\.get\('period'\)/);
+  assert.match(dbReader, /const requestedWorkDates = normalizeMonthlyWorkDateKeys/);
+  assert.match(dbReader, /monthlyRowWorkDateKey/);
+  assert.match(dbReader, /rowFilter/);
   assert.match(dbReader, /\.eq\('year_value', Number\(yearText\)\)/);
   assert.match(dbReader, /\.eq\('month_value', Number\(monthText\)\)/);
   assert.match(dbReader, /period: requestedPeriods\[0\] \|\| ''/);
