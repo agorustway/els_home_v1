@@ -54,6 +54,7 @@ debug_*.png
 .tmp_issues/
 .tmp_profile/
 .tmp_profiles/
+tmp_vba/
 elsbot/.tmp_profile/
 commit_msg.txt
 *.html
@@ -79,3 +80,5 @@ web/android/app/src/main/assets/public/
 els_cleanup_archive_*.zip
 _TRASH_BIN_/
 .vercel
+80
+work-docs/localworks/

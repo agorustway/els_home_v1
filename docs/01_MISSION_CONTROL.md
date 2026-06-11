@@ -1,9 +1,9 @@
-# ELS MISSION CONTROL (v5.14.379 / APK v5.11.29)
+# ELS MISSION CONTROL (v5.14.380 / APK v5.11.29)
 
-> 최신 업데이트: GLAPS 코드 4개 탭의 셀 톤을 상태/수정출처 배지와 편집불가 회색 칸 중심으로 정리하고, 특이적용건은 조건(From)과 적용값(To)이 분리되어 보이게 조정.
+> 최신 업데이트: 안전운임 2026년 1차 추가 운영지침 폴더명을 정정하고, localworks/임시 산출물이 향후 web 커밋에 섞이지 않도록 정리.
 
 ## CURRENT STATUS
-- **웹 버전**: v5.14.379
+- **웹 버전**: v5.14.380
 - **APK 버전**: v5.11.29
 - **운영 방향**: NAS-Centric 유지. 고부하 Excel/ZIP/봇/파일 처리는 NAS, 화면 조회와 인증/DB는 Supabase 중심.
 - **아산 실적관리**: 종합실적/월간실적/연간실적/구간단가 탭 구조. 월간은 리셋 가능한 운영 임시 원장, 연간은 사람이 정리한 확정 Excel source 조합으로 본다.
@@ -80,12 +80,12 @@
 - DB 보관정책: 보존 archive는 일반 검색에 섞지 않는다. 배차상세는 1년 1개월, 월간실적은 1년 3개월 hot 검색 범위로 둔다. `data_archive_manifest`, `data_restore_jobs`, `data_restore_staging_rows`, `data_operation_events`는 준비 완료. 실제 삭제성 archive 실행은 NAS worker와 샘플 복원 검증 후 연다.
 
 ## RECENT CHANGES
+- **v5.14.380**: 안전운임 2026년 1차 추가지침 오타 폴더명 참조를 정정하고, `work-docs/localworks`, `tmp_vba`, `80` 같은 로컬 작업 산출물이 커밋 대상에 섞이지 않게 정리했다.
 - **v5.14.379**: GLAPS 코드 화면의 초록 키 셀 강조를 제거하고 편집불가 회색 보호 셀만 남겼다. 특이적용건은 `조건: 화주사/경유지`와 `적용값(To)`로 나눠 화주사코드·상차지·상차지(청구) 예외의 From/To를 명확히 표시한다.
 - **v5.14.378**: 구간단가 검색 입력을 디바운스 처리하고 필터/압축/정렬 결과를 화면 스냅샷으로 재사용한다. annual-route-unit-price 캐시는 월간 단가 캐시 갱신 상태까지 signature에 포함하되, 배차판 예측 손익은 기존처럼 `branch_performance_monthly_route_unit_amount_cache`를 직접 조회한다.
 - **v5.14.377**: 배차 RAG 작업지 검색별칭을 추가해 `글로비스포장장` 질문이 KD센터 포장장 변형 작업지를 오더 기준으로 합산하도록 보강하고, 실제 DB 재현에서 내일 글로비스포장장 오더 46대를 확인했다.
 - **v5.14.376**: AI 채팅 Gemini 429 시 아산 배차판 RAG가 이미 계산한 오더/실제배차/운송사별/상차지별 집계를 SSE fallback으로 반환해 단순 배차 질문이 모델 한도에 막히지 않게 했다.
 - **v5.14.375**: 운송내역 `전체` 탭 rows 조회 후 컬럼 상태 보정이 같은 값으로도 새 객체를 만들어 반복 재조회되던 루프를 차단해 탭/테이블 깜빡임을 막았다.
-- **v5.14.374**: 예측 손익 매칭에서 `공장/센터/포장장/자동차` 같은 설명어를 제외한 핵심어 비교를 추가해 `모원리공장`과 `서영모원리(기아자동차)` 같은 작업지를 실제 단가로 연결하고, 예측 손익 카드 여백과 점검 리스트 높이를 줄였다.
 ## VERIFICATION
 - 구간단가 화면/예측 손익 경계는 `node --test web/tests/asanAnnualPerformance.test.mjs`, `node --test --test-name-pattern "예측 손익|routeUnit|구간단가|monthly route" web/tests/asanDashboardView.test.mjs`, 변경 파일 lint를 통과한다.
 - 월간실적 표시명/선택 단위 테이블 범위 변경은 `node --test web/tests/asanMonthlyPerformance.test.mjs` 9개와 월간 변경 파일 lint를 통과했다.

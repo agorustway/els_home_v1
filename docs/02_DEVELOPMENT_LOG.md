@@ -1,3 +1,29 @@
+## [2026-06-11] 안전운임 추가지침 폴더명 및 로컬 산출물 정리 (v5.14.380)
+
+### 원인
+- 2026년 안전운임 1차 추가 운영지침 폴더명이 `잔전운임_2026_01차-1추가지침`으로 잘못 남아 있었고, 실제 폴더는 `안전운임_2026_01차-1추가지침`으로 정정되었습니다.
+- `work-docs/localworks` 및 임시 산출물이 향후 web 중심 커밋/푸시에 섞일 수 있어 Git 상태 정리가 필요했습니다.
+
+### 조치
+- `web/public/data/safe-freight-docs.json`의 `versionDir`를 실제 폴더명인 `안전운임_2026_01차-1추가지침`으로 정정했습니다.
+- `.gitignore`에서 `work-docs/localworks/` 적용을 확인하고, `tmp_vba/`, `80` 임시 산출물을 추가 제외했습니다.
+- 기존에 추적되던 `work-docs/glaps` 파일 12건은 로컬 작업 폴더 이동 영향으로 삭제 상태가 web 커밋에 섞이지 않도록 `skip-worktree` 처리했습니다.
+
+### 검증
+- `rg -n "잔전운임_2026_01차-1추가지침|잔전운임" web work-docs scripts`: 활성 적용 경로 0건
+- `rg -n "안전운임_2026_01차-1추가지침" web work-docs scripts`: `web/public/data/safe-freight-docs.json` 1건
+- `node -e "JSON.parse(...safe-freight-docs.json...)"`: 통과
+- `git status --ignored --short work-docs/localworks tmp_vba 80`: 3개 경로 모두 ignore 확인
+- `git ls-files -v "work-docs/glaps"`: 12개 경로 `S` skip-worktree 확인
+
+### 변경 파일
+- `.gitignore`
+- `web/public/data/safe-freight-docs.json`
+- `work-docs/안전운임_2026_01차-1추가지침/2026년 안전운임 운영지침_수정_20260401.pdf`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-11] GLAPS 코드 테이블 톤 정리와 특이적용건 From/To 분리 (v5.14.379)
 
 ### 원인
