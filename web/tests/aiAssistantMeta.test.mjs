@@ -14,10 +14,10 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 test('AI 어시스턴트 버전과 소개는 함수형 메타에서 관리한다', () => {
-  assert.equal(getAiAssistantVersion(), 'v5.14.352');
+  assert.equal(getAiAssistantVersion(), 'v5.14.376');
 
   const intro = getAiAssistantIntroMessage();
-  assert.match(intro, /v5\.14\.352/);
+  assert.match(intro, /v5\.14\.376/);
   assert.match(intro, /아산 배차판·운송내역·상세배차·변동내역·GLAPS코드·선적관리·실적관리/);
   assert.match(intro, /사내 데이터베이스/);
   assert.match(intro, /데이터베이스에 저장되거나 색인된 자료/);
@@ -81,6 +81,8 @@ test('채팅 API는 웹 첨부문서 색인을 NAS 원본 파싱처럼 설명하
   assert.match(route, /getAiSystemCapabilitySummary/);
   assert.match(route, /getRecentWebDataUpdates/);
   assert.match(route, /buildAsanDispatchDetailRagContext/);
+  assert.match(route, /buildDispatchRateLimitFallbackText/);
+  assert.match(route, /X-ELS-AI-Fallback/);
   assert.match(route, /buildAsanTransportHistoryRagContext/);
   assert.match(route, /buildAsanShippingRagContext/);
   assert.match(route, /buildAsanChangeEventsRagContext/);

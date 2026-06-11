@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 import { getAiSystemCapabilitySummary } from '@/utils/aiAssistantMeta.mjs';
 import {
+    buildDispatchRateLimitFallbackText,
+    buildSseTextPayload,
+} from '@/utils/chatFallbacks.mjs';
+import {
     buildAsanDispatchDetailRagContext,
     buildAsanDispatchRagContext,
 } from '@/utils/asanDispatchRag.mjs';
@@ -28,6 +32,18 @@ let _sfLoadedAt = null; // 실제 데이터 로드 완료 시각
 // SITE_URL은 환경변수가 없으면 VERCEL_URL이나 elssolution.com을 폴백으로 사용
 const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://elssolution.com');
+
+function buildTextSseResponse(text, extraHeaders = {}) {
+    return new Response(buildSseTextPayload(text), {
+        headers: {
+            'Content-Type': 'text/event-stream; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive',
+            'X-Accel-Buffering': 'no',
+            ...extraHeaders,
+        },
+    });
+}
 
 async function getSfData() {
     if (_sfDataCache) return _sfDataCache;
@@ -612,6 +628,7 @@ export async function POST(req) {
     // === RAG 데이터 수집 ===
     let recentPostsText = '';
     let isSfQuery = false;
+    let asanDispatchFallbackContext = null;
     const apiTimestamps = {};
 
     // [Resilience] Vercel 환경에서는 localhost 주소가 동작하지 않으므로, Synology 외부 주소를 우선 고려
@@ -1577,6 +1594,7 @@ export async function POST(req) {
                 searchTerms,
                 now: new Date(),
             });
+            asanDispatchFallbackContext = asanDispatchContext;
 
             if (asanDispatchContext.shouldQuery) {
                 recentPostsText += asanDispatchContext.text;
@@ -1782,6 +1800,16 @@ export async function POST(req) {
     if (!geminiRes.ok) {
         const errText = await geminiRes.text();
         console.error('Gemini API Error:', geminiRes.status, errText);
+        if (geminiRes.status === 429) {
+            const fallbackText = buildDispatchRateLimitFallbackText(asanDispatchFallbackContext);
+            if (fallbackText) {
+                console.warn('[ELS-AI] Gemini 429 fallback: 아산 배차판 RAG 집계로 응답합니다.');
+                performAutoLearning(messages, userEmail, supabase);
+                return buildTextSseResponse(fallbackText, {
+                    'X-ELS-AI-Fallback': 'asan-dispatch-rag-429',
+                });
+            }
+        }
         return NextResponse.json({ error: `Gemini API 오류 (${geminiRes.status}): ${errText}` }, { status: geminiRes.status });
     }
 
