@@ -153,6 +153,18 @@ function restoreColumnFilters(filters = {}, headers = []) {
     );
 }
 
+function areColumnFiltersEqual(a = {}, b = {}) {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => {
+        const left = a[key] || new Set();
+        const right = b[key] || new Set();
+        if (!bKeys.includes(key) || left.size !== right.size) return false;
+        return Array.from(left).every(value => right.has(value));
+    });
+}
+
 function triggerBlobDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -624,9 +636,18 @@ export default function AsanTransportHistory() {
     ), [selectedYearRecords]);
 
     useEffect(() => {
-        setColOrder(prev => normalizeColumnOrder(prev, allHeaders));
-        setHiddenCols(prev => new Set(Array.from(prev).filter(header => allHeaders.includes(header))));
-        setColumnFilters(prev => restoreColumnFilters(serializeColumnFilters(prev), allHeaders));
+        setColOrder(prev => {
+            const next = normalizeColumnOrder(prev, allHeaders);
+            return areArraysEqual(prev, next) ? prev : next;
+        });
+        setHiddenCols(prev => {
+            const next = new Set(Array.from(prev).filter(header => allHeaders.includes(header)));
+            return areSetsEqual(prev, next) ? prev : next;
+        });
+        setColumnFilters(prev => {
+            const next = restoreColumnFilters(serializeColumnFilters(prev), allHeaders);
+            return areColumnFiltersEqual(prev, next) ? prev : next;
+        });
     }, [allHeaders]);
 
     useEffect(() => {

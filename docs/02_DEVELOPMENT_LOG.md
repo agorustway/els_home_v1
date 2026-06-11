@@ -1,3 +1,24 @@
+## [2026-06-11] 아산 운송내역 전체 탭 깜빡임 루프 차단 (v5.14.375)
+
+### 원인
+- 운송내역 `전체` rows 조회가 성공할 때마다 응답의 `headers` 배열 참조가 새로 들어오고, 컬럼 순서/숨김/필터 보정 effect가 같은 값이어도 새 배열·Set·필터 객체를 다시 저장했습니다.
+- 이 상태 갱신이 `loadAllRows` 의존성을 다시 바꿔 전체 rows 자동조회가 반복 실행되면서 테이블이 보였다 사라지는 깜빡임처럼 보였습니다.
+
+### 조치
+- 컬럼 필터 비교 함수 `areColumnFiltersEqual`을 추가했습니다.
+- `allHeaders` 보정 effect에서 컬럼 순서, 숨김 Set, 컬럼 필터가 실제로 달라진 경우에만 state를 갱신하도록 바꿨습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 22개 통과
+- `cd web; npm run lint`: 통과
+- `cd web; npm run build`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
 ## [2026-06-11] 아산 현황판 예측 손익 위치와 상차지 유사명 정리 (v5.14.372)
 
 ### 원인
