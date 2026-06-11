@@ -468,6 +468,19 @@
     font-size: 0.82rem;
 }
 
+.transportSearchStatus {
+    flex: 0 0 auto;
+    min-width: 48px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #2563eb;
+    white-space: nowrap;
+}
+
+.transportSearchStatusHidden {
+    visibility: hidden;
+}
+
 .transportActionRow {
     display: flex;
     align-items: center;

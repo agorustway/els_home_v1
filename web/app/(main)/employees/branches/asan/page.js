@@ -62,6 +62,7 @@ const PERFORMANCE_TABS = ['summary-performance', 'monthly-performance', 'annual-
 const ASAN_DISPATCH_VIEW_TYPES = Object.freeze(['integrated', 'glovis', 'mobis']);
 const ASAN_DISPATCH_MAIN_VIEWS = Object.freeze(['dashboard', 'grid', 'detail', 'detail-change', 'glaps-master']);
 const DAILY_DISPLAY_LIMIT = Number.MAX_SAFE_INTEGER;
+const ASAN_TABLE_SEARCH_DEBOUNCE_MS = 700;
 
 const loadAsanShipping = () => import('./AsanShipping');
 const loadAsanTransportHistory = () => import('./AsanTransportHistory');
@@ -2054,8 +2055,8 @@ function AsanDispatchContent() {
         }, 60000);
         return () => clearInterval(timer);
     }, [fetchData, viewType, syncing, showSettings, showBrowser]);
-    // 검색 디바운스 (300ms)
-    useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), 300); return () => clearTimeout(t); }, [searchInput]);
+    // 검색 디바운스
+    useEffect(() => { const t = setTimeout(() => setSearchTerm(searchInput), ASAN_TABLE_SEARCH_DEBOUNCE_MS); return () => clearTimeout(t); }, [searchInput]);
     // localStorage 로드
     useEffect(() => {
         const p = loadPrefs(viewType);

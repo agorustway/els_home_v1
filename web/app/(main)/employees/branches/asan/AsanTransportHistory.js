@@ -21,6 +21,8 @@ import styles from './dispatch.module.css';
 const TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH = '/아산지점/2026_수출리스트.xlsx';
 const ALL_RECORD_KEY = '__all__';
 const ALL_PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 1000;
+const SEARCH_CLEAR_DEBOUNCE_MS = 250;
 const PREF_PAGE_KEY = 'asan_transport_history_preset';
 const DEFAULT_PREF_PAGE_KEY = 'asan_transport_history_default';
 const DEFAULT_SORT = { key: null, direction: 'asc' };
@@ -272,10 +274,13 @@ export default function AsanTransportHistory() {
     const [loadingMeta, setLoadingMeta] = useState(false);
     const [loadingTable, setLoadingTable] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [metaReady, setMetaReady] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [syncGate, setSyncGate] = useState({ running: false, quickDone: false, message: '' });
     const [syncStatus, setSyncStatus] = useState(null);
+    const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
+    const [isComposingSearch, setIsComposingSearch] = useState(false);
     const [sortConfig, setSortConfig] = useState(DEFAULT_SORT);
     const [columnFilters, setColumnFilters] = useState({});
     const [dateFilter, setDateFilter] = useState({ col: '', mode: 'all', day: '', from: '', to: '' });
@@ -309,6 +314,7 @@ export default function AsanTransportHistory() {
 
     const isAllView = activeKey === ALL_RECORD_KEY;
     const transportHistoryPath = settings.transport_history_path || TRANSPORT_HISTORY_SETTINGS_DEFAULT_PATH;
+    const selectedYearHasMeta = metaRecords.some(record => recordYear(record) === selectedYear);
 
     const loadSettings = useCallback(async () => {
         try {
@@ -421,6 +427,7 @@ export default function AsanTransportHistory() {
             setMetaRecords(records);
             const years = Array.from(new Set(records.map(recordYear).filter(Boolean))).sort();
             setSelectedYear(prev => years.includes(prev) ? prev : (years.at(-1) || String(new Date().getFullYear())));
+            setMetaReady(true);
             if (!keepActive || activeKey === ALL_RECORD_KEY) {
                 setActiveKey(ALL_RECORD_KEY);
                 return;
@@ -430,6 +437,7 @@ export default function AsanTransportHistory() {
             else setActiveKey(ALL_RECORD_KEY);
         } catch (error) {
             setSyncStatus({ message: error.message || '운송내역 메타 조회 실패', isError: true });
+            setMetaReady(true);
         } finally {
             setLoadingMeta(false);
         }
@@ -469,12 +477,25 @@ export default function AsanTransportHistory() {
     }, [loadSyncStatus, syncGate.quickDone, syncGate.running]);
 
     useEffect(() => {
-        if (activeKey !== ALL_RECORD_KEY) return undefined;
+        if (activeKey !== ALL_RECORD_KEY || !metaReady || !selectedYear) return undefined;
+        if (metaRecords.length > 0 && !selectedYearHasMeta) {
+            setActiveRecord(null);
+            return undefined;
+        }
         const timer = window.setTimeout(() => {
             loadAllRows({ reset: true, offset: 0 });
         }, 250);
         return () => window.clearTimeout(timer);
-    }, [activeKey, loadAllRows]);
+    }, [activeKey, loadAllRows, metaReady, metaRecords.length, selectedYear, selectedYearHasMeta]);
+
+    useEffect(() => {
+        if (isComposingSearch) return undefined;
+        const delay = searchInput.trim() ? SEARCH_DEBOUNCE_MS : SEARCH_CLEAR_DEBOUNCE_MS;
+        const timer = window.setTimeout(() => {
+            setSearch(searchInput.trim());
+        }, delay);
+        return () => window.clearTimeout(timer);
+    }, [searchInput, isComposingSearch]);
 
     const selectAll = () => {
         if (activeKey === ALL_RECORD_KEY) {
@@ -1368,8 +1389,20 @@ export default function AsanTransportHistory() {
         triggerBlobDownload(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);
     };
 
-    const rowCount = isAllView ? Number(activeRecord?.total || activeRecord?.valid_row_count || 0) : (activeRecord?.valid_row_count ?? rows.length);
+    const hasServerSideNarrowing = isAllView && (
+        Boolean(search.trim())
+        || dateFilter.mode !== 'all'
+        || Object.keys(columnFilters).some(column => !isContainerLookupColumn(column))
+    );
+    const activeTotal = Number(activeRecord?.total ?? activeRecord?.valid_row_count ?? Number.NaN);
+    const rowCount = isAllView
+        ? (hasServerSideNarrowing
+            ? (Number.isFinite(activeTotal) ? activeTotal : 0)
+            : (activeTotal > 0 ? activeTotal : selectedYearTotal))
+        : (activeRecord?.valid_row_count ?? rows.length);
     const loadedCount = rows.length;
+    const searchPending = searchInput.trim() !== search.trim();
+    const searchStatusText = searchPending ? '입력 대기' : (loadingTable && search.trim() ? '검색 중' : '');
     const fileModifiedLabel = formatDateTime(activeRecord?.file_modified_at);
     const syncActionBlocked = syncing || (syncGate.running && !syncGate.quickDone);
     const syncButtonText = syncActionBlocked
@@ -1407,11 +1440,22 @@ export default function AsanTransportHistory() {
                 <div className={styles.transportSearchRow}>
                     <input
                         className={`${styles.pathInput} ${styles.transportSearchInput}`}
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                        onCompositionStart={() => setIsComposingSearch(true)}
+                        onCompositionEnd={(event) => {
+                            setIsComposingSearch(false);
+                            setSearchInput(event.currentTarget.value);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') setSearch(searchInput.trim());
+                        }}
                         placeholder={isAllView ? '전체 검색 (콤마 구분)' : '현재 선택 시트 검색'}
                         aria-label={isAllView ? '전체 검색' : '현재 선택 시트 검색'}
                     />
+                    <span className={`${styles.transportSearchStatus} ${searchStatusText ? '' : styles.transportSearchStatusHidden}`}>
+                        {searchStatusText || '검색 중'}
+                    </span>
                     <span className={styles.dateTabsMeta}>
                         {isAllView ? `전체 ${processedRows.length.toLocaleString('ko-KR')} / ${rowCount.toLocaleString('ko-KR')}건` : `현재 선택 시트 ${processedRows.length.toLocaleString('ko-KR')}건`}
                     </span>

@@ -16,6 +16,7 @@ export const revalidate = 0;
 
 const TRANSPORT_HISTORY_META_SELECT = 'id,branch_id,target_month,sheet_name,headers,source_headers,file_modified_at,updated_at,row_count,valid_row_count,metadata';
 const TRANSPORT_HISTORY_META_FALLBACK_SELECT = 'id,branch_id,target_month,sheet_name,headers,source_headers,data,file_modified_at,updated_at,metadata';
+const TRANSPORT_HISTORY_ROWS_SELECT = 'id,branch_id,target_month,sheet_name,headers,source_headers,data,file_modified_at,updated_at,row_count,valid_row_count,metadata';
 
 function parseTransportHistoryColumnFilters(value) {
     const raw = String(value || '').trim();
@@ -105,7 +106,7 @@ export async function GET(request) {
         return query;
     };
 
-    let { data, error } = await buildQuery(mode === 'meta' ? TRANSPORT_HISTORY_META_SELECT : '*');
+    let { data, error } = await buildQuery(mode === 'meta' ? TRANSPORT_HISTORY_META_SELECT : TRANSPORT_HISTORY_ROWS_SELECT);
     if (mode === 'meta' && transportHistoryCountColumnMissing(error)) {
         ({ data, error } = await buildQuery(TRANSPORT_HISTORY_META_FALLBACK_SELECT));
     }

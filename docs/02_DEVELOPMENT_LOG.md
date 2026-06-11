@@ -1,3 +1,31 @@
+## [2026-06-11] 아산 운송내역 전체 보기 로딩 및 검색 디바운스 보강 (v5.14.370)
+
+### 원인
+- 운송내역 월별 카드는 정상 조회되지만 `전체` 보기에서 메타 카운트보다 rows 조회 타이밍이 먼저 평가되면 화면 총건수와 테이블이 0건처럼 남을 수 있었습니다.
+- 운송내역 전체 검색은 입력할 때마다 서버 rows 조회와 클라이언트 필터가 바로 연동되어 데이터가 많은 상태에서 렉처럼 느껴질 수 있었습니다.
+
+### 조치
+- 운송내역 `전체` rows 조회를 메타 준비 이후에 실행하도록 `metaReady`/연도 메타 체크를 추가하고, 전체 총건수는 검색/필터가 없을 때 메타 합계로도 보강되도록 했습니다.
+- 운송내역 검색 입력값과 실제 검색값을 분리해 1초 디바운스 후 조회/필터에 적용하고, IME 조합 중에는 검색을 미루도록 했습니다.
+- 배차판 메인 검색은 700ms 디바운스로 조정하고, GLAPS 마스터 검색도 검색어 입력 시 700ms 후 조회되도록 맞췄습니다.
+- 운송내역 rows API는 `*` 대신 필요한 컬럼만 select하도록 바꿔 Supabase/Vercel payload를 예측 가능하게 했습니다.
+
+### 검증
+- `node --test web/tests/asanTransportHistory.test.mjs`: 22개 통과
+- `cd web; npm run lint`: 통과
+- `cd web; npm run build`: 통과
+
+### 변경 파일
+- `web/app/(main)/employees/branches/asan/AsanTransportHistory.js`
+- `web/app/(main)/employees/branches/asan/dispatch.module.css`
+- `web/app/(main)/employees/branches/asan/page.js`
+- `web/app/(main)/employees/branches/asan/AsanGlapsMaster.js`
+- `web/app/api/branches/asan/transport-history/route.js`
+- `web/tests/asanTransportHistory.test.mjs`
+- `docs/01_MISSION_CONTROL.md`, `docs/02_DEVELOPMENT_LOG.md`
+
+---
+
 ## [2026-06-09] 아산 예측 손익 계산 루프 최적화 (v5.14.367)
 
 ### 원인

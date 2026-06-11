@@ -17,6 +17,8 @@ const STATUS_LABELS = {
     needs_mapping: '조정필요',
     missing_route_code: '코드없음',
 };
+const GLAPS_MASTER_SEARCH_DEBOUNCE_MS = 700;
+const GLAPS_MASTER_REFRESH_DEBOUNCE_MS = 250;
 
 const REVIEW_STATUS_OPTIONS = [
     ['ready', '확정'],
@@ -328,9 +330,10 @@ export default function AsanGlapsMaster({ refreshToken = 0, onMasterChanged = nu
     }, [searchInput, statusFilter]);
 
     useEffect(() => {
-        const timer = setTimeout(fetchData, 250);
+        const delay = searchInput.trim() ? GLAPS_MASTER_SEARCH_DEBOUNCE_MS : GLAPS_MASTER_REFRESH_DEBOUNCE_MS;
+        const timer = setTimeout(fetchData, delay);
         return () => clearTimeout(timer);
-    }, [fetchData, refreshToken]);
+    }, [fetchData, refreshToken, searchInput]);
 
     useEffect(() => {
         setEditor(null);
