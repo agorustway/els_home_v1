@@ -341,6 +341,62 @@ test('아산 현황판 예측 손익은 모원리공장과 서영모원리처럼
   assert.equal(daily.averageFallbackQty, 0);
 });
 
+test('아산 현황판 예측 손익은 서영울산과 울산서영처럼 순서가 다른 작업지도 유사도로 매칭한다', () => {
+  const localHeaders = ['구분', '화주', '작업지', '고객사(국가)', '라인(선사명)', 'TYPE', '오더(계)', '배차', '부산'];
+  const forecast = buildAsanDashboardFinancialForecast({
+    sourceItems: [{
+      target_date: '2026-06-11',
+      headers: localHeaders,
+      data: [
+        ['수출', '기아자동차MIP', '서영울산(용현)', 'KAGA', 'HMM', '40HC', '1', '1', '이지1'],
+      ],
+    }],
+    viewType: 'integrated',
+    routeUnitPrice: {
+      scope: { month: '2026-06' },
+      summary: { periodEnd: '2026-06' },
+      groups: [
+        {
+          salesItem: '다른화주',
+          category: '수출',
+          workSite: '울산서영',
+          pickup: '',
+          billingPickup: '',
+          shipment: '',
+          type: '40HC',
+          billTo: '다른고객',
+          payTo: '다른운송사',
+          carrier: '다른운송사',
+          unitRevenue: 222000,
+          unitPurchase: 177000,
+        },
+        {
+          salesItem: '다른화주',
+          category: '수출',
+          workSite: '전혀다른작업지',
+          pickup: '',
+          billingPickup: '',
+          shipment: '',
+          type: '40HC',
+          billTo: '다른고객',
+          payTo: '다른운송사',
+          carrier: '다른운송사',
+          unitRevenue: 900000,
+          unitPurchase: 700000,
+        },
+      ],
+    },
+    selectedDay: '2026-06-11',
+    activePeriod: 'daily',
+  });
+  const daily = forecast.periods.find((period) => period.key === 'daily');
+
+  assert.equal(daily.revenue, 222_000);
+  assert.equal(daily.purchase, 177_000);
+  assert.equal(daily.matchedQty, 1);
+  assert.equal(daily.averageFallbackQty, 0);
+});
+
 test('아산 현황판 예측 손익 점검은 보정 사유를 카드에서 펼쳐 보여준다', () => {
   const source = fs.readFileSync(
     path.join(webRoot, 'app/(main)/employees/branches/asan/AsanDashboard.js'),
@@ -377,6 +433,10 @@ test('아산 현황판 예측 손익 매칭은 단가 후보 인덱스와 조합
   assert.match(source, /matchData\.groupsByType\?\.get\(prepared\.typeKey\)/);
   assert.match(source, /forecastAnyNormalizedMatch\(prepared\.workSite/);
   assert.match(source, /function forecastMatchCoreText/);
+  assert.match(source, /function forecastCoreTextsLookSimilar/);
+  assert.match(source, /function forecastHasConflictingNumbers/);
+  assert.match(source, /function forecastTextBigrams/);
+  assert.match(source, /\{ fuzzy: true \}/);
   assert.match(source, /FORECAST_CORE_DROP_TERMS/);
   assert.match(source, /function financialUnitCacheKey/);
   assert.match(source, /function resolveFinancialUnit/);

@@ -577,7 +577,7 @@ function forecastFieldMatches(left = '', right = '') {
   return forecastFieldMatchesNormalized(a, b);
 }
 
-function forecastFieldMatchesNormalized(a = '', b = '') {
+function forecastFieldMatchesNormalized(a = '', b = '', options = {}) {
   if (!a || !b || a === '-' || b === '-') return false;
   if (a === b) return true;
   if ((a.length >= 2 && b.includes(a)) || (b.length >= 2 && a.includes(b))) return true;
@@ -585,7 +585,8 @@ function forecastFieldMatchesNormalized(a = '', b = '') {
   const coreB = forecastMatchCoreText(b);
   if (!coreA || !coreB) return false;
   if (coreA === coreB) return true;
-  return (coreA.length >= 2 && coreB.includes(coreA)) || (coreB.length >= 2 && coreA.includes(coreB));
+  if ((coreA.length >= 2 && coreB.includes(coreA)) || (coreB.length >= 2 && coreA.includes(coreB))) return true;
+  return options.fuzzy === true && forecastCoreTextsLookSimilar(coreA, coreB);
 }
 
 function forecastMatchCoreText(value = '') {
@@ -596,12 +597,37 @@ function forecastMatchCoreText(value = '') {
   return text;
 }
 
+function forecastCoreTextsLookSimilar(left = '', right = '') {
+  if (forecastHasConflictingNumbers(left, right)) return false;
+  const leftGrams = forecastTextBigrams(left);
+  const rightGrams = forecastTextBigrams(right);
+  if (leftGrams.size < 2 || rightGrams.size < 2) return false;
+  const common = [...leftGrams].filter((gram) => rightGrams.has(gram)).length;
+  const score = (common * 2) / (leftGrams.size + rightGrams.size);
+  return common >= 2 && score >= 0.5;
+}
+
+function forecastHasConflictingNumbers(left = '', right = '') {
+  const leftNumbers = String(left).match(/\d+/g) || [];
+  const rightNumbers = String(right).match(/\d+/g) || [];
+  return leftNumbers.length > 0 && rightNumbers.length > 0 && leftNumbers.join('|') !== rightNumbers.join('|');
+}
+
+function forecastTextBigrams(value = '') {
+  const text = String(value || '');
+  const grams = new Set();
+  for (let index = 0; index < text.length - 1; index += 1) {
+    grams.add(text.slice(index, index + 2));
+  }
+  return grams;
+}
+
 function forecastAnyMatch(leftValues = [], rightValues = []) {
   return leftValues.some((left) => rightValues.some((right) => forecastFieldMatches(left, right)));
 }
 
-function forecastAnyNormalizedMatch(leftValues = [], rightValues = []) {
-  return leftValues.some((left) => rightValues.some((right) => forecastFieldMatchesNormalized(left, right)));
+function forecastAnyNormalizedMatch(leftValues = [], rightValues = [], options = {}) {
+  return leftValues.some((left) => rightValues.some((right) => forecastFieldMatchesNormalized(left, right, options)));
 }
 
 function amountNumber(value) {
@@ -751,7 +777,7 @@ function routeUnitCandidateGroups(matchData, prepared = {}) {
     groups = genericGroups.length ? [...typedGroups, ...genericGroups] : typedGroups;
   }
   if (prepared.workSite?.[0]) {
-    const workSiteMatched = groups.filter((group) => !group.match.workSite || forecastAnyNormalizedMatch(prepared.workSite, [group.match.workSite]));
+    const workSiteMatched = groups.filter((group) => !group.match.workSite || forecastAnyNormalizedMatch(prepared.workSite, [group.match.workSite], { fuzzy: true }));
     if (workSiteMatched.length) return workSiteMatched;
   }
   return groups;
@@ -773,7 +799,7 @@ function scoreRouteUnitGroup(segment = {}, group = {}, fallbackPickup = false, p
   } else if (group.match.category && values.directionKey) {
     score -= 5;
   }
-  if (forecastAnyNormalizedMatch(values.workSite, [group.match.workSite])) {
+  if (forecastAnyNormalizedMatch(values.workSite, [group.match.workSite], { fuzzy: true })) {
     score += 16;
     strong += 1;
   } else if (values.workSite.length && group.match.workSite) {
